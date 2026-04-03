@@ -34,8 +34,6 @@ namespace NADA.VFX.Weapons.Runtime
             if (!context.IsValid)
                 return false;
 
-            Plugin.Log.LogInfo("[NADA] WeaponRigController accepted target and delegated initial apply.");
-
             _moduleRunner.RunInitialApply(context);
             return true;
         }
