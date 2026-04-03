@@ -1,3 +1,10 @@
+# JetBrains / Rider
+.idea/
+
+# macOS
+.DS_Store
+
+
 [Bb]in/
 [Oo]bj/
 *.user
