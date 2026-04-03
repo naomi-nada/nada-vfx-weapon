@@ -65,7 +65,9 @@ namespace NADA.VFX.Runtime
             NadaMotionBinder.BindOrbitalsRigFollow(catalog.OrbitalsRig, sword15LavaTf);
 
             NadaEffectBinder.BindMirageEffect(catalog.Mirage, itemData);
-            NadaMotionBinder.BindWorldFollow(catalog.Mirage, catalog.Flare);
+
+            Transform mirageMotionRoot = EnsureMirageAnchor(catalog.WorldEffectsRoot, catalog.Mirage);
+            NadaMotionBinder.BindWorldFollow(mirageMotionRoot, catalog.Flare);
 
             NadaEffectBinder.BindSparksEffect(catalog.Sparks, itemData);
 
@@ -96,6 +98,31 @@ namespace NADA.VFX.Runtime
             );
 
             NadaRigMaintenance.ApplyPickupFix(root);
+        }
+        
+        // Mirage still lives on the world branch for now, but its follow behavior should belong
+        // to a dedicated motion root instead of the visual object itself.
+        private static Transform EnsureMirageAnchor(Transform worldEffectsRoot, Transform mirageTf)
+        {
+            if (mirageTf == null)
+                return null;
+
+            if (worldEffectsRoot == null)
+                return mirageTf;
+
+            Transform anchorTf = NadaRigTransforms.EnsureChild(worldEffectsRoot, "Mirage Anchor");
+            if (anchorTf == null)
+                return mirageTf;
+
+            if (mirageTf.parent != anchorTf)
+            {
+                mirageTf.SetParent(anchorTf, true);
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: Reparented Mirage under '{NadaWeaponTargets.FullPath(anchorTf)}'.");
+            }
+
+            return anchorTf;
         }
         
         // Sparks still lives on the world branch for now, but its follow behavior should belong
