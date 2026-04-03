@@ -1,4 +1,3 @@
-// File: Appliers/NadaSparksEffect.cs
 using System.Collections.Generic;
 using NADA.VFX.Core.Color;
 using NADA.VFX.Core.State;
@@ -8,6 +7,13 @@ namespace NADA.VFX.Modules.Effects
 {
     internal sealed class NadaSparksEffect : MonoBehaviour
     {
+        // Sparks currently behaves as a world-hosted effect because it's living on the world branch
+        // and using world simulation space. I did this to just quickly give it the motion behavior I
+        // wanted but my goal now is to give it its own explicit motion ownership (same with Mirage,
+        // Flames, and Embers). To that end, some of the scaffolding here is transitional.
+        private bool _loggedUnexpectedHost;
+        private bool _loggedDiscovery;
+        
         private global::ItemDrop.ItemData _itemData;
 
         private Renderer[] _renderers;
@@ -59,6 +65,7 @@ namespace NADA.VFX.Modules.Effects
         {
             RebuildCaches();
             CacheBaselines();
+            TryLogDiscovery();
             InvokeRepeating(nameof(TickApply), 0f, 0.05f);
         }
 
@@ -71,6 +78,8 @@ namespace NADA.VFX.Modules.Effects
         {
             RebuildCaches();
             CacheBaselines();
+            TryLogDiscovery();
+            ValidateExpectedHosting();
 
             VfxState state = ResolveState();
             bool enabled = state.SparksEnabled;
@@ -377,8 +386,7 @@ namespace NADA.VFX.Modules.Effects
                         continue;
 
                     emission.rateOverTime = OverrideConstantBaseline(baseline.RateOverTime, targetRateOverTime);
-
-                    // Preserve authored rate-over-distance behavior for motion character.
+                    
                     emission.rateOverDistance = baseline.RateOverDistance;
                 }
                 catch { }
@@ -443,6 +451,83 @@ namespace NADA.VFX.Modules.Effects
                     if (l == null) continue;
                     try { l.enabled = enabled; } catch { }
                 }
+            }
+        }
+        
+        private void TryLogDiscovery()
+        {
+            if (_loggedDiscovery)
+                return;
+
+            _loggedDiscovery = true;
+
+            string rootPath = GetSafePath(transform);
+            string parentPath = transform.parent != null ? GetSafePath(transform.parent) : "<no parent>";
+
+            var selfFollow = GetComponent<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>();
+            var childFollow = GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>(true);
+            var parentFollow = GetComponentInParent<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>();
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [Sparks Discovery] root='{rootPath}', parent='{parentPath}', " +
+                $"selfFollow={(selfFollow != null)}, childFollowCount={(childFollow?.Length ?? 0)}, " +
+                $"parentFollow={(parentFollow != null ? GetSafePath(parentFollow.transform) : "<none>")}.");
+
+            if (_systems == null || _systems.Length == 0)
+            {
+                Plugin.Log.LogInfo($"{Plugin.ModName}: [Sparks Discovery] no particle systems found.");
+                return;
+            }
+
+            foreach (var ps in _systems)
+            {
+                if (ps == null) continue;
+
+                try
+                {
+                    var main = ps.main;
+
+                    Plugin.Log.LogInfo(
+                        $"{Plugin.ModName}: [Sparks Discovery] ps='{ps.name}', path='{GetSafePath(ps.transform)}', " +
+                        $"simSpace={main.simulationSpace}, playOnAwake={main.playOnAwake}, " +
+                        $"loop={main.loop}, scalingMode={main.scalingMode}.");
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static string GetSafePath(Transform t)
+        {
+            if (t == null) return "<null>";
+
+            var parts = new System.Collections.Generic.List<string>();
+            while (t != null)
+            {
+                parts.Add(t.name);
+                t = t.parent;
+            }
+
+            parts.Reverse();
+            return string.Join("/", parts);
+        }
+        
+        private void ValidateExpectedHosting()
+        {
+            if (_loggedUnexpectedHost)
+                return;
+
+            string path = GetSafePath(transform);
+
+            bool isUnderWorldBranch = path.Contains("NADA VFX World");
+
+            if (!isUnderWorldBranch)
+            {
+                _loggedUnexpectedHost = true;
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Sparks is not under the expected world branch. " +
+                    $"Current path='{path}'. Sparks currently relies on world hosting + World sim space.");
             }
         }
     }
