@@ -1,0 +1,23 @@
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.csproj
+*.unityproj
+*.dll
+*.exe
+
+# Unity
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+UserSettings/
+
+# BepInEx runtime junk
+BepInEx/plugins/*
+!BepInEx/plugins/NADA*
+BepInEx/cache/
+BepInEx/interop/
