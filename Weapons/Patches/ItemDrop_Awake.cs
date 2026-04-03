@@ -1,4 +1,3 @@
-// File: Weapons/Patches/ItemDrop_Awake.cs
 using System;
 using HarmonyLib;
 using NADA.VFX.Weapons.Targets;

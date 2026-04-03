@@ -1,4 +1,3 @@
-// File: State/VfxStateIO.cs
 using System.Collections.Generic;
 using System.Globalization;
 using NADA.VFX.Core.Config;

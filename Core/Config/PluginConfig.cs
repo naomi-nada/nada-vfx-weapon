@@ -1,4 +1,3 @@
-// File: Config/PluginConfig.cs
 using BepInEx.Configuration;
 
 namespace NADA.VFX.Core.Config

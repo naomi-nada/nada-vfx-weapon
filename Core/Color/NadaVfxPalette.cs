@@ -1,4 +1,3 @@
-// File: VFX/NadaVfxPalette.cs
 using UnityEngine;
 using UColor = UnityEngine.Color;
 

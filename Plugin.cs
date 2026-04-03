@@ -1,7 +1,5 @@
 // Made by Naomi Nada B.F.
 // ^-^
-
-// File: Plugin.cs
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
@@ -17,7 +15,7 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.5.5";
+        public const string ModVersion = "0.5.6";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;

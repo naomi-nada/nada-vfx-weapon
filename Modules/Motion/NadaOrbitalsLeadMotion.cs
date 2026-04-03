@@ -1,4 +1,3 @@
-// File: Motion/NadaOrbitalsLeadMotion.cs
 using NADA.VFX.Core.State;
 using UnityEngine;
 

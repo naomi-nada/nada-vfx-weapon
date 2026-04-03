@@ -1,4 +1,3 @@
-// File: State/VfxStateKeys.cs
 namespace NADA.VFX.Core.State
 {
     internal static class VfxStateKeys

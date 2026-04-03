@@ -1,4 +1,3 @@
-// File: Modules/Properties/NadaColorModule.cs
 using System.Collections.Generic;
 using UnityEngine;
 using UColor = UnityEngine.Color;
@@ -71,7 +70,6 @@ namespace NADA.VFX.Modules.Properties
 
         private void TickApply()
         {
-            // This component now lives on the local Effects root.
             NadaRigMaintenance.ApplyEffectEnabledStates(transform);
 
             if (_groups == null)

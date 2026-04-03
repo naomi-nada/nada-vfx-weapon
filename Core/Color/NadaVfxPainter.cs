@@ -1,4 +1,3 @@
-// File: VFX/NadaVfxPainter.cs
 using System.Collections.Generic;
 using UnityEngine;
 

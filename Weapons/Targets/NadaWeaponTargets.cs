@@ -1,4 +1,3 @@
-// File: Targets/NadaWeaponTargets.cs
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -48,7 +47,7 @@ namespace NADA.VFX.Weapons.Targets
                    && FindSword15Lava(go.transform) != null;
         }
 
-        /// <summary> Find Sword15_Lava* that lives under an ancestor attach*. </summary>
+        // Find Sword15_Lava* that lives under an ancestor attach*.
         internal static Transform FindSword15Lava(Transform root)
         {
             if (root == null) return null;

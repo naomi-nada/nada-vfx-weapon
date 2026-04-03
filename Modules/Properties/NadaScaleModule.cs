@@ -1,4 +1,3 @@
-// File: Appliers/NadaScaleModule.cs
 using System.Collections.Generic;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;

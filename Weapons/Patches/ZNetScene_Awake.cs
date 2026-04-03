@@ -1,7 +1,5 @@
-// File: Patches/ZNetScene_Awake.cs
 using System;
 using HarmonyLib;
-using NADA.VFX.Runtime;
 using NADA.VFX.Runtime.Binding;
 
 namespace NADA.VFX.Weapons.Patches
@@ -14,9 +12,7 @@ namespace NADA.VFX.Weapons.Patches
             try
             {
                 Plugin.Log.LogInfo($"{Plugin.ModName}: ZNetScene.Awake postfix fired.");
-
-                // Scene transition cleanup only.
-                // Do NOT run the full ApplyAll pipeline on the prefab here.
+                
                 NadaRigCatalogAssembly.DestroyCatalogRoots();
             }
             catch (Exception e)

@@ -4,7 +4,6 @@ using NADA.VFX.Weapons.Targets;
 using NADA.VFX.Weapons.Runtime;
 using NADA.VFX.Runtime.Binding;
 using NADA.VFX.Runtime.Execution;
-using NADA.VFX.Modules.Motion;
 
 namespace NADA.VFX.Runtime
 {
@@ -56,7 +55,7 @@ namespace NADA.VFX.Runtime
 
             // Preserve exact current behavior for now.
             // The tuning value is introduced here so motion selection becomes parameter-driven
-            // instead of structure-driven, but it is not yet consumed by runtime motion code.
+            // instead of structure-driven, but it's not yet consumed by runtime motion code.
             _ = orbOrbitAdherence;
 
             NadaMotionBinder.BindOrbsMotion(catalog.OrbitalsOrbs, itemData);
@@ -69,7 +68,9 @@ namespace NADA.VFX.Runtime
             NadaMotionBinder.BindWorldFollow(catalog.Mirage, catalog.Flare);
 
             NadaEffectBinder.BindSparksEffect(catalog.Sparks, itemData);
-            NadaMotionBinder.BindWorldFollow(catalog.Sparks, catalog.Flare);
+
+            Transform sparksMotionRoot = EnsureSparksAnchor(catalog.WorldEffectsRoot, catalog.Sparks);
+            NadaMotionBinder.BindWorldFollow(sparksMotionRoot, catalog.Flare);
 
             if (itemData != null)
                 VfxStateIO.EnsureInitializedFromConfig(itemData);
@@ -95,6 +96,31 @@ namespace NADA.VFX.Runtime
             );
 
             NadaRigMaintenance.ApplyPickupFix(root);
+        }
+        
+        // Sparks still lives on the world branch for now, but its follow behavior should belong
+        // to a dedicated motion root instead of the visual object itself.
+        private static Transform EnsureSparksAnchor(Transform worldEffectsRoot, Transform sparksTf)
+        {
+            if (sparksTf == null)
+                return null;
+
+            if (worldEffectsRoot == null)
+                return sparksTf;
+
+            Transform anchorTf = NadaRigTransforms.EnsureChild(worldEffectsRoot, "Sparks Anchor");
+            if (anchorTf == null)
+                return sparksTf;
+
+            if (sparksTf.parent != anchorTf)
+            {
+                sparksTf.SetParent(anchorTf, true);
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: Reparented Sparks under '{NadaWeaponTargets.FullPath(anchorTf)}'.");
+            }
+
+            return anchorTf;
         }
     }
 }

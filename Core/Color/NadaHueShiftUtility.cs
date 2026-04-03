@@ -1,4 +1,3 @@
-// File: Color/NadaHueShiftUtility.cs
 using UnityEngine;
 
 namespace NADA.VFX.Core.Color

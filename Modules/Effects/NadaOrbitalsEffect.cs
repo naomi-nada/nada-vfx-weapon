@@ -1,4 +1,3 @@
-// File: Appliers/NadaOrbitalsEffect.cs
 using System.Collections.Generic;
 using NADA.VFX.Core.Color;
 using NADA.VFX.Core.State;
@@ -92,9 +91,7 @@ namespace NADA.VFX.Modules.Effects
             // Live lead roots are controlled here.
             ApplyRootEnabled(_flamesRoot, state.OrbitalsFlamesEnabled);
             ApplyRootEnabled(_embersRoot, state.OrbitalsEmbersEnabled);
-
-            // Followers/pools are controlled by motion systems.
-            // If enabled, keep particle systems alive for color/energy use.
+            
             if (state.OrbitalsFlamesEnabled)
             {
                 foreach (var ps in _flamesSystems)

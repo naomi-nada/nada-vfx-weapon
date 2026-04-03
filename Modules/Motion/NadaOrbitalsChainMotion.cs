@@ -1,4 +1,3 @@
-// File: Motion/NadaOrbitalsChainMotion.cs
 using System.Collections.Generic;
 using NADA.VFX.Core.State;
 using UnityEngine;

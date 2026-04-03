@@ -1,4 +1,3 @@
-// File: Config/ConfigurationManagerDrawers.cs
 using System;
 using System.Globalization;
 using UnityEngine;

@@ -1,4 +1,3 @@
-// File: Appliers/NadaMirageEffect.cs
 using System.Collections.Generic;
 using NADA.VFX.Core.Color;
 using NADA.VFX.Core.Config;

@@ -13,6 +13,7 @@ namespace NADA.VFX.Modules.Effects
         // Flames, and Embers). To that end, some of the scaffolding here is transitional.
         private bool _loggedUnexpectedHost;
         private bool _loggedDiscovery;
+        private int _discoveryAttempts;
         
         private global::ItemDrop.ItemData _itemData;
 
@@ -454,12 +455,14 @@ namespace NADA.VFX.Modules.Effects
             }
         }
         
+        // Temporary discovery logging while Sparks is still world hosted.
+        // Will remove it once Sparks has explicit working motion ownership.
         private void TryLogDiscovery()
         {
             if (_loggedDiscovery)
                 return;
 
-            _loggedDiscovery = true;
+            _discoveryAttempts++;
 
             string rootPath = GetSafePath(transform);
             string parentPath = transform.parent != null ? GetSafePath(transform.parent) : "<no parent>";
@@ -467,6 +470,15 @@ namespace NADA.VFX.Modules.Effects
             var selfFollow = GetComponent<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>();
             var childFollow = GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>(true);
             var parentFollow = GetComponentInParent<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>();
+
+            bool looksSettled =
+                transform.parent != null &&
+                (parentFollow != null || parentPath.Contains("Sparks Anchor"));
+
+            if (!looksSettled && _discoveryAttempts < 10)
+                return;
+
+            _loggedDiscovery = true;
 
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: [Sparks Discovery] root='{rootPath}', parent='{parentPath}', " +

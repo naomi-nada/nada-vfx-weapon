@@ -238,10 +238,7 @@ namespace NADA.VFX.Modules.Motion
             {
                 Transform orb = _orbVisuals[visibleIndex];
                 if (orb == null) continue;
-
-                // The invisible authoritative head is segment 0.
-                // The visible chain begins at segment 1 so that the visible head
-                // obeys the same spacing/adherence rules as every other visible orb.
+                
                 int segmentIndex = visibleIndex + 1;
 
                 Vector3 lockedWorldPosition =
@@ -373,7 +370,6 @@ namespace NADA.VFX.Modules.Motion
                 MaxHistoryStepPerFollower,
                 spacing);
 
-            // Tunable fraction of total orbit cycle used per follower.
             float minSecondsPerFollower = cycleDuration * 0.01f;
             float maxSecondsPerFollower = cycleDuration * 0.04f;
 

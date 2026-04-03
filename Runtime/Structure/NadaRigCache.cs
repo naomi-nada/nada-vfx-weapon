@@ -1,4 +1,3 @@
-// File: Rig/NadaRigCache.cs
 using System.Collections;
 using UnityEngine;
 using NADA.VFX.Weapons.Targets;

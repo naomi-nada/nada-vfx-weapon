@@ -1,4 +1,3 @@
-// File: Rig/NadaRigFinder.cs
 using System.Collections.Generic;
 using UnityEngine;
 

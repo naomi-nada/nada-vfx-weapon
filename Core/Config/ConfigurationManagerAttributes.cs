@@ -1,4 +1,3 @@
-// File: Config/ConfigurationManagerAttributes.cs
 using System;
 using BepInEx.Configuration;
 
