@@ -75,25 +75,6 @@ namespace NADA.VFX.Runtime
             if (itemData != null)
                 VfxStateIO.EnsureInitializedFromConfig(itemData);
 
-            Transform effectsTf = catalog.LocalEffectsRoot;
-            if (effectsTf == null) return;
-
-            if (context.EffectsGroups == null)
-            {
-                RigGroups builtEffectsGroups = NadaRigFinder.BuildGroups(effectsTf);
-                context.SetEffectsGroups(builtEffectsGroups);
-            }
-
-            RigGroups effectsGroups = context.EffectsGroups;
-            if (effectsGroups == null)
-                return;
-
-            NadaModuleBinder.BindPropertyModules(
-                effectsTf.gameObject,
-                effectsGroups,
-                itemData
-            );
-
             NadaRigMaintenance.ApplyPickupFix(root);
         }
         

@@ -23,13 +23,10 @@ namespace NADA.VFX.Weapons.Runtime
 
             itemData ??= ResolveItemData(root);
 
-            RigGroups groups = NadaRigFinder.BuildGroups(root.transform);
-
             var context = new NadaWeaponRigContext(
                 root,
                 itemData,
-                weaponVisualRoot,
-                groups);
+                weaponVisualRoot);
 
             if (!context.IsValid)
                 return false;

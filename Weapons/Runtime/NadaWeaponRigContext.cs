@@ -9,31 +9,21 @@ namespace NADA.VFX.Weapons.Runtime
         public Transform RootTransform { get; }
         public global::ItemDrop.ItemData ItemData { get; }
         public Transform WeaponVisualRoot { get; }
-        public RigGroups Groups { get; }
-        public RigGroups EffectsGroups { get; private set; }
 
         public NadaWeaponRigContext(
             GameObject root,
             global::ItemDrop.ItemData itemData,
-            Transform weaponVisualRoot,
-            RigGroups groups)
+            Transform weaponVisualRoot)
         {
             Root = root;
             RootTransform = root != null ? root.transform : null;
             ItemData = itemData;
             WeaponVisualRoot = weaponVisualRoot;
-            Groups = groups;
         }
 
         public bool IsValid =>
             Root != null &&
             RootTransform != null &&
             WeaponVisualRoot != null;   
-        
-        public void SetEffectsGroups(RigGroups groups)
-        {
-            if (groups != null)
-                EffectsGroups = groups;
-        }
     }
 }
