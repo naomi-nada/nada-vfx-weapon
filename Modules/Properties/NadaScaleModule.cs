@@ -13,13 +13,9 @@ namespace NADA.VFX.Modules.Properties
         private Transform _effectsRoot;
         private Transform _outerFlamesRoot;
         private Transform _innerFlames;
-        private Transform _flare;
         private RigGroups _groups;
         
         private bool _initialized;
-
-        private Vector3 _baseFlareScale;
-        private bool _hasBaseFlareScale;
 
         private Vector3 _baseInnerFlamesScale;
         private bool _hasBaseInnerFlamesScale;
@@ -53,12 +49,7 @@ namespace NADA.VFX.Modules.Properties
             _innerFlames = _groups.InnerRoot != null
                 ? _groups.InnerRoot
                 : NadaRigFinder.FindInnerFlames(_effectsRoot);
-
-            _flare = _groups.FlareRoot != null
-                ? _groups.FlareRoot
-                : NadaRigFinder.FindFlare(_effectsRoot);
-
-            CacheFlareBaseline();
+            
             CacheInnerFlamesBaseline();
 
             _initialized = true;
@@ -108,9 +99,6 @@ namespace NADA.VFX.Modules.Properties
             if (_innerFlames == null)
                 _innerFlames = NadaRigFinder.FindInnerFlames(_effectsRoot);
 
-            if (_flare == null)
-                _flare = NadaRigFinder.FindFlare(_effectsRoot);
-
             ApplyTransformsAndScales();
         }
 
@@ -118,25 +106,6 @@ namespace NADA.VFX.Modules.Properties
         {
             ApplyOuterScale();
             ApplyInnerScale();
-            ApplyFlareScale();
-        }
-        
-        private void ApplyFlareScale()
-        {
-            if (_flare == null)
-                _flare = NadaRigFinder.FindFlare(_effectsRoot);
-
-            if (_flare == null)
-                return;
-
-            if (!_hasBaseFlareScale)
-            {
-                _baseFlareScale = _flare.localScale;
-                _hasBaseFlareScale = true;
-            }
-
-            float flareMult = ClampScale(PluginConfig.FlareScale.Value);
-            _flare.localScale = _baseFlareScale * flareMult;
         }
 
         private void ApplyInnerScale()
@@ -264,14 +233,6 @@ namespace NADA.VFX.Modules.Properties
                     catch { }
                 }
             }
-        }
-
-        private void CacheFlareBaseline()
-        {
-            if (_flare == null) return;
-
-            _baseFlareScale = _flare.localScale;
-            _hasBaseFlareScale = true;
         }
         
         private void CacheInnerFlamesBaseline()

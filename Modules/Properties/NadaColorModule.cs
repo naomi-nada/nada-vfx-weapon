@@ -26,9 +26,6 @@ namespace NADA.VFX.Modules.Properties
         private readonly Dictionary<int, MatBaseline> _baseMat = new();
         private readonly Dictionary<int, UColor> _baseLightColor = new();
 
-        private float _lastFlareHueShift;
-        private bool _hasLastFlareHueShift;
-
         private const float ClassicFlameHue = 0.08f;
 
         private sealed class MatBaseline
@@ -84,40 +81,18 @@ namespace NADA.VFX.Modules.Properties
                 _groups.OuterLights,
                 state.OuterFlamesHue
             );
-
-            ApplyHueShiftSlider(
-                _groups.FlareSystems,
-                _groups.FlareRenderers,
-                _groups.FlareLights,
-                state.FlareHue
-            );
-
-            bool flareHueChanged =
-                !_hasLastFlareHueShift ||
-                Mathf.Abs(state.FlareHue - _lastFlareHueShift) > 0.0001f;
-
-            if (flareHueChanged)
-            {
-                RestartSystems(_groups.FlareSystems);
-
-                _lastFlareHueShift = state.FlareHue;
-                _hasLastFlareHueShift = true;
-            }
         }
 
         private void CacheAllBaselines()
         {
             CacheSystemBaselines(_groups.InnerSystems);
             CacheSystemBaselines(_groups.OuterSystems);
-            CacheSystemBaselines(_groups.FlareSystems);
 
             CacheRendererBaselines(_groups.InnerRenderers);
             CacheRendererBaselines(_groups.OuterRenderers);
-            CacheRendererBaselines(_groups.FlareRenderers);
 
             CacheLightBaselines(_groups.InnerLights);
             CacheLightBaselines(_groups.OuterLights);
-            CacheLightBaselines(_groups.FlareLights);
         }
 
         private void CacheSystemBaselines(List<ParticleSystem> systems)
