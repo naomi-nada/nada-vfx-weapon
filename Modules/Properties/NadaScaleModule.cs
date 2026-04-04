@@ -12,13 +12,9 @@ namespace NADA.VFX.Modules.Properties
         
         private Transform _effectsRoot;
         private Transform _outerFlamesRoot;
-        private Transform _innerFlames;
         private RigGroups _groups;
         
         private bool _initialized;
-
-        private Vector3 _baseInnerFlamesScale;
-        private bool _hasBaseInnerFlamesScale;
         
         private bool _outerScaleBaselinesCached;
 
@@ -46,34 +42,12 @@ namespace NADA.VFX.Modules.Properties
                 ? _groups.OuterRoot
                 : NadaRigFinder.FindOuterFlames(_effectsRoot);
 
-            _innerFlames = _groups.InnerRoot != null
-                ? _groups.InnerRoot
-                : NadaRigFinder.FindInnerFlames(_effectsRoot);
-            
-            CacheInnerFlamesBaseline();
-
             _initialized = true;
         }
 
         private void OnDestroy()
         {
             try { CancelInvoke(nameof(TickApply)); } catch { }
-        }
-        
-        private VfxState ResolveState()
-        {
-            if (_itemData != null)
-            {
-                if (VfxStateIO.TryRead(_itemData, out var itemState))
-                    return itemState;
-
-                VfxStateIO.EnsureInitializedFromConfig(_itemData);
-
-                if (VfxStateIO.TryRead(_itemData, out itemState))
-                    return itemState;
-            }
-
-            return VfxStateIO.FromConfig();
         }
         
         public void SetItemData(global::ItemDrop.ItemData itemData)
@@ -96,34 +70,12 @@ namespace NADA.VFX.Modules.Properties
             if (_outerFlamesRoot == null)
                 _outerFlamesRoot = NadaRigFinder.FindOuterFlames(_effectsRoot);
 
-            if (_innerFlames == null)
-                _innerFlames = NadaRigFinder.FindInnerFlames(_effectsRoot);
-
             ApplyTransformsAndScales();
         }
 
         private void ApplyTransformsAndScales()
         {
             ApplyOuterScale();
-            ApplyInnerScale();
-        }
-
-        private void ApplyInnerScale()
-        {
-            if (_innerFlames == null)
-                _innerFlames = NadaRigFinder.FindInnerFlames(_effectsRoot);
-
-            if (_innerFlames == null)
-                return;
-
-            if (!_hasBaseInnerFlamesScale)
-            {
-                _baseInnerFlamesScale = _innerFlames.localScale;
-                _hasBaseInnerFlamesScale = true;
-            }
-
-            float innerMult = ClampScale(PluginConfig.InnerFlamesScale.Value);
-            _innerFlames.localScale = _baseInnerFlamesScale * innerMult;
         }
         
         private void ApplyOuterScale()
@@ -233,14 +185,6 @@ namespace NADA.VFX.Modules.Properties
                     catch { }
                 }
             }
-        }
-        
-        private void CacheInnerFlamesBaseline()
-        {
-            if (_innerFlames == null) return;
-
-            _baseInnerFlamesScale = _innerFlames.localScale;
-            _hasBaseInnerFlamesScale = true;
         }
 
         private static ParticleSystem.MinMaxCurve ScaleMinMaxCurve(

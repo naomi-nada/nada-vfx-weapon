@@ -49,14 +49,12 @@ namespace NADA.VFX.Modules.Properties
             CacheAllBaselines();
 
             VfxState state = NadaWeaponStateResolver.Resolve(_itemData);
-
-            ApplyInnerEnergy(_groups.InnerSystems, state.InnerFlamesEnergy);
+            
             ApplyOuterEnergy(_groups.OuterSystems, state.OuterFlamesEnergy);
         }
 
         private void CacheAllBaselines()
         {
-            CacheEmissionBaselines(_groups.InnerSystems);
             CacheEmissionBaselines(_groups.OuterSystems);
         }
 
@@ -86,38 +84,7 @@ namespace NADA.VFX.Modules.Properties
                 catch { }
             }
         }
-
-        private void ApplyInnerEnergy(List<ParticleSystem> systems, float energy)
-        {
-            if (systems == null) return;
-
-            float t = Mathf.Clamp01(energy);
-
-            foreach (var ps in systems)
-            {
-                if (ps == null) continue;
-
-                int id = ps.GetInstanceID();
-                if (!_baseEmission.TryGetValue(id, out var baseline) || baseline == null)
-                    continue;
-
-                try
-                {
-                    var emission = ps.emission;
-
-                    emission.enabled = baseline.Enabled;
-                    if (!baseline.Enabled)
-                        continue;
-
-                    float emissionMult = Mathf.Lerp(1f, 10f, t);
-
-                    emission.rateOverTime = ScaleMinMaxCurve(baseline.RateOverTime, emissionMult);
-                    emission.rateOverDistance = ScaleMinMaxCurve(baseline.RateOverDistance, emissionMult);
-                }
-                catch { }
-            }
-        }
-
+        
         private void ApplyOuterEnergy(List<ParticleSystem> systems, float energy)
         {
             if (systems == null) return;

@@ -69,13 +69,6 @@ namespace NADA.VFX.Modules.Properties
             VfxState state = NadaWeaponStateResolver.Resolve(_itemData);
 
             ApplyHueShiftSlider(
-                _groups.InnerSystems,
-                _groups.InnerRenderers,
-                _groups.InnerLights,
-                state.InnerFlamesHue
-            );
-
-            ApplyHueShiftSlider(
                 _groups.OuterSystems,
                 _groups.OuterRenderers,
                 _groups.OuterLights,
@@ -85,13 +78,8 @@ namespace NADA.VFX.Modules.Properties
 
         private void CacheAllBaselines()
         {
-            CacheSystemBaselines(_groups.InnerSystems);
             CacheSystemBaselines(_groups.OuterSystems);
-
-            CacheRendererBaselines(_groups.InnerRenderers);
             CacheRendererBaselines(_groups.OuterRenderers);
-
-            CacheLightBaselines(_groups.InnerLights);
             CacheLightBaselines(_groups.OuterLights);
         }
 
@@ -401,23 +389,6 @@ namespace NADA.VFX.Modules.Properties
 
                 default:
                     return source;
-            }
-        }
-        
-        private static void RestartSystems(List<ParticleSystem> systems)
-        {
-            if (systems == null) return;
-
-            foreach (var ps in systems)
-            {
-                if (ps == null) continue;
-
-                try
-                {
-                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                    ps.Play(true);
-                }
-                catch { }
             }
         }
     }
