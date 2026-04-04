@@ -7,18 +7,24 @@ namespace NADA.VFX.Modules.Effects
 {
     internal sealed class NadaOrbitalsEffect : MonoBehaviour
     {
-        private const float DefaultEnergyRateOverTime = 10f;
-        private const float MaxEnergyRateOverTime = 100f;
-
-        private const float DefaultEmbersRateOverTime = 6f;
-        private const float MaxEmbersRateOverTime = 60f;
-
         private global::ItemDrop.ItemData _itemData;
 
         private Transform _flamesRoot;
         private Transform _flamesPoolRoot;
         private Transform _embersRoot;
         private Transform _embersPoolRoot;
+        
+        private bool _lastFlamesEnabled;
+        private bool _hasLastFlamesEnabled;
+
+        private bool _lastEmbersEnabled;
+        private bool _hasLastEmbersEnabled;
+        
+        private const float DefaultEnergyRateOverTime = 10f;
+        private const float MaxEnergyRateOverTime = 100f;
+
+        private const float DefaultEmbersRateOverTime = 6f;
+        private const float MaxEmbersRateOverTime = 60f;
 
         private readonly List<ParticleSystem> _flamesSystems = new();
         private readonly List<Renderer> _flamesRenderers = new();
@@ -42,12 +48,6 @@ namespace NADA.VFX.Modules.Effects
 
         private readonly Dictionary<int, MatBaseline> _baseMat = new();
         private readonly Dictionary<int, UnityEngine.Color> _baseLightColor = new();
-
-        private bool _lastFlamesEnabled;
-        private bool _hasLastFlamesEnabled;
-
-        private bool _lastEmbersEnabled;
-        private bool _hasLastEmbersEnabled;
 
         private sealed class MatBaseline
         {
@@ -110,8 +110,8 @@ namespace NADA.VFX.Modules.Effects
                 }
             }
 
-            ApplyHueShift(_flamesSystems, _flamesRenderers, _flamesLights, state.OrbitalsFlames);
-            ApplyHueShift(_embersSystems, _embersRenderers, _embersLights, state.OrbitalsEmbers);
+            ApplyHueShift(_flamesSystems, _flamesRenderers, _flamesLights, state.OrbitalsFlamesHue);
+            ApplyHueShift(_embersSystems, _embersRenderers, _embersLights, state.OrbitalsEmbersHue);
 
             ApplyEnergy(_flamesSystems, state.OrbitalsFlamesEnergy);
             ApplyEmbersEnergy(_embersSystems, state.OrbitalsEmbersEnergy);
@@ -166,13 +166,13 @@ namespace NADA.VFX.Modules.Effects
             _embersPoolRoot = null;
 
             Transform effectsRoot = transform.parent;
-            Transform OrbitalsRigRoot = FindDirectChild(effectsRoot, Plugin.OrbitalsRigRootName);
-            Transform OrbitalsPoolsRoot = FindDirectChild(OrbitalsRigRoot, Plugin.OrbitalsPoolsRootName);
+            Transform orbitalsRigRoot = FindDirectChild(effectsRoot, Plugin.OrbitalsRigRootName);
+            Transform orbitalsPoolsRoot = FindDirectChild(orbitalsRigRoot, Plugin.OrbitalsPoolsRootName);
 
-            if (OrbitalsPoolsRoot != null)
+            if (orbitalsPoolsRoot != null)
             {
-                _flamesPoolRoot = FindDirectChild(OrbitalsPoolsRoot, Plugin.OrbitalsFlamesPoolName);
-                _embersPoolRoot = FindDirectChild(OrbitalsPoolsRoot, Plugin.OrbitalsEmbersPoolName);
+                _flamesPoolRoot = FindDirectChild(orbitalsPoolsRoot, Plugin.OrbitalsFlamesPoolName);
+                _embersPoolRoot = FindDirectChild(orbitalsPoolsRoot, Plugin.OrbitalsEmbersPoolName);
             }
 
             // Cache both live roots and pool roots for color/energy application.

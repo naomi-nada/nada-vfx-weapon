@@ -80,8 +80,8 @@ namespace NADA.VFX.Modules.Effects
             bool enabled = state.MirageEnabled;
 
             ApplyEnabled(enabled);
-            ApplyHueShift(state.Mirage);
             ApplyScale(state.MirageScale);
+            ApplyHueShift(state.MirageHue);
 
             if (!_hasLastEnabled || _lastEnabled != enabled)
             {

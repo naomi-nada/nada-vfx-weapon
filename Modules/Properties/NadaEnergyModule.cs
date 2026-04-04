@@ -50,8 +50,8 @@ namespace NADA.VFX.Modules.Properties
 
             VfxState state = NadaWeaponStateResolver.Resolve(_itemData);
 
-            ApplyInnerEnergy(_groups.InnerSystems, state.InnerEnergy);
-            ApplyOuterEnergy(_groups.OuterSystems, state.OuterEnergy);
+            ApplyInnerEnergy(_groups.InnerSystems, state.InnerFlamesEnergy);
+            ApplyOuterEnergy(_groups.OuterSystems, state.OuterFlamesEnergy);
         }
 
         private void CacheAllBaselines()

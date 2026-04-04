@@ -150,7 +150,7 @@ namespace NADA.VFX.Modules.Properties
                 _hasBaseFlareScale = true;
             }
 
-            float flareMult = ClampScale(PluginConfig.FlareScaleMult.Value);
+            float flareMult = ClampScale(PluginConfig.FlareScale.Value);
             _flare.localScale = _baseFlareScale * flareMult;
         }
 
@@ -168,7 +168,7 @@ namespace NADA.VFX.Modules.Properties
                 _hasBaseInnerFlamesScale = true;
             }
 
-            float innerMult = ClampScale(PluginConfig.InnerFlamesScaleMult.Value);
+            float innerMult = ClampScale(PluginConfig.InnerFlamesScale.Value);
             _innerFlames.localScale = _baseInnerFlamesScale * innerMult;
         }
         
@@ -186,7 +186,7 @@ namespace NADA.VFX.Modules.Properties
             if (_groups == null || _groups.OuterSystems == null)
                 return;
 
-            float outerMult = ClampScale(PluginConfig.OuterFlamesScaleMult.Value);
+            float outerMult = ClampScale(PluginConfig.OuterFlamesScale.Value);
 
             foreach (var ps in _groups.OuterSystems)
             {

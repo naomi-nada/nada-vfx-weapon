@@ -84,34 +84,34 @@ namespace NADA.VFX.Modules.Properties
                 _groups.InnerSystems,
                 _groups.InnerRenderers,
                 _groups.InnerLights,
-                state.Inner
+                state.InnerFlamesHue
             );
 
             ApplyHueShiftSlider(
                 _groups.OuterSystems,
                 _groups.OuterRenderers,
                 _groups.OuterLights,
-                state.Outer
+                state.OuterFlamesHue
             );
 
             ApplyHueShiftSlider(
                 _groups.FlareSystems,
                 _groups.FlareRenderers,
                 _groups.FlareLights,
-                state.Flare
+                state.FlareHue
             );
 
-            ApplyOrbHueShift(state.OrbitalsOrbs);
+            ApplyOrbHueShift(state.OrbitalsOrbsHue);
 
             bool flareHueChanged =
                 !_hasLastFlareHueShift ||
-                Mathf.Abs(state.Flare - _lastFlareHueShift) > 0.0001f;
+                Mathf.Abs(state.FlareHue - _lastFlareHueShift) > 0.0001f;
 
             if (flareHueChanged)
             {
                 RestartSystems(_groups.FlareSystems);
 
-                _lastFlareHueShift = state.Flare;
+                _lastFlareHueShift = state.FlareHue;
                 _hasLastFlareHueShift = true;
             }
         }

@@ -43,5 +43,38 @@ namespace NADA.VFX.Runtime.Execution
 
             effect.SetItemData(itemData);
         }
+        
+        public static void BindOuterFlamesEffect(Transform effectTf, global::ItemDrop.ItemData itemData)
+        {
+            if (effectTf == null) return;
+
+            var effect = effectTf.GetComponent<NADA.VFX.Modules.Effects.NadaOuterFlamesEffect>();
+            if (effect == null)
+                effect = effectTf.gameObject.AddComponent<NADA.VFX.Modules.Effects.NadaOuterFlamesEffect>();
+
+            effect.SetItemData(itemData);
+        }
+
+        public static void BindInnerFlamesEffect(Transform effectTf, global::ItemDrop.ItemData itemData)
+        {
+            if (effectTf == null) return;
+
+            var effect = effectTf.GetComponent<NADA.VFX.Modules.Effects.NadaInnerFlamesEffect>();
+            if (effect == null)
+                effect = effectTf.gameObject.AddComponent<NADA.VFX.Modules.Effects.NadaInnerFlamesEffect>();
+
+            effect.SetItemData(itemData);
+        }
+
+        public static void BindFlareEffect(Transform effectTf, global::ItemDrop.ItemData itemData)
+        {
+            if (effectTf == null) return;
+
+            var effect = effectTf.GetComponent<NADA.VFX.Modules.Effects.NadaFlareEffect>();
+            if (effect == null)
+                effect = effectTf.gameObject.AddComponent<NADA.VFX.Modules.Effects.NadaFlareEffect>();
+
+            effect.SetItemData(itemData);
+        }
     }
 }

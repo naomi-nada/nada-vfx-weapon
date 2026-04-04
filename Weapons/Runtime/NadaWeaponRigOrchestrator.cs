@@ -57,20 +57,22 @@ namespace NADA.VFX.Runtime
             // The tuning value is introduced here so motion selection becomes parameter-driven
             // instead of structure-driven, but it's not yet consumed by runtime motion code.
             _ = orbOrbitAdherence;
-
-            NadaMotionBinder.BindOrbsMotion(catalog.OrbitalsOrbs, itemData);
             
-            NadaEffectBinder.BindOrbitalsEffect(catalog.OrbitalsRoot ?? worldOrbitalsTf, itemData);
+            NadaEffectBinder.BindOuterFlamesEffect(catalog.OuterFlames, itemData);
+            
+            NadaEffectBinder.BindInnerFlamesEffect(catalog.InnerFlames, itemData);
+            
+            NadaEffectBinder.BindFlareEffect(catalog.Flare, itemData);
 
+            NadaEffectBinder.BindOrbitalsEffect(catalog.OrbitalsRoot ?? worldOrbitalsTf, itemData);
+            NadaMotionBinder.BindOrbsMotion(catalog.OrbitalsOrbs, itemData);
             NadaMotionBinder.BindOrbitalsRigFollow(catalog.OrbitalsRig, sword15LavaTf);
 
             NadaEffectBinder.BindMirageEffect(catalog.Mirage, itemData);
-
             Transform mirageMotionRoot = EnsureMirageAnchor(catalog.WorldEffectsRoot, catalog.Mirage);
             NadaMotionBinder.BindWorldFollow(mirageMotionRoot, catalog.Flare);
 
             NadaEffectBinder.BindSparksEffect(catalog.Sparks, itemData);
-
             Transform sparksMotionRoot = EnsureSparksAnchor(catalog.WorldEffectsRoot, catalog.Sparks);
             NadaMotionBinder.BindWorldFollow(sparksMotionRoot, catalog.Flare);
 

@@ -86,7 +86,7 @@ namespace NADA.VFX.Modules.Effects
             bool enabled = state.SparksEnabled;
 
             ApplyEnabled(enabled);
-            ApplyHueShift(state.Sparks);
+            ApplyHueShift(state.SparksHue);
             ApplyEnergy(state.SparksEnergy);
 
             if (!_hasLastEnabled || _lastEnabled != enabled)

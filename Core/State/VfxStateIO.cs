@@ -6,41 +6,47 @@ namespace NADA.VFX.Core.State
 {
     internal struct VfxState
     {
-        public float Inner;
-        public float InnerEnergy;
-        public float InnerChaos;
+        public bool InnerFlamesEnabled;
+        public float InnerFlamesScale;
+        public float InnerFlamesHue;
+        public float InnerFlamesEnergy;
+        public float InnerFlamesChaos;
 
-        public float Outer;
-        public float OuterEnergy;
-        public float OuterChaos;
+        public bool OuterFlamesEnabled;
+        public float OuterFlamesScale;
+        public float OuterFlamesHue;
+        public float OuterFlamesEnergy;
+        public float OuterFlamesChaos;
 
-        public float Flare;
+        public bool FlareEnabled;
+        public float FlareScale;
+        public float FlareHue;
 
-        public float Mirage;
         public bool MirageEnabled;
         public float MirageScale;
+        public float MirageHue;
 
-        public float Sparks;
         public bool SparksEnabled;
+        public float SparksHue;
         public float SparksEnergy;
 
         public bool OrbitalsOrbsEnabled;
-        public float OrbitalsOrbs;
-        public float OrbitalsOrbsScale;
         public float OrbitalsOrbsCount;
+        public float OrbitalsOrbsScale;
+        public float OrbitalsOrbsHue;
         public float OrbitalsOrbsSpacing;
         public float OrbitalsOrbsRadius;
-        
+
         public bool OrbitalsFlamesEnabled;
-        public float OrbitalsFlames;
         public float OrbitalsFlamesCount;
+        public float OrbitalsFlamesHue;
         public float OrbitalsFlamesEnergy;
         public float OrbitalsFlamesSpacing;
         public float OrbitalsFlamesRadius;
-        
+
         public bool OrbitalsEmbersEnabled;
-        public float OrbitalsEmbers;
         public float OrbitalsEmbersCount;
+        public float OrbitalsEmbersHue;
         public float OrbitalsEmbersEnergy;
         public float OrbitalsEmbersSpacing;
         public float OrbitalsEmbersRadius;
@@ -54,42 +60,48 @@ namespace NADA.VFX.Core.State
         {
             return new VfxState
             {
-                Inner = PluginConfig.InnerFlamesHueShift.Value,
-                Outer = PluginConfig.OuterFlamesHueShift.Value,
-                Flare = PluginConfig.FlareHueShift.Value,
-
-                InnerEnergy = PluginConfig.InnerFlamesEnergy.Value,
-                OuterEnergy = PluginConfig.OuterFlamesEnergy.Value,
-
-                InnerChaos = PluginConfig.InnerFlamesChaos.Value,
-                OuterChaos = PluginConfig.OuterFlamesChaos.Value,
-
-                MirageEnabled = PluginConfig.Mirage.Value,
-                Mirage = PluginConfig.MirageHueShift.Value,
-                MirageScale = PluginConfig.MirageScaleMult.Value,
-
+                InnerFlamesEnabled = PluginConfig.InnerFlames.Value,
+                InnerFlamesScale = PluginConfig.InnerFlamesScale.Value,
+                InnerFlamesHue = PluginConfig.InnerFlamesHue.Value,
+                InnerFlamesEnergy = PluginConfig.InnerFlamesEnergy.Value,
+                InnerFlamesChaos = PluginConfig.InnerFlamesChaos.Value,
+                
+                OuterFlamesEnabled = PluginConfig.OuterFlames.Value,
+                OuterFlamesScale = PluginConfig.OuterFlamesScale.Value,
+                OuterFlamesHue = PluginConfig.OuterFlamesHue.Value,
+                OuterFlamesEnergy = PluginConfig.OuterFlamesEnergy.Value,
+                OuterFlamesChaos = PluginConfig.OuterFlamesChaos.Value,
+                
+                FlareEnabled = PluginConfig.Flare.Value,
+                FlareScale = PluginConfig.FlareScale.Value,
+                FlareHue = PluginConfig.FlareHue.Value,
+                
                 SparksEnabled = PluginConfig.Sparks.Value,
-                Sparks = PluginConfig.SparksHueShift.Value,
+                SparksHue = PluginConfig.SparksHue.Value,
                 SparksEnergy = PluginConfig.SparksEnergy.Value,
-
+                
+                MirageEnabled = PluginConfig.Mirage.Value,
+                MirageScale = PluginConfig.MirageScale.Value,
+                MirageHue = PluginConfig.MirageHue.Value,
+                
                 OrbitalsOrbsEnabled = PluginConfig.OrbitalsOrbs.Value,
                 OrbitalsOrbsScale = PluginConfig.OrbitalsOrbsScale.Value,
+                OrbitalsOrbsHue = PluginConfig.OrbitalsOrbsHue.Value,
                 OrbitalsOrbsCount = PluginConfig.OrbitalsOrbsCount.Value,
-                OrbitalsOrbs = PluginConfig.OrbitalsOrbsHueShift.Value,
                 OrbitalsOrbsSpacing = PluginConfig.OrbitalsOrbsSpacing.Value,
                 OrbitalsOrbsRadius = PluginConfig.OrbitalsOrbsRadius.Value,
-
+                
                 OrbitalsFlamesEnabled = PluginConfig.OrbitalsFlames.Value,
-                OrbitalsFlames = PluginConfig.OrbitalsFlamesHueShift.Value,
-                OrbitalsFlamesEnergy = PluginConfig.OrbitalsFlamesEnergy.Value,
                 OrbitalsFlamesCount = PluginConfig.OrbitalsFlamesCount.Value,
+                OrbitalsFlamesHue = PluginConfig.OrbitalsFlamesHue.Value,
+                OrbitalsFlamesEnergy = PluginConfig.OrbitalsFlamesEnergy.Value,
                 OrbitalsFlamesSpacing = PluginConfig.OrbitalsFlamesSpacing.Value,
                 OrbitalsFlamesRadius = PluginConfig.OrbitalsFlamesRadius.Value,
-
+                
                 OrbitalsEmbersEnabled = PluginConfig.OrbitalsEmbers.Value,
-                OrbitalsEmbers = PluginConfig.OrbitalsEmbersHueShift.Value,
-                OrbitalsEmbersEnergy = PluginConfig.OrbitalsEmbersEnergy.Value,
                 OrbitalsEmbersCount = PluginConfig.OrbitalsEmbersCount.Value,
+                OrbitalsEmbersHue = PluginConfig.OrbitalsEmbersHue.Value,
+                OrbitalsEmbersEnergy = PluginConfig.OrbitalsEmbersEnergy.Value,
                 OrbitalsEmbersSpacing = PluginConfig.OrbitalsEmbersSpacing.Value,
                 OrbitalsEmbersRadius = PluginConfig.OrbitalsEmbersRadius.Value
             };
@@ -102,43 +114,49 @@ namespace NADA.VFX.Core.State
 
             var cd = item.m_customData;
             if (cd == null) return false;
-
-            state.Inner = ReadFloat(cd, VfxStateKeys.InnerHueShift, PluginConfig.InnerFlamesHueShift.Value);
-            state.Outer = ReadFloat(cd, VfxStateKeys.OuterHueShift, PluginConfig.OuterFlamesHueShift.Value);
-            state.Flare = ReadFloat(cd, VfxStateKeys.FlareHueShift, PluginConfig.FlareHueShift.Value);
-
-            state.InnerEnergy = ReadFloat(cd, VfxStateKeys.InnerEnergy, PluginConfig.InnerFlamesEnergy.Value);
-            state.OuterEnergy = ReadFloat(cd, VfxStateKeys.OuterEnergy, PluginConfig.OuterFlamesEnergy.Value);
-
-            state.InnerChaos = ReadFloat(cd, VfxStateKeys.InnerChaos, PluginConfig.InnerFlamesChaos.Value);
-            state.OuterChaos = ReadFloat(cd, VfxStateKeys.OuterChaos, PluginConfig.OuterFlamesChaos.Value);
-
+            
+            state.InnerFlamesEnabled = ReadBool(cd, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
+            state.InnerFlamesScale = ReadFloat(cd, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
+            state.InnerFlamesHue = ReadFloat(cd, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
+            state.InnerFlamesEnergy = ReadFloat(cd, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
+            state.InnerFlamesChaos = ReadFloat(cd, VfxStateKeys.InnerFlamesChaos, PluginConfig.InnerFlamesChaos.Value);
+            
+            state.OuterFlamesEnabled = ReadBool(cd, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
+            state.OuterFlamesScale = ReadFloat(cd, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
+            state.OuterFlamesHue = ReadFloat(cd, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
+            state.OuterFlamesEnergy = ReadFloat(cd, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
+            state.OuterFlamesChaos = ReadFloat(cd, VfxStateKeys.OuterFlamesChaos, PluginConfig.OuterFlamesChaos.Value);
+            
+            state.FlareEnabled = ReadBool(cd, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
+            state.FlareScale = ReadFloat(cd, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
+            state.FlareHue = ReadFloat(cd, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
+            
             state.MirageEnabled = ReadBool(cd, VfxStateKeys.MirageEnabled, PluginConfig.Mirage.Value);
-            state.Mirage = ReadFloat(cd, VfxStateKeys.MirageHueShift, PluginConfig.MirageHueShift.Value);
-            state.MirageScale = ReadFloat(cd, VfxStateKeys.MirageScale, PluginConfig.MirageScaleMult.Value);
-
+            state.MirageScale = ReadFloat(cd, VfxStateKeys.MirageScale, PluginConfig.MirageScale.Value);
+            state.MirageHue = ReadFloat(cd, VfxStateKeys.MirageHue, PluginConfig.MirageHue.Value);
+            
             state.SparksEnabled = ReadBool(cd, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
-            state.Sparks = ReadFloat(cd, VfxStateKeys.SparksHueShift, PluginConfig.SparksHueShift.Value);
             state.SparksEnergy = ReadFloat(cd, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
+            state.SparksHue = ReadFloat(cd, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
 
             state.OrbitalsOrbsEnabled = ReadBool(cd, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);
             state.OrbitalsOrbsCount = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
             state.OrbitalsOrbsScale = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsScale, PluginConfig.OrbitalsOrbsScale.Value);
-            state.OrbitalsOrbs = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsHueShift, PluginConfig.OrbitalsOrbsHueShift.Value);
+            state.OrbitalsOrbsHue = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsHue, PluginConfig.OrbitalsOrbsHue.Value);
             state.OrbitalsOrbsSpacing = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsSpacing, PluginConfig.OrbitalsOrbsSpacing.Value);
             state.OrbitalsOrbsRadius = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
 
             state.OrbitalsFlamesEnabled = ReadBool(cd, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
-            state.OrbitalsFlames = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesHueShift, PluginConfig.OrbitalsFlamesHueShift.Value);
-            state.OrbitalsFlamesEnergy = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
             state.OrbitalsFlamesCount = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
+            state.OrbitalsFlamesHue = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesHue, PluginConfig.OrbitalsFlamesHue.Value);
+            state.OrbitalsFlamesEnergy = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
             state.OrbitalsFlamesSpacing = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesSpacing, PluginConfig.OrbitalsFlamesSpacing.Value);
             state.OrbitalsFlamesRadius = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
 
             state.OrbitalsEmbersEnabled = ReadBool(cd, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
-            state.OrbitalsEmbers = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersHueShift, PluginConfig.OrbitalsEmbersHueShift.Value);
-            state.OrbitalsEmbersEnergy = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
             state.OrbitalsEmbersCount = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersCount, PluginConfig.OrbitalsEmbersCount.Value);
+            state.OrbitalsEmbersHue = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersHue, PluginConfig.OrbitalsEmbersHue.Value);
+            state.OrbitalsEmbersEnergy = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
             state.OrbitalsEmbersSpacing = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersSpacing, PluginConfig.OrbitalsEmbersSpacing.Value);
             state.OrbitalsEmbersRadius = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
 
@@ -151,40 +169,46 @@ namespace NADA.VFX.Core.State
             if (item.m_customData == null)
                 item.m_customData = new Dictionary<string, string>();
 
-            WriteFloat(item.m_customData, VfxStateKeys.InnerHueShift, state.Inner);
-            WriteFloat(item.m_customData, VfxStateKeys.OuterHueShift, state.Outer);
-            WriteFloat(item.m_customData, VfxStateKeys.FlareHueShift, state.Flare);
-
-            WriteFloat(item.m_customData, VfxStateKeys.InnerEnergy, state.InnerEnergy);
-            WriteFloat(item.m_customData, VfxStateKeys.OuterEnergy, state.OuterEnergy);
-
-            WriteFloat(item.m_customData, VfxStateKeys.InnerChaos, state.InnerChaos);
-            WriteFloat(item.m_customData, VfxStateKeys.OuterChaos, state.OuterChaos);
+            WriteBool(item.m_customData, VfxStateKeys.InnerFlamesEnabled, state.InnerFlamesEnabled);
+            WriteFloat(item.m_customData, VfxStateKeys.InnerFlamesScale, state.InnerFlamesScale);
+            WriteFloat(item.m_customData, VfxStateKeys.InnerFlamesHue, state.InnerFlamesHue);
+            WriteFloat(item.m_customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
+            WriteFloat(item.m_customData, VfxStateKeys.InnerFlamesChaos, state.InnerFlamesChaos);
+            
+            WriteBool(item.m_customData, VfxStateKeys.OuterFlamesEnabled, state.OuterFlamesEnabled);
+            WriteFloat(item.m_customData, VfxStateKeys.OuterFlamesScale, state.OuterFlamesScale);
+            WriteFloat(item.m_customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
+            WriteFloat(item.m_customData, VfxStateKeys.OuterFlamesEnergy, state.OuterFlamesEnergy);
+            WriteFloat(item.m_customData, VfxStateKeys.OuterFlamesChaos, state.OuterFlamesChaos);
+            
+            WriteBool(item.m_customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
+            WriteFloat(item.m_customData, VfxStateKeys.FlareScale, state.FlareScale);
+            WriteFloat(item.m_customData, VfxStateKeys.FlareHue, state.FlareHue);
 
             WriteBool(item.m_customData, VfxStateKeys.OrbitalsOrbsEnabled, state.OrbitalsOrbsEnabled);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsScale, state.OrbitalsOrbsScale);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsCount, state.OrbitalsOrbsCount);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsHueShift, state.OrbitalsOrbs);
+            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsHue, state.OrbitalsOrbsHue);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsSpacing, state.OrbitalsOrbsSpacing);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsRadius, state.OrbitalsOrbsRadius);
 
             WriteBool(item.m_customData, VfxStateKeys.MirageEnabled, state.MirageEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.MirageHueShift, state.Mirage);
+            WriteFloat(item.m_customData, VfxStateKeys.MirageHue, state.MirageHue);
             WriteFloat(item.m_customData, VfxStateKeys.MirageScale, state.MirageScale);
 
             WriteBool(item.m_customData, VfxStateKeys.SparksEnabled, state.SparksEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.SparksHueShift, state.Sparks);
+            WriteFloat(item.m_customData, VfxStateKeys.SparksHue, state.SparksHue);
             WriteFloat(item.m_customData, VfxStateKeys.SparksEnergy, state.SparksEnergy);
 
             WriteBool(item.m_customData, VfxStateKeys.OrbitalsFlamesEnabled, state.OrbitalsFlamesEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesHueShift, state.OrbitalsFlames);
+            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesHue, state.OrbitalsFlamesHue);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesEnergy, state.OrbitalsFlamesEnergy);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesCount, state.OrbitalsFlamesCount);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesSpacing, state.OrbitalsFlamesSpacing);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesRadius, state.OrbitalsFlamesRadius);
 
             WriteBool(item.m_customData, VfxStateKeys.OrbitalsEmbersEnabled, state.OrbitalsEmbersEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersHueShift, state.OrbitalsEmbers);
+            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersHue, state.OrbitalsEmbersHue);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersEnergy, state.OrbitalsEmbersEnergy);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersCount, state.OrbitalsEmbersCount);
             WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersSpacing, state.OrbitalsEmbersSpacing);
@@ -200,40 +224,45 @@ namespace NADA.VFX.Core.State
                 item.m_customData = new Dictionary<string, string>();
 
             // Always backfill missing keys from current config.
-            BackfillMissing(item.m_customData, VfxStateKeys.InnerHueShift, PluginConfig.InnerFlamesHueShift.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OuterHueShift, PluginConfig.OuterFlamesHueShift.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.FlareHueShift, PluginConfig.FlareHueShift.Value);
+            
+            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesChaos, PluginConfig.InnerFlamesChaos.Value);
 
-            BackfillMissing(item.m_customData, VfxStateKeys.InnerEnergy, PluginConfig.InnerFlamesEnergy.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OuterEnergy, PluginConfig.OuterFlamesEnergy.Value);
-
-            BackfillMissing(item.m_customData, VfxStateKeys.InnerChaos, PluginConfig.InnerFlamesChaos.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OuterChaos, PluginConfig.OuterFlamesChaos.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesChaos, PluginConfig.OuterFlamesChaos.Value);
+            
+            BackfillMissing(item.m_customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
 
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsScale, PluginConfig.OrbitalsOrbsScale.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsHueShift, PluginConfig.OrbitalsOrbsHueShift.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsHue, PluginConfig.OrbitalsOrbsHue.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsSpacing, PluginConfig.OrbitalsOrbsSpacing.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
 
             BackfillMissing(item.m_customData, VfxStateKeys.MirageEnabled, PluginConfig.Mirage.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.MirageHueShift, PluginConfig.MirageHueShift.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.MirageScale, PluginConfig.MirageScaleMult.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.MirageHue, PluginConfig.MirageHue.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.MirageScale, PluginConfig.MirageScale.Value);
 
             BackfillMissing(item.m_customData, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.SparksHueShift, PluginConfig.SparksHueShift.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
 
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesHueShift, PluginConfig.OrbitalsFlamesHueShift.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesHue, PluginConfig.OrbitalsFlamesHue.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesSpacing, PluginConfig.OrbitalsFlamesSpacing.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
 
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersHueShift, PluginConfig.OrbitalsEmbersHueShift.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersHue, PluginConfig.OrbitalsEmbersHue.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersCount, PluginConfig.OrbitalsEmbersCount.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersSpacing, PluginConfig.OrbitalsEmbersSpacing.Value);
