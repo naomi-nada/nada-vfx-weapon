@@ -15,7 +15,6 @@ namespace NADA.VFX.Modules.Properties
         private Transform _innerFlames;
         private Transform _flare;
         private RigGroups _groups;
-        private NadaOrbsTargets _orbTargets;
         
         private bool _initialized;
 
@@ -25,12 +24,7 @@ namespace NADA.VFX.Modules.Properties
         private Vector3 _baseInnerFlamesScale;
         private bool _hasBaseInnerFlamesScale;
         
-        private Vector3 _orbBaseScale;
-        private bool _hasOrbBaseScale;
-        
         private bool _outerScaleBaselinesCached;
-        
-        private const float DefaultOrbBaselineScaleMult = 1.5f;
 
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseOuterStartSize = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseOuterStartLifetime = new();
@@ -101,12 +95,6 @@ namespace NADA.VFX.Modules.Properties
             if (groups != null)
                 _groups = groups;
         }
-        
-        public void SetOrbTargets(NadaOrbsTargets targets)
-        {
-            if (targets != null && targets.IsValid)
-                _orbTargets = targets;
-        }
 
         private void TickApply()
         {
@@ -123,10 +111,7 @@ namespace NADA.VFX.Modules.Properties
             if (_flare == null)
                 _flare = NadaRigFinder.FindFlare(_effectsRoot);
 
-            var state = ResolveState();
-
             ApplyTransformsAndScales();
-            ApplyOrbsScale(state);
         }
 
         private void ApplyTransformsAndScales()
@@ -226,34 +211,6 @@ namespace NADA.VFX.Modules.Properties
             }
         }
 
-        private void ApplyOrbsScale(VfxState state)
-        {
-            if (_orbTargets == null || !_orbTargets.IsValid)
-                return;
-
-            CacheOrbBaseline();
-
-            float scaleMult = ClampOrbScale(state.OrbitalsOrbsScale);
-
-            _orbTargets.Root.localScale =
-                _orbBaseScale * (DefaultOrbBaselineScaleMult * scaleMult);
-
-            if (_orbTargets.Renderers != null)
-            {
-                foreach (var r in _orbTargets.Renderers)
-                {
-                    if (r == null) continue;
-                    try { r.enabled = state.OrbitalsOrbsEnabled; } catch { }
-                }
-            }
-        }
-        
-        private static float ClampOrbScale(float v)
-        {
-            if (float.IsNaN(v) || float.IsInfinity(v)) return 1f;
-            return Mathf.Clamp(v, PluginConfig.MinOrbScaleMult, PluginConfig.MaxOrbScaleMult);
-        }
-
         private void CacheOuterScaleBaselines()
         {
             if (_groups == null || _groups.OuterSystems == null)
@@ -323,18 +280,6 @@ namespace NADA.VFX.Modules.Properties
 
             _baseInnerFlamesScale = _innerFlames.localScale;
             _hasBaseInnerFlamesScale = true;
-        }
-        
-        private void CacheOrbBaseline()
-        {
-            if (_orbTargets == null || !_orbTargets.IsValid)
-                return;
-
-            if (!_hasOrbBaseScale)
-            {
-                _orbBaseScale = _orbTargets.Root.localScale;
-                _hasOrbBaseScale = true;
-            }
         }
 
         private static ParticleSystem.MinMaxCurve ScaleMinMaxCurve(

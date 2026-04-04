@@ -64,7 +64,10 @@ namespace NADA.VFX.Runtime
             
             NadaEffectBinder.BindFlareEffect(catalog.Flare, itemData);
 
-            NadaEffectBinder.BindOrbitalsEffect(catalog.OrbitalsRoot ?? worldOrbitalsTf, itemData);
+            NadaEffectBinder.BindOrbitalsEffect(
+                catalog.OrbitalsRoot ?? worldOrbitalsTf,
+                catalog.OrbitalsOrbs ?? localOrbsTf,
+                itemData);
             NadaMotionBinder.BindOrbsMotion(catalog.OrbitalsOrbs, itemData);
             NadaMotionBinder.BindOrbitalsRigFollow(catalog.OrbitalsRig, sword15LavaTf);
 

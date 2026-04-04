@@ -31,7 +31,6 @@ namespace NADA.VFX.Runtime.Execution
 
             colorModule.SetItemData(itemData);
             colorModule.SetRigGroups(effectsGroups);
-            colorModule.SetOrbTargets(orbTargets);
         }
 
         private static void BindEnergyModule(
@@ -59,7 +58,6 @@ namespace NADA.VFX.Runtime.Execution
 
             scaleModule.SetItemData(itemData);
             scaleModule.SetRigGroups(effectsGroups);
-            scaleModule.SetOrbTargets(orbTargets);
         }
     }
 }

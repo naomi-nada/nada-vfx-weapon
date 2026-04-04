@@ -7,6 +7,7 @@ namespace NADA.VFX.Runtime.Execution
     {
         public static void BindOrbitalsEffect(
             Transform orbitalsRoot,
+            Transform localOrbsRoot,
             global::ItemDrop.ItemData itemData)
         {
             if (orbitalsRoot == null) return;
@@ -16,6 +17,7 @@ namespace NADA.VFX.Runtime.Execution
                 effect = orbitalsRoot.gameObject.AddComponent<NadaOrbitalsEffect>();
 
             effect.SetItemData(itemData);
+            effect.SetLocalOrbsRoot(localOrbsRoot);
         }
 
         public static void BindMirageEffect(

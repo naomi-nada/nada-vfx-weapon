@@ -12,7 +12,6 @@ namespace NADA.VFX.Modules.Properties
     {
         private global::ItemDrop.ItemData _itemData;
         private RigGroups _groups;
-        private NadaOrbsTargets _orbTargets;
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColor = new();
         private readonly Dictionary<int, bool> _baseColOverLifetimeEnabled = new();
@@ -31,7 +30,6 @@ namespace NADA.VFX.Modules.Properties
         private bool _hasLastFlareHueShift;
 
         private const float ClassicFlameHue = 0.08f;
-        private const float ClassicOrbHue = 0.08f;
 
         private sealed class MatBaseline
         {
@@ -50,12 +48,6 @@ namespace NADA.VFX.Modules.Properties
         {
             if (groups != null)
                 _groups = groups;
-        }
-        
-        public void SetOrbTargets(NadaOrbsTargets targets)
-        {
-            if (targets != null && targets.IsValid)
-                _orbTargets = targets;
         }
 
         private void Awake()
@@ -76,7 +68,6 @@ namespace NADA.VFX.Modules.Properties
                 return;
 
             CacheAllBaselines();
-            CacheOrbBaselines();
 
             VfxState state = NadaWeaponStateResolver.Resolve(_itemData);
 
@@ -100,8 +91,6 @@ namespace NADA.VFX.Modules.Properties
                 _groups.FlareLights,
                 state.FlareHue
             );
-
-            ApplyOrbHueShift(state.OrbitalsOrbsHue);
 
             bool flareHueChanged =
                 !_hasLastFlareHueShift ||
@@ -129,83 +118,6 @@ namespace NADA.VFX.Modules.Properties
             CacheLightBaselines(_groups.InnerLights);
             CacheLightBaselines(_groups.OuterLights);
             CacheLightBaselines(_groups.FlareLights);
-        }
-        
-        private void CacheOrbBaselines()
-        {
-            if (_orbTargets == null || !_orbTargets.IsValid)
-                return;
-
-            CacheOrbRendererBaselines(_orbTargets.Renderers);
-            CacheOrbLightBaselines(_orbTargets.Lights);
-            CacheOrbSystemBaselines(_orbTargets.Systems);
-        }
-
-        private void CacheOrbRendererBaselines(Renderer[] renderers)
-        {
-            if (renderers == null) return;
-
-            foreach (var r in renderers)
-            {
-                if (r == null) continue;
-
-                Material m;
-                try { m = r.material; } catch { continue; }
-                if (m == null) continue;
-
-                int rid = r.GetInstanceID();
-                if (_baseMat.ContainsKey(rid)) continue;
-
-                var mb = new MatBaseline();
-
-                try
-                {
-                    if (m.HasProperty("_Color")) mb.Color = m.GetColor("_Color");
-                    if (m.HasProperty("_BaseColor")) mb.BaseColor = m.GetColor("_BaseColor");
-                    if (m.HasProperty("_TintColor")) mb.TintColor = m.GetColor("_TintColor");
-                    if (m.HasProperty("_EmissionColor")) mb.Emission = m.GetColor("_EmissionColor");
-                }
-                catch { }
-
-                _baseMat[rid] = mb;
-            }
-        }
-
-        private void CacheOrbLightBaselines(Light[] lights)
-        {
-            if (lights == null) return;
-
-            foreach (var l in lights)
-            {
-                if (l == null) continue;
-
-                int id = l.GetInstanceID();
-                if (_baseLightColor.ContainsKey(id)) continue;
-
-                _baseLightColor[id] = l.color;
-            }
-        }
-
-        private void CacheOrbSystemBaselines(ParticleSystem[] systems)
-        {
-            if (systems == null) return;
-
-            foreach (var ps in systems)
-            {
-                if (ps == null) continue;
-
-                int id = ps.GetInstanceID();
-
-                if (!_baseMainStartColor.ContainsKey(id))
-                {
-                    try
-                    {
-                        var main = ps.main;
-                        _baseMainStartColor[id] = main.startColor;
-                    }
-                    catch { }
-                }
-            }
         }
 
         private void CacheSystemBaselines(List<ParticleSystem> systems)
@@ -417,82 +329,6 @@ namespace NADA.VFX.Modules.Properties
                     {
                         try { l.color = RetintColorToHue(baseColor, targetHue); } catch { }
                     }
-                }
-            }
-        }
-        
-        private void ApplyOrbHueShift(float sliderValue)
-        {
-            if (_orbTargets == null || !_orbTargets.IsValid)
-                return;
-
-            float targetHue = WrapHue01(ClassicOrbHue + sliderValue);
-
-            if (_orbTargets.Renderers != null)
-            {
-                foreach (var r in _orbTargets.Renderers)
-                {
-                    if (r == null) continue;
-
-                    int rid = r.GetInstanceID();
-                    if (!_baseMat.TryGetValue(rid, out var mb) || mb == null)
-                        continue;
-
-                    try
-                    {
-                        var m = r.material;
-                        if (m == null) continue;
-
-                        if (mb.Color.HasValue)
-                        {
-                            var c = RetintColorToHue(mb.Color.Value, targetHue);
-                            if (m.HasProperty("_Color")) m.SetColor("_Color", c);
-                            m.color = c;
-                        }
-
-                        if (mb.BaseColor.HasValue && m.HasProperty("_BaseColor"))
-                            m.SetColor("_BaseColor", RetintColorToHue(mb.BaseColor.Value, targetHue));
-
-                        if (mb.TintColor.HasValue && m.HasProperty("_TintColor"))
-                            m.SetColor("_TintColor", RetintColorToHue(mb.TintColor.Value, targetHue));
-
-                        if (mb.Emission.HasValue && m.HasProperty("_EmissionColor"))
-                            m.SetColor("_EmissionColor", RetintColorToHue(mb.Emission.Value, targetHue));
-                    }
-                    catch { }
-                }
-            }
-
-            if (_orbTargets.Lights != null)
-            {
-                foreach (var l in _orbTargets.Lights)
-                {
-                    if (l == null) continue;
-
-                    int id = l.GetInstanceID();
-                    if (_baseLightColor.TryGetValue(id, out var baseColor))
-                    {
-                        try { l.color = RetintColorToHue(baseColor, targetHue); } catch { }
-                    }
-                }
-            }
-
-            if (_orbTargets.Systems != null)
-            {
-                foreach (var ps in _orbTargets.Systems)
-                {
-                    if (ps == null) continue;
-
-                    int id = ps.GetInstanceID();
-                    if (!_baseMainStartColor.TryGetValue(id, out var baseStart))
-                        continue;
-
-                    try
-                    {
-                        var main = ps.main;
-                        main.startColor = RetintMinMaxGradientToHue(baseStart, targetHue);
-                    }
-                    catch { }
                 }
             }
         }

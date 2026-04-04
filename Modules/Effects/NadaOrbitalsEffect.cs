@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NADA.VFX.Core.Color;
 using NADA.VFX.Core.State;
+using NADA.VFX.Runtime.Binding;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
@@ -9,22 +10,36 @@ namespace NADA.VFX.Modules.Effects
     {
         private global::ItemDrop.ItemData _itemData;
 
+        private bool _loggedOrbsDiscovery;
+        
+        private Transform _orbsRoot;
+        private Transform _localOrbsRoot;
+        private bool _lastOrbsEnabled;
+        private bool _hasLastOrbsEnabled;
+        private Vector3 _orbBaseScale;
+        private bool _hasOrbBaseScale;
+        
         private Transform _flamesRoot;
         private Transform _flamesPoolRoot;
-        private Transform _embersRoot;
-        private Transform _embersPoolRoot;
-        
         private bool _lastFlamesEnabled;
         private bool _hasLastFlamesEnabled;
-
+        
+        private Transform _embersRoot;
+        private Transform _embersPoolRoot;
         private bool _lastEmbersEnabled;
         private bool _hasLastEmbersEnabled;
+        
+        private const float DefaultOrbBaselineScaleMult = 1.5f;
         
         private const float DefaultEnergyRateOverTime = 10f;
         private const float MaxEnergyRateOverTime = 100f;
 
         private const float DefaultEmbersRateOverTime = 6f;
         private const float MaxEmbersRateOverTime = 60f;
+        
+        private readonly List<ParticleSystem> _orbsSystems = new();
+        private readonly List<Renderer> _orbsRenderers = new();
+        private readonly List<Light> _orbsLights = new();
 
         private readonly List<ParticleSystem> _flamesSystems = new();
         private readonly List<Renderer> _flamesRenderers = new();
@@ -68,6 +83,12 @@ namespace NADA.VFX.Modules.Effects
         {
             _itemData = itemData;
         }
+        
+        internal void SetLocalOrbsRoot(Transform localOrbsRoot)
+        {
+            if (localOrbsRoot != null)
+                _localOrbsRoot = localOrbsRoot;
+        }
 
         private void Awake()
         {
@@ -85,13 +106,25 @@ namespace NADA.VFX.Modules.Effects
         {
             RebuildCaches();
             CacheBaselines();
+            TryLogOrbsDiscovery();
 
             VfxState state = ResolveState();
 
             // Live lead roots are controlled here.
+            ApplyRootEnabled(_orbsRoot, state.OrbitalsOrbsEnabled);
+            NadaRigTransforms.DisableRootVisualContent(_orbsRoot);
             ApplyRootEnabled(_flamesRoot, state.OrbitalsFlamesEnabled);
             ApplyRootEnabled(_embersRoot, state.OrbitalsEmbersEnabled);
-            
+
+            if (state.OrbitalsOrbsEnabled)
+            {
+                foreach (var ps in _orbsSystems)
+                {
+                    if (ps != null && !ps.isPlaying)
+                        ps.Play(true);
+                }
+            }
+
             if (state.OrbitalsFlamesEnabled)
             {
                 foreach (var ps in _flamesSystems)
@@ -110,11 +143,22 @@ namespace NADA.VFX.Modules.Effects
                 }
             }
 
+            ApplyOrbsScale(state.OrbitalsOrbsScale);
+            ApplyHueShift(_orbsSystems, _orbsRenderers, _orbsLights, state.OrbitalsOrbsHue);
+
             ApplyHueShift(_flamesSystems, _flamesRenderers, _flamesLights, state.OrbitalsFlamesHue);
             ApplyHueShift(_embersSystems, _embersRenderers, _embersLights, state.OrbitalsEmbersHue);
 
             ApplyEnergy(_flamesSystems, state.OrbitalsFlamesEnergy);
             ApplyEmbersEnergy(_embersSystems, state.OrbitalsEmbersEnergy);
+            
+            if (!_hasLastOrbsEnabled || _lastOrbsEnabled != state.OrbitalsOrbsEnabled)
+            {
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: Orbitals Orbs toggle applied on '{name}' (enabled={state.OrbitalsOrbsEnabled}).");
+                _lastOrbsEnabled = state.OrbitalsOrbsEnabled;
+                _hasLastOrbsEnabled = true;
+            }
 
             if (!_hasLastFlamesEnabled || _lastFlamesEnabled != state.OrbitalsFlamesEnabled)
             {
@@ -151,6 +195,10 @@ namespace NADA.VFX.Modules.Effects
 
         private void RebuildCaches()
         {
+            _orbsSystems.Clear();
+            _orbsRenderers.Clear();
+            _orbsLights.Clear();
+            
             _flamesSystems.Clear();
             _flamesRenderers.Clear();
             _flamesLights.Clear();
@@ -158,6 +206,10 @@ namespace NADA.VFX.Modules.Effects
             _embersSystems.Clear();
             _embersRenderers.Clear();
             _embersLights.Clear();
+            
+            _orbsRoot = _localOrbsRoot != null
+                ? _localOrbsRoot
+                : FindDirectChild(transform, Plugin.OrbitalsOrbsName);
 
             _flamesRoot = FindDirectChild(transform, Plugin.OrbitalsFlamesName);
             _embersRoot = FindDirectChild(transform, Plugin.OrbitalsEmbersName);
@@ -174,8 +226,9 @@ namespace NADA.VFX.Modules.Effects
                 _flamesPoolRoot = FindDirectChild(orbitalsPoolsRoot, Plugin.OrbitalsFlamesPoolName);
                 _embersPoolRoot = FindDirectChild(orbitalsPoolsRoot, Plugin.OrbitalsEmbersPoolName);
             }
-
-            // Cache both live roots and pool roots for color/energy application.
+            
+            CacheGroupDedup(_orbsRoot, _orbsSystems, _orbsRenderers, _orbsLights);
+            
             CacheGroupDedup(_flamesRoot, _flamesSystems, _flamesRenderers, _flamesLights);
             CacheGroupDedup(_flamesPoolRoot, _flamesSystems, _flamesRenderers, _flamesLights);
 
@@ -185,6 +238,11 @@ namespace NADA.VFX.Modules.Effects
 
         private void CacheBaselines()
         {
+            CacheParticleBaselines(_orbsSystems);
+            CacheRendererBaselines(_orbsRenderers);
+            CacheLightBaselines(_orbsLights);
+            CacheOrbBaseline();
+            
             CacheParticleBaselines(_flamesSystems);
             CacheParticleBaselines(_embersSystems);
 
@@ -608,6 +666,33 @@ namespace NADA.VFX.Modules.Effects
                     lights.Add(l);
             }
         }
+        
+        private void CacheOrbBaseline()
+        {
+            if (_orbsRoot == null)
+                return;
+
+            if (!_hasOrbBaseScale)
+            {
+                _orbBaseScale = _orbsRoot.localScale;
+                _hasOrbBaseScale = true;
+            }
+        }
+
+        private void ApplyOrbsScale(float scale)
+        {
+            if (_orbsRoot == null || !_hasOrbBaseScale)
+                return;
+
+            float clamped = ClampOrbScale(scale);
+            _orbsRoot.localScale = _orbBaseScale * (DefaultOrbBaselineScaleMult * clamped);
+        }
+
+        private static float ClampOrbScale(float v)
+        {
+            if (float.IsNaN(v) || float.IsInfinity(v)) return 1f;
+            return Mathf.Clamp(v, 0.2f, 1.8f);
+        }
 
         private static Transform FindDirectChild(Transform parent, string name)
         {
@@ -620,6 +705,61 @@ namespace NADA.VFX.Modules.Effects
             }
 
             return null;
+        }
+        
+        private void TryLogOrbsDiscovery()
+        {
+            if (_loggedOrbsDiscovery)
+                return;
+
+            if (_orbsRoot == null)
+                return;
+
+            _loggedOrbsDiscovery = true;
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [Orbitals Orbs Discovery] root='{GetSafePath(_orbsRoot)}'.");
+
+            var renderers = _orbsRoot.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in renderers)
+            {
+                if (r == null) continue;
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [Orbitals Orbs Discovery] renderer='{r.name}', path='{GetSafePath(r.transform)}', enabled={r.enabled}.");
+            }
+
+            var systems = _orbsRoot.GetComponentsInChildren<ParticleSystem>(true);
+            foreach (var ps in systems)
+            {
+                if (ps == null) continue;
+
+                try
+                {
+                    var main = ps.main;
+                    Plugin.Log.LogInfo(
+                        $"{Plugin.ModName}: [Orbitals Orbs Discovery] ps='{ps.name}', path='{GetSafePath(ps.transform)}', " +
+                        $"activeSelf={ps.gameObject.activeSelf}, isPlaying={ps.isPlaying}, simSpace={main.simulationSpace}.");
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static string GetSafePath(Transform t)
+        {
+            if (t == null) return "<null>";
+
+            var parts = new System.Collections.Generic.List<string>();
+            while (t != null)
+            {
+                parts.Add(t.name);
+                t = t.parent;
+            }
+
+            parts.Reverse();
+            return string.Join("/", parts);
         }
     }
 }
