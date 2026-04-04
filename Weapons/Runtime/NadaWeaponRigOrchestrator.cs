@@ -44,13 +44,6 @@ namespace NADA.VFX.Runtime
 
             NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsTf);
 
-            if (context.OrbTargets == null)
-            {
-                NadaOrbsTargets orbTargets = NadaOrbsTargets.Build(catalog.OrbitalsOrbs ?? localOrbsTf);
-                if (orbTargets != null && orbTargets.IsValid)
-                    context.SetOrbTargets(orbTargets);
-            }
-
             float orbOrbitAdherence = NadaMotionTuningResolver.GetOrbOrbitAdherence(itemData);
 
             // Preserve exact current behavior for now.
@@ -98,7 +91,6 @@ namespace NADA.VFX.Runtime
             NadaModuleBinder.BindPropertyModules(
                 effectsTf.gameObject,
                 effectsGroups,
-                context.OrbTargets,
                 itemData
             );
 

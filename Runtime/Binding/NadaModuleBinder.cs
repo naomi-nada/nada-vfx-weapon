@@ -9,20 +9,18 @@ namespace NADA.VFX.Runtime.Execution
         public static void BindPropertyModules(
             GameObject effectsRoot,
             RigGroups effectsGroups,
-            NadaOrbsTargets orbTargets,
             global::ItemDrop.ItemData itemData)
         {
             if (effectsRoot == null) return;
 
-            BindColorModule(effectsRoot, effectsGroups, orbTargets, itemData);
+            BindColorModule(effectsRoot, effectsGroups, itemData);
             BindEnergyModule(effectsRoot, effectsGroups, itemData);
-            BindScaleModule(effectsRoot, effectsGroups, orbTargets, itemData);
+            BindScaleModule(effectsRoot, effectsGroups, itemData);
         }
 
         private static void BindColorModule(
             GameObject effectsRoot,
             RigGroups effectsGroups,
-            NadaOrbsTargets orbTargets,
             global::ItemDrop.ItemData itemData)
         {
             var colorModule = effectsRoot.GetComponent<NadaColorModule>();
@@ -49,7 +47,6 @@ namespace NADA.VFX.Runtime.Execution
         private static void BindScaleModule(
             GameObject effectsRoot,
             RigGroups effectsGroups,
-            NadaOrbsTargets orbTargets,
             global::ItemDrop.ItemData itemData)
         {
             var scaleModule = effectsRoot.GetComponent<NadaScaleModule>();

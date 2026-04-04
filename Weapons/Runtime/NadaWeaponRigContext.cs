@@ -29,14 +29,6 @@ namespace NADA.VFX.Weapons.Runtime
             Root != null &&
             RootTransform != null &&
             WeaponVisualRoot != null;   
-
-        public NadaOrbsTargets OrbTargets { get; private set; }
-        
-        public void SetOrbTargets(NadaOrbsTargets orbTargets)
-        {
-            if (orbTargets != null && orbTargets.IsValid)
-                OrbTargets = orbTargets;
-        }
         
         public void SetEffectsGroups(RigGroups groups)
         {
