@@ -21,32 +21,28 @@ namespace NADA.VFX
         internal static Plugin Instance;
 
         private static readonly Harmony Harmony = new Harmony(ModGuid);
-
-        internal const string LocalRootName = "NADA VFX Local";
+        
         internal const string WorldRootName = "NADA VFX World";
 
         internal const string LocalWeaponRootName = "Nada Weapon (L)";
         internal const string WorldWeaponRootName = "Nada Weapon (W)";
 
         internal const string EffectsRootName = "Effects";
-        internal const string ObjectsRootName = "Objects";
 
         internal const string TargetPrefabName = "BWA_FlametalGreatSword";
         internal const string ReferencePrefabName = "SwordDyrnwyn";
         internal const string ReferenceRigPath = "attach/Burny vfx";
-
-        internal const string FlareName = "Flare";
-        internal const string MirageName = "Mirage";
-        internal const string SparksName = "Sparks";
+        internal const string DemisterPrefabName = "demister_ball";
 
         internal const string InnerFlamesName = "Inner Flames";
         internal const string OuterFlamesName = "Outer Flames";
-
-        internal const string DemisterPrefabName = "demister_ball";
-        internal const string OrbitalsOrbsName = "Orbs";
-
+        
+        internal const string FlareName = "Flare";
+        internal const string SparksName = "Sparks";
+        internal const string MirageName = "Mirage";
+        
         internal const string OrbitalsName = "Orbitals";
-
+        internal const string OrbitalsOrbsName = "Orbs";
         internal const string OrbitalsRigRootName = "Orbitals Rig";
         internal const string OrbitalsAnchorsRootName = "Orbitals Anchors";
         internal const string OrbitalsPoolsRootName = "Orbitals Pools";

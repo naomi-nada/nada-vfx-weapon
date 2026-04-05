@@ -45,22 +45,22 @@ namespace NADA.VFX.Runtime.Binding
 
                 catalog.OrbitalsRoot = NadaRigPaths.FindLocalOrbitalsRoot(localWeaponRootTf);
                 catalog.OrbitalsOrbs = NadaRigPaths.FindLocalOrbsRoot(localWeaponRootTf);
-
+                
+                catalog.InnerFlames = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.InnerFlamesName);
                 catalog.OuterFlames = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.OuterFlamesName);
                 catalog.Flare = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.FlareName);
-                catalog.InnerFlames = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.InnerFlamesName);
+
+                catalog.Mirage = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.MirageName);
+                catalog.Sparks = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.SparksName);
             }
 
             if (worldWeaponRootTf != null)
             {
                 catalog.WorldEffectsRoot = NadaRigPaths.FindWorldEffectsRoot(worldWeaponRootTf);
 
-                catalog.OrbitalsRig = NadaRigPaths.FindWorldOrbitalsRigRoot(worldWeaponRootTf);
-                catalog.Mirage = NadaRigPaths.FindDirectChild(catalog.WorldEffectsRoot, Plugin.MirageName);
-                catalog.Sparks = NadaRigPaths.FindDirectChild(catalog.WorldEffectsRoot, Plugin.SparksName);
-
                 catalog.OrbitalsRoot = NadaRigPaths.FindWorldOrbitalsRoot(worldWeaponRootTf);
-
+                catalog.OrbitalsRig = NadaRigPaths.FindWorldOrbitalsRigRoot(worldWeaponRootTf);
+                
                 if (catalog.OrbitalsRoot != null)
                 {
                     catalog.OrbitalsFlames = NadaRigPaths.FindDirectChild(catalog.OrbitalsRoot, Plugin.OrbitalsFlamesName);

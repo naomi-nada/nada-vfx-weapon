@@ -44,7 +44,7 @@ namespace NADA.VFX.Runtime.Binding
             }
 
             RefRigTemplateInactive = Object.Instantiate(refRigTf.gameObject);
-            RefRigTemplateInactive.name = "NADA_REF_BurnyTemplate";
+            RefRigTemplateInactive.name = "NADA_BurnyTemplate";
             RefRigTemplateInactive.SetActive(false);
             RefRigTemplateInactive.hideFlags = HideFlags.HideAndDontSave;
 
@@ -52,7 +52,7 @@ namespace NADA.VFX.Runtime.Binding
             if (demisterSource != null)
             {
                 DemisterTemplateInactive = Object.Instantiate(demisterSource);
-                DemisterTemplateInactive.name = "NADA_REF_DemisterTemplate";
+                DemisterTemplateInactive.name = "NADA_DemisterTemplate";
                 DemisterTemplateInactive.SetActive(false);
                 DemisterTemplateInactive.hideFlags = HideFlags.HideAndDontSave;
 

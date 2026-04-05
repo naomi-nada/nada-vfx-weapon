@@ -113,9 +113,7 @@ namespace NADA.VFX.Runtime.Binding
                     $"{Plugin.ModName}: Added world Orbitals branch under '{NadaWeaponTargets.FullPath(effectsRoot)}' " +
                     $"as '{Plugin.OrbitalsName}' (owner='{ownerNameForLogs}').");
             }
-
-            EnsureWorldMirage(effectsRoot, localOrbsTf);
-            EnsureWorldSparks(effectsRoot, localOrbsTf);
+            
             ExtractWorldOrbitalsChildren(localOrbsTf, orbitalsTf);
 
             NadaRigTransforms.NormalizeParticleSpacesUnder(orbitalsTf, ParticleSystemSimulationSpace.World);
@@ -128,20 +126,29 @@ namespace NADA.VFX.Runtime.Binding
             if (sparksTf != null)
                 NadaRigTransforms.NormalizeParticleSpacesUnder(sparksTf, ParticleSystemSimulationSpace.World);
 
-            Transform orbitalsRigTf = NadaOrbitalsRigAssembly.EnsureWorldOrbitalsRig(effectsRoot, ownerNameForLogs);
-            if (orbitalsRigTf != null)
-                NadaOrbitalsRigAssembly.EnsureWorldOrbitalsVisualPools(orbitalsRigTf, orbitalsTf, itemData, ownerNameForLogs);
+            Transform orbitalsMotionRigTf =
+                NadaOrbitalsMotionAssembly.EnsureOrbitalsMotionRig(effectsRoot, ownerNameForLogs);
+
+            if (orbitalsMotionRigTf != null)
+            {
+                NadaOrbitalsMotionAssembly.EnsureOrbitalsMotionSupport(
+                    orbitalsMotionRigTf,
+                    orbitalsTf,
+                    itemData,
+                    ownerNameForLogs);
+            }
 
             return orbitalsTf;
         }
-
-        internal static Transform EnsureWorldMirage(
-            Transform worldEffectsRoot,
-            Transform localOrbsTf)
+        
+        internal static Transform EnsureLocalMirage(
+            Transform localEffectsRoot,
+            Transform localOrbsTf,
+            string ownerNameForLogs)
         {
-            if (worldEffectsRoot == null || localOrbsTf == null) return null;
+            if (localEffectsRoot == null || localOrbsTf == null) return null;
 
-            Transform existing = NadaRigPaths.FindDirectChild(worldEffectsRoot, Plugin.MirageName);
+            Transform existing = NadaRigPaths.FindDirectChild(localEffectsRoot, Plugin.MirageName);
             if (existing != null) return existing;
 
             Transform effectsRoot = NadaRigPaths.FindDirectChild(localOrbsTf, "effects");
@@ -153,24 +160,37 @@ namespace NADA.VFX.Runtime.Binding
             Transform src = NadaRigPaths.FindDirectChild(flameRoot, "distortiion");
             if (src == null) return null;
 
-            var clone = Object.Instantiate(src.gameObject, worldEffectsRoot, false);
+            var clone = Object.Instantiate(src.gameObject, localEffectsRoot, false);
             clone.name = Plugin.MirageName;
             clone.SetActive(true);
 
             clone.transform.localPosition = src.localPosition;
             clone.transform.localRotation = src.localRotation;
             clone.transform.localScale = src.localScale;
+            
+            foreach (var follow in clone.GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>(true))
+            {
+                if (follow == null) continue;
+                Object.Destroy(follow);
+            }
+            
+            NadaRigTransforms.NormalizeParticleSpacesUnder(clone.transform, ParticleSystemSimulationSpace.World);
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: Added local Mirage branch under '{NadaWeaponTargets.FullPath(localEffectsRoot)}' " +
+                $"as '{Plugin.MirageName}' (owner='{ownerNameForLogs}').");
 
             return clone.transform;
         }
-
-        internal static Transform EnsureWorldSparks(
-            Transform worldEffectsRoot,
-            Transform localOrbsTf)
+        
+        internal static Transform EnsureLocalSparks(
+            Transform localEffectsRoot,
+            Transform localOrbsTf,
+            string ownerNameForLogs)
         {
-            if (worldEffectsRoot == null || localOrbsTf == null) return null;
+            if (localEffectsRoot == null || localOrbsTf == null) return null;
 
-            Transform existing = NadaRigPaths.FindDirectChild(worldEffectsRoot, Plugin.SparksName);
+            Transform existing = NadaRigPaths.FindDirectChild(localEffectsRoot, Plugin.SparksName);
             if (existing != null) return existing;
 
             Transform effectsRoot = NadaRigPaths.FindDirectChild(localOrbsTf, "effects");
@@ -182,13 +202,27 @@ namespace NADA.VFX.Runtime.Binding
             Transform src = NadaRigPaths.FindDirectChild(flameRoot, "sparcs_front");
             if (src == null) return null;
 
-            var clone = Object.Instantiate(src.gameObject, worldEffectsRoot, false);
+            var clone = Object.Instantiate(src.gameObject, localEffectsRoot, false);
             clone.name = Plugin.SparksName;
             clone.SetActive(true);
 
             clone.transform.localPosition = src.localPosition;
             clone.transform.localRotation = src.localRotation;
             clone.transform.localScale = src.localScale;
+
+            foreach (var follow in clone.GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>(true))
+            {
+                if (follow == null) continue;
+                Object.Destroy(follow);
+            }
+
+            NadaRigTransforms.NormalizeParticleSpacesUnder(
+                clone.transform,
+                ParticleSystemSimulationSpace.World);
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: Added local Sparks branch under '{NadaWeaponTargets.FullPath(localEffectsRoot)}' " +
+                $"as '{Plugin.SparksName}' (owner='{ownerNameForLogs}').");
 
             return clone.transform;
         }

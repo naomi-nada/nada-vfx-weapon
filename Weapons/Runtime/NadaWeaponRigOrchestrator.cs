@@ -26,23 +26,29 @@ namespace NADA.VFX.Runtime
 
             Transform localWeaponTf = NadaRigCatalogAssembly.EnsureAttachedLocalWeaponBranch(sword15LavaTf, root.name);
             if (localWeaponTf == null) return;
-
-            Transform outerFlamesTf = NadaRigAssembly.EnsureLocalFlameBranchAndAlign(localWeaponTf, root.name);
-            if (outerFlamesTf == null) return;
-
+            
+            Transform worldWeaponTf = NadaRigCatalogAssembly.EnsureWorldWeaponBranch(sword15LavaTf, root.name);
+            if (worldWeaponTf == null) return;
+            
+            Transform localEffectsTf = NadaRigPaths.FindLocalEffectsRoot(localWeaponTf);
+            if (localEffectsTf == null) return;
+            
             Transform localOrbsTf = NadaRigAssembly.EnsureLocalOrbsBranch(localWeaponTf, root.name);
             if (localOrbsTf == null) return;
 
-            Transform worldWeaponTf = NadaRigCatalogAssembly.EnsureWorldWeaponBranch(sword15LavaTf, root.name);
-            if (worldWeaponTf == null) return;
-
             Transform worldOrbitalsTf = NadaRigAssembly.EnsureWorldOrbitalsBranch(worldWeaponTf, localOrbsTf, itemData, root.name);
             if (worldOrbitalsTf == null) return;
-
+            
+            Transform outerFlamesTf = NadaRigAssembly.EnsureLocalFlameBranchAndAlign(localWeaponTf, root.name);
+            if (outerFlamesTf == null) return;
+            
+            NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsTf);
+            
+            NadaRigAssembly.EnsureLocalMirage(localEffectsTf, localOrbsTf, root.name);
+            NadaRigAssembly.EnsureLocalSparks(localEffectsTf, localOrbsTf, root.name);
+            
             NadaRigCatalog catalog = NadaRigCatalog.Build(localWeaponTf, worldWeaponTf);
             if (catalog == null || !catalog.IsValid) return;
-
-            NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsTf);
 
             float orbOrbitAdherence = NadaMotionTuningResolver.GetOrbOrbitAdherence(itemData);
 
@@ -65,67 +71,25 @@ namespace NADA.VFX.Runtime
             NadaMotionBinder.BindOrbitalsRigFollow(catalog.OrbitalsRig, sword15LavaTf);
 
             NadaEffectBinder.BindMirageEffect(catalog.Mirage, itemData);
-            Transform mirageMotionRoot = EnsureMirageAnchor(catalog.WorldEffectsRoot, catalog.Mirage);
+
+            Transform mirageMotionRoot =
+                NadaMotionAnchorAssembly.EnsureStandaloneMirageMotionRoot(catalog.LocalEffectsRoot, catalog.Mirage);
+
             NadaMotionBinder.BindWorldFollow(mirageMotionRoot, catalog.Flare);
+            NadaMotionBinder.BindWorldFollow(catalog.Mirage, mirageMotionRoot);
 
             NadaEffectBinder.BindSparksEffect(catalog.Sparks, itemData);
-            Transform sparksMotionRoot = EnsureSparksAnchor(catalog.WorldEffectsRoot, catalog.Sparks);
+
+            Transform sparksMotionRoot =
+                NadaMotionAnchorAssembly.EnsureStandaloneSparksMotionRoot(catalog.LocalEffectsRoot, catalog.Sparks);
+            
             NadaMotionBinder.BindWorldFollow(sparksMotionRoot, catalog.Flare);
+            NadaMotionBinder.BindWorldFollow(catalog.Sparks, sparksMotionRoot);
 
             if (itemData != null)
                 VfxStateIO.EnsureInitializedFromConfig(itemData);
 
             NadaRigMaintenance.ApplyPickupFix(root);
-        }
-        
-        // Mirage still lives on the world branch for now, but its follow behavior should belong
-        // to a dedicated motion root instead of the visual object itself.
-        private static Transform EnsureMirageAnchor(Transform worldEffectsRoot, Transform mirageTf)
-        {
-            if (mirageTf == null)
-                return null;
-
-            if (worldEffectsRoot == null)
-                return mirageTf;
-
-            Transform anchorTf = NadaRigTransforms.EnsureChild(worldEffectsRoot, "Mirage Anchor");
-            if (anchorTf == null)
-                return mirageTf;
-
-            if (mirageTf.parent != anchorTf)
-            {
-                mirageTf.SetParent(anchorTf, true);
-
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Reparented Mirage under '{NadaWeaponTargets.FullPath(anchorTf)}'.");
-            }
-
-            return anchorTf;
-        }
-        
-        // Sparks still lives on the world branch for now, but its follow behavior should belong
-        // to a dedicated motion root instead of the visual object itself.
-        private static Transform EnsureSparksAnchor(Transform worldEffectsRoot, Transform sparksTf)
-        {
-            if (sparksTf == null)
-                return null;
-
-            if (worldEffectsRoot == null)
-                return sparksTf;
-
-            Transform anchorTf = NadaRigTransforms.EnsureChild(worldEffectsRoot, "Sparks Anchor");
-            if (anchorTf == null)
-                return sparksTf;
-
-            if (sparksTf.parent != anchorTf)
-            {
-                sparksTf.SetParent(anchorTf, true);
-
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Reparented Sparks under '{NadaWeaponTargets.FullPath(anchorTf)}'.");
-            }
-
-            return anchorTf;
         }
     }
 }

@@ -8,11 +8,6 @@ namespace NADA.VFX.Modules.Effects
 {
     internal sealed class NadaMirageEffect : MonoBehaviour
     {
-        // More scaffolding repeating the same process as I did for Sparks.
-        private bool _loggedUnexpectedHost;
-        private bool _loggedDiscovery;
-        private int _discoveryAttempts;
-        
         private global::ItemDrop.ItemData _itemData;
 
         private Transform _root;
@@ -57,7 +52,6 @@ namespace NADA.VFX.Modules.Effects
             _root = transform;
             RebuildCaches();
             CacheBaselines();
-            TryLogDiscovery();
             InvokeRepeating(nameof(TickApply), 0f, 0.05f);
         }
 
@@ -72,8 +66,6 @@ namespace NADA.VFX.Modules.Effects
 
             RebuildCaches();
             CacheBaselines();
-            TryLogDiscovery();
-            ValidateExpectedHosting();
 
             VfxState state = ResolveState();
 
@@ -431,91 +423,6 @@ namespace NADA.VFX.Modules.Effects
         {
             if (float.IsNaN(v) || float.IsInfinity(v)) return 1f;
             return Mathf.Clamp(v, PluginConfig.MinScaleMult, PluginConfig.MaxScaleMult);
-        }
-        
-        private void TryLogDiscovery()
-        {
-            if (_loggedDiscovery)
-                return;
-
-            _discoveryAttempts++;
-
-            string rootPath = GetSafePath(transform);
-            string parentPath = transform.parent != null ? GetSafePath(transform.parent) : "<no parent>";
-
-            var selfFollow = GetComponent<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>();
-            var childFollow = GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>(true);
-            var parentFollow = GetComponentInParent<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>();
-
-            bool looksSettled =
-                transform.parent != null &&
-                (parentFollow != null || parentPath.Contains("Mirage Anchor"));
-
-            if (!looksSettled && _discoveryAttempts < 10)
-                return;
-
-            _loggedDiscovery = true;
-
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: [Mirage Discovery] root='{rootPath}', parent='{parentPath}', " +
-                $"selfFollow={(selfFollow != null)}, childFollowCount={(childFollow?.Length ?? 0)}, " +
-                $"parentFollow={(parentFollow != null ? GetSafePath(parentFollow.transform) : "<none>")}.");
-
-            if (_systems == null || _systems.Length == 0)
-            {
-                Plugin.Log.LogInfo($"{Plugin.ModName}: [Mirage Discovery] no particle systems found.");
-                return;
-            }
-
-            foreach (var ps in _systems)
-            {
-                if (ps == null) continue;
-
-                try
-                {
-                    var main = ps.main;
-
-                    Plugin.Log.LogInfo(
-                        $"{Plugin.ModName}: [Mirage Discovery] ps='{ps.name}', path='{GetSafePath(ps.transform)}', " +
-                        $"simSpace={main.simulationSpace}, playOnAwake={main.playOnAwake}, " +
-                        $"loop={main.loop}, scalingMode={main.scalingMode}.");
-                }
-                catch
-                {
-                }
-            }
-        }
-
-        private void ValidateExpectedHosting()
-        {
-            if (_loggedUnexpectedHost)
-                return;
-
-            string path = GetSafePath(transform);
-            bool isUnderWorldBranch = path.Contains("NADA VFX World");
-
-            if (!isUnderWorldBranch)
-            {
-                _loggedUnexpectedHost = true;
-                Plugin.Log.LogWarning(
-                    $"{Plugin.ModName}: Mirage is not under the expected world branch. " +
-                    $"Current path='{path}'. Mirage currently relies on world hosting/follow wiring.");
-            }
-        }
-
-        private static string GetSafePath(Transform t)
-        {
-            if (t == null) return "<null>";
-
-            var parts = new System.Collections.Generic.List<string>();
-            while (t != null)
-            {
-                parts.Add(t.name);
-                t = t.parent;
-            }
-
-            parts.Reverse();
-            return string.Join("/", parts);
         }
     }
 }

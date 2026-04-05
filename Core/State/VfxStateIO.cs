@@ -237,6 +237,8 @@ namespace NADA.VFX.Core.State
             BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesChaos, PluginConfig.OuterFlamesChaos.Value);
             
+            BackfillMissing(item.m_customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
+            BackfillMissing(item.m_customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
             BackfillMissing(item.m_customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
 
             BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);

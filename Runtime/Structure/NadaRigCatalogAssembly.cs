@@ -5,16 +5,6 @@ namespace NADA.VFX.Runtime.Binding
 {
     internal static class NadaRigCatalogAssembly
     {
-        internal static Transform EnsureLocalCatalogRoot()
-        {
-            var existing = GameObject.Find(Plugin.LocalRootName);
-            if (existing != null) return existing.transform;
-
-            var go = new GameObject(Plugin.LocalRootName);
-            Plugin.Log.LogInfo($"{Plugin.ModName}: Added catalog root '{Plugin.LocalRootName}'.");
-            return go.transform;
-        }
-
         internal static Transform EnsureWorldCatalogRoot()
         {
             var existing = GameObject.Find(Plugin.WorldRootName);
@@ -23,23 +13,6 @@ namespace NADA.VFX.Runtime.Binding
             var go = new GameObject(Plugin.WorldRootName);
             Plugin.Log.LogInfo($"{Plugin.ModName}: Added catalog root '{Plugin.WorldRootName}'.");
             return go.transform;
-        }
-
-        internal static Transform EnsureLocalWeaponTemplate()
-        {
-            Transform localRoot = EnsureLocalCatalogRoot();
-            Transform weaponTemplate = NadaRigPaths.FindDirectChild(localRoot, Plugin.LocalWeaponRootName);
-            if (weaponTemplate != null) return weaponTemplate;
-
-            var go = new GameObject(Plugin.LocalWeaponRootName);
-            weaponTemplate = go.transform;
-            weaponTemplate.SetParent(localRoot, false);
-
-            NadaRigTransforms.EnsureChild(weaponTemplate, Plugin.EffectsRootName);
-
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: Added local template branch '{Plugin.LocalWeaponRootName}' under '{Plugin.LocalRootName}'.");
-            return weaponTemplate;
         }
 
         internal static Transform EnsureWorldWeaponBranch(Transform ownerKeyTf, string ownerNameForLogs)
@@ -80,8 +53,6 @@ namespace NADA.VFX.Runtime.Binding
                 return attached;
             }
 
-            if (EnsureLocalWeaponTemplate() == null) return null;
-
             var go = new GameObject(Plugin.LocalWeaponRootName);
             attached = go.transform;
             attached.SetParent(sword15LavaTf, false);
@@ -97,15 +68,11 @@ namespace NADA.VFX.Runtime.Binding
 
         internal static void DestroyCatalogRoots()
         {
-            var localRoot = GameObject.Find(Plugin.LocalRootName);
-            if (localRoot != null)
-                Object.Destroy(localRoot);
-
             var worldRoot = GameObject.Find(Plugin.WorldRootName);
             if (worldRoot != null)
                 Object.Destroy(worldRoot);
 
-            Plugin.Log.LogInfo($"{Plugin.ModName}: Destroyed stale catalog roots.");
+            Plugin.Log.LogInfo($"{Plugin.ModName}: Destroyed stale world catalog root.");
         }
     }
 }
