@@ -26,47 +26,51 @@ namespace NADA.VFX.Runtime
 
             Transform localWeaponTf = NadaRigCatalogAssembly.EnsureAttachedLocalWeaponBranch(sword15LavaTf, root.name);
             if (localWeaponTf == null) return;
-            
-            Transform worldWeaponTf = NadaRigCatalogAssembly.EnsureWorldWeaponBranch(sword15LavaTf, root.name);
-            if (worldWeaponTf == null) return;
-            
+
             Transform localEffectsTf = NadaRigPaths.FindLocalEffectsRoot(localWeaponTf);
             if (localEffectsTf == null) return;
-            
+
             Transform localOrbsTf = NadaRigAssembly.EnsureLocalOrbsBranch(localWeaponTf, root.name);
             if (localOrbsTf == null) return;
 
-            Transform worldOrbitalsTf = NadaRigAssembly.EnsureWorldOrbitalsBranch(worldWeaponTf, localOrbsTf, itemData, root.name);
-            if (worldOrbitalsTf == null) return;
-            
             Transform outerFlamesTf = NadaRigAssembly.EnsureLocalFlameBranchAndAlign(localWeaponTf, root.name);
             if (outerFlamesTf == null) return;
-            
+
             NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsTf);
-            
+
             NadaRigAssembly.EnsureLocalMirage(localEffectsTf, localOrbsTf, root.name);
             NadaRigAssembly.EnsureLocalSparks(localEffectsTf, localOrbsTf, root.name);
-            
-            NadaRigCatalog catalog = NadaRigCatalog.Build(localWeaponTf, worldWeaponTf);
+
+            NadaRigCatalog catalog = NadaRigCatalog.Build(localWeaponTf);
             if (catalog == null || !catalog.IsValid) return;
 
-            float orbOrbitAdherence = NadaMotionTuningResolver.GetOrbOrbitAdherence(itemData);
+            if (catalog.OrbitalsRoot != null)
+            {
+                Transform localOrbitalsRigTf =
+                    NadaOrbitalsRigAssembly.EnsureLocalOrbitalsRig(catalog.OrbitalsRoot, root.name);
 
-            // Preserve exact current behavior for now.
-            // The tuning value is introduced here so motion selection becomes parameter-driven
-            // instead of structure-driven, but it's not yet consumed by runtime motion code.
+                if (localOrbitalsRigTf != null)
+                {
+                    NadaOrbitalsRigAssembly.EnsureOrbitalsVisualPools(
+                        localOrbitalsRigTf,
+                        catalog.OrbitalsRoot,
+                        itemData,
+                        root.name);
+                }
+            }
+
+            float orbOrbitAdherence = NadaMotionTuningResolver.GetOrbOrbitAdherence(itemData);
             _ = orbOrbitAdherence;
-            
+
             NadaEffectBinder.BindOuterFlamesEffect(catalog.OuterFlames, itemData);
-            
             NadaEffectBinder.BindInnerFlamesEffect(catalog.InnerFlames, itemData);
-            
             NadaEffectBinder.BindFlareEffect(catalog.Flare, itemData);
 
             NadaEffectBinder.BindOrbitalsEffect(
-                catalog.OrbitalsRoot ?? worldOrbitalsTf,
+                catalog.OrbitalsRoot,
                 catalog.OrbitalsOrbs ?? localOrbsTf,
                 itemData);
+
             NadaMotionBinder.BindOrbsMotion(catalog.OrbitalsOrbs, itemData);
             NadaMotionBinder.BindOrbitalsRigFollow(catalog.OrbitalsRig, sword15LavaTf);
 
@@ -82,7 +86,7 @@ namespace NADA.VFX.Runtime
 
             Transform sparksMotionRoot =
                 NadaMotionAnchorAssembly.EnsureStandaloneSparksMotionRoot(catalog.LocalEffectsRoot, catalog.Sparks);
-            
+
             NadaMotionBinder.BindWorldFollow(sparksMotionRoot, catalog.Flare);
             NadaMotionBinder.BindWorldFollow(catalog.Sparks, sparksMotionRoot);
 

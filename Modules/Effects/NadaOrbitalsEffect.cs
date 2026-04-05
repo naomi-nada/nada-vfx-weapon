@@ -217,8 +217,8 @@ namespace NADA.VFX.Modules.Effects
             _flamesPoolRoot = null;
             _embersPoolRoot = null;
 
-            Transform effectsRoot = transform.parent;
-            Transform orbitalsRigRoot = FindDirectChild(effectsRoot, Plugin.OrbitalsRigRootName);
+            Transform orbitalsRigRoot = FindDirectChild(transform, Plugin.OrbitalsRigRootName);
+
             Transform orbitalsPoolsRoot = FindDirectChild(orbitalsRigRoot, Plugin.OrbitalsPoolsRootName);
 
             if (orbitalsPoolsRoot != null)

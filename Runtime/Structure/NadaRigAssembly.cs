@@ -87,58 +87,10 @@ namespace NADA.VFX.Runtime.Binding
                 Plugin.Log.LogInfo(
                     $"{Plugin.ModName}: Removed ZSyncTransform from '{NadaWeaponTargets.FullPath(orbsTf)}'.");
             }
+            
+            EnsureLocalOrbitalsChildren(orbitalsRoot, orbsTf);
 
             return orbsTf;
-        }
-
-        internal static Transform EnsureWorldOrbitalsBranch(
-            Transform worldWeaponRootTf,
-            Transform localOrbsTf,
-            global::ItemDrop.ItemData itemData,
-            string ownerNameForLogs)
-        {
-            if (worldWeaponRootTf == null || localOrbsTf == null) return null;
-
-            Transform effectsRoot = NadaRigPaths.FindDirectChild(worldWeaponRootTf, Plugin.EffectsRootName);
-            if (effectsRoot == null) return null;
-
-            Transform orbitalsTf = NadaRigPaths.FindDirectChild(effectsRoot, Plugin.OrbitalsName);
-            if (orbitalsTf == null)
-            {
-                var go = new GameObject(Plugin.OrbitalsName);
-                orbitalsTf = go.transform;
-                orbitalsTf.SetParent(effectsRoot, false);
-
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added world Orbitals branch under '{NadaWeaponTargets.FullPath(effectsRoot)}' " +
-                    $"as '{Plugin.OrbitalsName}' (owner='{ownerNameForLogs}').");
-            }
-            
-            ExtractWorldOrbitalsChildren(localOrbsTf, orbitalsTf);
-
-            NadaRigTransforms.NormalizeParticleSpacesUnder(orbitalsTf, ParticleSystemSimulationSpace.World);
-
-            Transform mirageTf = NadaRigPaths.FindDirectChild(effectsRoot, Plugin.MirageName);
-            if (mirageTf != null)
-                NadaRigTransforms.NormalizeParticleSpacesUnder(mirageTf, ParticleSystemSimulationSpace.World);
-
-            Transform sparksTf = NadaRigPaths.FindDirectChild(effectsRoot, Plugin.SparksName);
-            if (sparksTf != null)
-                NadaRigTransforms.NormalizeParticleSpacesUnder(sparksTf, ParticleSystemSimulationSpace.World);
-
-            Transform orbitalsMotionRigTf =
-                NadaOrbitalsMotionAssembly.EnsureOrbitalsMotionRig(effectsRoot, ownerNameForLogs);
-
-            if (orbitalsMotionRigTf != null)
-            {
-                NadaOrbitalsMotionAssembly.EnsureOrbitalsMotionSupport(
-                    orbitalsMotionRigTf,
-                    orbitalsTf,
-                    itemData,
-                    ownerNameForLogs);
-            }
-
-            return orbitalsTf;
         }
         
         internal static Transform EnsureLocalMirage(
@@ -273,6 +225,45 @@ namespace NADA.VFX.Runtime.Binding
             Transform orbVisualTf = EnsureLocalOrbVisualChild(localOrbsTf);
             if (orbVisualTf != null)
                 NadaRigTransforms.NormalizeParticleSpacesUnder(orbVisualTf, ParticleSystemSimulationSpace.Local);
+        }
+        
+        internal static void EnsureLocalOrbitalsChildren(Transform orbitalsTf, Transform localOrbsTf)
+        {
+            if (orbitalsTf == null || localOrbsTf == null) return;
+
+            Transform effectsRoot = NadaRigPaths.FindDirectChild(localOrbsTf, "effects");
+            if (effectsRoot == null) return;
+
+            Transform flameRoot = NadaRigPaths.FindDirectChild(effectsRoot, "flame");
+            if (flameRoot == null) return;
+
+            CloneLocalOrbitalsChild(flameRoot, orbitalsTf, "flames", Plugin.OrbitalsFlamesName);
+            CloneLocalOrbitalsChild(flameRoot, orbitalsTf, "embers", Plugin.OrbitalsEmbersName);
+        }
+
+        private static void CloneLocalOrbitalsChild(
+            Transform sourceParent,
+            Transform targetParent,
+            string sourceName,
+            string targetName)
+        {
+            if (sourceParent == null || targetParent == null) return;
+
+            Transform existing = NadaRigPaths.FindDirectChild(targetParent, targetName);
+            if (existing != null) return;
+
+            Transform src = NadaRigPaths.FindDirectChild(sourceParent, sourceName);
+            if (src == null) return;
+
+            var clone = Object.Instantiate(src.gameObject, targetParent, false);
+            clone.name = targetName;
+            clone.SetActive(true);
+
+            clone.transform.localPosition = src.localPosition;
+            clone.transform.localRotation = src.localRotation;
+            clone.transform.localScale = src.localScale;
+
+            NadaRigTransforms.NormalizeParticleSpacesUnder(clone.transform, ParticleSystemSimulationSpace.World);
         }
 
         internal static Transform EnsureLocalOrbVisualChild(Transform localOrbsTf)

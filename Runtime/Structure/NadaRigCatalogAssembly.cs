@@ -15,33 +15,6 @@ namespace NADA.VFX.Runtime.Binding
             return go.transform;
         }
 
-        internal static Transform EnsureWorldWeaponBranch(Transform ownerKeyTf, string ownerNameForLogs)
-        {
-            if (ownerKeyTf == null) return null;
-
-            Transform worldRoot = EnsureWorldCatalogRoot();
-            if (worldRoot == null) return null;
-
-            int ownerId = ownerKeyTf.GetInstanceID();
-            string branchName = $"{Plugin.WorldWeaponRootName} [{ownerId}]";
-
-            Transform weaponRoot = NadaRigPaths.FindDirectChild(worldRoot, branchName);
-            if (weaponRoot == null)
-            {
-                var go = new GameObject(branchName);
-                weaponRoot = go.transform;
-                weaponRoot.SetParent(worldRoot, false);
-                NadaRigTransforms.ResetLocalTransform(weaponRoot);
-
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added per-owner world weapon branch '{branchName}' under '{Plugin.WorldRootName}' " +
-                    $"for ownerPath='{NadaWeaponTargets.FullPath(ownerKeyTf)}' (owner='{ownerNameForLogs}', ownerId={ownerId}).");
-            }
-
-            NadaRigTransforms.EnsureChild(weaponRoot, Plugin.EffectsRootName);
-            return weaponRoot;
-        }
-
         internal static Transform EnsureAttachedLocalWeaponBranch(Transform sword15LavaTf, string ownerNameForLogs)
         {
             if (sword15LavaTf == null) return null;

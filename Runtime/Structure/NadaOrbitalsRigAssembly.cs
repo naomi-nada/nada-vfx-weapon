@@ -6,20 +6,20 @@ namespace NADA.VFX.Runtime.Binding
 {
     internal static class NadaOrbitalsRigAssembly
     {
-        internal static Transform EnsureWorldOrbitalsRig(Transform effectsRootTf, string ownerNameForLogs)
+        internal static Transform EnsureLocalOrbitalsRig(Transform orbitalsRootTf, string ownerNameForLogs)
         {
-            if (effectsRootTf == null) return null;
+            if (orbitalsRootTf == null) return null;
 
-            Transform orbitalsRigTf = NadaRigPaths.FindDirectChild(effectsRootTf, Plugin.OrbitalsRigRootName);
+            Transform orbitalsRigTf = NadaRigPaths.FindDirectChild(orbitalsRootTf, Plugin.OrbitalsRigRootName);
             if (orbitalsRigTf == null)
             {
                 var go = new GameObject(Plugin.OrbitalsRigRootName);
                 orbitalsRigTf = go.transform;
-                orbitalsRigTf.SetParent(effectsRootTf, false);
+                orbitalsRigTf.SetParent(orbitalsRootTf, false);
                 NadaRigTransforms.ResetLocalTransform(orbitalsRigTf);
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals rig '{Plugin.OrbitalsRigRootName}' under '{NadaWeaponTargets.FullPath(effectsRootTf)}' " +
+                    $"{Plugin.ModName}: Added Orbitals rig '{Plugin.OrbitalsRigRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRootTf)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
 
@@ -29,19 +29,19 @@ namespace NADA.VFX.Runtime.Binding
             return orbitalsRigTf;
         }
 
-        internal static void EnsureWorldOrbitalsVisualPools(
-            Transform OrbitalsRigTf,
-            Transform OrbitalssRootTf,
+        internal static void EnsureOrbitalsVisualPools(
+            Transform orbitalsRigTf,
+            Transform orbitalsRootTf,
             global::ItemDrop.ItemData itemData,
             string ownerNameForLogs)
         {
-            if (OrbitalsRigTf == null || OrbitalssRootTf == null) return;
+            if (orbitalsRigTf == null || orbitalsRootTf == null) return;
 
-            Transform liveFlamesTf = NadaRigPaths.FindDirectChild(OrbitalssRootTf, Plugin.OrbitalsFlamesName);
-            Transform liveEmbersTf = NadaRigPaths.FindDirectChild(OrbitalssRootTf, Plugin.OrbitalsEmbersName);
+            Transform liveFlamesTf = NadaRigPaths.FindDirectChild(orbitalsRootTf, Plugin.OrbitalsFlamesName);
+            Transform liveEmbersTf = NadaRigPaths.FindDirectChild(orbitalsRootTf, Plugin.OrbitalsEmbersName);
 
             Transform flamesLeadAnchorTf = EnsureOrbitalsLeadAnchor(
-                OrbitalsRigTf,
+                orbitalsRigTf,
                 Plugin.OrbitalsFlamesLeadAnchorName,
                 liveFlamesTf,
                 ownerNameForLogs);
@@ -77,7 +77,7 @@ namespace NADA.VFX.Runtime.Binding
             }
 
             Transform embersLeadAnchorTf = EnsureOrbitalsLeadAnchor(
-                OrbitalsRigTf,
+                orbitalsRigTf,
                 Plugin.OrbitalsEmbersLeadAnchorName,
                 liveEmbersTf,
                 ownerNameForLogs);
@@ -113,7 +113,7 @@ namespace NADA.VFX.Runtime.Binding
             }
 
             EnsureOrbitalsPool(
-                OrbitalsRigTf,
+                orbitalsRigTf,
                 Plugin.OrbitalsFlamesPoolName,
                 liveFlamesTf,
                 flamesLeadAnchorTf,
@@ -123,7 +123,7 @@ namespace NADA.VFX.Runtime.Binding
                 ownerNameForLogs);
 
             EnsureOrbitalsPool(
-                OrbitalsRigTf,
+                orbitalsRigTf,
                 Plugin.OrbitalsEmbersPoolName,
                 liveEmbersTf,
                 embersLeadAnchorTf,

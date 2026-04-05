@@ -9,6 +9,14 @@ namespace NADA.VFX.Runtime.Binding
             if (worldWeaponRootTf == null) return null;
             return FindDirectChild(worldWeaponRootTf, Plugin.EffectsRootName);
         }
+        
+        internal static Transform FindLocalOrbitalsRigRoot(Transform localWeaponRootTf)
+        {
+            Transform orbitalsRoot = FindLocalOrbitalsRoot(localWeaponRootTf);
+            if (orbitalsRoot == null) return null;
+
+            return FindDirectChild(orbitalsRoot, Plugin.OrbitalsRigRootName);
+        }
 
         internal static Transform FindWorldOrbitalsRigRoot(Transform worldWeaponRootTf)
         {
