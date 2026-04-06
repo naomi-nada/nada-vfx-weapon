@@ -1,10 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
+using NADA.VFX.Runtime.Binding;
 using NADA.VFX.Core.State;
 
 namespace NADA.VFX.Modules.Effects
 {
-    internal sealed class NadaFlareEffect : MonoBehaviour
+    internal sealed class NadaFlareEffect : MonoBehaviour, INadaItemDataReceiver
     {
         private global::ItemDrop.ItemData _itemData;
 
@@ -42,7 +43,7 @@ namespace NADA.VFX.Modules.Effects
         private bool _lastEnabled;
         private bool _hasLastEnabled;
 
-        internal void SetItemData(global::ItemDrop.ItemData itemData)
+        public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
         }

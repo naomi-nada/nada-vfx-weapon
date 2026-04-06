@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using NADA.VFX.Runtime.Binding;
 using NADA.VFX.Core.Color;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
@@ -6,7 +7,7 @@ using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
 {
-    internal sealed class NadaMirageEffect : MonoBehaviour
+    internal sealed class NadaMirageEffect : MonoBehaviour, INadaItemDataReceiver
     {
         private global::ItemDrop.ItemData _itemData;
 
@@ -42,7 +43,7 @@ namespace NADA.VFX.Modules.Effects
             public UnityEngine.Color? Emission;
         }
 
-        internal void SetItemData(global::ItemDrop.ItemData itemData)
+        public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
         }

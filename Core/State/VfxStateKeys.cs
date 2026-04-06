@@ -17,14 +17,14 @@ namespace NADA.VFX.Core.State
         internal const string FlareEnabled = "nada.vfx.flare.enabled";
         internal const string FlareScale = "nada.vfx.flare.scale";
         internal const string FlareHue = "nada.vfx.flare.hue";
-
-        internal const string MirageEnabled = "nada.vfx.mirage.enabled";
-        internal const string MirageScale = "nada.vfx.mirage.scale";
-        internal const string MirageHue = "nada.vfx.mirage.hue";
         
         internal const string SparksEnabled = "nada.vfx.sparks.enabled";
         internal const string SparksHue = "nada.vfx.sparks.hue";
         internal const string SparksEnergy = "nada.vfx.sparks.energy";
+
+        internal const string MirageEnabled = "nada.vfx.mirage.enabled";
+        internal const string MirageScale = "nada.vfx.mirage.scale";
+        internal const string MirageHue = "nada.vfx.mirage.hue";
         
         internal const string OrbitalsOrbsEnabled = "nada.vfx.orbitals.orbs.enabled";
         internal const string OrbitalsOrbsCount = "nada.vfx.orbitals.orbs.count";

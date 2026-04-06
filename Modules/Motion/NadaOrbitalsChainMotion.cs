@@ -10,13 +10,13 @@ namespace NADA.VFX.Modules.Motion
         private const int MaxOrbitalsFollowers = 20;
 
         private global::ItemDrop.ItemData _itemData;
-        private OrbitalsVisualKind _kind = OrbitalsVisualKind.Flames;
+        private OrbitalsVisualKind _visualKind = OrbitalsVisualKind.Flames;
 
-        private readonly List<Transform> _visuals = new();
-        private readonly List<Vector3> _history = new();
-        private readonly Dictionary<int, bool> _lastActiveByInstanceId = new();
+        private readonly List<Transform> _followerVisualTransforms = new();
+        private readonly List<Vector3> _leadWorldPositionHistorySamples = new();
+        private readonly Dictionary<int, bool> _wasFollowerActiveByInstanceId = new();
 
-        private Transform _poolRoot;
+        private Transform _followerPoolRootTransform;
         private Transform _leadTransform;
         private bool _initialized;
         private bool _loggedStateOnce;
@@ -24,259 +24,296 @@ namespace NADA.VFX.Modules.Motion
         internal bool IsInitialized => _initialized;
 
         internal void Initialize(
-            OrbitalsVisualKind kind,
-            Transform poolRoot,
+            OrbitalsVisualKind visualKind,
+            Transform followerPoolRootTransform,
             Transform leadTransform,
             global::ItemDrop.ItemData itemData)
         {
             if (!_initialized)
             {
-                _poolRoot = poolRoot;
+                _followerPoolRootTransform = followerPoolRootTransform;
                 _leadTransform = leadTransform;
                 _itemData = itemData;
-                _kind = kind;
+                _visualKind = visualKind;
 
-                _history.Clear();
-                _lastActiveByInstanceId.Clear();
+                _leadWorldPositionHistorySamples.Clear();
+                _wasFollowerActiveByInstanceId.Clear();
                 _loggedStateOnce = false;
 
-                CacheVisuals();
+                RebuildFollowerVisualTransforms();
 
-                foreach (Transform visual in _visuals)
+                foreach (Transform followerVisualTransform in _followerVisualTransforms)
                 {
-                    if (visual == null) continue;
+                    if (followerVisualTransform == null)
+                        continue;
 
                     try
                     {
-                        StopAndClearAllParticles(visual);
-                        visual.gameObject.SetActive(false);
+                        StopAndClearAllParticles(followerVisualTransform);
+                        followerVisualTransform.gameObject.SetActive(false);
                     }
                     catch { }
                 }
 
-                _initialized = _poolRoot != null && _leadTransform != null && _visuals.Count > 0;
+                _initialized =
+                    _followerPoolRootTransform != null &&
+                    _leadTransform != null &&
+                    _followerVisualTransforms.Count > 0;
+
                 return;
             }
 
-            _kind = kind;
-            _poolRoot = poolRoot;
+            _visualKind = visualKind;
+            _followerPoolRootTransform = followerPoolRootTransform;
             _leadTransform = leadTransform;
             _itemData = itemData;
         }
 
-        internal void SetKindLeadAndItemData(
-            OrbitalsVisualKind kind,
+        internal void UpdateKindLeadAndItemData(
+            OrbitalsVisualKind visualKind,
             Transform leadTransform,
             global::ItemDrop.ItemData itemData)
         {
-            _kind = kind;
+            _visualKind = visualKind;
             _leadTransform = leadTransform;
             _itemData = itemData;
         }
 
         private void LateUpdate()
         {
-            if (!_initialized || _poolRoot == null || _leadTransform == null)
+            if (!_initialized || _followerPoolRootTransform == null || _leadTransform == null)
                 return;
 
-            CacheVisuals();
+            RebuildFollowerVisualTransforms();
 
             VfxState state = ResolveState();
 
-            bool enabled = ResolveEnabled(state);
-            if (!enabled)
+            bool isEnabled = ResolveVisualFamilyEnabled(state);
+            if (!isEnabled)
             {
                 DisableAllFollowers();
-                _history.Clear();
+                _leadWorldPositionHistorySamples.Clear();
                 return;
             }
 
-            int totalCount = ResolveTotalCount(state);
-            int followerCount = Mathf.Clamp(totalCount - 1, 0, Mathf.Min(MaxOrbitalsFollowers, _visuals.Count));
-            int spacing = ResolveSpacing(state);
+            int resolvedTotalVisualCount = ResolveVisualFamilyTotalCount(state);
+            int resolvedFollowerCount = Mathf.Clamp(
+                resolvedTotalVisualCount - 1,
+                0,
+                Mathf.Min(MaxOrbitalsFollowers, _followerVisualTransforms.Count));
+
+            int resolvedHistorySpacing = ResolveVisualFamilyHistorySpacing(state);
 
             if (!_loggedStateOnce)
             {
                 Plugin.Log.LogInfo(
                     $"{Plugin.ModName}: Orbitals chain state on '{name}' " +
-                    $"kind={_kind} enabled={enabled} resolvedTotal={totalCount} " +
-                    $"resolvedFollowers={followerCount} resolvedSpacing={spacing} visuals={_visuals.Count}");
+                    $"kind={_visualKind} enabled={isEnabled} resolvedTotal={resolvedTotalVisualCount} " +
+                    $"resolvedFollowers={resolvedFollowerCount} resolvedSpacing={resolvedHistorySpacing} visuals={_followerVisualTransforms.Count}");
 
                 _loggedStateOnce = true;
             }
 
-            RecordHistory(_leadTransform.position, followerCount, spacing);
-            ApplyFollowers(followerCount, spacing);
+            RecordLeadWorldHistory(
+                _leadTransform.position,
+                resolvedFollowerCount,
+                resolvedHistorySpacing);
+
+            ApplyFollowerPositions(
+                resolvedFollowerCount,
+                resolvedHistorySpacing);
         }
 
         private void DisableAllFollowers()
         {
-            for (int i = 0; i < _visuals.Count; i++)
+            for (int followerIndex = 0; followerIndex < _followerVisualTransforms.Count; followerIndex++)
             {
-                Transform visual = _visuals[i];
-                if (visual == null) continue;
+                Transform followerVisualTransform = _followerVisualTransforms[followerIndex];
+                if (followerVisualTransform == null)
+                    continue;
 
-                int instanceId = visual.GetInstanceID();
+                int instanceId = followerVisualTransform.GetInstanceID();
 
-                if (visual.gameObject.activeSelf ||
-                    (_lastActiveByInstanceId.TryGetValue(instanceId, out bool wasActive) && wasActive))
+                if (followerVisualTransform.gameObject.activeSelf ||
+                    (_wasFollowerActiveByInstanceId.TryGetValue(instanceId, out bool wasActive) && wasActive))
                 {
-                    StopAndClearAllParticles(visual);
-                    visual.gameObject.SetActive(false);
-                    _lastActiveByInstanceId[instanceId] = false;
+                    StopAndClearAllParticles(followerVisualTransform);
+                    followerVisualTransform.gameObject.SetActive(false);
+                    _wasFollowerActiveByInstanceId[instanceId] = false;
                 }
             }
         }
 
-        private void CacheVisuals()
+        private void RebuildFollowerVisualTransforms()
         {
-            _visuals.Clear();
+            _followerVisualTransforms.Clear();
 
-            if (_poolRoot == null)
+            if (_followerPoolRootTransform == null)
                 return;
 
-            foreach (Transform child in _poolRoot)
+            foreach (Transform childTransform in _followerPoolRootTransform)
             {
-                if (child != null)
-                    _visuals.Add(child);
+                if (childTransform != null)
+                    _followerVisualTransforms.Add(childTransform);
             }
         }
 
-        private bool ResolveEnabled(VfxState state)
+        private bool ResolveVisualFamilyEnabled(VfxState state)
         {
-            return _kind == OrbitalsVisualKind.Embers
+            return _visualKind == OrbitalsVisualKind.Embers
                 ? state.OrbitalsEmbersEnabled
                 : state.OrbitalsFlamesEnabled;
         }
 
-        private int ResolveTotalCount(VfxState state)
+        private int ResolveVisualFamilyTotalCount(VfxState state)
         {
-            float normalized = _kind == OrbitalsVisualKind.Embers
+            float normalizedCount = _visualKind == OrbitalsVisualKind.Embers
                 ? state.OrbitalsEmbersCount
                 : state.OrbitalsFlamesCount;
 
-            normalized = Mathf.Clamp01(normalized);
-            return 1 + Mathf.RoundToInt(normalized * 19f);
+            normalizedCount = Mathf.Clamp01(normalizedCount);
+            return 1 + Mathf.RoundToInt(normalizedCount * (MaxOrbitalsFollowers - 1));
         }
 
-        private int ResolveSpacing(VfxState state)
+        private int ResolveVisualFamilyHistorySpacing(VfxState state)
         {
-            float spacingT = _kind == OrbitalsVisualKind.Embers
+            float spacingT = _visualKind == OrbitalsVisualKind.Embers
                 ? state.OrbitalsEmbersSpacing
                 : state.OrbitalsFlamesSpacing;
 
             spacingT = Mathf.Clamp01(spacingT);
 
-            const int min = 2;
-            const int max = 35;
+            const int minHistoryStep = 2;
+            const int maxHistoryStep = 35;
 
-            return Mathf.RoundToInt(Mathf.Lerp(min, max, spacingT));
+            return Mathf.RoundToInt(Mathf.Lerp(minHistoryStep, maxHistoryStep, spacingT));
         }
 
-        private void RecordHistory(Vector3 leadWorldPosition, int followerCount, int spacing)
+        private void RecordLeadWorldHistory(
+            Vector3 leadWorldPosition,
+            int followerCount,
+            int historySpacing)
         {
-            _history.Insert(0, leadWorldPosition);
+            _leadWorldPositionHistorySamples.Insert(0, leadWorldPosition);
 
-            int maxHistory = Mathf.Max(1, (followerCount + 1) * spacing + ExtraHistoryPadding);
-            if (_history.Count > maxHistory)
-                _history.RemoveRange(maxHistory, _history.Count - maxHistory);
-        }
+            int maxHistorySamples =
+                Mathf.Max(1, (followerCount + 1) * historySpacing + ExtraHistoryPadding);
 
-        private void ApplyFollowers(int followerCount, int spacing)
-        {
-            for (int i = 0; i < _visuals.Count; i++)
+            if (_leadWorldPositionHistorySamples.Count > maxHistorySamples)
             {
-                Transform visual = _visuals[i];
-                if (visual == null) continue;
+                _leadWorldPositionHistorySamples.RemoveRange(
+                    maxHistorySamples,
+                    _leadWorldPositionHistorySamples.Count - maxHistorySamples);
+            }
+        }
 
-                bool shouldBeActive = i < followerCount;
-                int instanceId = visual.GetInstanceID();
+        private void ApplyFollowerPositions(
+            int followerCount,
+            int historySpacing)
+        {
+            for (int followerIndex = 0; followerIndex < _followerVisualTransforms.Count; followerIndex++)
+            {
+                Transform followerVisualTransform = _followerVisualTransforms[followerIndex];
+                if (followerVisualTransform == null)
+                    continue;
 
-                _lastActiveByInstanceId.TryGetValue(instanceId, out bool wasActive);
+                bool shouldBeActive = followerIndex < followerCount;
+                int instanceId = followerVisualTransform.GetInstanceID();
+
+                _wasFollowerActiveByInstanceId.TryGetValue(instanceId, out bool wasActive);
 
                 if (!shouldBeActive)
                 {
-                    if (visual.gameObject.activeSelf || wasActive)
+                    if (followerVisualTransform.gameObject.activeSelf || wasActive)
                     {
-                        StopAndClearAllParticles(visual);
-                        visual.gameObject.SetActive(false);
-                        _lastActiveByInstanceId[instanceId] = false;
+                        StopAndClearAllParticles(followerVisualTransform);
+                        followerVisualTransform.gameObject.SetActive(false);
+                        _wasFollowerActiveByInstanceId[instanceId] = false;
                     }
 
                     continue;
                 }
 
-                int historyIndex = (i + 1) * spacing;
-                if (historyIndex >= _history.Count)
+                int historySampleIndex = (followerIndex + 1) * historySpacing;
+                if (historySampleIndex >= _leadWorldPositionHistorySamples.Count)
                 {
-                    if (visual.gameObject.activeSelf || wasActive)
+                    if (followerVisualTransform.gameObject.activeSelf || wasActive)
                     {
-                        StopAndClearAllParticles(visual);
-                        visual.gameObject.SetActive(false);
-                        _lastActiveByInstanceId[instanceId] = false;
+                        StopAndClearAllParticles(followerVisualTransform);
+                        followerVisualTransform.gameObject.SetActive(false);
+                        _wasFollowerActiveByInstanceId[instanceId] = false;
                     }
 
                     continue;
                 }
 
-                Vector3 targetWorldPosition = _history[historyIndex];
+                Vector3 sampledFollowerWorldPosition =
+                    _leadWorldPositionHistorySamples[historySampleIndex];
 
-                if (!visual.gameObject.activeSelf)
-                    visual.gameObject.SetActive(true);
+                if (!followerVisualTransform.gameObject.activeSelf)
+                    followerVisualTransform.gameObject.SetActive(true);
 
-                visual.position = targetWorldPosition;
-                visual.rotation = Quaternion.identity;
+                followerVisualTransform.position = sampledFollowerWorldPosition;
+                followerVisualTransform.rotation = Quaternion.identity;
 
                 if (!wasActive)
                 {
-                    HardResetAndPlayAllParticles(visual);
-                    _lastActiveByInstanceId[instanceId] = true;
+                    HardResetAndPlayAllParticles(followerVisualTransform);
+                    _wasFollowerActiveByInstanceId[instanceId] = true;
                 }
             }
         }
 
-        private static void HardResetAndPlayAllParticles(Transform root)
+        private static void HardResetAndPlayAllParticles(Transform rootTransform)
         {
-            if (root == null) return;
+            if (rootTransform == null)
+                return;
 
-            foreach (ParticleSystem ps in root.GetComponentsInChildren<ParticleSystem>(true))
+            foreach (ParticleSystem particleSystem in rootTransform.GetComponentsInChildren<ParticleSystem>(true))
             {
-                if (ps == null) continue;
+                if (particleSystem == null)
+                    continue;
 
                 try
                 {
-                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                    ps.Clear(true);
-                    ps.Play(true);
+                    particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    particleSystem.Clear(true);
+                    particleSystem.Play(true);
                 }
                 catch { }
             }
 
-            foreach (Renderer r in root.GetComponentsInChildren<Renderer>(true))
+            foreach (Renderer renderer in rootTransform.GetComponentsInChildren<Renderer>(true))
             {
-                if (r == null) continue;
-                try { r.enabled = true; } catch { }
+                if (renderer == null)
+                    continue;
+
+                try { renderer.enabled = true; } catch { }
             }
 
-            foreach (Light l in root.GetComponentsInChildren<Light>(true))
+            foreach (Light light in rootTransform.GetComponentsInChildren<Light>(true))
             {
-                if (l == null) continue;
-                try { l.enabled = true; } catch { }
+                if (light == null)
+                    continue;
+
+                try { light.enabled = true; } catch { }
             }
         }
 
-        private static void StopAndClearAllParticles(Transform root)
+        private static void StopAndClearAllParticles(Transform rootTransform)
         {
-            if (root == null) return;
+            if (rootTransform == null)
+                return;
 
-            foreach (ParticleSystem ps in root.GetComponentsInChildren<ParticleSystem>(true))
+            foreach (ParticleSystem particleSystem in rootTransform.GetComponentsInChildren<ParticleSystem>(true))
             {
-                if (ps == null) continue;
+                if (particleSystem == null)
+                    continue;
 
                 try
                 {
-                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                    ps.Clear(true);
+                    particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    particleSystem.Clear(true);
                 }
                 catch { }
             }

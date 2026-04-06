@@ -4,6 +4,51 @@ namespace NADA.VFX.Core.Config
 {
     internal static class PluginConfig
     {
+        internal static ConfigEntry<bool> InnerFlames = null;
+        internal static ConfigEntry<float> InnerFlamesScale = null;
+        internal static ConfigEntry<float> InnerFlamesHue = null;
+        internal static ConfigEntry<float> InnerFlamesEnergy = null;
+        internal static ConfigEntry<float> InnerFlamesChaos = null;
+        
+        internal static ConfigEntry<bool> OuterFlames = null;
+        internal static ConfigEntry<float> OuterFlamesScale = null;
+        internal static ConfigEntry<float> OuterFlamesHue = null;
+        internal static ConfigEntry<float> OuterFlamesEnergy = null;
+        internal static ConfigEntry<float> OuterFlamesChaos = null;
+        
+        internal static ConfigEntry<bool> Flare = null;
+        internal static ConfigEntry<float> FlareScale = null;
+        internal static ConfigEntry<float> FlareHue = null;
+        
+        internal static ConfigEntry<bool> Sparks = null;
+        internal static ConfigEntry<float> SparksHue = null;
+        internal static ConfigEntry<float> SparksEnergy = null;
+        
+        internal static ConfigEntry<bool> Mirage = null;
+        internal static ConfigEntry<float> MirageScale = null;
+        internal static ConfigEntry<float> MirageHue = null;
+
+        internal static ConfigEntry<bool> OrbitalsOrbs = null;
+        internal static ConfigEntry<float> OrbitalsOrbsCount = null;
+        internal static ConfigEntry<float> OrbitalsOrbsScale = null;
+        internal static ConfigEntry<float> OrbitalsOrbsHue = null;
+        internal static ConfigEntry<float> OrbitalsOrbsSpacing = null;
+        internal static ConfigEntry<float> OrbitalsOrbsRadius = null;
+
+        internal static ConfigEntry<bool> OrbitalsFlames = null;
+        internal static ConfigEntry<float> OrbitalsFlamesCount = null;
+        internal static ConfigEntry<float> OrbitalsFlamesHue = null;
+        internal static ConfigEntry<float> OrbitalsFlamesEnergy = null;
+        internal static ConfigEntry<float> OrbitalsFlamesSpacing = null;
+        internal static ConfigEntry<float> OrbitalsFlamesRadius = null;
+
+        internal static ConfigEntry<bool> OrbitalsEmbers = null;
+        internal static ConfigEntry<float> OrbitalsEmbersCount = null;
+        internal static ConfigEntry<float> OrbitalsEmbersHue = null;
+        internal static ConfigEntry<float> OrbitalsEmbersEnergy = null;
+        internal static ConfigEntry<float> OrbitalsEmbersSpacing = null;
+        internal static ConfigEntry<float> OrbitalsEmbersRadius = null;
+        
         internal const float MaxScaleMult = 1.50f;
         internal const float MinScaleMult = 0.50f;
 
@@ -30,61 +75,16 @@ namespace NADA.VFX.Core.Config
         internal const float MaxOrbSpacing = 1.00f;
         internal const float DefaultOrbSpacing = 0.50f;
 
-        internal static ConfigEntry<bool> InnerFlames = null;
-        internal static ConfigEntry<float> InnerFlamesScale = null;
-        internal static ConfigEntry<float> InnerFlamesHue = null;
-        internal static ConfigEntry<float> InnerFlamesEnergy = null;
-        internal static ConfigEntry<float> InnerFlamesChaos = null;
-        
-        internal static ConfigEntry<bool> OuterFlames = null;
-        internal static ConfigEntry<float> OuterFlamesScale = null;
-        internal static ConfigEntry<float> OuterFlamesHue = null;
-        internal static ConfigEntry<float> OuterFlamesEnergy = null;
-        internal static ConfigEntry<float> OuterFlamesChaos = null;
-        
-        internal static ConfigEntry<bool> Flare = null;
-        internal static ConfigEntry<float> FlareScale = null;
-        internal static ConfigEntry<float> FlareHue = null;
-        
-        internal static ConfigEntry<bool> Mirage = null;
-        internal static ConfigEntry<float> MirageScale = null;
-        internal static ConfigEntry<float> MirageHue = null;
-
-        internal static ConfigEntry<bool> Sparks = null;
-        internal static ConfigEntry<float> SparksHue = null;
-        internal static ConfigEntry<float> SparksEnergy = null;
-
-        internal static ConfigEntry<bool> OrbitalsOrbs = null;
-        internal static ConfigEntry<float> OrbitalsOrbsCount = null;
-        internal static ConfigEntry<float> OrbitalsOrbsScale = null;
-        internal static ConfigEntry<float> OrbitalsOrbsHue = null;
-        internal static ConfigEntry<float> OrbitalsOrbsSpacing = null;
-        internal static ConfigEntry<float> OrbitalsOrbsRadius = null;
-
-        internal static ConfigEntry<bool> OrbitalsFlames = null;
-        internal static ConfigEntry<float> OrbitalsFlamesCount = null;
-        internal static ConfigEntry<float> OrbitalsFlamesHue = null;
-        internal static ConfigEntry<float> OrbitalsFlamesEnergy = null;
-        internal static ConfigEntry<float> OrbitalsFlamesSpacing = null;
-        internal static ConfigEntry<float> OrbitalsFlamesRadius = null;
-
-        internal static ConfigEntry<bool> OrbitalsEmbers = null;
-        internal static ConfigEntry<float> OrbitalsEmbersCount = null;
-        internal static ConfigEntry<float> OrbitalsEmbersHue = null;
-        internal static ConfigEntry<float> OrbitalsEmbersEnergy = null;
-        internal static ConfigEntry<float> OrbitalsEmbersSpacing = null;
-        internal static ConfigEntry<float> OrbitalsEmbersRadius = null;
-
         internal static void Bind(ConfigFile config)
         {
-            const string innerflamesSection = "Weapon / INNER FLAMES";
-            const string outerflamesSection = "Weapon / OUTER FLAMES";
-            const string flareSection = "Weapon / FLARE";
-            const string mirageSection = "Weapon / MIRAGE";
-            const string sparksSection = "Weapon / SPARKS";
-            const string orbitalsOrbsSection = "Weapon / Orbitals / ORBS";
-            const string orbitalsFlamesSection = "Weapon / Orbitals / FLAMES";
-            const string orbitalsEmbersSection = "Weapon / Orbitals / EMBERS";
+            const string innerflamesSection = "INNER FLAMES";
+            const string outerflamesSection = "OUTER FLAMES";
+            const string flareSection = "FLARE";
+            const string sparksSection = "SPARKS";
+            const string mirageSection = "MIRAGE";
+            const string orbitalsOrbsSection = "Orbitals: ORBS";
+            const string orbitalsFlamesSection = "Orbitals: FLAMES";
+            const string orbitalsEmbersSection = "Orbitals: EMBERS";
 
             InnerFlames = config.Bind(
                 innerflamesSection,
@@ -247,50 +247,13 @@ namespace NADA.VFX.Core.Config
                 )
             );
 
-            Mirage = config.Bind(
-                mirageSection,
-                "Enabled",
-                true,
-                OrderedDescription(
-                    "Turn Mirage on or off.",
-                    85,
-                    dispName: "Enabled",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
-                )
-            );
-
-            MirageScale = config.Bind(
-                mirageSection,
-                "Scale",
-                1.00f,
-                OrderedDescription(
-                    "Adjust the size of Mirage.",
-                    84,
-                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
-                    dispName: "Scale"
-                )
-            );
-
-            MirageHue = config.Bind(
-                mirageSection,
-                "Color",
-                DefaultHue,
-                OrderedDescription(
-                    "Adjust the color of Mirage.",
-                    83,
-                    new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"
-                )
-            );
-
             Sparks = config.Bind(
                 sparksSection,
                 "Enabled",
                 true,
                 OrderedDescription(
                     "Turn Sparks on or off.",
-                    80,
+                    85,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true
@@ -303,7 +266,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of Sparks.",
-                    79,
+                    84,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"
                 )
@@ -315,9 +278,46 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense Sparks feels.",
-                    78,
+                    83,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"
+                )
+            );
+            
+            Mirage = config.Bind(
+                mirageSection,
+                "Enabled",
+                true,
+                OrderedDescription(
+                    "Turn Mirage on or off.",
+                    80,
+                    dispName: "Enabled",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true
+                )
+            );
+
+            MirageScale = config.Bind(
+                mirageSection,
+                "Scale",
+                1.00f,
+                OrderedDescription(
+                    "Adjust the size of Mirage.",
+                    79,
+                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
+                    dispName: "Scale"
+                )
+            );
+
+            MirageHue = config.Bind(
+                mirageSection,
+                "Color",
+                DefaultHue,
+                OrderedDescription(
+                    "Adjust the color of Mirage.",
+                    78,
+                    new AcceptableValueRange<float>(MinHue, MaxHue),
+                    dispName: "Color"
                 )
             );
 

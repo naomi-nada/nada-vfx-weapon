@@ -2,131 +2,86 @@ using UnityEngine;
 using NADA.VFX.Modules.Motion;
 using NADA.VFX.Weapons.Targets;
 
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Runtime.Structure
 {
     internal static class NadaOrbitalsRigAssembly
     {
-        internal static Transform EnsureLocalOrbitalsRig(Transform orbitalsRootTf, string ownerNameForLogs)
+        internal static Transform EnsureLocalOrbitalsRig(
+            Transform orbitalsRootTransform,
+            string ownerNameForLogs)
         {
-            if (orbitalsRootTf == null) return null;
+            if (orbitalsRootTransform == null)
+                return null;
 
-            Transform orbitalsRigTf = NadaRigPaths.FindDirectChild(orbitalsRootTf, Plugin.OrbitalsRigRootName);
-            if (orbitalsRigTf == null)
+            Transform orbitalsRigTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsRigRootName);
+
+            if (orbitalsRigTransform == null)
             {
-                var go = new GameObject(Plugin.OrbitalsRigRootName);
-                orbitalsRigTf = go.transform;
-                orbitalsRigTf.SetParent(orbitalsRootTf, false);
-                NadaRigTransforms.ResetLocalTransform(orbitalsRigTf);
+                var orbitalsRigObject = new GameObject(Plugin.OrbitalsRigRootName);
+                orbitalsRigTransform = orbitalsRigObject.transform;
+                orbitalsRigTransform.SetParent(orbitalsRootTransform, false);
+                NadaRigTransforms.ResetLocalTransform(orbitalsRigTransform);
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals rig '{Plugin.OrbitalsRigRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRootTf)}' " +
+                    $"{Plugin.ModName}: Added Orbitals rig '{Plugin.OrbitalsRigRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRootTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
 
-            NadaRigTransforms.EnsureChild(orbitalsRigTf, Plugin.OrbitalsAnchorsRootName);
-            NadaRigTransforms.EnsureChild(orbitalsRigTf, Plugin.OrbitalsPoolsRootName);
+            NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsAnchorsRootName);
+            NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsPoolsRootName);
 
-            return orbitalsRigTf;
+            return orbitalsRigTransform;
         }
 
-        internal static void EnsureOrbitalsVisualPools(
-            Transform orbitalsRigTf,
-            Transform orbitalsRootTf,
+        internal static void EnsureOrbitalsLeadAndFollowerMotion(
+            Transform orbitalsRigTransform,
+            Transform orbitalsRootTransform,
             global::ItemDrop.ItemData itemData,
             string ownerNameForLogs)
         {
-            if (orbitalsRigTf == null || orbitalsRootTf == null) return;
+            if (orbitalsRigTransform == null || orbitalsRootTransform == null)
+                return;
 
-            Transform liveFlamesTf = NadaRigPaths.FindDirectChild(orbitalsRootTf, Plugin.OrbitalsFlamesName);
-            Transform liveEmbersTf = NadaRigPaths.FindDirectChild(orbitalsRootTf, Plugin.OrbitalsEmbersName);
+            Transform liveFlamesTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsFlamesName);
 
-            Transform flamesLeadAnchorTf = EnsureOrbitalsLeadAnchor(
-                orbitalsRigTf,
+            Transform liveEmbersTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsEmbersName);
+
+            Transform flamesLeadAnchorTransform = EnsureLeadAnchorAndLiveFollow(
+                orbitalsRigTransform,
+                liveFlamesTransform,
+                OrbitalsVisualKind.Flames,
                 Plugin.OrbitalsFlamesLeadAnchorName,
-                liveFlamesTf,
+                itemData,
                 ownerNameForLogs);
 
-            if (flamesLeadAnchorTf != null && liveFlamesTf != null)
-            {
-                var leadMotion = flamesLeadAnchorTf.gameObject.GetComponent<NadaOrbitalsLeadMotion>();
-                if (leadMotion == null)
-                {
-                    leadMotion = flamesLeadAnchorTf.gameObject.AddComponent<NadaOrbitalsLeadMotion>();
-
-                    Plugin.Log.LogInfo(
-                        $"{Plugin.ModName}: Attached Flames lead motion to '{NadaWeaponTargets.FullPath(flamesLeadAnchorTf)}'.");
-                }
-
-                if (!leadMotion.IsInitialized)
-                {
-                    leadMotion.Initialize(
-                        OrbitalsVisualKind.Flames,
-                        flamesLeadAnchorTf.localPosition,
-                        flamesLeadAnchorTf.localRotation,
-                        itemData);
-                }
-
-                leadMotion.SetKindAndItemData(OrbitalsVisualKind.Flames, itemData);
-
-                var leadFollow = liveFlamesTf.gameObject.GetComponent<NadaWorldFollowMotion>();
-                if (leadFollow == null)
-                    leadFollow = liveFlamesTf.gameObject.AddComponent<NadaWorldFollowMotion>();
-
-                leadFollow.SetOffset(Vector3.zero, Quaternion.identity);
-                leadFollow.SetTarget(flamesLeadAnchorTf);
-            }
-
-            Transform embersLeadAnchorTf = EnsureOrbitalsLeadAnchor(
-                orbitalsRigTf,
+            Transform embersLeadAnchorTransform = EnsureLeadAnchorAndLiveFollow(
+                orbitalsRigTransform,
+                liveEmbersTransform,
+                OrbitalsVisualKind.Embers,
                 Plugin.OrbitalsEmbersLeadAnchorName,
-                liveEmbersTf,
+                itemData,
                 ownerNameForLogs);
-
-            if (embersLeadAnchorTf != null && liveEmbersTf != null)
-            {
-                var leadMotion = embersLeadAnchorTf.gameObject.GetComponent<NadaOrbitalsLeadMotion>();
-                if (leadMotion == null)
-                {
-                    leadMotion = embersLeadAnchorTf.gameObject.AddComponent<NadaOrbitalsLeadMotion>();
-
-                    Plugin.Log.LogInfo(
-                        $"{Plugin.ModName}: Attached Embers lead motion to '{NadaWeaponTargets.FullPath(embersLeadAnchorTf)}'.");
-                }
-
-                if (!leadMotion.IsInitialized)
-                {
-                    leadMotion.Initialize(
-                        OrbitalsVisualKind.Embers,
-                        embersLeadAnchorTf.localPosition,
-                        embersLeadAnchorTf.localRotation,
-                        itemData);
-                }
-
-                leadMotion.SetKindAndItemData(OrbitalsVisualKind.Embers, itemData);
-
-                var leadFollow = liveEmbersTf.gameObject.GetComponent<NadaWorldFollowMotion>();
-                if (leadFollow == null)
-                    leadFollow = liveEmbersTf.gameObject.AddComponent<NadaWorldFollowMotion>();
-
-                leadFollow.SetOffset(Vector3.zero, Quaternion.identity);
-                leadFollow.SetTarget(embersLeadAnchorTf);
-            }
 
             EnsureOrbitalsPool(
-                orbitalsRigTf,
+                orbitalsRigTransform,
+                OrbitalsVisualKind.Flames,
                 Plugin.OrbitalsFlamesPoolName,
-                liveFlamesTf,
-                flamesLeadAnchorTf,
+                liveFlamesTransform,
+                flamesLeadAnchorTransform,
                 Plugin.OrbitalsFlamesName,
                 Plugin.MaxOrbitalsFlameVisuals,
                 itemData,
                 ownerNameForLogs);
 
             EnsureOrbitalsPool(
-                orbitalsRigTf,
+                orbitalsRigTransform,
+                OrbitalsVisualKind.Embers,
                 Plugin.OrbitalsEmbersPoolName,
-                liveEmbersTf,
-                embersLeadAnchorTf,
+                liveEmbersTransform,
+                embersLeadAnchorTransform,
                 Plugin.OrbitalsEmbersName,
                 Plugin.MaxOrbitalsEmberVisuals,
                 itemData,
@@ -134,167 +89,271 @@ namespace NADA.VFX.Runtime.Binding
         }
 
         internal static Transform EnsureOrbitalsLeadAnchor(
-            Transform orbitalsRigTf,
-            string anchorName,
-            Transform sourceTf,
+            Transform orbitalsRigTransform,
+            string leadAnchorName,
+            Transform sourceVisualTransform,
             string ownerNameForLogs)
         {
-            if (orbitalsRigTf == null || sourceTf == null) return null;
+            if (orbitalsRigTransform == null || sourceVisualTransform == null)
+                return null;
 
-            Transform anchorsRootTf = NadaRigPaths.FindDirectChild(orbitalsRigTf, Plugin.OrbitalsAnchorsRootName);
-            if (anchorsRootTf == null)
+            Transform anchorsRootTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRigTransform, Plugin.OrbitalsAnchorsRootName);
+
+            if (anchorsRootTransform == null)
             {
-                anchorsRootTf = NadaRigTransforms.EnsureChild(orbitalsRigTf, Plugin.OrbitalsAnchorsRootName);
+                anchorsRootTransform =
+                    NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsAnchorsRootName);
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals anchors root '{Plugin.OrbitalsAnchorsRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTf)}' " +
+                    $"{Plugin.ModName}: Added Orbitals anchors root '{Plugin.OrbitalsAnchorsRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
 
-            Transform anchorTf = NadaRigPaths.FindDirectChild(anchorsRootTf, anchorName);
-            bool created = false;
+            Transform leadAnchorTransform =
+                NadaRigPaths.FindDirectChild(anchorsRootTransform, leadAnchorName);
 
-            if (anchorTf == null)
+            bool createdLeadAnchor = false;
+
+            if (leadAnchorTransform == null)
             {
-                var go = new GameObject(anchorName);
-                anchorTf = go.transform;
-                anchorTf.SetParent(anchorsRootTf, false);
-                created = true;
+                var leadAnchorObject = new GameObject(leadAnchorName);
+                leadAnchorTransform = leadAnchorObject.transform;
+                leadAnchorTransform.SetParent(anchorsRootTransform, false);
+                createdLeadAnchor = true;
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals lead anchor '{anchorName}' under '{NadaWeaponTargets.FullPath(anchorsRootTf)}' " +
+                    $"{Plugin.ModName}: Added Orbitals lead anchor '{leadAnchorName}' under '{NadaWeaponTargets.FullPath(anchorsRootTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
 
-            if (created)
+            if (createdLeadAnchor)
             {
-                anchorTf.localPosition = sourceTf.localPosition;
-                anchorTf.localRotation = sourceTf.localRotation;
-                anchorTf.localScale = Vector3.one;
+                leadAnchorTransform.localPosition = sourceVisualTransform.localPosition;
+                leadAnchorTransform.localRotation = sourceVisualTransform.localRotation;
+                leadAnchorTransform.localScale = Vector3.one;
             }
 
-            return anchorTf;
+            return leadAnchorTransform;
+        }
+
+        private static Transform EnsureLeadAnchorAndLiveFollow(
+            Transform orbitalsRigTransform,
+            Transform liveVisualTransform,
+            OrbitalsVisualKind visualKind,
+            string leadAnchorName,
+            global::ItemDrop.ItemData itemData,
+            string ownerNameForLogs)
+        {
+            if (liveVisualTransform == null)
+                return null;
+
+            Transform leadAnchorTransform = EnsureOrbitalsLeadAnchor(
+                orbitalsRigTransform,
+                leadAnchorName,
+                liveVisualTransform,
+                ownerNameForLogs);
+
+            if (leadAnchorTransform == null)
+                return null;
+
+            var leadMotion = leadAnchorTransform.gameObject.GetComponent<NadaOrbitalsLeadMotion>();
+            if (leadMotion == null)
+            {
+                leadMotion = leadAnchorTransform.gameObject.AddComponent<NadaOrbitalsLeadMotion>();
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: Attached {visualKind} lead motion to '{NadaWeaponTargets.FullPath(leadAnchorTransform)}'.");
+            }
+
+            if (!leadMotion.IsInitialized)
+            {
+                leadMotion.Initialize(
+                    visualKind,
+                    leadAnchorTransform.localPosition,
+                    leadAnchorTransform.localRotation,
+                    itemData);
+            }
+
+            leadMotion.UpdateKindAndItemData(visualKind, itemData);
+
+            var liveVisualFollow = liveVisualTransform.gameObject.GetComponent<NadaTargetFollowMotion>();
+            if (liveVisualFollow == null)
+                liveVisualFollow = liveVisualTransform.gameObject.AddComponent<NadaTargetFollowMotion>();
+
+            liveVisualFollow.SetLocalOffset(Vector3.zero, Quaternion.identity);
+            liveVisualFollow.SetTargetTransform(leadAnchorTransform);
+
+            return leadAnchorTransform;
         }
 
         private static void EnsureOrbitalsPool(
-            Transform orbitalsRigTf,
+            Transform orbitalsRigTransform,
+            OrbitalsVisualKind visualKind,
             string poolName,
-            Transform sourceTf,
-            Transform leadTransform,
+            Transform sourceVisualTransform,
+            Transform leadAnchorTransform,
             string visualBaseName,
             int maxVisuals,
             global::ItemDrop.ItemData itemData,
             string ownerNameForLogs)
         {
-            if (orbitalsRigTf == null || sourceTf == null) return;
-            if (maxVisuals <= 0) return;
+            if (orbitalsRigTransform == null || sourceVisualTransform == null)
+                return;
 
-            Transform poolsRootTf = NadaRigPaths.FindDirectChild(orbitalsRigTf, Plugin.OrbitalsPoolsRootName);
-            if (poolsRootTf == null)
+            if (maxVisuals <= 0)
+                return;
+
+            Transform poolsRootTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRigTransform, Plugin.OrbitalsPoolsRootName);
+
+            if (poolsRootTransform == null)
             {
-                poolsRootTf = NadaRigTransforms.EnsureChild(orbitalsRigTf, Plugin.OrbitalsPoolsRootName);
+                poolsRootTransform =
+                    NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsPoolsRootName);
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals pools root '{Plugin.OrbitalsPoolsRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTf)}' " +
+                    $"{Plugin.ModName}: Added Orbitals pools root '{Plugin.OrbitalsPoolsRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
 
-            Transform poolRootTf = NadaRigPaths.FindDirectChild(poolsRootTf, poolName);
-            if (poolRootTf == null)
+            Transform poolRootTransform =
+                NadaRigPaths.FindDirectChild(poolsRootTransform, poolName);
+
+            if (poolRootTransform == null)
             {
-                var go = new GameObject(poolName);
-                poolRootTf = go.transform;
-                poolRootTf.SetParent(poolsRootTf, false);
+                var poolRootObject = new GameObject(poolName);
+                poolRootTransform = poolRootObject.transform;
+                poolRootTransform.SetParent(poolsRootTransform, false);
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals visual pool '{poolName}' under '{NadaWeaponTargets.FullPath(poolsRootTf)}' " +
+                    $"{Plugin.ModName}: Added Orbitals visual pool '{poolName}' under '{NadaWeaponTargets.FullPath(poolsRootTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
 
-            NadaRigTransforms.ResetLocalTransform(poolRootTf);
+            NadaRigTransforms.ResetLocalTransform(poolRootTransform);
 
-            if (poolName == Plugin.OrbitalsFlamesPoolName && leadTransform != null)
+            EnsureFollowerChainMotion(
+                poolRootTransform,
+                leadAnchorTransform,
+                visualKind,
+                itemData);
+
+            foreach (Transform pooledVisualTransform in poolRootTransform)
             {
-                var motion = poolRootTf.gameObject.GetComponent<NadaOrbitalsChainMotion>();
-                if (motion == null)
-                {
-                    motion = poolRootTf.gameObject.AddComponent<NadaOrbitalsChainMotion>();
-
-                    Plugin.Log.LogInfo(
-                        $"{Plugin.ModName}: Attached Flames follower chain motion to '{NadaWeaponTargets.FullPath(poolRootTf)}' " +
-                        $"using lead '{NadaWeaponTargets.FullPath(leadTransform)}'.");
-                }
-
-                if (!motion.IsInitialized)
-                    motion.Initialize(OrbitalsVisualKind.Flames, poolRootTf, leadTransform, itemData);
-
-                motion.SetKindLeadAndItemData(OrbitalsVisualKind.Flames, leadTransform, itemData);
-            }
-            else if (poolName == Plugin.OrbitalsEmbersPoolName && leadTransform != null)
-            {
-                var motion = poolRootTf.gameObject.GetComponent<NadaOrbitalsChainMotion>();
-                if (motion == null)
-                {
-                    motion = poolRootTf.gameObject.AddComponent<NadaOrbitalsChainMotion>();
-
-                    Plugin.Log.LogInfo(
-                        $"{Plugin.ModName}: Attached Embers follower chain motion to '{NadaWeaponTargets.FullPath(poolRootTf)}' " +
-                        $"using lead '{NadaWeaponTargets.FullPath(leadTransform)}'.");
-                }
-
-                if (!motion.IsInitialized)
-                    motion.Initialize(OrbitalsVisualKind.Embers, poolRootTf, leadTransform, itemData);
-
-                motion.SetKindLeadAndItemData(OrbitalsVisualKind.Embers, leadTransform, itemData);
-            }
-
-            foreach (Transform child in poolRootTf)
-            {
-                if (child == null) continue;
-                StripRuntimeMotionComponents(child);
-            }
-
-            for (int i = 0; i < maxVisuals; i++)
-            {
-                string visualName = $"{visualBaseName}_{i:00}";
-                Transform existing = NadaRigPaths.FindDirectChild(poolRootTf, visualName);
-                if (existing != null)
+                if (pooledVisualTransform == null)
                     continue;
 
-                var clone = Object.Instantiate(sourceTf.gameObject, poolRootTf, false);
-                clone.name = visualName;
-                clone.SetActive(false);
+                StripRuntimeMotionComponents(pooledVisualTransform);
+            }
 
-                NadaRigTransforms.ResetLocalTransform(clone.transform);
-                StripRuntimeMotionComponents(clone.transform);
-                NadaRigTransforms.NormalizeParticleSpacesUnder(clone.transform, ParticleSystemSimulationSpace.World);
+            EnsurePooledVisualChildren(
+                poolRootTransform,
+                sourceVisualTransform,
+                visualBaseName,
+                maxVisuals,
+                ownerNameForLogs);
+        }
+
+        private static void EnsureFollowerChainMotion(
+            Transform poolRootTransform,
+            Transform leadAnchorTransform,
+            OrbitalsVisualKind visualKind,
+            global::ItemDrop.ItemData itemData)
+        {
+            if (poolRootTransform == null || leadAnchorTransform == null)
+                return;
+
+            var chainMotion = poolRootTransform.gameObject.GetComponent<NadaOrbitalsChainMotion>();
+            if (chainMotion == null)
+            {
+                chainMotion = poolRootTransform.gameObject.AddComponent<NadaOrbitalsChainMotion>();
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added pooled Orbitals visual '{visualName}' under '{NadaWeaponTargets.FullPath(poolRootTf)}' " +
+                    $"{Plugin.ModName}: Attached {visualKind} follower chain motion to '{NadaWeaponTargets.FullPath(poolRootTransform)}' " +
+                    $"using lead '{NadaWeaponTargets.FullPath(leadAnchorTransform)}'.");
+            }
+
+            if (!chainMotion.IsInitialized)
+            {
+                chainMotion.Initialize(
+                    visualKind,
+                    poolRootTransform,
+                    leadAnchorTransform,
+                    itemData);
+            }
+
+            chainMotion.UpdateKindLeadAndItemData(
+                visualKind,
+                leadAnchorTransform,
+                itemData);
+        }
+
+        private static void EnsurePooledVisualChildren(
+            Transform poolRootTransform,
+            Transform sourceVisualTransform,
+            string visualBaseName,
+            int maxVisuals,
+            string ownerNameForLogs)
+        {
+            if (poolRootTransform == null || sourceVisualTransform == null)
+                return;
+
+            for (int visualIndex = 0; visualIndex < maxVisuals; visualIndex++)
+            {
+                string pooledVisualName = $"{visualBaseName}_{visualIndex:00}";
+
+                Transform existingPooledVisualTransform =
+                    NadaRigPaths.FindDirectChild(poolRootTransform, pooledVisualName);
+
+                if (existingPooledVisualTransform != null)
+                    continue;
+
+                var pooledVisualObject =
+                    Object.Instantiate(sourceVisualTransform.gameObject, poolRootTransform, false);
+
+                pooledVisualObject.name = pooledVisualName;
+                pooledVisualObject.SetActive(false);
+
+                NadaRigTransforms.ResetLocalTransform(pooledVisualObject.transform);
+                StripRuntimeMotionComponents(pooledVisualObject.transform);
+                NadaRigTransforms.NormalizeParticleSpacesUnder(
+                    pooledVisualObject.transform,
+                    ParticleSystemSimulationSpace.World);
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: Added pooled Orbitals visual '{pooledVisualName}' under '{NadaWeaponTargets.FullPath(poolRootTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
         }
 
-        private static void StripRuntimeMotionComponents(Transform root)
+        private static void StripRuntimeMotionComponents(Transform rootTransform)
         {
-            if (root == null) return;
+            if (rootTransform == null)
+                return;
 
-            foreach (var follow in root.GetComponentsInChildren<NadaWorldFollowMotion>(true))
+            foreach (var followMotion in rootTransform.GetComponentsInChildren<NadaTargetFollowMotion>(true))
             {
-                if (follow == null) continue;
-                Object.Destroy(follow);
+                if (followMotion == null)
+                    continue;
+
+                Object.Destroy(followMotion);
             }
 
-            foreach (var lead in root.GetComponentsInChildren<NadaOrbitalsLeadMotion>(true))
+            foreach (var leadMotion in rootTransform.GetComponentsInChildren<NadaOrbitalsLeadMotion>(true))
             {
-                if (lead == null) continue;
-                Object.Destroy(lead);
+                if (leadMotion == null)
+                    continue;
+
+                Object.Destroy(leadMotion);
             }
 
-            foreach (var chain in root.GetComponentsInChildren<NadaOrbitalsChainMotion>(true))
+            foreach (var chainMotion in rootTransform.GetComponentsInChildren<NadaOrbitalsChainMotion>(true))
             {
-                if (chain == null) continue;
-                Object.Destroy(chain);
+                if (chainMotion == null)
+                    continue;
+
+                Object.Destroy(chainMotion);
             }
         }
     }

@@ -6,23 +6,27 @@ namespace NADA.VFX.Weapons.Targets
 {
     internal static class NadaWeaponTargets
     {
-        internal static bool TryGetPrefab(string name, out GameObject prefab)
+        internal static bool TryGetPrefab(string prefabName, out GameObject prefab)
         {
             prefab = null;
 
             if (ZNetScene.instance != null)
             {
-                prefab = ZNetScene.instance.GetPrefab(name);
-                if (prefab != null) return true;
+                prefab = ZNetScene.instance.GetPrefab(prefabName);
+                if (prefab != null)
+                    return true;
             }
 
             if (ObjectDB.instance != null && ObjectDB.instance.m_items != null)
             {
-                foreach (var go in ObjectDB.instance.m_items)
+                foreach (GameObject itemObject in ObjectDB.instance.m_items)
                 {
-                    if (go != null && string.Equals(go.name, name, StringComparison.Ordinal))
+                    if (itemObject == null)
+                        continue;
+
+                    if (string.Equals(itemObject.name, prefabName, StringComparison.Ordinal))
                     {
-                        prefab = go;
+                        prefab = itemObject;
                         return true;
                     }
                 }
@@ -31,54 +35,73 @@ namespace NADA.VFX.Weapons.Targets
             return false;
         }
 
-        internal static bool IsTargetRoot(GameObject go)
+        internal static bool IsTargetRoot(GameObject gameObject)
         {
-            if (go == null) return false;
-            var n = go.name ?? "";
-            return n == Plugin.TargetPrefabName || n.StartsWith(Plugin.TargetPrefabName + "(Clone)", StringComparison.Ordinal);
+            if (gameObject == null)
+                return false;
+
+            string objectName = gameObject.name ?? string.Empty;
+
+            return objectName == Plugin.TargetPrefabName ||
+                   objectName.StartsWith(Plugin.TargetPrefabName + "(Clone)", StringComparison.Ordinal);
         }
 
-        internal static bool IsTargetOrAttachClone(GameObject go)
+        internal static bool IsTargetOrAttachClone(GameObject gameObject)
         {
-            if (go == null) return false;
-            if (IsTargetRoot(go)) return true;
+            if (gameObject == null)
+                return false;
 
-            return (go.name ?? "").StartsWith("attach", StringComparison.OrdinalIgnoreCase)
-                   && FindSword15Lava(go.transform) != null;
+            if (IsTargetRoot(gameObject))
+                return true;
+
+            string objectName = gameObject.name ?? string.Empty;
+
+            return objectName.StartsWith("attach", StringComparison.OrdinalIgnoreCase) &&
+                   FindSword15Lava(gameObject.transform) != null;
         }
 
-        // Find Sword15_Lava* that lives under an ancestor attach*.
-        internal static Transform FindSword15Lava(Transform root)
+        // Finds Sword15_Lava* beneath the supplied root, but only if it lives under an attach* ancestor.
+        internal static Transform FindSword15Lava(Transform searchRootTransform)
         {
-            if (root == null) return null;
+            if (searchRootTransform == null)
+                return null;
 
-            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            foreach (Transform candidateTransform in searchRootTransform.GetComponentsInChildren<Transform>(true))
             {
-                if (t == null) continue;
-                if (!t.name.StartsWith("Sword15_Lava", StringComparison.Ordinal)) continue;
+                if (candidateTransform == null)
+                    continue;
 
-                var p = t.parent;
-                while (p != null)
+                if (!candidateTransform.name.StartsWith("Sword15_Lava", StringComparison.Ordinal))
+                    continue;
+
+                Transform parentTransform = candidateTransform.parent;
+                while (parentTransform != null)
                 {
-                    if ((p.name ?? "").StartsWith("attach", StringComparison.OrdinalIgnoreCase))
-                        return t;
-                    p = p.parent;
+                    string parentName = parentTransform.name ?? string.Empty;
+                    if (parentName.StartsWith("attach", StringComparison.OrdinalIgnoreCase))
+                        return candidateTransform;
+
+                    parentTransform = parentTransform.parent;
                 }
             }
 
             return null;
         }
 
-        internal static string FullPath(Transform t)
+        internal static string FullPath(Transform transform)
         {
-            if (t == null) return "<null>";
-            var stack = new Stack<string>();
-            while (t != null)
+            if (transform == null)
+                return "<null>";
+
+            var pathParts = new Stack<string>();
+
+            while (transform != null)
             {
-                stack.Push(t.name);
-                t = t.parent;
+                pathParts.Push(transform.name);
+                transform = transform.parent;
             }
-            return string.Join("/", stack);
+
+            return string.Join("/", pathParts);
         }
     }
 }

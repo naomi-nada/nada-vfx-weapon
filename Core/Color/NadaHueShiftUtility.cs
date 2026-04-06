@@ -11,184 +11,202 @@ namespace NADA.VFX.Core.Color
             return WrapHue01(ClassicFlameHue + sliderValue);
         }
 
-        private static float WrapHue01(float h)
+        private static float WrapHue01(float hue)
         {
-            h %= 1f;
-            if (h < 0f) h += 1f;
-            return h;
+            hue %= 1f;
+            if (hue < 0f)
+                hue += 1f;
+
+            return hue;
         }
 
-        internal static UnityEngine.Color RetintColorToHue(UnityEngine.Color input, float targetHue)
+        internal static UnityEngine.Color RetintColorToHue(
+            UnityEngine.Color inputColor,
+            float targetHue)
         {
-            UnityEngine.Color.RGBToHSV(input, out _, out float s, out float v);
+            UnityEngine.Color.RGBToHSV(inputColor, out _, out float saturation, out float value);
 
-            if (s < 0.01f)
-            {
-                var unchanged = input;
-                unchanged.a = input.a;
-                return unchanged;
-            }
+            if (saturation < 0.01f)
+                return inputColor;
 
-            var tinted = UnityEngine.Color.HSVToRGB(targetHue, s, v, true);
-            tinted.a = input.a;
-            return tinted;
+            UnityEngine.Color retintedColor =
+                UnityEngine.Color.HSVToRGB(targetHue, saturation, value, true);
+
+            retintedColor.a = inputColor.a;
+            return retintedColor;
         }
 
         internal static UnityEngine.Color RetintColorToHueAllowGrayscale(
-            UnityEngine.Color input,
+            UnityEngine.Color inputColor,
             float targetHue,
             float grayscaleSaturation = 0.85f,
             float valueBoost = 1.15f)
         {
-            UnityEngine.Color.RGBToHSV(input, out _, out float s, out float v);
+            UnityEngine.Color.RGBToHSV(inputColor, out _, out float saturation, out float value);
 
-            float outS = s < 0.01f ? grayscaleSaturation : s;
+            float outputSaturation = saturation < 0.01f ? grayscaleSaturation : saturation;
 
-            // Boost brightness slightly but clamp to avoid blowout
-            float outV = Mathf.Clamp01(v * valueBoost);
+            // Boost brightness slightly but clamp to avoid blowout.
+            float outputValue = Mathf.Clamp01(value * valueBoost);
 
-            var tinted = UnityEngine.Color.HSVToRGB(targetHue, outS, outV, true);
-            tinted.a = input.a;
-            return tinted;
+            UnityEngine.Color retintedColor =
+                UnityEngine.Color.HSVToRGB(targetHue, outputSaturation, outputValue, true);
+
+            retintedColor.a = inputColor.a;
+            return retintedColor;
         }
 
-        internal static Gradient RetintGradientToHue(Gradient source, float targetHue)
+        internal static Gradient RetintGradientToHue(
+            Gradient sourceGradient,
+            float targetHue)
         {
-            if (source == null) return null;
+            if (sourceGradient == null)
+                return null;
 
-            var srcColorKeys = source.colorKeys;
-            var srcAlphaKeys = source.alphaKeys;
+            GradientColorKey[] sourceColorKeys = sourceGradient.colorKeys;
+            GradientAlphaKey[] sourceAlphaKeys = sourceGradient.alphaKeys;
 
-            var newColorKeys = new GradientColorKey[srcColorKeys.Length];
-            for (int i = 0; i < srcColorKeys.Length; i++)
+            var retintedColorKeys = new GradientColorKey[sourceColorKeys.Length];
+            for (int colorKeyIndex = 0; colorKeyIndex < sourceColorKeys.Length; colorKeyIndex++)
             {
-                newColorKeys[i] = new GradientColorKey(
-                    RetintColorToHue(srcColorKeys[i].color, targetHue),
-                    srcColorKeys[i].time
-                );
+                retintedColorKeys[colorKeyIndex] = new GradientColorKey(
+                    RetintColorToHue(sourceColorKeys[colorKeyIndex].color, targetHue),
+                    sourceColorKeys[colorKeyIndex].time);
             }
 
-            var newAlphaKeys = new GradientAlphaKey[srcAlphaKeys.Length];
-            for (int i = 0; i < srcAlphaKeys.Length; i++)
+            var copiedAlphaKeys = new GradientAlphaKey[sourceAlphaKeys.Length];
+            for (int alphaKeyIndex = 0; alphaKeyIndex < sourceAlphaKeys.Length; alphaKeyIndex++)
             {
-                newAlphaKeys[i] = new GradientAlphaKey(
-                    srcAlphaKeys[i].alpha,
-                    srcAlphaKeys[i].time
-                );
+                copiedAlphaKeys[alphaKeyIndex] = new GradientAlphaKey(
+                    sourceAlphaKeys[alphaKeyIndex].alpha,
+                    sourceAlphaKeys[alphaKeyIndex].time);
             }
 
-            var g = new Gradient();
-            g.SetKeys(newColorKeys, newAlphaKeys);
-            return g;
+            var retintedGradient = new Gradient();
+            retintedGradient.SetKeys(retintedColorKeys, copiedAlphaKeys);
+            return retintedGradient;
         }
 
         internal static Gradient RetintGradientToHueAllowGrayscale(
-            Gradient source,
+            Gradient sourceGradient,
             float targetHue,
             float grayscaleSaturation = 0.85f)
         {
-            if (source == null) return null;
+            if (sourceGradient == null)
+                return null;
 
-            var srcColorKeys = source.colorKeys;
-            var srcAlphaKeys = source.alphaKeys;
+            GradientColorKey[] sourceColorKeys = sourceGradient.colorKeys;
+            GradientAlphaKey[] sourceAlphaKeys = sourceGradient.alphaKeys;
 
-            var newColorKeys = new GradientColorKey[srcColorKeys.Length];
-            for (int i = 0; i < srcColorKeys.Length; i++)
+            var retintedColorKeys = new GradientColorKey[sourceColorKeys.Length];
+            for (int colorKeyIndex = 0; colorKeyIndex < sourceColorKeys.Length; colorKeyIndex++)
             {
-                newColorKeys[i] = new GradientColorKey(
-                    RetintColorToHueAllowGrayscale(srcColorKeys[i].color, targetHue, grayscaleSaturation),
-                    srcColorKeys[i].time
-                );
+                retintedColorKeys[colorKeyIndex] = new GradientColorKey(
+                    RetintColorToHueAllowGrayscale(
+                        sourceColorKeys[colorKeyIndex].color,
+                        targetHue,
+                        grayscaleSaturation),
+                    sourceColorKeys[colorKeyIndex].time);
             }
 
-            var newAlphaKeys = new GradientAlphaKey[srcAlphaKeys.Length];
-            for (int i = 0; i < srcAlphaKeys.Length; i++)
+            var copiedAlphaKeys = new GradientAlphaKey[sourceAlphaKeys.Length];
+            for (int alphaKeyIndex = 0; alphaKeyIndex < sourceAlphaKeys.Length; alphaKeyIndex++)
             {
-                newAlphaKeys[i] = new GradientAlphaKey(
-                    srcAlphaKeys[i].alpha,
-                    srcAlphaKeys[i].time
-                );
+                copiedAlphaKeys[alphaKeyIndex] = new GradientAlphaKey(
+                    sourceAlphaKeys[alphaKeyIndex].alpha,
+                    sourceAlphaKeys[alphaKeyIndex].time);
             }
 
-            var g = new Gradient();
-            g.SetKeys(newColorKeys, newAlphaKeys);
-            return g;
+            var retintedGradient = new Gradient();
+            retintedGradient.SetKeys(retintedColorKeys, copiedAlphaKeys);
+            return retintedGradient;
         }
 
         internal static ParticleSystem.MinMaxGradient RetintMinMaxGradientToHue(
-            ParticleSystem.MinMaxGradient source,
+            ParticleSystem.MinMaxGradient sourceGradient,
             float targetHue)
         {
-            switch (source.mode)
+            switch (sourceGradient.mode)
             {
                 case ParticleSystemGradientMode.Color:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintColorToHue(source.color, targetHue)
-                    );
+                        RetintColorToHue(sourceGradient.color, targetHue));
 
                 case ParticleSystemGradientMode.TwoColors:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintColorToHue(source.colorMin, targetHue),
-                        RetintColorToHue(source.colorMax, targetHue)
-                    );
+                        RetintColorToHue(sourceGradient.colorMin, targetHue),
+                        RetintColorToHue(sourceGradient.colorMax, targetHue));
 
                 case ParticleSystemGradientMode.Gradient:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintGradientToHue(source.gradient, targetHue)
-                    );
+                        RetintGradientToHue(sourceGradient.gradient, targetHue));
 
                 case ParticleSystemGradientMode.TwoGradients:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintGradientToHue(source.gradientMin, targetHue),
-                        RetintGradientToHue(source.gradientMax, targetHue)
-                    );
+                        RetintGradientToHue(sourceGradient.gradientMin, targetHue),
+                        RetintGradientToHue(sourceGradient.gradientMax, targetHue));
 
                 case ParticleSystemGradientMode.RandomColor:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintGradientToHue(source.gradient, targetHue)
-                    );
+                        RetintGradientToHue(sourceGradient.gradient, targetHue));
 
                 default:
-                    return source;
+                    return sourceGradient;
             }
         }
 
         internal static ParticleSystem.MinMaxGradient RetintMinMaxGradientToHueAllowGrayscale(
-            ParticleSystem.MinMaxGradient source,
+            ParticleSystem.MinMaxGradient sourceGradient,
             float targetHue,
             float grayscaleSaturation = 0.85f)
         {
-            switch (source.mode)
+            switch (sourceGradient.mode)
             {
                 case ParticleSystemGradientMode.Color:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintColorToHueAllowGrayscale(source.color, targetHue, grayscaleSaturation)
-                    );
+                        RetintColorToHueAllowGrayscale(
+                            sourceGradient.color,
+                            targetHue,
+                            grayscaleSaturation));
 
                 case ParticleSystemGradientMode.TwoColors:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintColorToHueAllowGrayscale(source.colorMin, targetHue, grayscaleSaturation),
-                        RetintColorToHueAllowGrayscale(source.colorMax, targetHue, grayscaleSaturation)
-                    );
+                        RetintColorToHueAllowGrayscale(
+                            sourceGradient.colorMin,
+                            targetHue,
+                            grayscaleSaturation),
+                        RetintColorToHueAllowGrayscale(
+                            sourceGradient.colorMax,
+                            targetHue,
+                            grayscaleSaturation));
 
                 case ParticleSystemGradientMode.Gradient:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintGradientToHueAllowGrayscale(source.gradient, targetHue, grayscaleSaturation)
-                    );
+                        RetintGradientToHueAllowGrayscale(
+                            sourceGradient.gradient,
+                            targetHue,
+                            grayscaleSaturation));
 
                 case ParticleSystemGradientMode.TwoGradients:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintGradientToHueAllowGrayscale(source.gradientMin, targetHue, grayscaleSaturation),
-                        RetintGradientToHueAllowGrayscale(source.gradientMax, targetHue, grayscaleSaturation)
-                    );
+                        RetintGradientToHueAllowGrayscale(
+                            sourceGradient.gradientMin,
+                            targetHue,
+                            grayscaleSaturation),
+                        RetintGradientToHueAllowGrayscale(
+                            sourceGradient.gradientMax,
+                            targetHue,
+                            grayscaleSaturation));
 
                 case ParticleSystemGradientMode.RandomColor:
                     return new ParticleSystem.MinMaxGradient(
-                        RetintGradientToHueAllowGrayscale(source.gradient, targetHue, grayscaleSaturation)
-                    );
+                        RetintGradientToHueAllowGrayscale(
+                            sourceGradient.gradient,
+                            targetHue,
+                            grayscaleSaturation));
 
                 default:
-                    return source;
+                    return sourceGradient;
             }
         }
     }

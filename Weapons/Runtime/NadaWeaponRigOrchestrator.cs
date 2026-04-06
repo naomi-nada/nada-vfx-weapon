@@ -1,99 +1,160 @@
-using UnityEngine;
-using NADA.VFX.Core.State;
-using NADA.VFX.Weapons.Targets;
-using NADA.VFX.Weapons.Runtime;
 using NADA.VFX.Runtime.Binding;
-using NADA.VFX.Runtime.Execution;
+using NADA.VFX.Runtime.Structure;
+using NADA.VFX.Weapons.Targets;
+using UnityEngine;
 
-namespace NADA.VFX.Runtime
+namespace NADA.VFX.Weapons.Runtime
 {
     internal static class NadaWeaponRigOrchestrator
     {
         internal static void Run(NadaWeaponRigContext context)
         {
-            if (context == null || !context.IsValid) return;
+            if (context == null || !context.IsValid)
+                return;
 
-            GameObject root = context.Root;
+            GameObject rootObject = context.Root;
             global::ItemDrop.ItemData itemData = context.ItemData;
+            Transform weaponVisualRootTransform = context.WeaponVisualRoot;
 
-            if (!NadaRigCache.CacheReady) return;
-            if (!NadaWeaponTargets.IsTargetOrAttachClone(root)) return;
+            if (!NadaRigCache.CacheReady)
+                return;
 
-            Transform sword15LavaTf = NadaWeaponTargets.FindSword15Lava(root.transform);
-            if (sword15LavaTf == null) return;
+            if (!NadaWeaponTargets.IsTargetOrAttachClone(rootObject))
+                return;
 
-            NadaRigMaintenance.DisableBrokenFlameRenderer(sword15LavaTf, root.name);
+            NadaRigMaintenance.DisableBrokenFlameRenderer(
+                weaponVisualRootTransform,
+                rootObject.name);
 
-            Transform localWeaponTf = NadaRigCatalogAssembly.EnsureAttachedLocalWeaponBranch(sword15LavaTf, root.name);
-            if (localWeaponTf == null) return;
+            Transform localWeaponRootTransform =
+                NadaRigRootAssembly.EnsureAttachedLocalWeaponBranch(
+                    weaponVisualRootTransform,
+                    rootObject.name);
 
-            Transform localEffectsTf = NadaRigPaths.FindLocalEffectsRoot(localWeaponTf);
-            if (localEffectsTf == null) return;
+            if (localWeaponRootTransform == null)
+                return;
 
-            Transform localOrbsTf = NadaRigAssembly.EnsureLocalOrbsBranch(localWeaponTf, root.name);
-            if (localOrbsTf == null) return;
+            Transform localEffectsRootTransform =
+                NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTransform);
 
-            Transform outerFlamesTf = NadaRigAssembly.EnsureLocalFlameBranchAndAlign(localWeaponTf, root.name);
-            if (outerFlamesTf == null) return;
+            if (localEffectsRootTransform == null)
+                return;
 
-            NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsTf);
+            Transform localOrbsRootTransform =
+                NadaRigAssembly.EnsureLocalOrbsBranch(
+                    localWeaponRootTransform,
+                    rootObject.name);
 
-            NadaRigAssembly.EnsureLocalMirage(localEffectsTf, localOrbsTf, root.name);
-            NadaRigAssembly.EnsureLocalSparks(localEffectsTf, localOrbsTf, root.name);
+            if (localOrbsRootTransform == null)
+                return;
 
-            NadaRigCatalog catalog = NadaRigCatalog.Build(localWeaponTf);
-            if (catalog == null || !catalog.IsValid) return;
+            Transform outerFlamesTransform =
+                NadaRigAssembly.EnsureLocalFlameBranchAndAlign(
+                    localWeaponRootTransform,
+                    rootObject.name);
 
-            if (catalog.OrbitalsRoot != null)
+            if (outerFlamesTransform == null)
+                return;
+
+            NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsRootTransform);
+
+            NadaRigAssembly.EnsureLocalSparks(
+                localEffectsRootTransform,
+                localOrbsRootTransform,
+                rootObject.name);
+
+            NadaRigAssembly.EnsureLocalMirage(
+                localEffectsRootTransform,
+                localOrbsRootTransform,
+                rootObject.name);
+
+            NadaRigCatalog catalog = NadaRigCatalog.Build(localWeaponRootTransform);
+            if (catalog == null || !catalog.IsValid)
+                return;
+
+            if (catalog.OrbitalsRootTransform != null)
             {
-                Transform localOrbitalsRigTf =
-                    NadaOrbitalsRigAssembly.EnsureLocalOrbitalsRig(catalog.OrbitalsRoot, root.name);
+                Transform localOrbitalsRigRootTransform =
+                    NadaOrbitalsRigAssembly.EnsureLocalOrbitalsRig(
+                        catalog.OrbitalsRootTransform,
+                        rootObject.name);
 
-                if (localOrbitalsRigTf != null)
+                if (localOrbitalsRigRootTransform != null)
                 {
-                    NadaOrbitalsRigAssembly.EnsureOrbitalsVisualPools(
-                        localOrbitalsRigTf,
-                        catalog.OrbitalsRoot,
+                    NadaOrbitalsRigAssembly.EnsureOrbitalsLeadAndFollowerMotion(
+                        localOrbitalsRigRootTransform,
+                        catalog.OrbitalsRootTransform,
                         itemData,
-                        root.name);
+                        rootObject.name);
                 }
             }
 
-            float orbOrbitAdherence = NadaMotionTuningResolver.GetOrbOrbitAdherence(itemData);
+            float orbOrbitAdherence = NadaMotionTuningResolver.GetOrbsOrbitAdherence(itemData);
             _ = orbOrbitAdherence;
 
-            NadaEffectBinder.BindOuterFlamesEffect(catalog.OuterFlames, itemData);
-            NadaEffectBinder.BindInnerFlamesEffect(catalog.InnerFlames, itemData);
-            NadaEffectBinder.BindFlareEffect(catalog.Flare, itemData);
-
-            NadaEffectBinder.BindOrbitalsEffect(
-                catalog.OrbitalsRoot,
-                catalog.OrbitalsOrbs ?? localOrbsTf,
+            // Inner Flames, Outer Flames, Flare
+            NadaEffectBinder.BindInnerFlamesEffect(
+                catalog.InnerFlamesTransform,
                 itemData);
 
-            NadaMotionBinder.BindOrbsMotion(catalog.OrbitalsOrbs, itemData);
-            NadaMotionBinder.BindOrbitalsRigFollow(catalog.OrbitalsRig, sword15LavaTf);
+            NadaEffectBinder.BindOuterFlamesEffect(
+                catalog.OuterFlamesTransform,
+                itemData);
 
-            NadaEffectBinder.BindMirageEffect(catalog.Mirage, itemData);
+            NadaEffectBinder.BindFlareEffect(
+                catalog.FlareTransform,
+                itemData);
 
-            Transform mirageMotionRoot =
-                NadaMotionAnchorAssembly.EnsureStandaloneMirageMotionRoot(catalog.LocalEffectsRoot, catalog.Mirage);
+            // Sparks, Mirage
+            NadaEffectBinder.BindSparksEffect(
+                catalog.SparksTransform,
+                itemData);
 
-            NadaMotionBinder.BindWorldFollow(mirageMotionRoot, catalog.Flare);
-            NadaMotionBinder.BindWorldFollow(catalog.Mirage, mirageMotionRoot);
+            Transform sparksMotionRootTransform =
+                NadaEffectMotionRootAssembly.EnsureSparksMotionRoot(
+                    catalog.LocalEffectsRootTransform,
+                    catalog.SparksTransform);
 
-            NadaEffectBinder.BindSparksEffect(catalog.Sparks, itemData);
+            NadaMotionBinder.BindTargetFollow(
+                sparksMotionRootTransform,
+                catalog.FlareTransform);
 
-            Transform sparksMotionRoot =
-                NadaMotionAnchorAssembly.EnsureStandaloneSparksMotionRoot(catalog.LocalEffectsRoot, catalog.Sparks);
+            NadaMotionBinder.BindTargetFollow(
+                catalog.SparksTransform,
+                sparksMotionRootTransform);
 
-            NadaMotionBinder.BindWorldFollow(sparksMotionRoot, catalog.Flare);
-            NadaMotionBinder.BindWorldFollow(catalog.Sparks, sparksMotionRoot);
+            NadaEffectBinder.BindMirageEffect(
+                catalog.MirageTransform,
+                itemData);
 
-            if (itemData != null)
-                VfxStateIO.EnsureInitializedFromConfig(itemData);
+            Transform mirageMotionRootTransform =
+                NadaEffectMotionRootAssembly.EnsureMirageMotionRoot(
+                    catalog.LocalEffectsRootTransform,
+                    catalog.MirageTransform);
 
-            NadaRigMaintenance.ApplyPickupFix(root);
+            NadaMotionBinder.BindTargetFollow(
+                mirageMotionRootTransform,
+                catalog.FlareTransform);
+
+            NadaMotionBinder.BindTargetFollow(
+                catalog.MirageTransform,
+                mirageMotionRootTransform);
+
+            // Orbitals: Orbs, Flames, Embers
+            NadaEffectBinder.BindOrbitalsEffect(
+                catalog.OrbitalsRootTransform,
+                catalog.OrbitalsOrbsRootTransform ?? localOrbsRootTransform,
+                itemData);
+
+            NadaMotionBinder.BindOrbsMotion(
+                catalog.OrbitalsOrbsRootTransform ?? localOrbsRootTransform,
+                itemData);
+
+            NadaMotionBinder.BindOrbitalsRigFollow(
+                catalog.OrbitalsRigRootTransform,
+                weaponVisualRootTransform);
+
+            NadaRigMaintenance.ApplyPickupFix(rootObject);
         }
     }
 }

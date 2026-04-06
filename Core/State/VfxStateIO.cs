@@ -4,100 +4,61 @@ using NADA.VFX.Core.Config;
 
 namespace NADA.VFX.Core.State
 {
-    internal struct VfxState
-    {
-        public bool InnerFlamesEnabled;
-        public float InnerFlamesScale;
-        public float InnerFlamesHue;
-        public float InnerFlamesEnergy;
-        public float InnerFlamesChaos;
-
-        public bool OuterFlamesEnabled;
-        public float OuterFlamesScale;
-        public float OuterFlamesHue;
-        public float OuterFlamesEnergy;
-        public float OuterFlamesChaos;
-
-        public bool FlareEnabled;
-        public float FlareScale;
-        public float FlareHue;
-
-        public bool MirageEnabled;
-        public float MirageScale;
-        public float MirageHue;
-
-        public bool SparksEnabled;
-        public float SparksHue;
-        public float SparksEnergy;
-
-        public bool OrbitalsOrbsEnabled;
-        public float OrbitalsOrbsCount;
-        public float OrbitalsOrbsScale;
-        public float OrbitalsOrbsHue;
-        public float OrbitalsOrbsSpacing;
-        public float OrbitalsOrbsRadius;
-
-        public bool OrbitalsFlamesEnabled;
-        public float OrbitalsFlamesCount;
-        public float OrbitalsFlamesHue;
-        public float OrbitalsFlamesEnergy;
-        public float OrbitalsFlamesSpacing;
-        public float OrbitalsFlamesRadius;
-
-        public bool OrbitalsEmbersEnabled;
-        public float OrbitalsEmbersCount;
-        public float OrbitalsEmbersHue;
-        public float OrbitalsEmbersEnergy;
-        public float OrbitalsEmbersSpacing;
-        public float OrbitalsEmbersRadius;
-    }
-
     internal static class VfxStateIO
     {
+        // Cleanup for legacy pre-state system inner flame preset key.
         private const string LegacyInnerPresetKey = "nada.vfxfix.inner";
 
         internal static VfxState FromConfig()
         {
             return new VfxState
             {
+                // Inner Flames
                 InnerFlamesEnabled = PluginConfig.InnerFlames.Value,
                 InnerFlamesScale = PluginConfig.InnerFlamesScale.Value,
                 InnerFlamesHue = PluginConfig.InnerFlamesHue.Value,
                 InnerFlamesEnergy = PluginConfig.InnerFlamesEnergy.Value,
                 InnerFlamesChaos = PluginConfig.InnerFlamesChaos.Value,
-                
+
+                // Outer Flames
                 OuterFlamesEnabled = PluginConfig.OuterFlames.Value,
                 OuterFlamesScale = PluginConfig.OuterFlamesScale.Value,
                 OuterFlamesHue = PluginConfig.OuterFlamesHue.Value,
                 OuterFlamesEnergy = PluginConfig.OuterFlamesEnergy.Value,
                 OuterFlamesChaos = PluginConfig.OuterFlamesChaos.Value,
-                
+
+                // Flare
                 FlareEnabled = PluginConfig.Flare.Value,
                 FlareScale = PluginConfig.FlareScale.Value,
                 FlareHue = PluginConfig.FlareHue.Value,
-                
+
+                // Sparks
                 SparksEnabled = PluginConfig.Sparks.Value,
                 SparksHue = PluginConfig.SparksHue.Value,
                 SparksEnergy = PluginConfig.SparksEnergy.Value,
-                
+
+                // Mirage
                 MirageEnabled = PluginConfig.Mirage.Value,
                 MirageScale = PluginConfig.MirageScale.Value,
                 MirageHue = PluginConfig.MirageHue.Value,
-                
+
+                // Orbitals - Orbs
                 OrbitalsOrbsEnabled = PluginConfig.OrbitalsOrbs.Value,
+                OrbitalsOrbsCount = PluginConfig.OrbitalsOrbsCount.Value,
                 OrbitalsOrbsScale = PluginConfig.OrbitalsOrbsScale.Value,
                 OrbitalsOrbsHue = PluginConfig.OrbitalsOrbsHue.Value,
-                OrbitalsOrbsCount = PluginConfig.OrbitalsOrbsCount.Value,
                 OrbitalsOrbsSpacing = PluginConfig.OrbitalsOrbsSpacing.Value,
                 OrbitalsOrbsRadius = PluginConfig.OrbitalsOrbsRadius.Value,
-                
+
+                // Orbitals - Flames
                 OrbitalsFlamesEnabled = PluginConfig.OrbitalsFlames.Value,
                 OrbitalsFlamesCount = PluginConfig.OrbitalsFlamesCount.Value,
                 OrbitalsFlamesHue = PluginConfig.OrbitalsFlamesHue.Value,
                 OrbitalsFlamesEnergy = PluginConfig.OrbitalsFlamesEnergy.Value,
                 OrbitalsFlamesSpacing = PluginConfig.OrbitalsFlamesSpacing.Value,
                 OrbitalsFlamesRadius = PluginConfig.OrbitalsFlamesRadius.Value,
-                
+
+                // Orbitals - Embers
                 OrbitalsEmbersEnabled = PluginConfig.OrbitalsEmbers.Value,
                 OrbitalsEmbersCount = PluginConfig.OrbitalsEmbersCount.Value,
                 OrbitalsEmbersHue = PluginConfig.OrbitalsEmbersHue.Value,
@@ -110,213 +71,378 @@ namespace NADA.VFX.Core.State
         internal static bool TryRead(global::ItemDrop.ItemData item, out VfxState state)
         {
             state = default;
-            if (item == null) return false;
+            if (item == null)
+                return false;
 
-            var cd = item.m_customData;
-            if (cd == null) return false;
-            
-            state.InnerFlamesEnabled = ReadBool(cd, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
-            state.InnerFlamesScale = ReadFloat(cd, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
-            state.InnerFlamesHue = ReadFloat(cd, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
-            state.InnerFlamesEnergy = ReadFloat(cd, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
-            state.InnerFlamesChaos = ReadFloat(cd, VfxStateKeys.InnerFlamesChaos, PluginConfig.InnerFlamesChaos.Value);
-            
-            state.OuterFlamesEnabled = ReadBool(cd, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
-            state.OuterFlamesScale = ReadFloat(cd, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
-            state.OuterFlamesHue = ReadFloat(cd, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
-            state.OuterFlamesEnergy = ReadFloat(cd, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
-            state.OuterFlamesChaos = ReadFloat(cd, VfxStateKeys.OuterFlamesChaos, PluginConfig.OuterFlamesChaos.Value);
-            
-            state.FlareEnabled = ReadBool(cd, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
-            state.FlareScale = ReadFloat(cd, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
-            state.FlareHue = ReadFloat(cd, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
-            
-            state.MirageEnabled = ReadBool(cd, VfxStateKeys.MirageEnabled, PluginConfig.Mirage.Value);
-            state.MirageScale = ReadFloat(cd, VfxStateKeys.MirageScale, PluginConfig.MirageScale.Value);
-            state.MirageHue = ReadFloat(cd, VfxStateKeys.MirageHue, PluginConfig.MirageHue.Value);
-            
-            state.SparksEnabled = ReadBool(cd, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
-            state.SparksEnergy = ReadFloat(cd, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
-            state.SparksHue = ReadFloat(cd, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
+            Dictionary<string, string> customData = item.m_customData;
+            if (customData == null)
+                return false;
 
-            state.OrbitalsOrbsEnabled = ReadBool(cd, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);
-            state.OrbitalsOrbsCount = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
-            state.OrbitalsOrbsScale = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsScale, PluginConfig.OrbitalsOrbsScale.Value);
-            state.OrbitalsOrbsHue = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsHue, PluginConfig.OrbitalsOrbsHue.Value);
-            state.OrbitalsOrbsSpacing = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsSpacing, PluginConfig.OrbitalsOrbsSpacing.Value);
-            state.OrbitalsOrbsRadius = ReadFloat(cd, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
+            // Inner Flames
+            state.InnerFlamesEnabled = ReadBool(
+                customData,
+                VfxStateKeys.InnerFlamesEnabled,
+                PluginConfig.InnerFlames.Value);
+            state.InnerFlamesScale = ReadFloat(
+                customData,
+                VfxStateKeys.InnerFlamesScale,
+                PluginConfig.InnerFlamesScale.Value);
+            state.InnerFlamesHue = ReadFloat(
+                customData,
+                VfxStateKeys.InnerFlamesHue,
+                PluginConfig.InnerFlamesHue.Value);
+            state.InnerFlamesEnergy = ReadFloat(
+                customData,
+                VfxStateKeys.InnerFlamesEnergy,
+                PluginConfig.InnerFlamesEnergy.Value);
+            state.InnerFlamesChaos = ReadFloat(
+                customData,
+                VfxStateKeys.InnerFlamesChaos,
+                PluginConfig.InnerFlamesChaos.Value);
 
-            state.OrbitalsFlamesEnabled = ReadBool(cd, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
-            state.OrbitalsFlamesCount = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
-            state.OrbitalsFlamesHue = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesHue, PluginConfig.OrbitalsFlamesHue.Value);
-            state.OrbitalsFlamesEnergy = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
-            state.OrbitalsFlamesSpacing = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesSpacing, PluginConfig.OrbitalsFlamesSpacing.Value);
-            state.OrbitalsFlamesRadius = ReadFloat(cd, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
+            // Outer Flames
+            state.OuterFlamesEnabled = ReadBool(
+                customData,
+                VfxStateKeys.OuterFlamesEnabled,
+                PluginConfig.OuterFlames.Value);
+            state.OuterFlamesScale = ReadFloat(
+                customData,
+                VfxStateKeys.OuterFlamesScale,
+                PluginConfig.OuterFlamesScale.Value);
+            state.OuterFlamesHue = ReadFloat(
+                customData,
+                VfxStateKeys.OuterFlamesHue,
+                PluginConfig.OuterFlamesHue.Value);
+            state.OuterFlamesEnergy = ReadFloat(
+                customData,
+                VfxStateKeys.OuterFlamesEnergy,
+                PluginConfig.OuterFlamesEnergy.Value);
+            state.OuterFlamesChaos = ReadFloat(
+                customData,
+                VfxStateKeys.OuterFlamesChaos,
+                PluginConfig.OuterFlamesChaos.Value);
 
-            state.OrbitalsEmbersEnabled = ReadBool(cd, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
-            state.OrbitalsEmbersCount = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersCount, PluginConfig.OrbitalsEmbersCount.Value);
-            state.OrbitalsEmbersHue = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersHue, PluginConfig.OrbitalsEmbersHue.Value);
-            state.OrbitalsEmbersEnergy = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
-            state.OrbitalsEmbersSpacing = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersSpacing, PluginConfig.OrbitalsEmbersSpacing.Value);
-            state.OrbitalsEmbersRadius = ReadFloat(cd, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
+            // Flare
+            state.FlareEnabled = ReadBool(
+                customData,
+                VfxStateKeys.FlareEnabled,
+                PluginConfig.Flare.Value);
+            state.FlareScale = ReadFloat(
+                customData,
+                VfxStateKeys.FlareScale,
+                PluginConfig.FlareScale.Value);
+            state.FlareHue = ReadFloat(
+                customData,
+                VfxStateKeys.FlareHue,
+                PluginConfig.FlareHue.Value);
+
+            // Sparks
+            state.SparksEnabled = ReadBool(
+                customData,
+                VfxStateKeys.SparksEnabled,
+                PluginConfig.Sparks.Value);
+            state.SparksHue = ReadFloat(
+                customData,
+                VfxStateKeys.SparksHue,
+                PluginConfig.SparksHue.Value);
+            state.SparksEnergy = ReadFloat(
+                customData,
+                VfxStateKeys.SparksEnergy,
+                PluginConfig.SparksEnergy.Value);
+
+            // Mirage
+            state.MirageEnabled = ReadBool(
+                customData,
+                VfxStateKeys.MirageEnabled,
+                PluginConfig.Mirage.Value);
+            state.MirageScale = ReadFloat(
+                customData,
+                VfxStateKeys.MirageScale,
+                PluginConfig.MirageScale.Value);
+            state.MirageHue = ReadFloat(
+                customData,
+                VfxStateKeys.MirageHue,
+                PluginConfig.MirageHue.Value);
+
+            // Orbitals - Orbs
+            state.OrbitalsOrbsEnabled = ReadBool(
+                customData,
+                VfxStateKeys.OrbitalsOrbsEnabled,
+                PluginConfig.OrbitalsOrbs.Value);
+            state.OrbitalsOrbsCount = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsOrbsCount,
+                PluginConfig.OrbitalsOrbsCount.Value);
+            state.OrbitalsOrbsScale = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsOrbsScale,
+                PluginConfig.OrbitalsOrbsScale.Value);
+            state.OrbitalsOrbsHue = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsOrbsHue,
+                PluginConfig.OrbitalsOrbsHue.Value);
+            state.OrbitalsOrbsSpacing = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsOrbsSpacing,
+                PluginConfig.OrbitalsOrbsSpacing.Value);
+            state.OrbitalsOrbsRadius = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsOrbsRadius,
+                PluginConfig.OrbitalsOrbsRadius.Value);
+
+            // Orbitals - Flames
+            state.OrbitalsFlamesEnabled = ReadBool(
+                customData,
+                VfxStateKeys.OrbitalsFlamesEnabled,
+                PluginConfig.OrbitalsFlames.Value);
+            state.OrbitalsFlamesCount = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsFlamesCount,
+                PluginConfig.OrbitalsFlamesCount.Value);
+            state.OrbitalsFlamesHue = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsFlamesHue,
+                PluginConfig.OrbitalsFlamesHue.Value);
+            state.OrbitalsFlamesEnergy = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsFlamesEnergy,
+                PluginConfig.OrbitalsFlamesEnergy.Value);
+            state.OrbitalsFlamesSpacing = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsFlamesSpacing,
+                PluginConfig.OrbitalsFlamesSpacing.Value);
+            state.OrbitalsFlamesRadius = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsFlamesRadius,
+                PluginConfig.OrbitalsFlamesRadius.Value);
+
+            // Orbitals - Embers
+            state.OrbitalsEmbersEnabled = ReadBool(
+                customData,
+                VfxStateKeys.OrbitalsEmbersEnabled,
+                PluginConfig.OrbitalsEmbers.Value);
+            state.OrbitalsEmbersCount = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsEmbersCount,
+                PluginConfig.OrbitalsEmbersCount.Value);
+            state.OrbitalsEmbersHue = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsEmbersHue,
+                PluginConfig.OrbitalsEmbersHue.Value);
+            state.OrbitalsEmbersEnergy = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsEmbersEnergy,
+                PluginConfig.OrbitalsEmbersEnergy.Value);
+            state.OrbitalsEmbersSpacing = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsEmbersSpacing,
+                PluginConfig.OrbitalsEmbersSpacing.Value);
+            state.OrbitalsEmbersRadius = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsEmbersRadius,
+                PluginConfig.OrbitalsEmbersRadius.Value);
 
             return true;
         }
 
+        // Full item-state persistence entry point.
+        // Currently kept as the canonical writer for VfxState -> item custom data.
         internal static void Write(global::ItemDrop.ItemData item, VfxState state)
         {
-            if (item == null) return;
+            if (item == null)
+                return;
+
             if (item.m_customData == null)
                 item.m_customData = new Dictionary<string, string>();
 
-            WriteBool(item.m_customData, VfxStateKeys.InnerFlamesEnabled, state.InnerFlamesEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.InnerFlamesScale, state.InnerFlamesScale);
-            WriteFloat(item.m_customData, VfxStateKeys.InnerFlamesHue, state.InnerFlamesHue);
-            WriteFloat(item.m_customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
-            WriteFloat(item.m_customData, VfxStateKeys.InnerFlamesChaos, state.InnerFlamesChaos);
-            
-            WriteBool(item.m_customData, VfxStateKeys.OuterFlamesEnabled, state.OuterFlamesEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.OuterFlamesScale, state.OuterFlamesScale);
-            WriteFloat(item.m_customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
-            WriteFloat(item.m_customData, VfxStateKeys.OuterFlamesEnergy, state.OuterFlamesEnergy);
-            WriteFloat(item.m_customData, VfxStateKeys.OuterFlamesChaos, state.OuterFlamesChaos);
-            
-            WriteBool(item.m_customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.FlareScale, state.FlareScale);
-            WriteFloat(item.m_customData, VfxStateKeys.FlareHue, state.FlareHue);
+            Dictionary<string, string> customData = item.m_customData;
 
-            WriteBool(item.m_customData, VfxStateKeys.OrbitalsOrbsEnabled, state.OrbitalsOrbsEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsScale, state.OrbitalsOrbsScale);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsCount, state.OrbitalsOrbsCount);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsHue, state.OrbitalsOrbsHue);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsSpacing, state.OrbitalsOrbsSpacing);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsOrbsRadius, state.OrbitalsOrbsRadius);
+            // Inner Flames
+            WriteBool(customData, VfxStateKeys.InnerFlamesEnabled, state.InnerFlamesEnabled);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesScale, state.InnerFlamesScale);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesHue, state.InnerFlamesHue);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesChaos, state.InnerFlamesChaos);
 
-            WriteBool(item.m_customData, VfxStateKeys.MirageEnabled, state.MirageEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.MirageHue, state.MirageHue);
-            WriteFloat(item.m_customData, VfxStateKeys.MirageScale, state.MirageScale);
+            // Outer Flames
+            WriteBool(customData, VfxStateKeys.OuterFlamesEnabled, state.OuterFlamesEnabled);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesScale, state.OuterFlamesScale);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesEnergy, state.OuterFlamesEnergy);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesChaos, state.OuterFlamesChaos);
 
-            WriteBool(item.m_customData, VfxStateKeys.SparksEnabled, state.SparksEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.SparksHue, state.SparksHue);
-            WriteFloat(item.m_customData, VfxStateKeys.SparksEnergy, state.SparksEnergy);
+            // Flare
+            WriteBool(customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
+            WriteFloat(customData, VfxStateKeys.FlareScale, state.FlareScale);
+            WriteFloat(customData, VfxStateKeys.FlareHue, state.FlareHue);
 
-            WriteBool(item.m_customData, VfxStateKeys.OrbitalsFlamesEnabled, state.OrbitalsFlamesEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesHue, state.OrbitalsFlamesHue);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesEnergy, state.OrbitalsFlamesEnergy);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesCount, state.OrbitalsFlamesCount);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesSpacing, state.OrbitalsFlamesSpacing);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsFlamesRadius, state.OrbitalsFlamesRadius);
+            // Sparks
+            WriteBool(customData, VfxStateKeys.SparksEnabled, state.SparksEnabled);
+            WriteFloat(customData, VfxStateKeys.SparksHue, state.SparksHue);
+            WriteFloat(customData, VfxStateKeys.SparksEnergy, state.SparksEnergy);
 
-            WriteBool(item.m_customData, VfxStateKeys.OrbitalsEmbersEnabled, state.OrbitalsEmbersEnabled);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersHue, state.OrbitalsEmbersHue);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersEnergy, state.OrbitalsEmbersEnergy);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersCount, state.OrbitalsEmbersCount);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersSpacing, state.OrbitalsEmbersSpacing);
-            WriteFloat(item.m_customData, VfxStateKeys.OrbitalsEmbersRadius, state.OrbitalsEmbersRadius);
+            // Mirage
+            WriteBool(customData, VfxStateKeys.MirageEnabled, state.MirageEnabled);
+            WriteFloat(customData, VfxStateKeys.MirageScale, state.MirageScale);
+            WriteFloat(customData, VfxStateKeys.MirageHue, state.MirageHue);
 
-            item.m_customData.Remove(LegacyInnerPresetKey);
+            // Orbitals - Orbs
+            WriteBool(customData, VfxStateKeys.OrbitalsOrbsEnabled, state.OrbitalsOrbsEnabled);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsCount, state.OrbitalsOrbsCount);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsScale, state.OrbitalsOrbsScale);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsHue, state.OrbitalsOrbsHue);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsSpacing, state.OrbitalsOrbsSpacing);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsRadius, state.OrbitalsOrbsRadius);
+
+            // Orbitals - Flames
+            WriteBool(customData, VfxStateKeys.OrbitalsFlamesEnabled, state.OrbitalsFlamesEnabled);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesCount, state.OrbitalsFlamesCount);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesHue, state.OrbitalsFlamesHue);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesEnergy, state.OrbitalsFlamesEnergy);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesSpacing, state.OrbitalsFlamesSpacing);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesRadius, state.OrbitalsFlamesRadius);
+
+            // Orbitals - Embers
+            WriteBool(customData, VfxStateKeys.OrbitalsEmbersEnabled, state.OrbitalsEmbersEnabled);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersCount, state.OrbitalsEmbersCount);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersHue, state.OrbitalsEmbersHue);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersEnergy, state.OrbitalsEmbersEnergy);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersSpacing, state.OrbitalsEmbersSpacing);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersRadius, state.OrbitalsEmbersRadius);
+
+            customData.Remove(LegacyInnerPresetKey);
         }
 
         internal static void EnsureInitializedFromConfig(global::ItemDrop.ItemData item)
         {
-            if (item == null) return;
+            if (item == null)
+                return;
+
             if (item.m_customData == null)
                 item.m_customData = new Dictionary<string, string>();
 
+            Dictionary<string, string> customData = item.m_customData;
+
             // Always backfill missing keys from current config.
-            
-            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.InnerFlamesChaos, PluginConfig.InnerFlamesChaos.Value);
 
-            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OuterFlamesChaos, PluginConfig.OuterFlamesChaos.Value);
-            
-            BackfillMissing(item.m_customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
+            // Inner Flames
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesChaos, PluginConfig.InnerFlamesChaos.Value);
 
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsScale, PluginConfig.OrbitalsOrbsScale.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsHue, PluginConfig.OrbitalsOrbsHue.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsSpacing, PluginConfig.OrbitalsOrbsSpacing.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
+            // Outer Flames
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesChaos, PluginConfig.OuterFlamesChaos.Value);
 
-            BackfillMissing(item.m_customData, VfxStateKeys.MirageEnabled, PluginConfig.Mirage.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.MirageHue, PluginConfig.MirageHue.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.MirageScale, PluginConfig.MirageScale.Value);
+            // Flare
+            BackfillMissing(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
+            BackfillMissing(customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
+            BackfillMissing(customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
 
-            BackfillMissing(item.m_customData, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
+            // Sparks
+            BackfillMissing(customData, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
+            BackfillMissing(customData, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
+            BackfillMissing(customData, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
 
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesHue, PluginConfig.OrbitalsFlamesHue.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesSpacing, PluginConfig.OrbitalsFlamesSpacing.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
+            // Mirage
+            BackfillMissing(customData, VfxStateKeys.MirageEnabled, PluginConfig.Mirage.Value);
+            BackfillMissing(customData, VfxStateKeys.MirageScale, PluginConfig.MirageScale.Value);
+            BackfillMissing(customData, VfxStateKeys.MirageHue, PluginConfig.MirageHue.Value);
 
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersHue, PluginConfig.OrbitalsEmbersHue.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersCount, PluginConfig.OrbitalsEmbersCount.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersSpacing, PluginConfig.OrbitalsEmbersSpacing.Value);
-            BackfillMissing(item.m_customData, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
+            // Orbitals - Orbs
+            BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsScale, PluginConfig.OrbitalsOrbsScale.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsHue, PluginConfig.OrbitalsOrbsHue.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsSpacing, PluginConfig.OrbitalsOrbsSpacing.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
+
+            // Orbitals - Flames
+            BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesHue, PluginConfig.OrbitalsFlamesHue.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesSpacing, PluginConfig.OrbitalsFlamesSpacing.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
+
+            // Orbitals - Embers
+            BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersCount, PluginConfig.OrbitalsEmbersCount.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersHue, PluginConfig.OrbitalsEmbersHue.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersSpacing, PluginConfig.OrbitalsEmbersSpacing.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
         }
 
-        private static float ReadFloat(Dictionary<string, string> cd, string key, float fallback)
+        private static float ReadFloat(Dictionary<string, string> customData, string key, float fallback)
         {
-            if (cd == null) return fallback;
-            if (!cd.TryGetValue(key, out var s) || string.IsNullOrWhiteSpace(s)) return fallback;
+            if (customData == null)
+                return fallback;
 
-            if (float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var f))
-                return f;
+            if (!customData.TryGetValue(key, out string stringValue) || string.IsNullOrWhiteSpace(stringValue))
+                return fallback;
+
+            if (float.TryParse(
+                    stringValue,
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture,
+                    out float parsedValue))
+            {
+                return parsedValue;
+            }
 
             return fallback;
         }
 
-        private static bool ReadBool(Dictionary<string, string> cd, string key, bool fallback)
+        private static bool ReadBool(Dictionary<string, string> customData, string key, bool fallback)
         {
-            if (cd == null) return fallback;
-            if (!cd.TryGetValue(key, out var s) || string.IsNullOrWhiteSpace(s)) return fallback;
+            if (customData == null)
+                return fallback;
 
-            if (bool.TryParse(s, out var b))
-                return b;
+            if (!customData.TryGetValue(key, out string stringValue) || string.IsNullOrWhiteSpace(stringValue))
+                return fallback;
+
+            if (bool.TryParse(stringValue, out bool parsedValue))
+                return parsedValue;
 
             return fallback;
         }
 
-        private static void WriteFloat(Dictionary<string, string> cd, string key, float value)
+        private static void WriteFloat(Dictionary<string, string> customData, string key, float value)
         {
-            if (cd == null) return;
-            cd[key] = value.ToString(CultureInfo.InvariantCulture);
+            if (customData == null)
+                return;
+
+            customData[key] = value.ToString(CultureInfo.InvariantCulture);
         }
 
-        private static void WriteBool(Dictionary<string, string> cd, string key, bool value)
+        private static void WriteBool(Dictionary<string, string> customData, string key, bool value)
         {
-            if (cd == null) return;
-            cd[key] = value ? "true" : "false";
+            if (customData == null)
+                return;
+
+            customData[key] = value ? "true" : "false";
         }
 
-        private static void BackfillMissing(Dictionary<string, string> cd, string key, float value)
+        private static void BackfillMissing(Dictionary<string, string> customData, string key, float value)
         {
-            if (cd == null) return;
-            if (cd.ContainsKey(key)) return;
-            cd[key] = value.ToString(CultureInfo.InvariantCulture);
+            if (customData == null || customData.ContainsKey(key))
+                return;
+
+            customData[key] = value.ToString(CultureInfo.InvariantCulture);
         }
 
-        private static void BackfillMissing(Dictionary<string, string> cd, string key, bool value)
+        private static void BackfillMissing(Dictionary<string, string> customData, string key, bool value)
         {
-            if (cd == null) return;
-            if (cd.ContainsKey(key)) return;
-            cd[key] = value ? "true" : "false";
+            if (customData == null || customData.ContainsKey(key))
+                return;
+
+            customData[key] = value ? "true" : "false";
         }
     }
 }

@@ -1,372 +1,477 @@
 using UnityEngine;
 using NADA.VFX.Weapons.Targets;
 
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Runtime.Structure
 {
     internal static class NadaRigAssembly
     {
-        internal static Transform EnsureLocalFlameBranchAndAlign(Transform localWeaponRootTf, string ownerNameForLogs)
+        internal static Transform EnsureLocalFlameBranchAndAlign(
+            Transform localWeaponRootTransform,
+            string ownerNameForLogs)
         {
-            if (!NadaRigCache.CacheReady) return null;
-            if (NadaRigCache.RefRigTemplateInactive == null) return null;
-            if (localWeaponRootTf == null) return null;
+            if (!NadaRigCache.CacheReady)
+                return null;
 
-            Transform effectsRoot = NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTf);
-            if (effectsRoot == null) return null;
+            if (NadaRigCache.RefRigTemplateInactive == null)
+                return null;
 
-            Transform outerFlamesTf = NadaRigPaths.FindDirectChild(effectsRoot, Plugin.OuterFlamesName);
-            if (outerFlamesTf == null)
+            if (localWeaponRootTransform == null)
+                return null;
+
+            Transform localEffectsRootTransform =
+                NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTransform);
+
+            if (localEffectsRootTransform == null)
+                return null;
+
+            Transform outerFlamesTransform =
+                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.OuterFlamesName);
+
+            if (outerFlamesTransform == null)
             {
-                var go = Object.Instantiate(NadaRigCache.RefRigTemplateInactive, effectsRoot, false);
-                go.name = Plugin.OuterFlamesName;
-                go.SetActive(true);
-                outerFlamesTf = go.transform;
+                var outerFlamesObject =
+                    Object.Instantiate(NadaRigCache.RefRigTemplateInactive, localEffectsRootTransform, false);
+
+                outerFlamesObject.name = Plugin.OuterFlamesName;
+                outerFlamesObject.SetActive(true);
+                outerFlamesTransform = outerFlamesObject.transform;
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added local outer flames branch under '{NadaWeaponTargets.FullPath(effectsRoot)}' " +
+                    $"{Plugin.ModName}: Added local outer flames branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
                     $"as '{Plugin.OuterFlamesName}' (owner='{ownerNameForLogs}').");
             }
 
-            outerFlamesTf.localPosition = Plugin.RigLocalPosition;
-            outerFlamesTf.localEulerAngles = Plugin.RigLocalEulerAngles;
-            outerFlamesTf.localScale = Plugin.RigLocalScale;
+            outerFlamesTransform.localPosition = Plugin.RigLocalPosition;
+            outerFlamesTransform.localEulerAngles = Plugin.RigLocalEulerAngles;
+            outerFlamesTransform.localScale = Plugin.RigLocalScale;
 
-            SplitFlameChildrenIntoEffects(effectsRoot, outerFlamesTf);
+            SplitFlameChildrenIntoEffects(localEffectsRootTransform, outerFlamesTransform);
 
-            NadaRigTransforms.NormalizeParticleSpacesUnder(outerFlamesTf, ParticleSystemSimulationSpace.Local);
+            NadaRigTransforms.NormalizeParticleSpacesUnder(
+                outerFlamesTransform,
+                ParticleSystemSimulationSpace.Local);
 
-            Transform flareTf = NadaRigPaths.FindDirectChild(effectsRoot, Plugin.FlareName);
-            if (flareTf != null)
-                NadaRigTransforms.NormalizeParticleSpacesUnder(flareTf, ParticleSystemSimulationSpace.Local);
+            Transform flareTransform =
+                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.FlareName);
 
-            Transform innerTf = NadaRigPaths.FindDirectChild(effectsRoot, Plugin.InnerFlamesName);
-            if (innerTf != null)
-                NadaRigTransforms.NormalizeParticleSpacesUnder(innerTf, ParticleSystemSimulationSpace.Local);
+            if (flareTransform != null)
+            {
+                NadaRigTransforms.NormalizeParticleSpacesUnder(
+                    flareTransform,
+                    ParticleSystemSimulationSpace.Local);
+            }
 
-            return outerFlamesTf;
+            Transform innerFlamesTransform =
+                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.InnerFlamesName);
+
+            if (innerFlamesTransform != null)
+            {
+                NadaRigTransforms.NormalizeParticleSpacesUnder(
+                    innerFlamesTransform,
+                    ParticleSystemSimulationSpace.Local);
+            }
+
+            return outerFlamesTransform;
         }
 
-        internal static Transform EnsureLocalOrbsBranch(Transform localWeaponRootTf, string ownerNameForLogs)
+        internal static Transform EnsureLocalOrbsBranch(
+            Transform localWeaponRootTransform,
+            string ownerNameForLogs)
         {
-            if (!NadaRigCache.CacheReady) return null;
-            if (NadaRigCache.DemisterTemplateInactive == null) return null;
-            if (localWeaponRootTf == null) return null;
+            if (!NadaRigCache.CacheReady)
+                return null;
 
-            Transform effectsRoot = NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTf);
-            if (effectsRoot == null) return null;
+            if (NadaRigCache.DemisterTemplateInactive == null)
+                return null;
 
-            Transform orbitalsRoot = NadaRigPaths.FindDirectChild(effectsRoot, Plugin.OrbitalsName);
-            if (orbitalsRoot == null)
+            if (localWeaponRootTransform == null)
+                return null;
+
+            Transform localEffectsRootTransform =
+                NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTransform);
+
+            if (localEffectsRootTransform == null)
+                return null;
+
+            Transform orbitalsRootTransform =
+                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.OrbitalsName);
+
+            if (orbitalsRootTransform == null)
             {
-                orbitalsRoot = NadaRigTransforms.EnsureChild(effectsRoot, Plugin.OrbitalsName);
+                orbitalsRootTransform =
+                    NadaRigTransforms.EnsureChild(localEffectsRootTransform, Plugin.OrbitalsName);
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added local Orbitals branch under '{NadaWeaponTargets.FullPath(effectsRoot)}' " +
+                    $"{Plugin.ModName}: Added local Orbitals branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
                     $"as '{Plugin.OrbitalsName}' (owner='{ownerNameForLogs}').");
             }
 
-            Transform orbsTf = NadaRigPaths.FindDirectChild(orbitalsRoot, Plugin.OrbitalsOrbsName);
-            if (orbsTf == null)
-            {
-                var go = Object.Instantiate(NadaRigCache.DemisterTemplateInactive, orbitalsRoot, false);
-                go.name = Plugin.OrbitalsOrbsName;
-                go.SetActive(true);
-                orbsTf = go.transform;
+            Transform orbsRootTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsOrbsName);
 
-                NadaRigTransforms.ResetLocalTransform(orbsTf);
+            if (orbsRootTransform == null)
+            {
+                var orbsRootObject =
+                    Object.Instantiate(NadaRigCache.DemisterTemplateInactive, orbitalsRootTransform, false);
+
+                orbsRootObject.name = Plugin.OrbitalsOrbsName;
+                orbsRootObject.SetActive(true);
+                orbsRootTransform = orbsRootObject.transform;
+
+                NadaRigTransforms.ResetLocalTransform(orbsRootTransform);
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added local orb subtree under '{NadaWeaponTargets.FullPath(orbitalsRoot)}' " +
+                    $"{Plugin.ModName}: Added local orb subtree under '{NadaWeaponTargets.FullPath(orbitalsRootTransform)}' " +
                     $"as '{Plugin.OrbitalsOrbsName}' (owner='{ownerNameForLogs}').");
             }
 
-            var sync = orbsTf.GetComponent<ZSyncTransform>();
-            if (sync != null)
+            var zSyncTransform = orbsRootTransform.GetComponent<ZSyncTransform>();
+            if (zSyncTransform != null)
             {
-                Object.Destroy(sync);
+                Object.Destroy(zSyncTransform);
+
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Removed ZSyncTransform from '{NadaWeaponTargets.FullPath(orbsTf)}'.");
+                    $"{Plugin.ModName}: Removed ZSyncTransform from '{NadaWeaponTargets.FullPath(orbsRootTransform)}'.");
             }
-            
-            EnsureLocalOrbitalsChildren(orbitalsRoot, orbsTf);
 
-            return orbsTf;
+            EnsureLocalOrbitalsChildren(orbitalsRootTransform, orbsRootTransform);
+
+            return orbsRootTransform;
         }
-        
+
         internal static Transform EnsureLocalMirage(
-            Transform localEffectsRoot,
-            Transform localOrbsTf,
+            Transform localEffectsRootTransform,
+            Transform localOrbsRootTransform,
             string ownerNameForLogs)
         {
-            if (localEffectsRoot == null || localOrbsTf == null) return null;
+            if (localEffectsRootTransform == null || localOrbsRootTransform == null)
+                return null;
 
-            Transform existing = NadaRigPaths.FindDirectChild(localEffectsRoot, Plugin.MirageName);
-            if (existing != null) return existing;
+            Transform existingMirageTransform =
+                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.MirageName);
 
-            Transform effectsRoot = NadaRigPaths.FindDirectChild(localOrbsTf, "effects");
-            if (effectsRoot == null) return null;
+            if (existingMirageTransform != null)
+                return existingMirageTransform;
 
-            Transform flameRoot = NadaRigPaths.FindDirectChild(effectsRoot, "flame");
-            if (flameRoot == null) return null;
+            Transform orbitalsEffectsRootTransform =
+                NadaRigPaths.FindDirectChild(localOrbsRootTransform, "effects");
 
-            Transform src = NadaRigPaths.FindDirectChild(flameRoot, "distortiion");
-            if (src == null) return null;
+            if (orbitalsEffectsRootTransform == null)
+                return null;
 
-            var clone = Object.Instantiate(src.gameObject, localEffectsRoot, false);
-            clone.name = Plugin.MirageName;
-            clone.SetActive(true);
+            Transform flameRootTransform =
+                NadaRigPaths.FindDirectChild(orbitalsEffectsRootTransform, "flame");
 
-            clone.transform.localPosition = src.localPosition;
-            clone.transform.localRotation = src.localRotation;
-            clone.transform.localScale = src.localScale;
-            
-            foreach (var follow in clone.GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>(true))
+            if (flameRootTransform == null)
+                return null;
+
+            Transform mirageSourceTransform =
+                NadaRigPaths.FindDirectChild(flameRootTransform, "distortiion");
+
+            if (mirageSourceTransform == null)
+                return null;
+
+            var mirageObject =
+                Object.Instantiate(mirageSourceTransform.gameObject, localEffectsRootTransform, false);
+
+            mirageObject.name = Plugin.MirageName;
+            mirageObject.SetActive(true);
+
+            mirageObject.transform.localPosition = mirageSourceTransform.localPosition;
+            mirageObject.transform.localRotation = mirageSourceTransform.localRotation;
+            mirageObject.transform.localScale = mirageSourceTransform.localScale;
+
+            foreach (var targetFollowMotion in mirageObject.GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaTargetFollowMotion>(true))
             {
-                if (follow == null) continue;
-                Object.Destroy(follow);
-            }
-            
-            NadaRigTransforms.NormalizeParticleSpacesUnder(clone.transform, ParticleSystemSimulationSpace.World);
+                if (targetFollowMotion == null)
+                    continue;
 
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: Added local Mirage branch under '{NadaWeaponTargets.FullPath(localEffectsRoot)}' " +
-                $"as '{Plugin.MirageName}' (owner='{ownerNameForLogs}').");
-
-            return clone.transform;
-        }
-        
-        internal static Transform EnsureLocalSparks(
-            Transform localEffectsRoot,
-            Transform localOrbsTf,
-            string ownerNameForLogs)
-        {
-            if (localEffectsRoot == null || localOrbsTf == null) return null;
-
-            Transform existing = NadaRigPaths.FindDirectChild(localEffectsRoot, Plugin.SparksName);
-            if (existing != null) return existing;
-
-            Transform effectsRoot = NadaRigPaths.FindDirectChild(localOrbsTf, "effects");
-            if (effectsRoot == null) return null;
-
-            Transform flameRoot = NadaRigPaths.FindDirectChild(effectsRoot, "flame");
-            if (flameRoot == null) return null;
-
-            Transform src = NadaRigPaths.FindDirectChild(flameRoot, "sparcs_front");
-            if (src == null) return null;
-
-            var clone = Object.Instantiate(src.gameObject, localEffectsRoot, false);
-            clone.name = Plugin.SparksName;
-            clone.SetActive(true);
-
-            clone.transform.localPosition = src.localPosition;
-            clone.transform.localRotation = src.localRotation;
-            clone.transform.localScale = src.localScale;
-
-            foreach (var follow in clone.GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaWorldFollowMotion>(true))
-            {
-                if (follow == null) continue;
-                Object.Destroy(follow);
+                Object.Destroy(targetFollowMotion);
             }
 
             NadaRigTransforms.NormalizeParticleSpacesUnder(
-                clone.transform,
+                mirageObject.transform,
                 ParticleSystemSimulationSpace.World);
 
             Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: Added local Sparks branch under '{NadaWeaponTargets.FullPath(localEffectsRoot)}' " +
-                $"as '{Plugin.SparksName}' (owner='{ownerNameForLogs}').");
+                $"{Plugin.ModName}: Added local Mirage branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
+                $"as '{Plugin.MirageName}' (owner='{ownerNameForLogs}').");
 
-            return clone.transform;
+            return mirageObject.transform;
         }
 
-        internal static void ExtractWorldOrbitalsChildren(Transform localOrbsTf, Transform orbitalsTf)
+        internal static Transform EnsureLocalSparks(
+            Transform localEffectsRootTransform,
+            Transform localOrbsRootTransform,
+            string ownerNameForLogs)
         {
-            if (localOrbsTf == null || orbitalsTf == null) return;
+            if (localEffectsRootTransform == null || localOrbsRootTransform == null)
+                return null;
 
-            Transform effectsRoot = NadaRigPaths.FindDirectChild(localOrbsTf, "effects");
-            if (effectsRoot == null) return;
+            Transform existingSparksTransform =
+                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.SparksName);
 
-            Transform flameRoot = NadaRigPaths.FindDirectChild(effectsRoot, "flame");
-            if (flameRoot == null) return;
+            if (existingSparksTransform != null)
+                return existingSparksTransform;
 
-            MoveOrCloneOrbitalsChild(flameRoot, orbitalsTf, "flames", Plugin.OrbitalsFlamesName);
-            MoveOrCloneOrbitalsChild(flameRoot, orbitalsTf, "embers", Plugin.OrbitalsEmbersName);
-        }
+            Transform orbitalsEffectsRootTransform =
+                NadaRigPaths.FindDirectChild(localOrbsRootTransform, "effects");
 
-        private static void MoveOrCloneOrbitalsChild(
-            Transform sourceParent,
-            Transform targetParent,
-            string sourceName,
-            string targetName)
-        {
-            if (sourceParent == null || targetParent == null) return;
+            if (orbitalsEffectsRootTransform == null)
+                return null;
 
-            Transform existing = NadaRigPaths.FindDirectChild(targetParent, targetName);
-            if (existing != null) return;
+            Transform flameRootTransform =
+                NadaRigPaths.FindDirectChild(orbitalsEffectsRootTransform, "flame");
 
-            Transform src = NadaRigPaths.FindDirectChild(sourceParent, sourceName);
-            if (src == null) return;
+            if (flameRootTransform == null)
+                return null;
 
-            var clone = Object.Instantiate(src.gameObject, targetParent, false);
-            clone.name = targetName;
-            clone.SetActive(true);
+            Transform sparksSourceTransform =
+                NadaRigPaths.FindDirectChild(flameRootTransform, "sparcs_front");
 
-            NadaRigTransforms.ResetLocalTransform(clone.transform);
-        }
+            if (sparksSourceTransform == null)
+                return null;
 
-        internal static void FinalizeLocalOrbsBranch(Transform localOrbsTf)
-        {
-            if (localOrbsTf == null) return;
+            var sparksObject =
+                Object.Instantiate(sparksSourceTransform.gameObject, localEffectsRootTransform, false);
 
-            CollapseOrbMeshIntoParent(localOrbsTf);
-            OrganizeLocalOrbsBranch(localOrbsTf);
-            NadaRigTransforms.NormalizeParticleSpacesUnder(localOrbsTf, ParticleSystemSimulationSpace.Local);
+            sparksObject.name = Plugin.SparksName;
+            sparksObject.SetActive(true);
 
-            Transform orbVisualTf = EnsureLocalOrbVisualChild(localOrbsTf);
-            if (orbVisualTf != null)
-                NadaRigTransforms.NormalizeParticleSpacesUnder(orbVisualTf, ParticleSystemSimulationSpace.Local);
-        }
-        
-        internal static void EnsureLocalOrbitalsChildren(Transform orbitalsTf, Transform localOrbsTf)
-        {
-            if (orbitalsTf == null || localOrbsTf == null) return;
+            sparksObject.transform.localPosition = sparksSourceTransform.localPosition;
+            sparksObject.transform.localRotation = sparksSourceTransform.localRotation;
+            sparksObject.transform.localScale = sparksSourceTransform.localScale;
 
-            Transform effectsRoot = NadaRigPaths.FindDirectChild(localOrbsTf, "effects");
-            if (effectsRoot == null) return;
-
-            Transform flameRoot = NadaRigPaths.FindDirectChild(effectsRoot, "flame");
-            if (flameRoot == null) return;
-
-            CloneLocalOrbitalsChild(flameRoot, orbitalsTf, "flames", Plugin.OrbitalsFlamesName);
-            CloneLocalOrbitalsChild(flameRoot, orbitalsTf, "embers", Plugin.OrbitalsEmbersName);
-        }
-
-        private static void CloneLocalOrbitalsChild(
-            Transform sourceParent,
-            Transform targetParent,
-            string sourceName,
-            string targetName)
-        {
-            if (sourceParent == null || targetParent == null) return;
-
-            Transform existing = NadaRigPaths.FindDirectChild(targetParent, targetName);
-            if (existing != null) return;
-
-            Transform src = NadaRigPaths.FindDirectChild(sourceParent, sourceName);
-            if (src == null) return;
-
-            var clone = Object.Instantiate(src.gameObject, targetParent, false);
-            clone.name = targetName;
-            clone.SetActive(true);
-
-            clone.transform.localPosition = src.localPosition;
-            clone.transform.localRotation = src.localRotation;
-            clone.transform.localScale = src.localScale;
-
-            NadaRigTransforms.NormalizeParticleSpacesUnder(clone.transform, ParticleSystemSimulationSpace.World);
-        }
-
-        internal static Transform EnsureLocalOrbVisualChild(Transform localOrbsTf)
-        {
-            if (localOrbsTf == null) return null;
-
-            Transform existing = NadaRigPaths.FindDirectChild(localOrbsTf, "Orb_00");
-            if (existing != null)
+            foreach (var targetFollowMotion in sparksObject.GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaTargetFollowMotion>(true))
             {
-                NadaRigTransforms.DisableRootVisualContent(localOrbsTf);
-                return existing;
+                if (targetFollowMotion == null)
+                    continue;
+
+                Object.Destroy(targetFollowMotion);
             }
 
-            MeshFilter rootMf = localOrbsTf.GetComponent<MeshFilter>();
-            MeshRenderer rootMr = localOrbsTf.GetComponent<MeshRenderer>();
+            NadaRigTransforms.NormalizeParticleSpacesUnder(
+                sparksObject.transform,
+                ParticleSystemSimulationSpace.World);
 
-            if (rootMf == null || rootMr == null)
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: Added local Sparks branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
+                $"as '{Plugin.SparksName}' (owner='{ownerNameForLogs}').");
+
+            return sparksObject.transform;
+        }
+
+        internal static void FinalizeLocalOrbsBranch(Transform localOrbsRootTransform)
+        {
+            if (localOrbsRootTransform == null)
+                return;
+
+            CollapseOrbMeshIntoParent(localOrbsRootTransform);
+            OrganizeLocalOrbsBranch(localOrbsRootTransform);
+
+            NadaRigTransforms.NormalizeParticleSpacesUnder(
+                localOrbsRootTransform,
+                ParticleSystemSimulationSpace.Local);
+
+            Transform localOrbVisualTransform =
+                EnsureLocalOrbVisualChild(localOrbsRootTransform);
+
+            if (localOrbVisualTransform != null)
+            {
+                NadaRigTransforms.NormalizeParticleSpacesUnder(
+                    localOrbVisualTransform,
+                    ParticleSystemSimulationSpace.Local);
+            }
+        }
+
+        internal static void EnsureLocalOrbitalsChildren(
+            Transform orbitalsRootTransform,
+            Transform localOrbsRootTransform)
+        {
+            if (orbitalsRootTransform == null || localOrbsRootTransform == null)
+                return;
+
+            Transform orbitalsEffectsRootTransform =
+                NadaRigPaths.FindDirectChild(localOrbsRootTransform, "effects");
+
+            if (orbitalsEffectsRootTransform == null)
+                return;
+
+            Transform flameRootTransform =
+                NadaRigPaths.FindDirectChild(orbitalsEffectsRootTransform, "flame");
+
+            if (flameRootTransform == null)
+                return;
+
+            CloneLocalOrbitalsChild(
+                flameRootTransform,
+                orbitalsRootTransform,
+                "flames",
+                Plugin.OrbitalsFlamesName);
+
+            CloneLocalOrbitalsChild(
+                flameRootTransform,
+                orbitalsRootTransform,
+                "embers",
+                Plugin.OrbitalsEmbersName);
+        }
+
+        internal static Transform EnsureLocalOrbVisualChild(Transform localOrbsRootTransform)
+        {
+            if (localOrbsRootTransform == null)
+                return null;
+
+            Transform existingOrbVisualTransform =
+                NadaRigPaths.FindDirectChild(localOrbsRootTransform, "Orb_00");
+
+            if (existingOrbVisualTransform != null)
+            {
+                NadaRigTransforms.DisableRootVisualContent(localOrbsRootTransform);
+                return existingOrbVisualTransform;
+            }
+
+            MeshFilter rootMeshFilter = localOrbsRootTransform.GetComponent<MeshFilter>();
+            MeshRenderer rootMeshRenderer = localOrbsRootTransform.GetComponent<MeshRenderer>();
+
+            if (rootMeshFilter == null || rootMeshRenderer == null)
             {
                 Plugin.Log.LogWarning(
-                    $"{Plugin.ModName}: Could not create Orb_00 because root orb visual mesh/renderer was missing at '{NadaWeaponTargets.FullPath(localOrbsTf)}'.");
+                    $"{Plugin.ModName}: Could not create Orb_00 because root orb visual mesh/renderer was missing at '{NadaWeaponTargets.FullPath(localOrbsRootTransform)}'.");
+
                 return null;
             }
 
-            var go = new GameObject("Orb_00");
-            Transform orbVisualTf = go.transform;
-            orbVisualTf.SetParent(localOrbsTf, false);
+            var orbVisualObject = new GameObject("Orb_00");
+            Transform orbVisualTransform = orbVisualObject.transform;
+            orbVisualTransform.SetParent(localOrbsRootTransform, false);
 
-            NadaRigTransforms.CopyMeshFilterIfMissing(localOrbsTf, orbVisualTf);
-            NadaRigTransforms.CopyMeshRendererIfMissing(localOrbsTf, orbVisualTf);
+            NadaRigTransforms.CopyMeshFilterIfMissing(localOrbsRootTransform, orbVisualTransform);
+            NadaRigTransforms.CopyMeshRendererIfMissing(localOrbsRootTransform, orbVisualTransform);
 
-            orbVisualTf.localPosition = Vector3.zero;
-            orbVisualTf.localRotation = Quaternion.identity;
-            orbVisualTf.localScale = Vector3.one;
+            orbVisualTransform.localPosition = Vector3.zero;
+            orbVisualTransform.localRotation = Quaternion.identity;
+            orbVisualTransform.localScale = Vector3.one;
 
-            NadaRigTransforms.DisableRootVisualContent(localOrbsTf);
+            NadaRigTransforms.DisableRootVisualContent(localOrbsRootTransform);
 
             Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: Created clean orb visual child 'Orb_00' under '{NadaWeaponTargets.FullPath(localOrbsTf)}'.");
+                $"{Plugin.ModName}: Created clean orb visual child 'Orb_00' under '{NadaWeaponTargets.FullPath(localOrbsRootTransform)}'.");
 
-            return orbVisualTf;
+            return orbVisualTransform;
         }
 
-        internal static void OrganizeLocalOrbsBranch(Transform orbsTf)
+        internal static void OrganizeLocalOrbsBranch(Transform localOrbsRootTransform)
         {
-            if (orbsTf == null) return;
+            if (localOrbsRootTransform == null)
+                return;
 
-            Transform effectsRoot = NadaRigPaths.FindDirectChild(orbsTf, "effects");
-            if (effectsRoot == null) return;
+            Transform orbitalsEffectsRootTransform =
+                NadaRigPaths.FindDirectChild(localOrbsRootTransform, "effects");
 
-            NadaRigTransforms.RemoveDirectChildIfPresent(effectsRoot, "SFX Start");
-            NadaRigTransforms.RemoveDirectChildIfPresent(effectsRoot, "SFX");
-            NadaRigTransforms.RemoveDirectChildIfPresent(effectsRoot, "Point light");
-            NadaRigTransforms.RemoveDirectChildIfPresent(effectsRoot, "Particle System Force Field");
-            NadaRigTransforms.RemoveDirectChildIfPresent(effectsRoot, "flame");
+            if (orbitalsEffectsRootTransform == null)
+                return;
 
-            if (effectsRoot.childCount == 0)
-                Object.Destroy(effectsRoot.gameObject);
+            NadaRigTransforms.RemoveDirectChildIfPresent(orbitalsEffectsRootTransform, "SFX Start");
+            NadaRigTransforms.RemoveDirectChildIfPresent(orbitalsEffectsRootTransform, "SFX");
+            NadaRigTransforms.RemoveDirectChildIfPresent(orbitalsEffectsRootTransform, "Point light");
+            NadaRigTransforms.RemoveDirectChildIfPresent(orbitalsEffectsRootTransform, "Particle System Force Field");
+            NadaRigTransforms.RemoveDirectChildIfPresent(orbitalsEffectsRootTransform, "flame");
+
+            if (orbitalsEffectsRootTransform.childCount == 0)
+                Object.Destroy(orbitalsEffectsRootTransform.gameObject);
         }
 
-        private static void SplitFlameChildrenIntoEffects(Transform effectsRoot, Transform outerFlamesTf)
+        private static void CloneLocalOrbitalsChild(
+            Transform sourceParentTransform,
+            Transform targetParentTransform,
+            string sourceChildName,
+            string targetChildName)
         {
-            if (effectsRoot == null || outerFlamesTf == null) return;
+            if (sourceParentTransform == null || targetParentTransform == null)
+                return;
 
-            Transform flareTf = NadaRigPaths.FindDescendantByName(outerFlamesTf, "flare");
-            if (flareTf != null)
+            Transform existingChildTransform =
+                NadaRigPaths.FindDirectChild(targetParentTransform, targetChildName);
+
+            if (existingChildTransform != null)
+                return;
+
+            Transform sourceChildTransform =
+                NadaRigPaths.FindDirectChild(sourceParentTransform, sourceChildName);
+
+            if (sourceChildTransform == null)
+                return;
+
+            var clonedChildObject =
+                Object.Instantiate(sourceChildTransform.gameObject, targetParentTransform, false);
+
+            clonedChildObject.name = targetChildName;
+            clonedChildObject.SetActive(true);
+
+            clonedChildObject.transform.localPosition = sourceChildTransform.localPosition;
+            clonedChildObject.transform.localRotation = sourceChildTransform.localRotation;
+            clonedChildObject.transform.localScale = sourceChildTransform.localScale;
+
+            NadaRigTransforms.NormalizeParticleSpacesUnder(
+                clonedChildObject.transform,
+                ParticleSystemSimulationSpace.World);
+        }
+
+        private static void SplitFlameChildrenIntoEffects(
+            Transform localEffectsRootTransform,
+            Transform outerFlamesTransform)
+        {
+            if (localEffectsRootTransform == null || outerFlamesTransform == null)
+                return;
+
+            Transform flareTransform =
+                NadaRigPaths.FindDescendantByName(outerFlamesTransform, "flare");
+
+            if (flareTransform != null)
             {
-                flareTf.name = Plugin.FlareName;
+                flareTransform.name = Plugin.FlareName;
 
-                if (flareTf.parent != effectsRoot)
-                    flareTf.SetParent(effectsRoot, true);
+                if (flareTransform.parent != localEffectsRootTransform)
+                    flareTransform.SetParent(localEffectsRootTransform, true);
             }
 
-            Transform innerTf = NadaRigPaths.FindDescendantByName(outerFlamesTf, "fx_Torch_Basic");
-            if (innerTf != null)
-            {
-                innerTf.name = Plugin.InnerFlamesName;
+            Transform innerFlamesTransform =
+                NadaRigPaths.FindDescendantByName(outerFlamesTransform, "fx_Torch_Basic");
 
-                if (innerTf.parent != effectsRoot)
-                    innerTf.SetParent(effectsRoot, true);
+            if (innerFlamesTransform != null)
+            {
+                innerFlamesTransform.name = Plugin.InnerFlamesName;
+
+                if (innerFlamesTransform.parent != localEffectsRootTransform)
+                    innerFlamesTransform.SetParent(localEffectsRootTransform, true);
             }
         }
 
-        private static void CollapseOrbMeshIntoParent(Transform orbsTf)
+        private static void CollapseOrbMeshIntoParent(Transform localOrbsRootTransform)
         {
-            if (orbsTf == null) return;
+            if (localOrbsRootTransform == null)
+                return;
 
-            Transform orbMeshTf = NadaRigPaths.FindDirectChild(orbsTf, "demister_ball");
-            if (orbMeshTf == null) return;
+            Transform orbMeshTransform =
+                NadaRigPaths.FindDirectChild(localOrbsRootTransform, "demister_ball");
 
-            Vector3 oldLocalScale = orbMeshTf.localScale;
+            if (orbMeshTransform == null)
+                return;
 
-            NadaRigTransforms.CopyMeshFilterIfMissing(orbMeshTf, orbsTf);
-            NadaRigTransforms.CopyMeshRendererIfMissing(orbMeshTf, orbsTf);
+            Vector3 originalLocalScale = orbMeshTransform.localScale;
 
-            while (orbMeshTf.childCount > 0)
+            NadaRigTransforms.CopyMeshFilterIfMissing(orbMeshTransform, localOrbsRootTransform);
+            NadaRigTransforms.CopyMeshRendererIfMissing(orbMeshTransform, localOrbsRootTransform);
+
+            while (orbMeshTransform.childCount > 0)
             {
-                Transform child = orbMeshTf.GetChild(0);
-                child.SetParent(orbsTf, true);
+                Transform childTransform = orbMeshTransform.GetChild(0);
+                childTransform.SetParent(localOrbsRootTransform, true);
             }
 
-            orbsTf.localScale = oldLocalScale;
+            localOrbsRootTransform.localScale = originalLocalScale;
 
-            Object.Destroy(orbMeshTf.gameObject);
+            Object.Destroy(orbMeshTransform.gameObject);
         }
     }
 }

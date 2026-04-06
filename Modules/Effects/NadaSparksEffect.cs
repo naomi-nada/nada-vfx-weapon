@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using NADA.VFX.Core.Color;
 using NADA.VFX.Core.State;
+using NADA.VFX.Runtime.Binding;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
 {
-    internal sealed class NadaSparksEffect : MonoBehaviour
+    internal sealed class NadaSparksEffect : MonoBehaviour, INadaItemDataReceiver
     {
         private global::ItemDrop.ItemData _itemData;
 
@@ -46,7 +47,7 @@ namespace NADA.VFX.Modules.Effects
             public ParticleSystem.MinMaxCurve RateOverDistance;
         }
 
-        internal void SetItemData(global::ItemDrop.ItemData itemData)
+        public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
         }

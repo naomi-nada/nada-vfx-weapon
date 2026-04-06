@@ -1,82 +1,78 @@
 using NADA.VFX.Modules.Effects;
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Execution
+namespace NADA.VFX.Runtime.Binding
 {
     internal static class NadaEffectBinder
     {
-        public static void BindOrbitalsEffect(
-            Transform orbitalsRoot,
-            Transform localOrbsRoot,
+        internal static void BindInnerFlamesEffect(
+            Transform innerFlamesTransform,
             global::ItemDrop.ItemData itemData)
         {
-            if (orbitalsRoot == null) return;
-
-            var effect = orbitalsRoot.GetComponent<NadaOrbitalsEffect>();
-            if (effect == null)
-                effect = orbitalsRoot.gameObject.AddComponent<NadaOrbitalsEffect>();
-
-            effect.SetItemData(itemData);
-            effect.SetLocalOrbsRoot(localOrbsRoot);
+            BindItemDataEffect<NadaInnerFlamesEffect>(innerFlamesTransform, itemData);
         }
 
-        public static void BindMirageEffect(
-            Transform mirageTf,
+        internal static void BindOuterFlamesEffect(
+            Transform outerFlamesTransform,
             global::ItemDrop.ItemData itemData)
         {
-            if (mirageTf == null) return;
-
-            var effect = mirageTf.GetComponent<NadaMirageEffect>();
-            if (effect == null)
-                effect = mirageTf.gameObject.AddComponent<NadaMirageEffect>();
-
-            effect.SetItemData(itemData);
+            BindItemDataEffect<NadaOuterFlamesEffect>(outerFlamesTransform, itemData);
         }
 
-        public static void BindSparksEffect(
-            Transform sparksTf,
+        internal static void BindFlareEffect(
+            Transform flareTransform,
             global::ItemDrop.ItemData itemData)
         {
-            if (sparksTf == null) return;
-
-            var effect = sparksTf.GetComponent<NadaSparksEffect>();
-            if (effect == null)
-                effect = sparksTf.gameObject.AddComponent<NadaSparksEffect>();
-
-            effect.SetItemData(itemData);
-        }
-        
-        public static void BindOuterFlamesEffect(Transform effectTf, global::ItemDrop.ItemData itemData)
-        {
-            if (effectTf == null) return;
-
-            var effect = effectTf.GetComponent<NADA.VFX.Modules.Effects.NadaOuterFlamesEffect>();
-            if (effect == null)
-                effect = effectTf.gameObject.AddComponent<NADA.VFX.Modules.Effects.NadaOuterFlamesEffect>();
-
-            effect.SetItemData(itemData);
+            BindItemDataEffect<NadaFlareEffect>(flareTransform, itemData);
         }
 
-        public static void BindInnerFlamesEffect(Transform effectTf, global::ItemDrop.ItemData itemData)
+        internal static void BindSparksEffect(
+            Transform sparksTransform,
+            global::ItemDrop.ItemData itemData)
         {
-            if (effectTf == null) return;
+            BindItemDataEffect<NadaSparksEffect>(sparksTransform, itemData);
+        }
 
-            var effect = effectTf.GetComponent<NADA.VFX.Modules.Effects.NadaInnerFlamesEffect>();
-            if (effect == null)
-                effect = effectTf.gameObject.AddComponent<NADA.VFX.Modules.Effects.NadaInnerFlamesEffect>();
+        internal static void BindMirageEffect(
+            Transform mirageTransform,
+            global::ItemDrop.ItemData itemData)
+        {
+            BindItemDataEffect<NadaMirageEffect>(mirageTransform, itemData);
+        }
 
+        internal static void BindOrbitalsEffect(
+            Transform orbitalsRootTransform,
+            Transform localOrbsRootTransform,
+            global::ItemDrop.ItemData itemData)
+        {
+            if (orbitalsRootTransform == null)
+                return;
+
+            var orbitalsEffect = GetOrAddEffect<NadaOrbitalsEffect>(orbitalsRootTransform);
+            orbitalsEffect.SetItemData(itemData);
+            orbitalsEffect.SetLocalOrbsRootTransform(localOrbsRootTransform);
+        }
+
+        private static void BindItemDataEffect<TEffect>(
+            Transform effectRootTransform,
+            global::ItemDrop.ItemData itemData)
+            where TEffect : MonoBehaviour, INadaItemDataReceiver
+        {
+            if (effectRootTransform == null)
+                return;
+
+            TEffect effect = GetOrAddEffect<TEffect>(effectRootTransform);
             effect.SetItemData(itemData);
         }
 
-        public static void BindFlareEffect(Transform effectTf, global::ItemDrop.ItemData itemData)
+        private static TEffect GetOrAddEffect<TEffect>(Transform rootTransform)
+            where TEffect : Component
         {
-            if (effectTf == null) return;
-
-            var effect = effectTf.GetComponent<NADA.VFX.Modules.Effects.NadaFlareEffect>();
+            TEffect effect = rootTransform.GetComponent<TEffect>();
             if (effect == null)
-                effect = effectTf.gameObject.AddComponent<NADA.VFX.Modules.Effects.NadaFlareEffect>();
+                effect = rootTransform.gameObject.AddComponent<TEffect>();
 
-            effect.SetItemData(itemData);
+            return effect;
         }
     }
 }

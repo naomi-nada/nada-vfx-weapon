@@ -6,7 +6,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 using NADA.VFX.Core.Config;
-using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Runtime.Structure;
 
 namespace NADA.VFX
 {
@@ -15,32 +15,31 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.5.6";
+        public const string ModVersion = "0.5.7";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
 
         private static readonly Harmony Harmony = new Harmony(ModGuid);
-        
-        internal const string WorldRootName = "NADA VFX World";
 
-        internal const string LocalWeaponRootName = "Nada Weapon (L)";
-        internal const string WorldWeaponRootName = "Nada Weapon (W)";
-
+        // Runtime root names
+        internal const string LocalWeaponRootName = "NADA Weapon";
         internal const string EffectsRootName = "Effects";
 
+        // Target/reference prefabs
         internal const string TargetPrefabName = "BWA_FlametalGreatSword";
         internal const string ReferencePrefabName = "SwordDyrnwyn";
         internal const string ReferenceRigPath = "attach/Burny vfx";
         internal const string DemisterPrefabName = "demister_ball";
 
+        // Core effect names
         internal const string InnerFlamesName = "Inner Flames";
         internal const string OuterFlamesName = "Outer Flames";
-        
         internal const string FlareName = "Flare";
         internal const string SparksName = "Sparks";
         internal const string MirageName = "Mirage";
-        
+
+        // Orbitals names
         internal const string OrbitalsName = "Orbitals";
         internal const string OrbitalsOrbsName = "Orbs";
         internal const string OrbitalsRigRootName = "Orbitals Rig";
@@ -57,6 +56,7 @@ namespace NADA.VFX
         internal const string OrbitalsEmbersPoolName = "Embers Pool";
         internal const int MaxOrbitalsEmberVisuals = 20;
 
+        // Reference rig transform
         internal static readonly Vector3 RigLocalPosition = new Vector3(0.0f, 1.1f, 0.0f);
         internal static readonly Vector3 RigLocalEulerAngles = new Vector3(90f, 0f, 0f);
         internal static readonly Vector3 RigLocalScale = new Vector3(1.25f, 1.25f, 1.25f);
@@ -71,7 +71,7 @@ namespace NADA.VFX
             Log.LogInfo($"{ModName} loaded! Version {ModVersion}");
 
             Harmony.PatchAll(Assembly.GetExecutingAssembly());
-            Log.LogInfo($"{ModName}: Patched ZNetScene.Awake + VisEquipment.UpdateEquipmentVisuals + ItemDrop.Awake.");
+            Log.LogInfo($"{ModName}: Applied Harmony patches.");
 
             StartCoroutine(NadaRigCache.CacheReferenceAssetsWhenReady());
         }

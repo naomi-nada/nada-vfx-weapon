@@ -1,6 +1,5 @@
 using System;
 using HarmonyLib;
-using NADA.VFX.Runtime.Binding;
 
 namespace NADA.VFX.Weapons.Patches
 {
@@ -12,8 +11,6 @@ namespace NADA.VFX.Weapons.Patches
             try
             {
                 Plugin.Log.LogInfo($"{Plugin.ModName}: ZNetScene.Awake postfix fired.");
-                
-                NadaRigCatalogAssembly.DestroyCatalogRoots();
             }
             catch (Exception e)
             {

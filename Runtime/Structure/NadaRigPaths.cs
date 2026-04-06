@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Runtime.Structure
 {
     internal static class NadaRigPaths
     {

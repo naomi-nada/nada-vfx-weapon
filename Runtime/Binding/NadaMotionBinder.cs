@@ -1,49 +1,59 @@
 using NADA.VFX.Modules.Motion;
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Execution
+namespace NADA.VFX.Runtime.Binding
 {
     internal static class NadaMotionBinder
     {
-        public static void BindOrbsMotion(
-            Transform orbsRoot,
+        internal static void BindOrbsMotion(
+            Transform orbsRootTransform,
             global::ItemDrop.ItemData itemData)
         {
-            if (orbsRoot == null) return;
+            if (orbsRootTransform == null)
+                return;
 
-            var motion = orbsRoot.GetComponent<NadaOrbitalsOrbsMotion>();
+            var orbsMotion = GetOrAddMotion<NadaOrbitalsOrbsMotion>(orbsRootTransform);
+            orbsMotion.SetItemData(itemData);
+        }
+
+        internal static void BindOrbitalsRigFollow(
+            Transform orbitalsRigRootTransform,
+            Transform followTargetTransform)
+        {
+            BindTargetFollowInternal(
+                orbitalsRigRootTransform,
+                followTargetTransform);
+        }
+
+        internal static void BindTargetFollow(
+            Transform targetFollowerTransform,
+            Transform followTargetTransform)
+        {
+            BindTargetFollowInternal(
+                targetFollowerTransform,
+                followTargetTransform);
+        }
+
+        private static void BindTargetFollowInternal(
+            Transform targetFollowerTransform,
+            Transform followTargetTransform)
+        {
+            if (targetFollowerTransform == null || followTargetTransform == null)
+                return;
+
+            var targetFollowMotion = GetOrAddMotion<NadaTargetFollowMotion>(targetFollowerTransform);
+            targetFollowMotion.SetLocalOffset(Vector3.zero, Quaternion.identity);
+            targetFollowMotion.SetTargetTransform(followTargetTransform);
+        }
+
+        private static TMotion GetOrAddMotion<TMotion>(Transform rootTransform)
+            where TMotion : Component
+        {
+            TMotion motion = rootTransform.GetComponent<TMotion>();
             if (motion == null)
-                motion = orbsRoot.gameObject.AddComponent<NadaOrbitalsOrbsMotion>();
+                motion = rootTransform.gameObject.AddComponent<TMotion>();
 
-            motion.SetItemData(itemData);
-        }
-
-        public static void BindOrbitalsRigFollow(
-            Transform orbitalsRigRoot,
-            Transform followTarget)
-        {
-            if (orbitalsRigRoot == null || followTarget == null) return;
-
-            var follow = orbitalsRigRoot.GetComponent<NadaWorldFollowMotion>();
-            if (follow == null)
-                follow = orbitalsRigRoot.gameObject.AddComponent<NadaWorldFollowMotion>();
-
-            follow.SetOffset(Vector3.zero, Quaternion.identity);
-            follow.SetTarget(followTarget);
-        }
-
-        public static void BindWorldFollow(
-            Transform effectTf,
-            Transform followTarget)
-        {
-            if (effectTf == null || followTarget == null) return;
-
-            var follow = effectTf.GetComponent<NadaWorldFollowMotion>();
-            if (follow == null)
-                follow = effectTf.gameObject.AddComponent<NadaWorldFollowMotion>();
-
-            follow.SetOffset(Vector3.zero, Quaternion.identity);
-            follow.SetTarget(followTarget);
+            return motion;
         }
     }
 }

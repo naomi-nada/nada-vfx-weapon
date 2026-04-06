@@ -3,7 +3,7 @@ using UnityEngine;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Weapons.Targets;
 
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Runtime.Structure
 {
     internal static class NadaRigMaintenance
     {

@@ -1,56 +1,98 @@
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Runtime.Structure
 {
     internal sealed class NadaRigCatalog
     {
-        public Transform LocalWeaponRoot { get; private set; }
+        // Core
+        public Transform LocalWeaponRootTransform { get; private set; }
+        public Transform LocalEffectsRootTransform { get; private set; }
 
-        public Transform LocalEffectsRoot { get; private set; }
+        // Core Effects
+        public Transform OuterFlamesTransform { get; private set; }
+        public Transform FlareTransform { get; private set; }
+        public Transform InnerFlamesTransform { get; private set; }
 
-        public Transform OuterFlames { get; private set; }
-        public Transform Flare { get; private set; }
-        public Transform InnerFlames { get; private set; }
+        // Orbitals
+        public Transform OrbitalsRootTransform { get; private set; }
+        public Transform OrbitalsRigRootTransform { get; private set; }
 
-        public Transform OrbitalsRoot { get; private set; }
+        public Transform OrbitalsOrbsRootTransform { get; private set; }
+        public Transform OrbitalsFlamesRootTransform { get; private set; }
+        public Transform OrbitalsEmbersRootTransform { get; private set; }
 
-        public Transform OrbitalsOrbs { get; private set; }
-        public Transform OrbitalsFlames { get; private set; }
-        public Transform OrbitalsEmbers { get; private set; }
+        public Transform OrbitalsFlamesPoolRootTransform { get; private set; }
+        public Transform OrbitalsEmbersPoolRootTransform { get; private set; }
 
-        public Transform Mirage { get; private set; }
-        public Transform Sparks { get; private set; }
-
-        public Transform OrbitalsRig { get; private set; }
+        // Other Effects
+        public Transform MirageTransform { get; private set; }
+        public Transform SparksTransform { get; private set; }
 
         public bool IsValid =>
-            LocalWeaponRoot != null;
+            LocalWeaponRootTransform != null &&
+            LocalEffectsRootTransform != null;
 
-        internal static NadaRigCatalog Build(Transform localWeaponRootTf)
+        internal static NadaRigCatalog Build(Transform localWeaponRootTransform)
         {
             var catalog = new NadaRigCatalog
             {
-                LocalWeaponRoot = localWeaponRootTf
+                LocalWeaponRootTransform = localWeaponRootTransform
             };
 
-            if (localWeaponRootTf != null)
+            if (localWeaponRootTransform != null)
             {
-                catalog.LocalEffectsRoot = NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTf);
+                catalog.LocalEffectsRootTransform =
+                    NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTransform);
 
-                catalog.OrbitalsRoot = NadaRigPaths.FindLocalOrbitalsRoot(localWeaponRootTf);
-                catalog.OrbitalsRig = NadaRigPaths.FindLocalOrbitalsRigRoot(localWeaponRootTf);
-                catalog.OrbitalsOrbs = NadaRigPaths.FindLocalOrbsRoot(localWeaponRootTf);
-                catalog.Mirage = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.MirageName);
-                catalog.Sparks = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.SparksName);
+                // Core effects
+                catalog.OuterFlamesTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.OuterFlamesName);
 
-                catalog.OuterFlames = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.OuterFlamesName);
-                catalog.Flare = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.FlareName);
-                catalog.InnerFlames = NadaRigPaths.FindDirectChild(catalog.LocalEffectsRoot, Plugin.InnerFlamesName);
+                catalog.FlareTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.FlareName);
 
-                if (catalog.OrbitalsRoot != null)
+                catalog.InnerFlamesTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.InnerFlamesName);
+
+                // Other effects
+                catalog.MirageTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.MirageName);
+
+                catalog.SparksTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.SparksName);
+
+                // Orbitals
+                catalog.OrbitalsRootTransform =
+                    NadaRigPaths.FindLocalOrbitalsRoot(localWeaponRootTransform);
+
+                catalog.OrbitalsRigRootTransform =
+                    NadaRigPaths.FindLocalOrbitalsRigRoot(localWeaponRootTransform);
+
+                catalog.OrbitalsOrbsRootTransform =
+                    NadaRigPaths.FindLocalOrbsRoot(localWeaponRootTransform);
+
+                if (catalog.OrbitalsRootTransform != null)
                 {
-                    catalog.OrbitalsFlames = NadaRigPaths.FindDirectChild(catalog.OrbitalsRoot, Plugin.OrbitalsFlamesName);
-                    catalog.OrbitalsEmbers = NadaRigPaths.FindDirectChild(catalog.OrbitalsRoot, Plugin.OrbitalsEmbersName);
+                    catalog.OrbitalsFlamesRootTransform =
+                        NadaRigPaths.FindDirectChild(catalog.OrbitalsRootTransform, Plugin.OrbitalsFlamesName);
+
+                    catalog.OrbitalsEmbersRootTransform =
+                        NadaRigPaths.FindDirectChild(catalog.OrbitalsRootTransform, Plugin.OrbitalsEmbersName);
+                }
+
+                if (catalog.OrbitalsRigRootTransform != null)
+                {
+                    Transform poolsRoot =
+                        NadaRigPaths.FindDirectChild(catalog.OrbitalsRigRootTransform, Plugin.OrbitalsPoolsRootName);
+
+                    if (poolsRoot != null)
+                    {
+                        catalog.OrbitalsFlamesPoolRootTransform =
+                            NadaRigPaths.FindDirectChild(poolsRoot, Plugin.OrbitalsFlamesPoolName);
+
+                        catalog.OrbitalsEmbersPoolRootTransform =
+                            NadaRigPaths.FindDirectChild(poolsRoot, Plugin.OrbitalsEmbersPoolName);
+                    }
                 }
             }
 

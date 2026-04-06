@@ -3,12 +3,6 @@ using UnityEngine;
 
 namespace NADA.VFX.Modules.Motion
 {
-    internal enum OrbitalsVisualKind
-    {
-        Flames,
-        Embers
-    }
-
     internal sealed class NadaOrbitalsLeadMotion : MonoBehaviour
     {
         private const float DefaultTravelLength = 2.0f;
@@ -19,12 +13,12 @@ namespace NADA.VFX.Modules.Motion
         private const float DefaultTurnDuration = 0.80f;
         private const float DefaultTurnsPerOneWayPass = 2.0f;
 
-        private const float DefaultRadius = 1.0f;
-        private const float MinRadius = 0.5f;
-        private const float MaxRadius = 1.5f;
+        private const float DefaultRadiusMultiplier = 1.0f;
+        private const float MinRadiusMultiplier = 0.5f;
+        private const float MaxRadiusMultiplier = 1.5f;
 
         private global::ItemDrop.ItemData _itemData;
-        private OrbitalsVisualKind _kind = OrbitalsVisualKind.Flames;
+        private OrbitalsVisualKind _visualKind = OrbitalsVisualKind.Flames;
 
         private Vector3 _baseLocalPosition;
         private Quaternion _baseLocalRotation = Quaternion.identity;
@@ -33,7 +27,7 @@ namespace NADA.VFX.Modules.Motion
         internal bool IsInitialized => _initialized;
 
         internal void Initialize(
-            OrbitalsVisualKind kind,
+            OrbitalsVisualKind visualKind,
             Vector3 baseLocalPosition,
             Quaternion baseLocalRotation,
             global::ItemDrop.ItemData itemData)
@@ -45,13 +39,15 @@ namespace NADA.VFX.Modules.Motion
                 _initialized = true;
             }
 
-            _kind = kind;
+            _visualKind = visualKind;
             _itemData = itemData;
         }
 
-        internal void SetKindAndItemData(OrbitalsVisualKind kind, global::ItemDrop.ItemData itemData)
+        internal void UpdateKindAndItemData(
+            OrbitalsVisualKind visualKind,
+            global::ItemDrop.ItemData itemData)
         {
-            _kind = kind;
+            _visualKind = visualKind;
             _itemData = itemData;
         }
 
@@ -61,55 +57,65 @@ namespace NADA.VFX.Modules.Motion
                 return;
 
             VfxState state = ResolveState();
-            float radius = ResolveRadius(state);
+            float radiusMultiplier = ResolveLeadRadiusMultiplier(state);
 
-            transform.localPosition = EvaluateLocalPosition(Time.time, radius);
+            transform.localPosition = EvaluateLeadLocalPosition(Time.time, radiusMultiplier);
             transform.localRotation = _baseLocalRotation;
         }
 
-        private Vector3 EvaluateLocalPosition(float timeValue, float radiusMult)
+        private Vector3 EvaluateLeadLocalPosition(float timeValue, float radiusMultiplier)
         {
-            float halfLength = DefaultTravelLength * 0.5f;
-            float spiralRadius = DefaultSpiralRadius * radiusMult;
+            float halfTravelLength = DefaultTravelLength * 0.5f;
+            float spiralRadius = DefaultSpiralRadius * radiusMultiplier;
 
-            float upTime = DefaultOneWayPassDuration;
-            float turnTime = DefaultTurnDuration;
-            float downTime = DefaultOneWayPassDuration;
-            float bottomTurnTime = DefaultTurnDuration;
+            float upwardPassDuration = DefaultOneWayPassDuration;
+            float topTurnDuration = DefaultTurnDuration;
+            float downwardPassDuration = DefaultOneWayPassDuration;
+            float bottomTurnDuration = DefaultTurnDuration;
 
-            float cycleDuration = upTime + turnTime + downTime + bottomTurnTime;
-            float t = Mathf.Repeat(timeValue, cycleDuration);
+            float cycleDuration =
+                upwardPassDuration +
+                topTurnDuration +
+                downwardPassDuration +
+                bottomTurnDuration;
+
+            float cycleTime = Mathf.Repeat(timeValue, cycleDuration);
 
             Vector3 localOffset;
 
-            if (t < upTime)
+            if (cycleTime < upwardPassDuration)
             {
-                float u = t / upTime;
-                float y = Mathf.Lerp(-halfLength, halfLength, u) + DefaultBladeCenterOffset;
+                float normalizedSegmentTime = cycleTime / upwardPassDuration;
+                float y = Mathf.Lerp(-halfTravelLength, halfTravelLength, normalizedSegmentTime) + DefaultBladeCenterOffset;
 
-                float angle = u * DefaultTurnsPerOneWayPass * Mathf.PI * 2f;
+                float angle = normalizedSegmentTime * DefaultTurnsPerOneWayPass * Mathf.PI * 2f;
                 float x = Mathf.Cos(angle) * spiralRadius;
                 float z = Mathf.Sin(angle) * spiralRadius;
 
                 localOffset = new Vector3(x, y, z);
             }
-            else if (t < upTime + turnTime)
+            else if (cycleTime < upwardPassDuration + topTurnDuration)
             {
-                float u = (t - upTime) / turnTime;
+                float normalizedSegmentTime = (cycleTime - upwardPassDuration) / topTurnDuration;
 
-                float angle = (DefaultTurnsPerOneWayPass * Mathf.PI * 2f) + (u * Mathf.PI);
+                float angle =
+                    (DefaultTurnsPerOneWayPass * Mathf.PI * 2f) +
+                    (normalizedSegmentTime * Mathf.PI);
+
                 float x = Mathf.Cos(angle) * spiralRadius;
                 float z = Mathf.Sin(angle) * spiralRadius;
-                float y = halfLength + DefaultBladeCenterOffset;
+                float y = halfTravelLength + DefaultBladeCenterOffset;
 
                 localOffset = new Vector3(x, y, z);
             }
-            else if (t < upTime + turnTime + downTime)
+            else if (cycleTime < upwardPassDuration + topTurnDuration + downwardPassDuration)
             {
-                float u = (t - upTime - turnTime) / downTime;
-                float y = Mathf.Lerp(halfLength, -halfLength, u) + DefaultBladeCenterOffset;
+                float normalizedSegmentTime =
+                    (cycleTime - upwardPassDuration - topTurnDuration) / downwardPassDuration;
 
-                float angle = Mathf.PI + (u * DefaultTurnsPerOneWayPass * Mathf.PI * 2f);
+                float y = Mathf.Lerp(halfTravelLength, -halfTravelLength, normalizedSegmentTime) + DefaultBladeCenterOffset;
+
+                float angle = Mathf.PI + (normalizedSegmentTime * DefaultTurnsPerOneWayPass * Mathf.PI * 2f);
                 float x = Mathf.Cos(angle) * spiralRadius;
                 float z = Mathf.Sin(angle) * spiralRadius;
 
@@ -117,12 +123,17 @@ namespace NADA.VFX.Modules.Motion
             }
             else
             {
-                float u = (t - upTime - turnTime - downTime) / bottomTurnTime;
+                float normalizedSegmentTime =
+                    (cycleTime - upwardPassDuration - topTurnDuration - downwardPassDuration) / bottomTurnDuration;
 
-                float angle = Mathf.PI + (DefaultTurnsPerOneWayPass * Mathf.PI * 2f) + (u * Mathf.PI);
+                float angle =
+                    Mathf.PI +
+                    (DefaultTurnsPerOneWayPass * Mathf.PI * 2f) +
+                    (normalizedSegmentTime * Mathf.PI);
+
                 float x = Mathf.Cos(angle) * spiralRadius;
                 float z = Mathf.Sin(angle) * spiralRadius;
-                float y = -halfLength + DefaultBladeCenterOffset;
+                float y = -halfTravelLength + DefaultBladeCenterOffset;
 
                 localOffset = new Vector3(x, y, z);
             }
@@ -146,16 +157,19 @@ namespace NADA.VFX.Modules.Motion
             return VfxStateIO.FromConfig();
         }
 
-        private float ResolveRadius(VfxState state)
+        private float ResolveLeadRadiusMultiplier(VfxState state)
         {
-            float value = _kind == OrbitalsVisualKind.Embers
+            float radiusMultiplier = _visualKind == OrbitalsVisualKind.Embers
                 ? state.OrbitalsEmbersRadius
                 : state.OrbitalsFlamesRadius;
 
-            if (float.IsNaN(value) || float.IsInfinity(value))
-                return DefaultRadius;
+            if (float.IsNaN(radiusMultiplier) || float.IsInfinity(radiusMultiplier))
+                return DefaultRadiusMultiplier;
 
-            return Mathf.Clamp(value, MinRadius, MaxRadius);
+            return Mathf.Clamp(
+                radiusMultiplier,
+                MinRadiusMultiplier,
+                MaxRadiusMultiplier);
         }
     }
 }
