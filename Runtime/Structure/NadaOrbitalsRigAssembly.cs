@@ -29,7 +29,7 @@ namespace NADA.VFX.Runtime.Structure
                     $"(owner='{ownerNameForLogs}').");
             }
 
-            NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsAnchorsRootName);
+            NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsMotionRootsName);
             NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsPoolsRootName);
 
             return orbitalsRigTransform;
@@ -44,22 +44,41 @@ namespace NADA.VFX.Runtime.Structure
             if (orbitalsRigTransform == null || orbitalsRootTransform == null)
                 return;
 
+            Transform liveOrbsTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsOrbsName);
+
             Transform liveFlamesTransform =
                 NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsFlamesName);
 
             Transform liveEmbersTransform =
                 NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsEmbersName);
 
+            Transform liveOrbsHeadVisualTransform = ResolveOrbsHeadVisualTransform(liveOrbsTransform);
+
+            Transform orbsMotionRootTransform = EnsureOrbitalsMotionRoot(
+                orbitalsRigTransform,
+                Plugin.OrbitalsOrbsMotionRootName,
+                liveOrbsTransform,
+                ownerNameForLogs);
+
             Transform flamesMotionRootTransform = EnsureOrbitalsMotionRoot(
                 orbitalsRigTransform,
-                Plugin.OrbitalsFlamesLeadAnchorName,
+                Plugin.OrbitalsFlamesMotionRootName,
                 liveFlamesTransform,
                 ownerNameForLogs);
 
             Transform embersMotionRootTransform = EnsureOrbitalsMotionRoot(
                 orbitalsRigTransform,
-                Plugin.OrbitalsEmbersLeadAnchorName,
+                Plugin.OrbitalsEmbersMotionRootName,
                 liveEmbersTransform,
+                ownerNameForLogs);
+
+            Transform orbsPoolRootTransform = EnsureOrbitalsPool(
+                orbitalsRigTransform,
+                Plugin.OrbitalsOrbsPoolName,
+                liveOrbsHeadVisualTransform,
+                Plugin.OrbitalsOrbsName,
+                Plugin.MaxOrbitalsOrbsVisuals,
                 ownerNameForLogs);
 
             Transform flamesPoolRootTransform = EnsureOrbitalsPool(
@@ -78,12 +97,34 @@ namespace NADA.VFX.Runtime.Structure
                 Plugin.MaxOrbitalsEmberVisuals,
                 ownerNameForLogs);
 
+            StripRuntimeMotionComponents(orbsMotionRootTransform);
             StripRuntimeMotionComponents(flamesMotionRootTransform);
             StripRuntimeMotionComponents(embersMotionRootTransform);
+
+            StripRuntimeMotionComponents(liveOrbsTransform);
+            StripRuntimeMotionComponents(liveOrbsHeadVisualTransform);
             StripRuntimeMotionComponents(liveFlamesTransform);
             StripRuntimeMotionComponents(liveEmbersTransform);
+
+            StripRuntimeMotionComponents(orbsPoolRootTransform);
             StripRuntimeMotionComponents(flamesPoolRootTransform);
             StripRuntimeMotionComponents(embersPoolRootTransform);
+
+            if (orbsMotionRootTransform != null &&
+                liveOrbsHeadVisualTransform != null &&
+                orbsPoolRootTransform != null)
+            {
+                NadaMotionBinder.BindOrbitalsMotion(
+                    orbsMotionRootTransform,
+                    NadaOrbitalsFamily.Orbs,
+                    itemData,
+                    liveOrbsHeadVisualTransform,
+                    orbsPoolRootTransform);
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: Bound unified Orbitals motion for Orbs on '{NadaWeaponTargets.FullPath(orbsMotionRootTransform)}' " +
+                    $"using head='{NadaWeaponTargets.FullPath(liveOrbsHeadVisualTransform)}' and pool='{NadaWeaponTargets.FullPath(orbsPoolRootTransform)}'.");
+            }
 
             if (flamesMotionRootTransform != null &&
                 liveFlamesTransform != null &&
@@ -127,21 +168,21 @@ namespace NADA.VFX.Runtime.Structure
             if (orbitalsRigTransform == null || sourceVisualTransform == null)
                 return null;
 
-            Transform anchorsRootTransform =
-                NadaRigPaths.FindDirectChild(orbitalsRigTransform, Plugin.OrbitalsAnchorsRootName);
+            Transform motionRootsTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRigTransform, Plugin.OrbitalsMotionRootsName);
 
-            if (anchorsRootTransform == null)
+            if (motionRootsTransform == null)
             {
-                anchorsRootTransform =
-                    NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsAnchorsRootName);
+                motionRootsTransform =
+                    NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsMotionRootsName);
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals anchors root '{Plugin.OrbitalsAnchorsRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTransform)}' " +
+                    $"{Plugin.ModName}: Added Orbitals motion roots '{Plugin.OrbitalsMotionRootsName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
 
             Transform motionRootTransform =
-                NadaRigPaths.FindDirectChild(anchorsRootTransform, motionRootName);
+                NadaRigPaths.FindDirectChild(motionRootsTransform, motionRootName);
 
             bool createdMotionRoot = false;
 
@@ -149,11 +190,11 @@ namespace NADA.VFX.Runtime.Structure
             {
                 var motionRootObject = new GameObject(motionRootName);
                 motionRootTransform = motionRootObject.transform;
-                motionRootTransform.SetParent(anchorsRootTransform, false);
+                motionRootTransform.SetParent(motionRootsTransform, false);
                 createdMotionRoot = true;
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals motion root '{motionRootName}' under '{NadaWeaponTargets.FullPath(anchorsRootTransform)}' " +
+                    $"{Plugin.ModName}: Added Orbitals motion root '{motionRootName}' under '{NadaWeaponTargets.FullPath(motionRootsTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
 
@@ -254,7 +295,10 @@ namespace NADA.VFX.Runtime.Structure
                 pooledVisualObject.name = pooledVisualName;
                 pooledVisualObject.SetActive(false);
 
-                NadaRigTransforms.ResetLocalTransform(pooledVisualObject.transform);
+                NadaRigTransforms.ResetLocalPosePreserveScaleFromSource(
+                    pooledVisualObject.transform,
+                    sourceVisualTransform);
+
                 StripRuntimeMotionComponents(pooledVisualObject.transform);
                 NadaRigTransforms.NormalizeParticleSpacesUnder(
                     pooledVisualObject.transform,
@@ -264,6 +308,19 @@ namespace NADA.VFX.Runtime.Structure
                     $"{Plugin.ModName}: Added pooled Orbitals visual '{pooledVisualName}' under '{NadaWeaponTargets.FullPath(poolRootTransform)}' " +
                     $"(owner='{ownerNameForLogs}').");
             }
+        }
+
+        private static Transform ResolveOrbsHeadVisualTransform(Transform liveOrbsTransform)
+        {
+            if (liveOrbsTransform == null)
+                return null;
+
+            Transform headVisualTransform =
+                NadaRigPaths.FindDirectChild(liveOrbsTransform, "Orb_00");
+
+            return headVisualTransform != null
+                ? headVisualTransform
+                : liveOrbsTransform;
         }
 
         private static void StripRuntimeMotionComponents(Transform rootTransform)
@@ -278,6 +335,13 @@ namespace NADA.VFX.Runtime.Structure
 
                 Object.Destroy(followMotion);
             }
+        }
+        
+        private static float SafeDivide(float a, float b)
+        {
+            if (Mathf.Approximately(b, 0f))
+                return a;
+            return a / b;
         }
     }
 }

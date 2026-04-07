@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using NADA.VFX.Runtime.Binding;
-using NADA.VFX.Runtime.Structure;
 using NADA.VFX.Core.Color;
 using NADA.VFX.Core.State;
+using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Runtime.Structure;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
@@ -13,10 +13,12 @@ namespace NADA.VFX.Modules.Effects
 
         private Transform _orbsRootTransform;
         private Transform _localOrbsRootTransform;
+        private Transform _orbsPoolRootTransform;
         private bool _lastOrbsEnabled;
         private bool _hasLastOrbsEnabled;
         private Vector3 _orbsBaseLocalScale;
         private bool _hasOrbsBaseLocalScale;
+        private readonly Dictionary<int, Vector3> _orbsPoolBaseLocalScaleByTransformId = new();
 
         private Transform _flamesRootTransform;
         private Transform _flamesPoolRootTransform;
@@ -182,6 +184,7 @@ namespace NADA.VFX.Modules.Effects
             _flamesRootTransform = NadaRigPaths.FindDirectChild(transform, Plugin.OrbitalsFlamesName);
             _embersRootTransform = NadaRigPaths.FindDirectChild(transform, Plugin.OrbitalsEmbersName);
 
+            _orbsPoolRootTransform = null;
             _flamesPoolRootTransform = null;
             _embersPoolRootTransform = null;
 
@@ -193,6 +196,9 @@ namespace NADA.VFX.Modules.Effects
 
             if (orbitalsPoolsRootTransform != null)
             {
+                _orbsPoolRootTransform =
+                    NadaRigPaths.FindDirectChild(orbitalsPoolsRootTransform, Plugin.OrbitalsOrbsPoolName);
+
                 _flamesPoolRootTransform =
                     NadaRigPaths.FindDirectChild(orbitalsPoolsRootTransform, Plugin.OrbitalsFlamesPoolName);
 
@@ -202,6 +208,12 @@ namespace NADA.VFX.Modules.Effects
 
             AppendUniqueGroupComponents(
                 _orbsRootTransform,
+                _orbsParticleSystems,
+                _orbsRenderers,
+                _orbsLights);
+
+            AppendUniqueGroupComponents(
+                _orbsPoolRootTransform,
                 _orbsParticleSystems,
                 _orbsRenderers,
                 _orbsLights);
@@ -777,24 +789,53 @@ namespace NADA.VFX.Modules.Effects
 
         private void CacheOrbsBaselineScale()
         {
-            if (_orbsRootTransform == null)
-                return;
-
-            if (!_hasOrbsBaseLocalScale)
+            if (_orbsRootTransform != null && !_hasOrbsBaseLocalScale)
             {
                 _orbsBaseLocalScale = _orbsRootTransform.localScale;
                 _hasOrbsBaseLocalScale = true;
+            }
+
+            if (_orbsPoolRootTransform == null)
+                return;
+
+            foreach (Transform pooledOrbTransform in _orbsPoolRootTransform)
+            {
+                if (pooledOrbTransform == null)
+                    continue;
+
+                int transformId = pooledOrbTransform.GetInstanceID();
+                if (_orbsPoolBaseLocalScaleByTransformId.ContainsKey(transformId))
+                    continue;
+
+                _orbsPoolBaseLocalScaleByTransformId[transformId] = pooledOrbTransform.localScale;
             }
         }
 
         private void ApplyOrbsScale(float scale)
         {
-            if (_orbsRootTransform == null || !_hasOrbsBaseLocalScale)
+            float clampedScale = ClampOrbScale(scale);
+            float scaleMultiplier = DefaultOrbBaselineScaleMultiplier * clampedScale;
+
+            if (_orbsRootTransform != null && _hasOrbsBaseLocalScale)
+            {
+                _orbsRootTransform.localScale =
+                    _orbsBaseLocalScale * scaleMultiplier;
+            }
+
+            if (_orbsPoolRootTransform == null)
                 return;
 
-            float clampedScale = ClampOrbScale(scale);
-            _orbsRootTransform.localScale =
-                _orbsBaseLocalScale * (DefaultOrbBaselineScaleMultiplier * clampedScale);
+            foreach (Transform pooledOrbTransform in _orbsPoolRootTransform)
+            {
+                if (pooledOrbTransform == null)
+                    continue;
+
+                int transformId = pooledOrbTransform.GetInstanceID();
+                if (!_orbsPoolBaseLocalScaleByTransformId.TryGetValue(transformId, out var baseLocalScale))
+                    continue;
+
+                pooledOrbTransform.localScale = baseLocalScale * scaleMultiplier;
+            }
         }
 
         private static float ClampOrbScale(float value)

@@ -121,5 +121,51 @@ namespace NADA.VFX.Runtime.Structure
                 catch { }
             }
         }
+        
+        internal static void ResetLocalPosePreserveScaleFromSource(
+            Transform targetTransform,
+            Transform sourceScaleTransform)
+        {
+            if (targetTransform == null)
+                return;
+
+            targetTransform.localPosition = Vector3.zero;
+            targetTransform.localRotation = Quaternion.identity;
+
+            if (sourceScaleTransform == null)
+            {
+                targetTransform.localScale = Vector3.one;
+                return;
+            }
+
+            MatchWorldScale(targetTransform, sourceScaleTransform.lossyScale);
+        }
+
+        internal static void MatchWorldScale(
+            Transform targetTransform,
+            Vector3 desiredWorldScale)
+        {
+            if (targetTransform == null)
+                return;
+
+            Transform parentTransform = targetTransform.parent;
+            Vector3 parentWorldScale = parentTransform != null
+                ? parentTransform.lossyScale
+                : Vector3.one;
+
+            targetTransform.localScale = new Vector3(
+                SafeDivide(desiredWorldScale.x, parentWorldScale.x),
+                SafeDivide(desiredWorldScale.y, parentWorldScale.y),
+                SafeDivide(desiredWorldScale.z, parentWorldScale.z)
+            );
+        }
+
+        private static float SafeDivide(float numerator, float denominator)
+        {
+            if (Mathf.Approximately(denominator, 0f))
+                return numerator;
+
+            return numerator / denominator;
+        }
     }
 }

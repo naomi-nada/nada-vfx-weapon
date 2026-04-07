@@ -38,21 +38,25 @@ namespace NADA.VFX
         internal const string FlareName = "Flare";
         internal const string SparksName = "Sparks";
         internal const string MirageName = "Mirage";
-
+        
         // Orbitals names
         internal const string OrbitalsName = "Orbitals";
-        internal const string OrbitalsOrbsName = "Orbs";
         internal const string OrbitalsRigRootName = "Orbitals Rig";
-        internal const string OrbitalsAnchorsRootName = "Orbitals Anchors";
+        internal const string OrbitalsMotionRootsName = "Orbitals Motion Roots";
         internal const string OrbitalsPoolsRootName = "Orbitals Pools";
 
+        internal const string OrbitalsOrbsName = "Orbs";
+        internal const string OrbitalsOrbsMotionRootName = "Orbs Motion Root";
+        internal const string OrbitalsOrbsPoolName = "Orbs Pool";
+        internal const int MaxOrbitalsOrbsVisuals = 20;
+
         internal const string OrbitalsFlamesName = "Flames";
-        internal const string OrbitalsFlamesLeadAnchorName = "Flames Lead Anchor";
+        internal const string OrbitalsFlamesMotionRootName = "Flames Motion Root";
         internal const string OrbitalsFlamesPoolName = "Flames Pool";
         internal const int MaxOrbitalsFlameVisuals = 20;
 
         internal const string OrbitalsEmbersName = "Embers";
-        internal const string OrbitalsEmbersLeadAnchorName = "Embers Lead Anchor";
+        internal const string OrbitalsEmbersMotionRootName = "Embers Motion Root";
         internal const string OrbitalsEmbersPoolName = "Embers Pool";
         internal const int MaxOrbitalsEmberVisuals = 20;
 

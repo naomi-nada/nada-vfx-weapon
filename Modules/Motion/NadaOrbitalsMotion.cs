@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
 using NADA.VFX.Runtime.Binding;
-using NADA.VFX.Runtime.Structure;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Motion
@@ -11,8 +10,7 @@ namespace NADA.VFX.Modules.Motion
     // - transform = motion root (true simulated head position)
     // - _headVisualTransform = visible head representation
     // - _followerVisualTransforms = trailing visuals
-    // - Internal mode: visuals are children of motion root
-    // - External mode: visuals are independent and must be explicitly synced
+    // - All orbital families use explicit external visual chains
     internal sealed class NadaOrbitalsMotion : MonoBehaviour
     {
         private const int MaxOrbitalsVisuals = 20;
@@ -32,11 +30,10 @@ namespace NADA.VFX.Modules.Motion
         private NadaOrbitalsFamily _orbitalsFamily = NadaOrbitalsFamily.Orbs;
         private global::ItemDrop.ItemData _itemData;
 
-        private Transform _externalHeadVisualTransform;
-        private Transform _externalFollowerPoolRootTransform;
-        private bool _useExternalVisualChain;
-
         private Transform _headVisualTransform;
+        private Transform _followerPoolRootTransform;
+        private bool _configuredVisualChain;
+
         private Vector3 _baseHeadLocalPosition;
         private bool _initialized;
 
@@ -54,15 +51,20 @@ namespace NADA.VFX.Modules.Motion
         {
             _orbitalsFamily = orbitalsFamily;
             _itemData = itemData;
+
+            _headVisualTransform = null;
+            _followerPoolRootTransform = null;
+            _configuredVisualChain = false;
+            _initialized = false;
         }
 
         internal void SetExternalVisualChain(
             Transform headVisualTransform,
             Transform followerPoolRootTransform)
         {
-            _externalHeadVisualTransform = headVisualTransform;
-            _externalFollowerPoolRootTransform = followerPoolRootTransform;
-            _useExternalVisualChain =
+            _headVisualTransform = headVisualTransform;
+            _followerPoolRootTransform = followerPoolRootTransform;
+            _configuredVisualChain =
                 headVisualTransform != null &&
                 followerPoolRootTransform != null;
         }
@@ -70,8 +72,6 @@ namespace NADA.VFX.Modules.Motion
         private void Awake()
         {
             _baseHeadLocalPosition = transform.localPosition;
-            ResolveVisualChain();
-            EnsureInternalFollowerVisualPoolIfNeeded();
         }
 
         private void LateUpdate()
@@ -80,7 +80,6 @@ namespace NADA.VFX.Modules.Motion
             if (!_initialized)
                 return;
 
-            EnsureInternalFollowerVisualPoolIfNeeded();
             EnsureFollowerPositionStateCapacity();
 
             VfxState state = ResolveState();
@@ -125,7 +124,7 @@ namespace NADA.VFX.Modules.Motion
                 EvaluateHeadLocalPosition(Time.time, radiusMultiplier);
 
             transform.localPosition = currentHeadLocalPosition;
-            SyncExternalHeadVisualToMotionRoot();
+            SyncHeadVisualToMotionRoot();
 
             RecordHeadWorldHistory(transform.position);
 
@@ -138,66 +137,19 @@ namespace NADA.VFX.Modules.Motion
 
         private void ResolveVisualChain()
         {
-            _headVisualTransform = null;
             _followerVisualTransforms.Clear();
             _initialized = false;
 
-            if (_useExternalVisualChain)
-            {
-                _headVisualTransform = _externalHeadVisualTransform;
-
-                if (_externalFollowerPoolRootTransform != null)
-                {
-                    foreach (Transform childTransform in _externalFollowerPoolRootTransform)
-                    {
-                        if (childTransform != null)
-                            _followerVisualTransforms.Add(childTransform);
-                    }
-                }
-
-                _initialized = _headVisualTransform != null;
-                return;
-            }
-
-            _headVisualTransform = NadaRigPaths.FindDirectChild(transform, "Orb_00");
-            if (_headVisualTransform == null)
+            if (!_configuredVisualChain || _headVisualTransform == null || _followerPoolRootTransform == null)
                 return;
 
-            for (int visualIndex = 1; visualIndex < MaxOrbitalsVisuals; visualIndex++)
+            foreach (Transform childTransform in _followerPoolRootTransform)
             {
-                Transform followerVisualTransform =
-                    NadaRigPaths.FindDirectChild(transform, $"Orb_{visualIndex:00}");
-
-                if (followerVisualTransform != null)
-                    _followerVisualTransforms.Add(followerVisualTransform);
+                if (childTransform != null)
+                    _followerVisualTransforms.Add(childTransform);
             }
 
             _initialized = true;
-        }
-
-        private void EnsureInternalFollowerVisualPoolIfNeeded()
-        {
-            if (_useExternalVisualChain)
-                return;
-
-            if (_headVisualTransform == null)
-                return;
-
-            while (_followerVisualTransforms.Count < MaxOrbitalsVisuals - 1)
-            {
-                int followerVisualIndex = _followerVisualTransforms.Count + 1;
-
-                Transform clonedFollowerVisualTransform =
-                    Instantiate(_headVisualTransform.gameObject, transform, false).transform;
-
-                clonedFollowerVisualTransform.name = $"Orb_{followerVisualIndex:00}";
-                clonedFollowerVisualTransform.localPosition = Vector3.zero;
-                clonedFollowerVisualTransform.localRotation = Quaternion.identity;
-                clonedFollowerVisualTransform.localScale = Vector3.one;
-                clonedFollowerVisualTransform.gameObject.SetActive(false);
-
-                _followerVisualTransforms.Add(clonedFollowerVisualTransform);
-            }
         }
 
         private void EnsureFollowerPositionStateCapacity()
@@ -512,11 +464,8 @@ namespace NADA.VFX.Modules.Motion
                 interpolationT);
         }
 
-        private void SyncExternalHeadVisualToMotionRoot()
+        private void SyncHeadVisualToMotionRoot()
         {
-            if (!_useExternalVisualChain)
-                return;
-
             if (_headVisualTransform == null)
                 return;
 
