@@ -34,6 +34,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsOrbsHue = null;
         internal static ConfigEntry<float> OrbitalsOrbsSpacing = null;
         internal static ConfigEntry<float> OrbitalsOrbsRadius = null;
+        internal static ConfigEntry<float> OrbitalsOrbsDrift = null;
 
         internal static ConfigEntry<bool> OrbitalsFlames = null;
         internal static ConfigEntry<float> OrbitalsFlamesCount = null;
@@ -41,6 +42,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsFlamesEnergy = null;
         internal static ConfigEntry<float> OrbitalsFlamesSpacing = null;
         internal static ConfigEntry<float> OrbitalsFlamesRadius = null;
+        internal static ConfigEntry<float> OrbitalsFlamesDrift = null;
 
         internal static ConfigEntry<bool> OrbitalsEmbers = null;
         internal static ConfigEntry<float> OrbitalsEmbersCount = null;
@@ -48,12 +50,10 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsEmbersEnergy = null;
         internal static ConfigEntry<float> OrbitalsEmbersSpacing = null;
         internal static ConfigEntry<float> OrbitalsEmbersRadius = null;
+        internal static ConfigEntry<float> OrbitalsEmbersDrift = null;
         
         internal const float MaxScaleMult = 1.50f;
         internal const float MinScaleMult = 0.50f;
-
-        internal const float MinOrbScaleMult = 0.2f;
-        internal const float MaxOrbScaleMult = 1.8f;
 
         internal const float MinHue = -0.50f;
         internal const float MaxHue = 0.50f;
@@ -66,19 +66,26 @@ namespace NADA.VFX.Core.Config
         internal const float MinChaos = 0.00f;
         internal const float MaxChaos = 1.00f;
         internal const float DefaultChaos = 0.00f;
-
+        
+        internal const float MinOrbScaleMult = 0.2f;
+        internal const float MaxOrbScaleMult = 1.8f;
+        
         internal const float MinCountNormalized = 0.00f;
         internal const float MaxCountNormalized = 1.00f;
         internal const float DefaultCountNormalized = 0.00f;
 
-        internal const float MinOrbSpacing = 0.00f;
-        internal const float MaxOrbSpacing = 1.00f;
-        internal const float DefaultOrbSpacing = 0.50f;
+        internal const float MinOrbitalsSpacing = 0.00f;
+        internal const float MaxOrbitalsSpacing = 1.00f;
+        internal const float DefaultOrbitalsSpacing = 0.50f;
+        
+        internal const float MinDrift = 0.00f;
+        internal const float MaxDrift = 1.00f;
+        internal const float DefaultDrift = 0.00f;
 
         internal static void Bind(ConfigFile config)
         {
-            const string innerflamesSection = "INNER FLAMES";
-            const string outerflamesSection = "OUTER FLAMES";
+            const string innerFlamesSection = "INNER FLAMES";
+            const string outerFlamesSection = "OUTER FLAMES";
             const string flareSection = "FLARE";
             const string sparksSection = "SPARKS";
             const string mirageSection = "MIRAGE";
@@ -87,7 +94,7 @@ namespace NADA.VFX.Core.Config
             const string orbitalsEmbersSection = "Orbitals: EMBERS";
 
             InnerFlames = config.Bind(
-                innerflamesSection,
+                innerFlamesSection,
                 "Enabled",
                 true,
                 OrderedDescription(
@@ -100,7 +107,7 @@ namespace NADA.VFX.Core.Config
             );
 
             InnerFlamesScale = config.Bind(
-                innerflamesSection,
+                innerFlamesSection,
                 "Scale",
                 1.00f,
                 OrderedDescription(
@@ -112,7 +119,7 @@ namespace NADA.VFX.Core.Config
             );
 
             InnerFlamesHue = config.Bind(
-                innerflamesSection,
+                innerFlamesSection,
                 "Color",
                 DefaultHue,
                 OrderedDescription(
@@ -124,7 +131,7 @@ namespace NADA.VFX.Core.Config
             );
 
             InnerFlamesEnergy = config.Bind(
-                innerflamesSection,
+                innerFlamesSection,
                 "Energy",
                 DefaultEnergy,
                 OrderedDescription(
@@ -136,7 +143,7 @@ namespace NADA.VFX.Core.Config
             );
 
             InnerFlamesChaos = config.Bind(
-                innerflamesSection,
+                innerFlamesSection,
                 "Chaos (Coming Soon)",
                 DefaultChaos,
                 OrderedDescription(
@@ -149,7 +156,7 @@ namespace NADA.VFX.Core.Config
             );
 
             OuterFlames = config.Bind(
-                outerflamesSection,
+                outerFlamesSection,
                 "Enabled",
                 true,
                 OrderedDescription(
@@ -162,7 +169,7 @@ namespace NADA.VFX.Core.Config
             );
 
             OuterFlamesScale = config.Bind(
-                outerflamesSection,
+                outerFlamesSection,
                 "Scale",
                 1.00f,
                 OrderedDescription(
@@ -174,7 +181,7 @@ namespace NADA.VFX.Core.Config
             );
 
             OuterFlamesHue = config.Bind(
-                outerflamesSection,
+                outerFlamesSection,
                 "Color",
                 DefaultHue,
                 OrderedDescription(
@@ -186,7 +193,7 @@ namespace NADA.VFX.Core.Config
             );
 
             OuterFlamesEnergy = config.Bind(
-                outerflamesSection,
+                outerFlamesSection,
                 "Energy",
                 DefaultEnergy,
                 OrderedDescription(
@@ -198,7 +205,7 @@ namespace NADA.VFX.Core.Config
             );
 
             OuterFlamesChaos = config.Bind(
-                outerflamesSection,
+                outerFlamesSection,
                 "Chaos (Coming Soon)",
                 DefaultChaos,
                 OrderedDescription(
@@ -374,11 +381,11 @@ namespace NADA.VFX.Core.Config
             OrbitalsOrbsSpacing = config.Bind(
                 orbitalsOrbsSection,
                 "Spacing",
-                DefaultOrbSpacing,
+                DefaultOrbitalsSpacing,
                 OrderedDescription(
                     "Adjust how closely the orbs follow each other.",
                     73,
-                    new AcceptableValueRange<float>(MinOrbSpacing, MaxOrbSpacing),
+                    new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     dispName: "Spacing",
                     showRangeAsPercent: true
                 )
@@ -393,6 +400,19 @@ namespace NADA.VFX.Core.Config
                     72,
                     new AcceptableValueRange<float>(0.50f, 1.50f),
                     dispName: "Radius"
+                )
+            );
+            
+            OrbitalsOrbsDrift = config.Bind(
+                orbitalsOrbsSection,
+                "Drift",
+                DefaultDrift,
+                OrderedDescription(
+                    "Adjust how much the orbs drift away from their locked orbit path.",
+                    71,
+                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
+                    dispName: "Drift",
+                    showRangeAsPercent: true
                 )
             );
             
@@ -437,11 +457,11 @@ namespace NADA.VFX.Core.Config
             OrbitalsFlamesSpacing = config.Bind(
                 orbitalsFlamesSection,
                 "Spacing",
-                DefaultOrbSpacing,
+                DefaultOrbitalsSpacing,
                 OrderedDescription(
                     "Adjust how closely the flames follow each other.",
                     67,
-                    new AcceptableValueRange<float>(MinOrbSpacing, MaxOrbSpacing),
+                    new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     dispName: "Spacing",
                     showRangeAsPercent: true
                 )
@@ -468,6 +488,19 @@ namespace NADA.VFX.Core.Config
                     65,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"
+                )
+            );
+            
+            OrbitalsFlamesDrift = config.Bind(
+                orbitalsFlamesSection,
+                "Drift",
+                DefaultDrift,
+                OrderedDescription(
+                    "Adjust how much the flames drift away from their locked orbit path.",
+                    64,
+                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
+                    dispName: "Drift",
+                    showRangeAsPercent: true
                 )
             );
 
@@ -512,11 +545,11 @@ namespace NADA.VFX.Core.Config
             OrbitalsEmbersSpacing = config.Bind(
                 orbitalsEmbersSection,
                 "Spacing",
-                DefaultOrbSpacing,
+                DefaultOrbitalsSpacing,
                 OrderedDescription(
                     "Adjust how closely the embers follow each other.",
                     57,
-                    new AcceptableValueRange<float>(MinOrbSpacing, MaxOrbSpacing),
+                    new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     dispName: "Spacing",
                     showRangeAsPercent: true
                 )
@@ -543,6 +576,19 @@ namespace NADA.VFX.Core.Config
                     55,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"
+                )
+            );
+            
+            OrbitalsEmbersDrift = config.Bind(
+                orbitalsEmbersSection,
+                "Drift",
+                DefaultDrift,
+                OrderedDescription(
+                    "Adjust how much the embers drift away from their locked orbit path.",
+                    54,
+                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
+                    dispName: "Drift",
+                    showRangeAsPercent: true
                 )
             );
 

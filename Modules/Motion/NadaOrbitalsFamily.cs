@@ -1,7 +1,8 @@
 namespace NADA.VFX.Modules.Motion
 {
-    internal enum OrbitalsVisualKind
+    internal enum NadaOrbitalsFamily
     {
+        Orbs,
         Flames,
         Embers
     }

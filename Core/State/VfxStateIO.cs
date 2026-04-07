@@ -49,6 +49,7 @@ namespace NADA.VFX.Core.State
                 OrbitalsOrbsHue = PluginConfig.OrbitalsOrbsHue.Value,
                 OrbitalsOrbsSpacing = PluginConfig.OrbitalsOrbsSpacing.Value,
                 OrbitalsOrbsRadius = PluginConfig.OrbitalsOrbsRadius.Value,
+                OrbitalsOrbsDrift = PluginConfig.OrbitalsOrbsDrift.Value,
 
                 // Orbitals - Flames
                 OrbitalsFlamesEnabled = PluginConfig.OrbitalsFlames.Value,
@@ -57,6 +58,7 @@ namespace NADA.VFX.Core.State
                 OrbitalsFlamesEnergy = PluginConfig.OrbitalsFlamesEnergy.Value,
                 OrbitalsFlamesSpacing = PluginConfig.OrbitalsFlamesSpacing.Value,
                 OrbitalsFlamesRadius = PluginConfig.OrbitalsFlamesRadius.Value,
+                OrbitalsFlamesDrift = PluginConfig.OrbitalsFlamesDrift.Value,
 
                 // Orbitals - Embers
                 OrbitalsEmbersEnabled = PluginConfig.OrbitalsEmbers.Value,
@@ -64,7 +66,8 @@ namespace NADA.VFX.Core.State
                 OrbitalsEmbersHue = PluginConfig.OrbitalsEmbersHue.Value,
                 OrbitalsEmbersEnergy = PluginConfig.OrbitalsEmbersEnergy.Value,
                 OrbitalsEmbersSpacing = PluginConfig.OrbitalsEmbersSpacing.Value,
-                OrbitalsEmbersRadius = PluginConfig.OrbitalsEmbersRadius.Value
+                OrbitalsEmbersRadius = PluginConfig.OrbitalsEmbersRadius.Value,
+                OrbitalsEmbersDrift = PluginConfig.OrbitalsEmbersDrift.Value
             };
         }
 
@@ -189,6 +192,10 @@ namespace NADA.VFX.Core.State
                 customData,
                 VfxStateKeys.OrbitalsOrbsRadius,
                 PluginConfig.OrbitalsOrbsRadius.Value);
+            state.OrbitalsOrbsDrift = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsOrbsDrift,
+                PluginConfig.OrbitalsOrbsDrift.Value);
 
             // Orbitals - Flames
             state.OrbitalsFlamesEnabled = ReadBool(
@@ -215,6 +222,10 @@ namespace NADA.VFX.Core.State
                 customData,
                 VfxStateKeys.OrbitalsFlamesRadius,
                 PluginConfig.OrbitalsFlamesRadius.Value);
+            state.OrbitalsFlamesDrift = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsFlamesDrift,
+                PluginConfig.OrbitalsFlamesDrift.Value);
 
             // Orbitals - Embers
             state.OrbitalsEmbersEnabled = ReadBool(
@@ -241,6 +252,10 @@ namespace NADA.VFX.Core.State
                 customData,
                 VfxStateKeys.OrbitalsEmbersRadius,
                 PluginConfig.OrbitalsEmbersRadius.Value);
+            state.OrbitalsEmbersDrift = ReadFloat(
+                customData,
+                VfxStateKeys.OrbitalsEmbersDrift,
+                PluginConfig.OrbitalsEmbersDrift.Value);
 
             return true;
         }
@@ -293,6 +308,7 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OrbitalsOrbsHue, state.OrbitalsOrbsHue);
             WriteFloat(customData, VfxStateKeys.OrbitalsOrbsSpacing, state.OrbitalsOrbsSpacing);
             WriteFloat(customData, VfxStateKeys.OrbitalsOrbsRadius, state.OrbitalsOrbsRadius);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsDrift, state.OrbitalsOrbsDrift);
 
             // Orbitals - Flames
             WriteBool(customData, VfxStateKeys.OrbitalsFlamesEnabled, state.OrbitalsFlamesEnabled);
@@ -301,6 +317,7 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OrbitalsFlamesEnergy, state.OrbitalsFlamesEnergy);
             WriteFloat(customData, VfxStateKeys.OrbitalsFlamesSpacing, state.OrbitalsFlamesSpacing);
             WriteFloat(customData, VfxStateKeys.OrbitalsFlamesRadius, state.OrbitalsFlamesRadius);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesDrift, state.OrbitalsFlamesDrift);
 
             // Orbitals - Embers
             WriteBool(customData, VfxStateKeys.OrbitalsEmbersEnabled, state.OrbitalsEmbersEnabled);
@@ -309,6 +326,7 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersEnergy, state.OrbitalsEmbersEnergy);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersSpacing, state.OrbitalsEmbersSpacing);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersRadius, state.OrbitalsEmbersRadius);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersDrift, state.OrbitalsEmbersDrift);
 
             customData.Remove(LegacyInnerPresetKey);
         }
@@ -361,6 +379,7 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsHue, PluginConfig.OrbitalsOrbsHue.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsSpacing, PluginConfig.OrbitalsOrbsSpacing.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsDrift, PluginConfig.OrbitalsOrbsDrift.Value);
 
             // Orbitals - Flames
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
@@ -369,6 +388,7 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesSpacing, PluginConfig.OrbitalsFlamesSpacing.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesDrift, PluginConfig.OrbitalsFlamesDrift.Value);
 
             // Orbitals - Embers
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
@@ -377,6 +397,7 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersSpacing, PluginConfig.OrbitalsEmbersSpacing.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersDrift, PluginConfig.OrbitalsEmbersDrift.Value);
         }
 
         private static float ReadFloat(Dictionary<string, string> customData, string key, float fallback)

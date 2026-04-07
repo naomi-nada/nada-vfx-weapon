@@ -5,15 +5,43 @@ namespace NADA.VFX.Runtime.Binding
 {
     internal static class NadaMotionBinder
     {
+        internal static void BindOrbitalsMotion(
+            Transform orbitalsFamilyRootTransform,
+            NadaOrbitalsFamily family,
+            global::ItemDrop.ItemData itemData)
+        {
+            if (orbitalsFamilyRootTransform == null)
+                return;
+
+            var orbitalsMotion = GetOrAddMotion<NadaOrbitalsMotion>(orbitalsFamilyRootTransform);
+            orbitalsMotion.Configure(family, itemData);
+        }
+
+        internal static void BindOrbitalsMotion(
+            Transform orbitalsMotionRootTransform,
+            NadaOrbitalsFamily family,
+            global::ItemDrop.ItemData itemData,
+            Transform externalHeadVisualTransform,
+            Transform externalFollowerPoolRootTransform)
+        {
+            if (orbitalsMotionRootTransform == null)
+                return;
+
+            var orbitalsMotion = GetOrAddMotion<NadaOrbitalsMotion>(orbitalsMotionRootTransform);
+            orbitalsMotion.Configure(family, itemData);
+            orbitalsMotion.SetExternalVisualChain(
+                externalHeadVisualTransform,
+                externalFollowerPoolRootTransform);
+        }
+
         internal static void BindOrbsMotion(
             Transform orbsRootTransform,
             global::ItemDrop.ItemData itemData)
         {
-            if (orbsRootTransform == null)
-                return;
-
-            var orbsMotion = GetOrAddMotion<NadaOrbitalsOrbsMotion>(orbsRootTransform);
-            orbsMotion.SetItemData(itemData);
+            BindOrbitalsMotion(
+                orbsRootTransform,
+                NadaOrbitalsFamily.Orbs,
+                itemData);
         }
 
         internal static void BindOrbitalsRigFollow(

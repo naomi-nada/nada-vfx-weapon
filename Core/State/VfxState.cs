@@ -38,6 +38,7 @@ namespace NADA.VFX.Core.State
         public float OrbitalsOrbsHue;
         public float OrbitalsOrbsSpacing;
         public float OrbitalsOrbsRadius;
+        public float OrbitalsOrbsDrift;
 
         // Orbitals - Flames
         public bool OrbitalsFlamesEnabled;
@@ -46,6 +47,7 @@ namespace NADA.VFX.Core.State
         public float OrbitalsFlamesEnergy;
         public float OrbitalsFlamesSpacing;
         public float OrbitalsFlamesRadius;
+        public float OrbitalsFlamesDrift;
 
         // Orbitals - Embers
         public bool OrbitalsEmbersEnabled;
@@ -54,5 +56,6 @@ namespace NADA.VFX.Core.State
         public float OrbitalsEmbersEnergy;
         public float OrbitalsEmbersSpacing;
         public float OrbitalsEmbersRadius;
+        public float OrbitalsEmbersDrift;
     }
 }

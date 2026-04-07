@@ -81,7 +81,7 @@ namespace NADA.VFX.Weapons.Runtime
 
                 if (localOrbitalsRigRootTransform != null)
                 {
-                    NadaOrbitalsRigAssembly.EnsureOrbitalsLeadAndFollowerMotion(
+                    NadaOrbitalsRigAssembly.EnsureOrbitalsFamilyMotion(
                         localOrbitalsRigRootTransform,
                         catalog.OrbitalsRootTransform,
                         itemData,
