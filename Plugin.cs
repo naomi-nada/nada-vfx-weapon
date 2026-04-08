@@ -15,7 +15,7 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.5.8";
+        public const string ModVersion = "0.5.9";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -48,17 +48,17 @@ namespace NADA.VFX
         internal const string OrbitalsOrbsName = "Orbs";
         internal const string OrbitalsOrbsMotionRootName = "Orbs Motion Root";
         internal const string OrbitalsOrbsPoolName = "Orbs Pool";
-        internal const int MaxOrbitalsOrbsVisuals = 20;
+        internal const int MaxOrbitalsOrbsVisuals = 30;
 
         internal const string OrbitalsFlamesName = "Flames";
         internal const string OrbitalsFlamesMotionRootName = "Flames Motion Root";
         internal const string OrbitalsFlamesPoolName = "Flames Pool";
-        internal const int MaxOrbitalsFlameVisuals = 20;
+        internal const int MaxOrbitalsFlameVisuals = 30;
 
         internal const string OrbitalsEmbersName = "Embers";
         internal const string OrbitalsEmbersMotionRootName = "Embers Motion Root";
         internal const string OrbitalsEmbersPoolName = "Embers Pool";
-        internal const int MaxOrbitalsEmberVisuals = 20;
+        internal const int MaxOrbitalsEmberVisuals = 30;
 
         // Reference rig transform
         internal static readonly Vector3 RigLocalPosition = new Vector3(0.0f, 1.1f, 0.0f);

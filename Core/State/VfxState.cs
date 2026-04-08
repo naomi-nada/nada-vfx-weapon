@@ -36,9 +36,11 @@ namespace NADA.VFX.Core.State
         public float OrbitalsOrbsCount;
         public float OrbitalsOrbsScale;
         public float OrbitalsOrbsHue;
+        public float OrbitalsOrbsSpeed;
         public float OrbitalsOrbsSpacing;
         public float OrbitalsOrbsLength;
         public float OrbitalsOrbsRadius;
+        public float OrbitalsOrbsCycles;
         public float OrbitalsOrbsDrift;
 
         // Orbitals - Flames
@@ -46,9 +48,11 @@ namespace NADA.VFX.Core.State
         public float OrbitalsFlamesCount;
         public float OrbitalsFlamesHue;
         public float OrbitalsFlamesEnergy;
+        public float OrbitalsFlamesSpeed;
         public float OrbitalsFlamesSpacing;
         public float OrbitalsFlamesLength;
         public float OrbitalsFlamesRadius;
+        public float OrbitalsFlamesCycles;
         public float OrbitalsFlamesDrift;
 
         // Orbitals - Embers
@@ -56,9 +60,11 @@ namespace NADA.VFX.Core.State
         public float OrbitalsEmbersCount;
         public float OrbitalsEmbersHue;
         public float OrbitalsEmbersEnergy;
+        public float OrbitalsEmbersSpeed;
         public float OrbitalsEmbersSpacing;
         public float OrbitalsEmbersLength;
         public float OrbitalsEmbersRadius;
+        public float OrbitalsEmbersCycles;
         public float OrbitalsEmbersDrift;
     }
 }

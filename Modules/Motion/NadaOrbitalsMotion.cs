@@ -15,7 +15,7 @@ namespace NADA.VFX.Modules.Motion
     //   not by corrupting orbit spacing or orbit radius.
     internal sealed class NadaOrbitalsMotion : MonoBehaviour
     {
-        private const int MaxOrbitalsVisuals = 20;
+        private const int MaxOrbitalsVisuals = 30;
         private const int ArcLengthSampleCount = 192;
 
         private readonly List<Vector3> _sampledLocalPositions = new();
@@ -33,10 +33,10 @@ namespace NADA.VFX.Modules.Motion
         private float _currentCycleProgress01;
         private bool _hasCurrentCycleProgress01;
 
-        internal const float DefaultCycleProgressPerSecond = 0.08f;
+        internal const float DefaultCycleProgressPerSecond = 0.10f;
 
-        private const int ExtraHistoryPadding = 24;
-        private const int MinHistoryStepPerFollower = 2;
+        private const int ExtraHistoryPadding = 20;
+        private const int MinHistoryStepPerFollower = 1;
         private const int MaxHistoryStepPerFollower = 36;
         private const float HardLockAdherenceThreshold = 0.999f;
 
@@ -260,14 +260,42 @@ namespace NADA.VFX.Modules.Motion
                 PluginConfig.MaxOrbitalsLengthMultiplier);
         }
 
-        private float ResolveTurnsPerOneWayPass(VfxState state)
-        {
-            return NadaOrbitalsPath.DefaultTurnsPerOneWayPass;
-        }
-
         private float ResolveCycleProgressPerSecond(VfxState state)
         {
-            return DefaultCycleProgressPerSecond;
+            float value = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsSpeed,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesSpeed,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersSpeed,
+                _ => DefaultCycleProgressPerSecond
+            };
+
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return DefaultCycleProgressPerSecond;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinOrbitalsSpeed,
+                PluginConfig.MaxOrbitalsSpeed);
+        }
+        
+        private float ResolveTurnsPerOneWayPass(VfxState state)
+        {
+            float value = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsCycles,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesCycles,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersCycles,
+                _ => NadaOrbitalsPath.DefaultTurnsPerOneWayPass
+            };
+
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return NadaOrbitalsPath.DefaultTurnsPerOneWayPass;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinOrbitalsCycles,
+                PluginConfig.MaxOrbitalsCycles);
         }
 
         private float ResolveRadiusMultiplier(VfxState state)
@@ -400,8 +428,8 @@ namespace NADA.VFX.Modules.Motion
                 MaxHistoryStepPerFollower,
                 historyStepPerFollower);
 
-            float minDistancePerFollower = _cachedCycleLength * 0.01f;
-            float maxDistancePerFollower = _cachedCycleLength * 0.04f;
+            const float minDistancePerFollower = 0.06f;
+            const float maxDistancePerFollower = 0.32f;
 
             float distancePerFollower = Mathf.Lerp(
                 minDistancePerFollower,

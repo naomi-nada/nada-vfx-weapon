@@ -30,27 +30,33 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsOrbsCount = "nada.vfx.orbitals.orbs.count";
         internal const string OrbitalsOrbsScale = "nada.vfx.orbitals.orbs.scale";
         internal const string OrbitalsOrbsHue = "nada.vfx.orbitals.orbs.hue";
+        internal const string OrbitalsOrbsSpeed = "nada.vfx.orbitals.orbs.speed";
         internal const string OrbitalsOrbsSpacing = "nada.vfx.orbitals.orbs.spacing";
         internal const string OrbitalsOrbsLength = "nada.vfx.orbitals.orbs.length";
         internal const string OrbitalsOrbsRadius = "nada.vfx.orbitals.orbs.radius";
+        internal const string OrbitalsOrbsCycles = "nada.vfx.orbitals.orbs.cycles";
         internal const string OrbitalsOrbsDrift = "nada.vfx.orbitals.orbs.drift";
 
         internal const string OrbitalsFlamesEnabled = "nada.vfx.orbitals.flames.enabled";
         internal const string OrbitalsFlamesCount = "nada.vfx.orbitals.flames.count";
         internal const string OrbitalsFlamesHue = "nada.vfx.orbitals.flames.hue";
         internal const string OrbitalsFlamesEnergy = "nada.vfx.orbitals.flames.energy";
+        internal const string OrbitalsFlamesSpeed = "nada.vfx.orbitals.flames.speed";
         internal const string OrbitalsFlamesSpacing = "nada.vfx.orbitals.flames.spacing";
         internal const string OrbitalsFlamesLength = "nada.vfx.orbitals.flames.length";
         internal const string OrbitalsFlamesRadius = "nada.vfx.orbitals.flames.radius";
+        internal const string OrbitalsFlamesCycles = "nada.vfx.orbitals.flames.cycles";
         internal const string OrbitalsFlamesDrift = "nada.vfx.orbitals.flames.drift";
 
         internal const string OrbitalsEmbersEnabled = "nada.vfx.orbitals.embers.enabled";
         internal const string OrbitalsEmbersCount = "nada.vfx.orbitals.embers.count";
         internal const string OrbitalsEmbersHue = "nada.vfx.orbitals.embers.hue";
         internal const string OrbitalsEmbersEnergy = "nada.vfx.orbitals.embers.energy";
+        internal const string OrbitalsEmbersSpeed = "nada.vfx.orbitals.embers.speed";
         internal const string OrbitalsEmbersSpacing = "nada.vfx.orbitals.embers.spacing";
         internal const string OrbitalsEmbersLength = "nada.vfx.orbitals.embers.length";
         internal const string OrbitalsEmbersRadius = "nada.vfx.orbitals.embers.radius";
+        internal const string OrbitalsEmbersCycles = "nada.vfx.orbitals.embers.cycles";
         internal const string OrbitalsEmbersDrift = "nada.vfx.orbitals.embers.drift";
     }
 }
