@@ -2,17 +2,18 @@ namespace NADA.VFX.Core.State
 {
     internal static class VfxStateKeys
     {
-        internal const string InnerFlamesEnabled = "nada.vfx.inner.enabled";
-        internal const string InnerFlamesScale = "nada.vfx.inner.scale";
-        internal const string InnerFlamesHue = "nada.vfx.inner.hue";
-        internal const string InnerFlamesEnergy = "nada.vfx.inner.energy";
-        internal const string InnerFlamesChaos = "nada.vfx.inner.chaos";
+        internal const string InnerFlamesEnabled = "nada.vfx.innerflames.enabled";
+        internal const string InnerFlamesScale = "nada.vfx.innerflames.scale";
+        internal const string InnerFlamesHue = "nada.vfx.innerflames.hue";
+        internal const string InnerFlamesEnergy = "nada.vfx.innerflames.energy";
+        internal const string InnerFlamesChaos = "nada.vfx.innerflames.chaos";
         
-        internal const string OuterFlamesEnabled = "nada.vfx.outer.enabled";
-        internal const string OuterFlamesScale = "nada.vfx.outer.scale";
-        internal const string OuterFlamesHue = "nada.vfx.outer.hue";
-        internal const string OuterFlamesEnergy = "nada.vfx.outer.energy";
-        internal const string OuterFlamesChaos = "nada.vfx.outer.chaos";
+        internal const string OuterFlamesEnabled = "nada.vfx.outerflames.enabled";
+        internal const string OuterFlamesDragEnabled = "nada.vfx.outerflames.drag.enabled";
+        internal const string OuterFlamesScale = "nada.vfx.outerflames.scale";
+        internal const string OuterFlamesHue = "nada.vfx.outerflames.hue";
+        internal const string OuterFlamesEnergy = "nada.vfx.outerflames.energy";
+        internal const string OuterFlamesChaos = "nada.vfx.outerflames.chaos";
         
         internal const string FlareEnabled = "nada.vfx.flare.enabled";
         internal const string FlareScale = "nada.vfx.flare.scale";

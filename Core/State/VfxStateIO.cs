@@ -22,6 +22,7 @@ namespace NADA.VFX.Core.State
 
                 // Outer Flames
                 OuterFlamesEnabled = PluginConfig.OuterFlames.Value,
+                OuterFlamesDragEnabled = PluginConfig.OuterFlamesDragEnabled.Value,
                 OuterFlamesScale = PluginConfig.OuterFlamesScale.Value,
                 OuterFlamesHue = PluginConfig.OuterFlamesHue.Value,
                 OuterFlamesEnergy = PluginConfig.OuterFlamesEnergy.Value,
@@ -117,6 +118,10 @@ namespace NADA.VFX.Core.State
                 customData,
                 VfxStateKeys.OuterFlamesEnabled,
                 PluginConfig.OuterFlames.Value);
+            state.OuterFlamesDragEnabled = ReadBool(
+                customData,
+                VfxStateKeys.OuterFlamesDragEnabled,
+                PluginConfig.OuterFlamesDragEnabled.Value);
             state.OuterFlamesScale = ReadFloat(
                 customData,
                 VfxStateKeys.OuterFlamesScale,
@@ -326,6 +331,7 @@ namespace NADA.VFX.Core.State
 
             // Outer Flames
             WriteBool(customData, VfxStateKeys.OuterFlamesEnabled, state.OuterFlamesEnabled);
+            WriteBool(customData, VfxStateKeys.OuterFlamesDragEnabled, state.OuterFlamesDragEnabled);
             WriteFloat(customData, VfxStateKeys.OuterFlamesScale, state.OuterFlamesScale);
             WriteFloat(customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
             WriteFloat(customData, VfxStateKeys.OuterFlamesEnergy, state.OuterFlamesEnergy);
@@ -406,6 +412,7 @@ namespace NADA.VFX.Core.State
 
             // Outer Flames
             BackfillMissing(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesDragEnabled, PluginConfig.OuterFlamesDragEnabled.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);

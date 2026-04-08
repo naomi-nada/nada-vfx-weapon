@@ -11,6 +11,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> InnerFlamesChaos = null;
         
         internal static ConfigEntry<bool> OuterFlames = null;
+        internal static ConfigEntry<bool> OuterFlamesDragEnabled = null;
         internal static ConfigEntry<float> OuterFlamesScale = null;
         internal static ConfigEntry<float> OuterFlamesHue = null;
         internal static ConfigEntry<float> OuterFlamesEnergy = null;
@@ -193,6 +194,19 @@ namespace NADA.VFX.Core.Config
                     hideSettingName: true
                 )
             );
+            
+            OuterFlamesDragEnabled = config.Bind(
+                outerFlamesSection,
+                "Drag Enabled",
+                false,
+                OrderedDescription(
+                    "Enable or disable motion-based drag on Outer Flames.",
+                    189,
+                    dispName: "Drag",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true
+                )
+            );
 
             OuterFlamesScale = config.Bind(
                 outerFlamesSection,
@@ -200,7 +214,7 @@ namespace NADA.VFX.Core.Config
                 1.00f,
                 OrderedDescription(
                     "Adjust the size of Outer Flames.",
-                    189,
+                    188,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale"
                 )
@@ -212,7 +226,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of Outer Flames.",
-                    188,
+                    187,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"
                 )
@@ -224,7 +238,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense Outer Flames feels.",
-                    187,
+                    186,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"
                 )
@@ -236,7 +250,7 @@ namespace NADA.VFX.Core.Config
                 DefaultChaos,
                 OrderedDescription(
                     "Adjust how wild and chaotic Outer Flames feels.",
-                    186,
+                    185,
                     new AcceptableValueRange<float>(MinChaos, MaxChaos),
                     dispName: "Chaos (Coming Soon)",
                     customDrawer: ConfigurationManagerDrawers.DrawDisabledSlider

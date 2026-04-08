@@ -11,6 +11,7 @@ namespace NADA.VFX.Core.State
 
         // Outer Flames
         public bool OuterFlamesEnabled;
+        public bool OuterFlamesDragEnabled;
         public float OuterFlamesScale;
         public float OuterFlamesHue;
         public float OuterFlamesEnergy;

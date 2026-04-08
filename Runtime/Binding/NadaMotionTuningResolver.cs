@@ -26,6 +26,17 @@ namespace NADA.VFX.Runtime.Binding
             return DriftToAdherence(state.OrbitalsEmbersDrift);
         }
 
+        internal static bool GetOuterFlamesDragEnabled(global::ItemDrop.ItemData itemData)
+        {
+            VfxState state = ResolveState(itemData);
+            return state.OuterFlamesDragEnabled;
+        }
+
+        internal static float GetOuterFlamesDrag(global::ItemDrop.ItemData itemData)
+        {
+            return 0.25f;
+        }
+
         private static VfxState ResolveState(global::ItemDrop.ItemData itemData)
         {
             if (itemData != null)

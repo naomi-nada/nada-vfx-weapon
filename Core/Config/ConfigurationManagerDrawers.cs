@@ -11,9 +11,24 @@ namespace NADA.VFX.Core.Config
         {
             bool current = (bool)entry.BoxedValue;
 
+            string label = entry.Definition.Key;
+
+            if (entry.Description?.Tags != null)
+            {
+                foreach (object tag in entry.Description.Tags)
+                {
+                    if (tag is ConfigurationManagerAttributes attributes &&
+                        !string.IsNullOrEmpty(attributes.DispName))
+                    {
+                        label = attributes.DispName;
+                        break;
+                    }
+                }
+            }
+
             GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
 
-            GUILayout.Label("Enabled", GUILayout.ExpandWidth(false));
+            GUILayout.Label(label, GUILayout.ExpandWidth(false));
             GUILayout.Space(4);
 
             bool next = GUILayout.Toggle(current, GUIContent.none, GUILayout.Width(18));

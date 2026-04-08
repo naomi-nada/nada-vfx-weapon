@@ -101,6 +101,10 @@ namespace NADA.VFX.Weapons.Runtime
                 catalog.OuterFlamesTransform,
                 itemData);
 
+            NadaMotionBinder.BindOuterFlamesMotion(
+                catalog.OuterFlamesTransform,
+                itemData);
+
             NadaEffectBinder.BindFlareEffect(
                 catalog.FlareTransform,
                 itemData);
