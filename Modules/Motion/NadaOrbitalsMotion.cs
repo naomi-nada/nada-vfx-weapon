@@ -7,24 +7,37 @@ using UnityEngine;
 namespace NADA.VFX.Modules.Motion
 {
     // Orbitals motion model:
-    // - transform = motion root (true simulated head position)
+    // - transform = motion root (true locked head position)
     // - _headVisualTransform = visible head representation
     // - _followerVisualTransforms = trailing visuals
     // - All orbital families use explicit external visual chains
+    // - Drift is applied by lagging the parent/world carrier frame,
+    //   not by corrupting orbit spacing or orbit radius.
     internal sealed class NadaOrbitalsMotion : MonoBehaviour
     {
         private const int MaxOrbitalsVisuals = 20;
+        private const int ArcLengthSampleCount = 192;
 
-        private const float MinOrbitalsRadiusMultiplier = 0.50f;
-        private const float MaxOrbitalsRadiusMultiplier = 1.50f;
-        private const float DefaultOrbitalsRadiusMultiplier = 1.00f;
+        private readonly List<Vector3> _sampledLocalPositions = new();
+        private readonly List<float> _sampledCumulativeLengths = new();
+
+        private readonly List<Vector3> _parentWorldPositionHistorySamples = new();
+        private readonly List<Quaternion> _parentWorldRotationHistorySamples = new();
+
+        private float _cachedRadiusMultiplier = -1f;
+        private float _cachedOrbitLengthMultiplier = -1f;
+        private float _cachedTurnsPerOneWayPass = -1f;
+        private float _cachedCycleLength = 0f;
+        private bool _hasArcLengthCache;
+
+        private float _currentCycleProgress01;
+        private bool _hasCurrentCycleProgress01;
+
+        internal const float DefaultCycleProgressPerSecond = 0.08f;
 
         private const int ExtraHistoryPadding = 24;
-
         private const int MinHistoryStepPerFollower = 2;
         private const int MaxHistoryStepPerFollower = 36;
-
-        private const float FollowerFollowSharpness = 14f;
         private const float HardLockAdherenceThreshold = 0.999f;
 
         private NadaOrbitalsFamily _orbitalsFamily = NadaOrbitalsFamily.Orbs;
@@ -41,9 +54,6 @@ namespace NADA.VFX.Modules.Motion
         private bool _hasCurrentHistoryStepPerFollower;
 
         private readonly List<Transform> _followerVisualTransforms = new();
-        private readonly List<Vector3> _headWorldPositionHistorySamples = new();
-        private readonly List<Vector3> _currentFollowerWorldPositions = new();
-        private readonly List<bool> _hasInitializedFollowerWorldPosition = new();
 
         internal void Configure(
             NadaOrbitalsFamily orbitalsFamily,
@@ -51,11 +61,6 @@ namespace NADA.VFX.Modules.Motion
         {
             _orbitalsFamily = orbitalsFamily;
             _itemData = itemData;
-
-            _headVisualTransform = null;
-            _followerPoolRootTransform = null;
-            _configuredVisualChain = false;
-            _initialized = false;
         }
 
         internal void SetExternalVisualChain(
@@ -80,8 +85,6 @@ namespace NADA.VFX.Modules.Motion
             if (!_initialized)
                 return;
 
-            EnsureFollowerPositionStateCapacity();
-
             VfxState state = ResolveState();
 
             if (!ResolveFamilyEnabled(state))
@@ -97,6 +100,14 @@ namespace NADA.VFX.Modules.Motion
                 MaxOrbitalsVisuals - 1);
 
             float radiusMultiplier = ResolveRadiusMultiplier(state);
+            float orbitLengthMultiplier = ResolveOrbitLengthMultiplier(state);
+            float turnsPerOneWayPass = ResolveTurnsPerOneWayPass(state);
+
+            EnsureArcLengthCache(
+                radiusMultiplier,
+                orbitLengthMultiplier,
+                turnsPerOneWayPass);
+
             float targetHistoryStepPerFollower = ResolveHistoryStepPerFollowerFloat(state);
 
             if (!_hasCurrentHistoryStepPerFollower)
@@ -120,18 +131,43 @@ namespace NADA.VFX.Modules.Motion
             ApplyHeadVisualEnabledState(true);
             ApplyFollowerVisualCount(desiredFollowerCount);
 
+            float cycleProgressPerSecond = ResolveCycleProgressPerSecond(state);
+
+            if (!_hasCurrentCycleProgress01)
+            {
+                _currentCycleProgress01 = 0f;
+                _hasCurrentCycleProgress01 = true;
+            }
+            else
+            {
+                _currentCycleProgress01 = Mathf.Repeat(
+                    _currentCycleProgress01 + (cycleProgressPerSecond * Time.deltaTime),
+                    1f);
+            }
+
+            float currentDistanceAlongCycle =
+                _cachedCycleLength > 0f
+                    ? _currentCycleProgress01 * _cachedCycleLength
+                    : 0f;
+
             Vector3 currentHeadLocalPosition =
-                EvaluateHeadLocalPosition(Time.time, radiusMultiplier);
+                EvaluateHeadLocalPositionAtDistance(currentDistanceAlongCycle);
 
+            // Locked head motion root still follows the true orbit path.
             transform.localPosition = currentHeadLocalPosition;
-            SyncHeadVisualToMotionRoot();
 
-            RecordHeadWorldHistory(transform.position);
+            // Record carrier-frame history after the motion root has updated.
+            RecordParentWorldHistory();
+
+            // Visible head is blended between lagged carrier frame and locked carrier frame.
+            ApplyHeadVisualPosition(
+                currentDistanceAlongCycle,
+                orbitAdherence);
 
             ApplyFollowerPositions(
                 desiredFollowerCount,
                 _currentHistoryStepPerFollower,
-                radiusMultiplier,
+                currentDistanceAlongCycle,
                 orbitAdherence);
         }
 
@@ -150,15 +186,6 @@ namespace NADA.VFX.Modules.Motion
             }
 
             _initialized = true;
-        }
-
-        private void EnsureFollowerPositionStateCapacity()
-        {
-            while (_currentFollowerWorldPositions.Count < MaxOrbitalsVisuals - 1)
-                _currentFollowerWorldPositions.Add(Vector3.zero);
-
-            while (_hasInitializedFollowerWorldPosition.Count < MaxOrbitalsVisuals - 1)
-                _hasInitializedFollowerWorldPosition.Add(false);
         }
 
         private bool ResolveFamilyEnabled(VfxState state)
@@ -214,6 +241,35 @@ namespace NADA.VFX.Modules.Motion
                 spacingT);
         }
 
+        private float ResolveOrbitLengthMultiplier(VfxState state)
+        {
+            float value = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsLength,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesLength,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersLength,
+                _ => NadaOrbitalsPath.DefaultOrbitLengthMultiplier
+            };
+
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return NadaOrbitalsPath.DefaultOrbitLengthMultiplier;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinOrbitalsLengthMultiplier,
+                PluginConfig.MaxOrbitalsLengthMultiplier);
+        }
+
+        private float ResolveTurnsPerOneWayPass(VfxState state)
+        {
+            return NadaOrbitalsPath.DefaultTurnsPerOneWayPass;
+        }
+
+        private float ResolveCycleProgressPerSecond(VfxState state)
+        {
+            return DefaultCycleProgressPerSecond;
+        }
+
         private float ResolveRadiusMultiplier(VfxState state)
         {
             float value = _orbitalsFamily switch
@@ -221,16 +277,16 @@ namespace NADA.VFX.Modules.Motion
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsRadius,
                 NadaOrbitalsFamily.Flames => state.OrbitalsFlamesRadius,
                 NadaOrbitalsFamily.Embers => state.OrbitalsEmbersRadius,
-                _ => DefaultOrbitalsRadiusMultiplier
+                _ => PluginConfig.DefaultOrbitalsRadiusMultiplier
             };
 
             if (float.IsNaN(value) || float.IsInfinity(value))
-                return DefaultOrbitalsRadiusMultiplier;
+                return PluginConfig.DefaultOrbitalsRadiusMultiplier;
 
             return Mathf.Clamp(
                 value,
-                MinOrbitalsRadiusMultiplier,
-                MaxOrbitalsRadiusMultiplier);
+                PluginConfig.MinOrbitalsRadiusMultiplier,
+                PluginConfig.MaxOrbitalsRadiusMultiplier);
         }
 
         private float ResolveOrbitAdherence()
@@ -260,6 +316,112 @@ namespace NADA.VFX.Modules.Motion
             return VfxStateIO.FromConfig();
         }
 
+        private void EnsureArcLengthCache(
+            float radiusMultiplier,
+            float orbitLengthMultiplier,
+            float turnsPerOneWayPass)
+        {
+            if (_hasArcLengthCache &&
+                Mathf.Approximately(_cachedRadiusMultiplier, radiusMultiplier) &&
+                Mathf.Approximately(_cachedOrbitLengthMultiplier, orbitLengthMultiplier) &&
+                Mathf.Approximately(_cachedTurnsPerOneWayPass, turnsPerOneWayPass))
+            {
+                return;
+            }
+
+            _cachedCycleLength = NadaOrbitalsPath.BuildArcLengthTable(
+                radiusMultiplier,
+                orbitLengthMultiplier,
+                turnsPerOneWayPass,
+                ArcLengthSampleCount,
+                _sampledLocalPositions,
+                _sampledCumulativeLengths);
+
+            _cachedRadiusMultiplier = radiusMultiplier;
+            _cachedOrbitLengthMultiplier = orbitLengthMultiplier;
+            _cachedTurnsPerOneWayPass = turnsPerOneWayPass;
+            _hasArcLengthCache = _cachedCycleLength > 0f;
+        }
+
+        private Vector3 EvaluateHeadLocalPositionAtDistance(float distanceAlongCycle)
+        {
+            if (!_hasArcLengthCache || _sampledLocalPositions.Count == 0 || _sampledCumulativeLengths.Count == 0)
+                return _baseHeadLocalPosition;
+
+            if (_cachedCycleLength <= 0f)
+                return _baseHeadLocalPosition;
+
+            float wrappedDistance = Mathf.Repeat(distanceAlongCycle, _cachedCycleLength);
+
+            int upperIndex = _sampledCumulativeLengths.BinarySearch(wrappedDistance);
+            if (upperIndex < 0)
+                upperIndex = ~upperIndex;
+
+            if (upperIndex <= 0)
+                return _baseHeadLocalPosition + _sampledLocalPositions[0];
+
+            if (upperIndex >= _sampledCumulativeLengths.Count)
+                return _baseHeadLocalPosition + _sampledLocalPositions[_sampledLocalPositions.Count - 1];
+
+            int lowerIndex = upperIndex - 1;
+
+            float lowerDistance = _sampledCumulativeLengths[lowerIndex];
+            float upperDistance = _sampledCumulativeLengths[upperIndex];
+
+            float interpolationT = Mathf.Approximately(lowerDistance, upperDistance)
+                ? 0f
+                : Mathf.InverseLerp(lowerDistance, upperDistance, wrappedDistance);
+
+            Vector3 localPosition = Vector3.Lerp(
+                _sampledLocalPositions[lowerIndex],
+                _sampledLocalPositions[upperIndex],
+                interpolationT);
+
+            return _baseHeadLocalPosition + localPosition;
+        }
+
+        private Vector3 EvaluateHeadWorldPositionAtDistance(float distanceAlongCycle)
+        {
+            Vector3 localPosition = EvaluateHeadLocalPositionAtDistance(distanceAlongCycle);
+
+            Transform parentTransform = transform.parent;
+            if (parentTransform != null)
+                return parentTransform.TransformPoint(localPosition);
+
+            return localPosition;
+        }
+
+        private float EvaluateFollowerDistanceOffset(
+            int followerIndex,
+            float historyStepPerFollower)
+        {
+            float spacingT = Mathf.InverseLerp(
+                MinHistoryStepPerFollower,
+                MaxHistoryStepPerFollower,
+                historyStepPerFollower);
+
+            float minDistancePerFollower = _cachedCycleLength * 0.01f;
+            float maxDistancePerFollower = _cachedCycleLength * 0.04f;
+
+            float distancePerFollower = Mathf.Lerp(
+                minDistancePerFollower,
+                maxDistancePerFollower,
+                spacingT);
+
+            return followerIndex * distancePerFollower;
+        }
+
+        private Vector3 EvaluateLockedFollowerWorldPosition(
+            int followerIndex,
+            float historyStepPerFollower,
+            float currentDistanceAlongCycle)
+        {
+            float distanceOffset =
+                EvaluateFollowerDistanceOffset(followerIndex, historyStepPerFollower);
+
+            return EvaluateHeadWorldPositionAtDistance(currentDistanceAlongCycle - distanceOffset);
+        }
+
         private void ApplyHeadVisualEnabledState(bool enabled)
         {
             if (_headVisualTransform == null)
@@ -282,9 +444,6 @@ namespace NADA.VFX.Modules.Motion
                 bool shouldBeActive = visualIndex < desiredFollowerCount;
                 if (followerVisualTransform.gameObject.activeSelf != shouldBeActive)
                     followerVisualTransform.gameObject.SetActive(shouldBeActive);
-
-                if (!shouldBeActive && visualIndex < _hasInitializedFollowerWorldPosition.Count)
-                    _hasInitializedFollowerWorldPosition[visualIndex] = false;
             }
         }
 
@@ -299,25 +458,53 @@ namespace NADA.VFX.Modules.Motion
                     followerVisualTransform.gameObject.SetActive(false);
             }
 
-            _headWorldPositionHistorySamples.Clear();
+            _currentCycleProgress01 = 0f;
+            _hasCurrentCycleProgress01 = false;
+            _currentHistoryStepPerFollower = 0f;
             _hasCurrentHistoryStepPerFollower = false;
 
-            for (int visualIndex = 0; visualIndex < _currentFollowerWorldPositions.Count; visualIndex++)
+            _parentWorldPositionHistorySamples.Clear();
+            _parentWorldRotationHistorySamples.Clear();
+        }
+
+        private void ApplyHeadVisualPosition(
+            float currentDistanceAlongCycle,
+            float orbitAdherence)
+        {
+            if (_headVisualTransform == null)
+                return;
+
+            Vector3 lockedHeadWorldPosition = transform.position;
+
+            if (orbitAdherence >= HardLockAdherenceThreshold)
             {
-                _currentFollowerWorldPositions[visualIndex] = Vector3.zero;
-                _hasInitializedFollowerWorldPosition[visualIndex] = false;
+                _headVisualTransform.position = lockedHeadWorldPosition;
+                _headVisualTransform.rotation = Quaternion.identity;
+                return;
             }
+
+            float headHistorySampleIndex = 1f;
+
+            Vector3 driftedHeadWorldPosition =
+                EvaluateDriftedWorldPosition(
+                    currentDistanceAlongCycle,
+                    headHistorySampleIndex);
+
+            _headVisualTransform.position = Vector3.Lerp(
+                driftedHeadWorldPosition,
+                lockedHeadWorldPosition,
+                orbitAdherence);
+
+            _headVisualTransform.rotation = Quaternion.identity;
         }
 
         private void ApplyFollowerPositions(
             int desiredFollowerCount,
             float historyStepPerFollower,
-            float radiusMultiplier,
+            float currentDistanceAlongCycle,
             float orbitAdherence)
         {
             desiredFollowerCount = Mathf.Clamp(desiredFollowerCount, 0, MaxOrbitalsVisuals - 1);
-
-            float followT = 1f - Mathf.Exp(-FollowerFollowSharpness * Time.deltaTime);
 
             for (int visibleIndex = 0; visibleIndex < desiredFollowerCount; visibleIndex++)
             {
@@ -331,146 +518,137 @@ namespace NADA.VFX.Modules.Motion
                     EvaluateLockedFollowerWorldPosition(
                         followerIndex,
                         historyStepPerFollower,
-                        radiusMultiplier);
+                        currentDistanceAlongCycle);
+
+                if (orbitAdherence >= HardLockAdherenceThreshold)
+                {
+                    followerVisualTransform.position = lockedWorldPosition;
+                    followerVisualTransform.rotation = Quaternion.identity;
+                    continue;
+                }
 
                 float historySampleIndex = followerIndex * historyStepPerFollower;
 
-                Vector3 driftingWorldPosition =
-                    SampleHistoryPosition(historySampleIndex, lockedWorldPosition);
+                float followerDistanceOffset =
+                    EvaluateFollowerDistanceOffset(followerIndex, historyStepPerFollower);
 
-                bool hardLock = orbitAdherence >= HardLockAdherenceThreshold;
+                float followerDistanceAlongCycle = currentDistanceAlongCycle - followerDistanceOffset;
 
-                if (hardLock)
-                {
-                    _currentFollowerWorldPositions[visibleIndex] = lockedWorldPosition;
-                    _hasInitializedFollowerWorldPosition[visibleIndex] = true;
-                }
-                else
-                {
-                    Vector3 targetWorldPosition = Vector3.Lerp(
-                        driftingWorldPosition,
-                        lockedWorldPosition,
-                        orbitAdherence);
+                Vector3 driftedWorldPosition =
+                    EvaluateDriftedWorldPosition(
+                        followerDistanceAlongCycle,
+                        historySampleIndex);
 
-                    if (!_hasInitializedFollowerWorldPosition[visibleIndex])
-                    {
-                        _currentFollowerWorldPositions[visibleIndex] = targetWorldPosition;
-                        _hasInitializedFollowerWorldPosition[visibleIndex] = true;
-                    }
-                    else
-                    {
-                        _currentFollowerWorldPositions[visibleIndex] = Vector3.Lerp(
-                            _currentFollowerWorldPositions[visibleIndex],
-                            targetWorldPosition,
-                            followT);
-                    }
-                }
+                Vector3 finalWorldPosition = Vector3.Lerp(
+                    driftedWorldPosition,
+                    lockedWorldPosition,
+                    orbitAdherence);
 
-                followerVisualTransform.position = _currentFollowerWorldPositions[visibleIndex];
+                followerVisualTransform.position = finalWorldPosition;
                 followerVisualTransform.rotation = Quaternion.identity;
             }
-
-            for (int visualIndex = desiredFollowerCount; visualIndex < _followerVisualTransforms.Count; visualIndex++)
-            {
-                if (visualIndex < _hasInitializedFollowerWorldPosition.Count)
-                    _hasInitializedFollowerWorldPosition[visualIndex] = false;
-            }
         }
 
-        private Vector3 EvaluateHeadLocalPosition(float timeValue, float radiusMultiplier)
+        private void RecordParentWorldHistory()
         {
-            return NadaOrbitalsPath.EvaluateLocalPosition(
-                timeValue,
-                radiusMultiplier,
-                _baseHeadLocalPosition);
-        }
-
-        private Vector3 EvaluateHeadWorldPosition(float timeValue, float radiusMultiplier)
-        {
-            Vector3 localPosition = EvaluateHeadLocalPosition(timeValue, radiusMultiplier);
-
             Transform parentTransform = transform.parent;
-            if (parentTransform != null)
-                return parentTransform.TransformPoint(localPosition);
+            if (parentTransform == null)
+                return;
 
-            return localPosition;
-        }
-
-        private float EvaluateFollowerTemporalOffset(
-            int followerIndex,
-            float historyStepPerFollower)
-        {
-            return NadaOrbitalsPath.EvaluateFollowerTemporalOffsetSeconds(
-                followerIndex,
-                historyStepPerFollower,
-                MinHistoryStepPerFollower,
-                MaxHistoryStepPerFollower);
-        }
-
-        private Vector3 EvaluateLockedFollowerWorldPosition(
-            int followerIndex,
-            float historyStepPerFollower,
-            float radiusMultiplier)
-        {
-            float temporalOffset =
-                EvaluateFollowerTemporalOffset(followerIndex, historyStepPerFollower);
-
-            float sampleTime = Time.time - temporalOffset;
-            return EvaluateHeadWorldPosition(sampleTime, radiusMultiplier);
-        }
-
-        private void RecordHeadWorldHistory(Vector3 headWorldPosition)
-        {
-            _headWorldPositionHistorySamples.Insert(0, headWorldPosition);
+            _parentWorldPositionHistorySamples.Insert(0, parentTransform.position);
+            _parentWorldRotationHistorySamples.Insert(0, parentTransform.rotation);
 
             int maxHistorySamples =
                 ((MaxOrbitalsVisuals - 1) * MaxHistoryStepPerFollower) + ExtraHistoryPadding;
 
-            if (_headWorldPositionHistorySamples.Count > maxHistorySamples)
+            if (_parentWorldPositionHistorySamples.Count > maxHistorySamples)
             {
-                _headWorldPositionHistorySamples.RemoveRange(
+                _parentWorldPositionHistorySamples.RemoveRange(
                     maxHistorySamples,
-                    _headWorldPositionHistorySamples.Count - maxHistorySamples);
+                    _parentWorldPositionHistorySamples.Count - maxHistorySamples);
+            }
+
+            if (_parentWorldRotationHistorySamples.Count > maxHistorySamples)
+            {
+                _parentWorldRotationHistorySamples.RemoveRange(
+                    maxHistorySamples,
+                    _parentWorldRotationHistorySamples.Count - maxHistorySamples);
             }
         }
 
-        private Vector3 SampleHistoryPosition(
-            float sampleIndex,
-            Vector3 fallbackWorldPosition)
+        private Vector3 EvaluateDriftedWorldPosition(
+            float distanceAlongCycle,
+            float historySampleIndex)
         {
-            if (_headWorldPositionHistorySamples.Count == 0)
-                return fallbackWorldPosition;
+            Vector3 localPosition = EvaluateHeadLocalPositionAtDistance(distanceAlongCycle);
+
+            Transform parentTransform = transform.parent;
+            if (parentTransform == null)
+                return localPosition;
+
+            Vector3 sampledParentPosition =
+                SampleParentWorldPosition(historySampleIndex, parentTransform.position);
+
+            Quaternion sampledParentRotation =
+                SampleParentWorldRotation(historySampleIndex, parentTransform.rotation);
+
+            return sampledParentPosition + (sampledParentRotation * localPosition);
+        }
+
+        private Vector3 SampleParentWorldPosition(float sampleIndex, Vector3 fallbackPosition)
+        {
+            if (_parentWorldPositionHistorySamples.Count == 0)
+                return fallbackPosition;
 
             if (sampleIndex <= 0f)
-                return _headWorldPositionHistorySamples[0];
+                return _parentWorldPositionHistorySamples[0];
 
             int lowerIndex = Mathf.FloorToInt(sampleIndex);
             int upperIndex = Mathf.CeilToInt(sampleIndex);
 
-            if (lowerIndex >= _headWorldPositionHistorySamples.Count)
-                return _headWorldPositionHistorySamples[_headWorldPositionHistorySamples.Count - 1];
+            if (lowerIndex >= _parentWorldPositionHistorySamples.Count)
+                return _parentWorldPositionHistorySamples[_parentWorldPositionHistorySamples.Count - 1];
 
-            if (upperIndex >= _headWorldPositionHistorySamples.Count)
-                return _headWorldPositionHistorySamples[_headWorldPositionHistorySamples.Count - 1];
+            if (upperIndex >= _parentWorldPositionHistorySamples.Count)
+                return _parentWorldPositionHistorySamples[_parentWorldPositionHistorySamples.Count - 1];
 
             if (lowerIndex == upperIndex)
-                return _headWorldPositionHistorySamples[lowerIndex];
+                return _parentWorldPositionHistorySamples[lowerIndex];
 
             float interpolationT = sampleIndex - lowerIndex;
 
             return Vector3.Lerp(
-                _headWorldPositionHistorySamples[lowerIndex],
-                _headWorldPositionHistorySamples[upperIndex],
+                _parentWorldPositionHistorySamples[lowerIndex],
+                _parentWorldPositionHistorySamples[upperIndex],
                 interpolationT);
         }
 
-        private void SyncHeadVisualToMotionRoot()
+        private Quaternion SampleParentWorldRotation(float sampleIndex, Quaternion fallbackRotation)
         {
-            if (_headVisualTransform == null)
-                return;
+            if (_parentWorldRotationHistorySamples.Count == 0)
+                return fallbackRotation;
 
-            _headVisualTransform.position = transform.position;
-            _headVisualTransform.rotation = transform.rotation;
+            if (sampleIndex <= 0f)
+                return _parentWorldRotationHistorySamples[0];
+
+            int lowerIndex = Mathf.FloorToInt(sampleIndex);
+            int upperIndex = Mathf.CeilToInt(sampleIndex);
+
+            if (lowerIndex >= _parentWorldRotationHistorySamples.Count)
+                return _parentWorldRotationHistorySamples[_parentWorldRotationHistorySamples.Count - 1];
+
+            if (upperIndex >= _parentWorldRotationHistorySamples.Count)
+                return _parentWorldRotationHistorySamples[_parentWorldRotationHistorySamples.Count - 1];
+
+            if (lowerIndex == upperIndex)
+                return _parentWorldRotationHistorySamples[lowerIndex];
+
+            float interpolationT = sampleIndex - lowerIndex;
+
+            return Quaternion.Slerp(
+                _parentWorldRotationHistorySamples[lowerIndex],
+                _parentWorldRotationHistorySamples[upperIndex],
+                interpolationT);
         }
     }
 }

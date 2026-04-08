@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Motion
@@ -12,41 +13,60 @@ namespace NADA.VFX.Modules.Motion
         internal const float DefaultTurnDuration = 0.80f;
         internal const float DefaultTurnsPerOneWayPass = 2.0f;
 
-        internal static Vector3 EvaluateLocalPosition(
-            float timeValue,
+        internal const float DefaultOrbitLengthMultiplier = 1.0f;
+
+        internal const float DefaultCycleDurationSeconds =
+            (DefaultOneWayPassDuration * 2f) +
+            (DefaultTurnDuration * 2f);
+
+        internal static readonly float DefaultLinearSpeed =
+            BuildArcLengthTable(
+                radiusMultiplier: 1.0f,
+                orbitLengthMultiplier: DefaultOrbitLengthMultiplier,
+                turnsPerOneWayPass: DefaultTurnsPerOneWayPass,
+                sampleCount: 192,
+                sampledLocalPositions: new List<Vector3>(),
+                sampledCumulativeLengths: new List<float>()) / DefaultCycleDurationSeconds;
+
+        internal static Vector3 EvaluateLocalPositionAtCycleT(
+            float cycleT,
             float radiusMultiplier,
+            float orbitLengthMultiplier,
+            float turnsPerOneWayPass,
             Vector3 baseLocalPosition)
         {
-            float halfLength = DefaultTravelLength * 0.5f;
+            cycleT = Mathf.Repeat(cycleT, 1f);
+
+            float halfLength = (DefaultTravelLength * orbitLengthMultiplier) * 0.5f;
             float spiralRadius = DefaultSpiralRadius * radiusMultiplier;
 
-            float upTime = DefaultOneWayPassDuration;
-            float turnTime = DefaultTurnDuration;
-            float downTime = DefaultOneWayPassDuration;
-            float bottomTurnTime = DefaultTurnDuration;
+            float totalDuration = DefaultCycleDurationSeconds;
 
-            float cycleDuration = upTime + turnTime + downTime + bottomTurnTime;
-            float cycleTime = Mathf.Repeat(timeValue, cycleDuration);
+            float upFraction = DefaultOneWayPassDuration / totalDuration;
+            float topTurnFraction = DefaultTurnDuration / totalDuration;
+            float downFraction = DefaultOneWayPassDuration / totalDuration;
+            float bottomTurnFraction = DefaultTurnDuration / totalDuration;
 
             Vector3 localOffset;
 
-            if (cycleTime < upTime)
+            if (cycleT < upFraction)
             {
-                float normalizedSegmentTime = cycleTime / upTime;
-                float y = Mathf.Lerp(-halfLength, halfLength, normalizedSegmentTime) + DefaultBladeCenterOffset;
+                float segmentT = cycleT / upFraction;
 
-                float angle = normalizedSegmentTime * DefaultTurnsPerOneWayPass * Mathf.PI * 2f;
+                float y = Mathf.Lerp(-halfLength, halfLength, segmentT) + DefaultBladeCenterOffset;
+                float angle = segmentT * turnsPerOneWayPass * Mathf.PI * 2f;
+
                 float x = Mathf.Cos(angle) * spiralRadius;
                 float z = Mathf.Sin(angle) * spiralRadius;
 
                 localOffset = new Vector3(x, y, z);
             }
-            else if (cycleTime < upTime + turnTime)
+            else if (cycleT < upFraction + topTurnFraction)
             {
-                float normalizedSegmentTime = (cycleTime - upTime) / turnTime;
+                float segmentT = (cycleT - upFraction) / topTurnFraction;
 
-                float startAngle = DefaultTurnsPerOneWayPass * Mathf.PI * 2f;
-                float angle = startAngle + (normalizedSegmentTime * Mathf.PI);
+                float startAngle = turnsPerOneWayPass * Mathf.PI * 2f;
+                float angle = startAngle + (segmentT * Mathf.PI);
 
                 float x = Mathf.Cos(angle) * spiralRadius;
                 float z = Mathf.Sin(angle) * spiralRadius;
@@ -54,12 +74,13 @@ namespace NADA.VFX.Modules.Motion
 
                 localOffset = new Vector3(x, y, z);
             }
-            else if (cycleTime < upTime + turnTime + downTime)
+            else if (cycleT < upFraction + topTurnFraction + downFraction)
             {
-                float normalizedSegmentTime = (cycleTime - upTime - turnTime) / downTime;
-                float y = Mathf.Lerp(halfLength, -halfLength, normalizedSegmentTime) + DefaultBladeCenterOffset;
+                float segmentT = (cycleT - upFraction - topTurnFraction) / downFraction;
 
-                float angle = Mathf.PI + (normalizedSegmentTime * DefaultTurnsPerOneWayPass * Mathf.PI * 2f);
+                float y = Mathf.Lerp(halfLength, -halfLength, segmentT) + DefaultBladeCenterOffset;
+                float angle = Mathf.PI + (segmentT * turnsPerOneWayPass * Mathf.PI * 2f);
+
                 float x = Mathf.Cos(angle) * spiralRadius;
                 float z = Mathf.Sin(angle) * spiralRadius;
 
@@ -67,10 +88,10 @@ namespace NADA.VFX.Modules.Motion
             }
             else
             {
-                float normalizedSegmentTime = (cycleTime - upTime - turnTime - downTime) / bottomTurnTime;
+                float segmentT = (cycleT - upFraction - topTurnFraction - downFraction) / bottomTurnFraction;
 
-                float startAngle = Mathf.PI + (DefaultTurnsPerOneWayPass * Mathf.PI * 2f);
-                float angle = startAngle + (normalizedSegmentTime * Mathf.PI);
+                float startAngle = Mathf.PI + (turnsPerOneWayPass * Mathf.PI * 2f);
+                float angle = startAngle + (segmentT * Mathf.PI);
 
                 float x = Mathf.Cos(angle) * spiralRadius;
                 float z = Mathf.Sin(angle) * spiralRadius;
@@ -82,32 +103,51 @@ namespace NADA.VFX.Modules.Motion
             return baseLocalPosition + localOffset;
         }
 
-        internal static float EvaluateFollowerTemporalOffsetSeconds(
-            int followerIndex,
-            float historyStepPerFollower,
-            float minHistoryStepPerFollower,
-            float maxHistoryStepPerFollower)
+        internal static float BuildArcLengthTable(
+            float radiusMultiplier,
+            float orbitLengthMultiplier,
+            float turnsPerOneWayPass,
+            int sampleCount,
+            List<Vector3> sampledLocalPositions,
+            List<float> sampledCumulativeLengths)
         {
-            float cycleDuration =
-                DefaultOneWayPassDuration +
-                DefaultTurnDuration +
-                DefaultOneWayPassDuration +
-                DefaultTurnDuration;
+            sampledLocalPositions.Clear();
+            sampledCumulativeLengths.Clear();
 
-            float spacingT = Mathf.InverseLerp(
-                minHistoryStepPerFollower,
-                maxHistoryStepPerFollower,
-                historyStepPerFollower);
+            sampleCount = Mathf.Max(2, sampleCount);
 
-            float minSecondsPerFollower = cycleDuration * 0.01f;
-            float maxSecondsPerFollower = cycleDuration * 0.04f;
+            Vector3 previousPosition = EvaluateLocalPositionAtCycleT(
+                0f,
+                radiusMultiplier,
+                orbitLengthMultiplier,
+                turnsPerOneWayPass,
+                Vector3.zero);
 
-            float secondsPerFollower = Mathf.Lerp(
-                minSecondsPerFollower,
-                maxSecondsPerFollower,
-                spacingT);
+            sampledLocalPositions.Add(previousPosition);
+            sampledCumulativeLengths.Add(0f);
 
-            return followerIndex * secondsPerFollower;
+            float totalLength = 0f;
+
+            for (int sampleIndex = 1; sampleIndex < sampleCount; sampleIndex++)
+            {
+                float cycleT = sampleIndex / (float)(sampleCount - 1);
+
+                Vector3 currentPosition = EvaluateLocalPositionAtCycleT(
+                    cycleT,
+                    radiusMultiplier,
+                    orbitLengthMultiplier,
+                    turnsPerOneWayPass,
+                    Vector3.zero);
+
+                totalLength += Vector3.Distance(previousPosition, currentPosition);
+
+                sampledLocalPositions.Add(currentPosition);
+                sampledCumulativeLengths.Add(totalLength);
+
+                previousPosition = currentPosition;
+            }
+
+            return totalLength;
         }
     }
 }
