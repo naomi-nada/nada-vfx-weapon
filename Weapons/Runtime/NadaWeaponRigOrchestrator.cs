@@ -58,16 +58,6 @@ namespace NADA.VFX.Weapons.Runtime
 
             NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsRootTransform);
 
-            NadaRigAssembly.EnsureLocalSparks(
-                localEffectsRootTransform,
-                localOrbsRootTransform,
-                rootObject.name);
-
-            NadaRigAssembly.EnsureLocalMirage(
-                localEffectsRootTransform,
-                localOrbsRootTransform,
-                rootObject.name);
-
             NadaRigCatalog catalog = NadaRigCatalog.Build(localWeaponRootTransform);
             if (catalog == null || !catalog.IsValid)
                 return;
@@ -108,41 +98,6 @@ namespace NADA.VFX.Weapons.Runtime
             NadaEffectBinder.BindFlareEffect(
                 catalog.FlareTransform,
                 itemData);
-
-            // Sparks, Mirage
-            NadaEffectBinder.BindSparksEffect(
-                catalog.SparksTransform,
-                itemData);
-
-            Transform sparksMotionRootTransform =
-                NadaEffectMotionRootAssembly.EnsureSparksMotionRoot(
-                    catalog.LocalEffectsRootTransform,
-                    catalog.SparksTransform);
-
-            NadaMotionBinder.BindTargetFollow(
-                sparksMotionRootTransform,
-                catalog.FlareTransform);
-
-            NadaMotionBinder.BindTargetFollow(
-                catalog.SparksTransform,
-                sparksMotionRootTransform);
-
-            NadaEffectBinder.BindMirageEffect(
-                catalog.MirageTransform,
-                itemData);
-
-            Transform mirageMotionRootTransform =
-                NadaEffectMotionRootAssembly.EnsureMirageMotionRoot(
-                    catalog.LocalEffectsRootTransform,
-                    catalog.MirageTransform);
-
-            NadaMotionBinder.BindTargetFollow(
-                mirageMotionRootTransform,
-                catalog.FlareTransform);
-
-            NadaMotionBinder.BindTargetFollow(
-                catalog.MirageTransform,
-                mirageMotionRootTransform);
 
             // Orbitals: Orbs, Flames, Embers
             NadaEffectBinder.BindOrbitalsEffect(

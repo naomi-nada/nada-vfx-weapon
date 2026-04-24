@@ -13,7 +13,7 @@ namespace NADA.VFX.Runtime.Binding
             VfxState state = ResolveState(itemData);
             return DriftToAdherence(state.OrbitalsOrbsDrift);
         }
-
+        
         internal static float GetFlamesOrbitAdherence(global::ItemDrop.ItemData itemData)
         {
             VfxState state = ResolveState(itemData);

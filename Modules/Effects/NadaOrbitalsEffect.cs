@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using NADA.VFX.Core.Color;
+using NADA.VFX.Core.Visuals;
 using NADA.VFX.Core.State;
 using NADA.VFX.Runtime.Binding;
 using NADA.VFX.Runtime.Structure;
@@ -41,7 +41,7 @@ namespace NADA.VFX.Modules.Effects
         private readonly List<ParticleSystem> _orbsParticleSystems = new();
         private readonly List<Renderer> _orbsRenderers = new();
         private readonly List<Light> _orbsLights = new();
-
+        
         private readonly List<ParticleSystem> _flamesParticleSystems = new();
         private readonly List<Renderer> _flamesRenderers = new();
         private readonly List<Light> _flamesLights = new();
@@ -112,7 +112,7 @@ namespace NADA.VFX.Modules.Effects
             ApplyEffectRootEnabledState(_orbsRootTransform, state.OrbitalsOrbsEnabled);
             if (_orbsRootTransform != null)
                 NadaRigTransforms.DisableRootVisualContent(_orbsRootTransform);
-
+            
             ApplyEffectRootEnabledState(_flamesRootTransform, state.OrbitalsFlamesEnabled);
             ApplyEffectRootEnabledState(_embersRootTransform, state.OrbitalsEmbersEnabled);
 
@@ -121,6 +121,7 @@ namespace NADA.VFX.Modules.Effects
             EnsureParticleSystemsPlayingIfEnabled(_embersParticleSystems, state.OrbitalsEmbersEnabled);
 
             ApplyOrbsScale(state.OrbitalsOrbsScale);
+
             ApplyHueShift(_orbsParticleSystems, _orbsRenderers, _orbsLights, state.OrbitalsOrbsHue);
             ApplyHueShift(_flamesParticleSystems, _flamesRenderers, _flamesLights, state.OrbitalsFlamesHue);
             ApplyHueShift(_embersParticleSystems, _embersRenderers, _embersLights, state.OrbitalsEmbersHue);
@@ -180,7 +181,7 @@ namespace NADA.VFX.Modules.Effects
             _orbsRootTransform = _localOrbsRootTransform != null
                 ? _localOrbsRootTransform
                 : NadaRigPaths.FindDirectChild(transform, Plugin.OrbitalsOrbsName);
-
+            
             _flamesRootTransform = NadaRigPaths.FindDirectChild(transform, Plugin.OrbitalsFlamesName);
             _embersRootTransform = NadaRigPaths.FindDirectChild(transform, Plugin.OrbitalsEmbersName);
 
@@ -583,6 +584,8 @@ namespace NADA.VFX.Modules.Effects
                         if (material == null)
                             continue;
 
+                        material.renderQueue = 3100;
+
                         if (materialBaseline.Color.HasValue)
                         {
                             var retintedColor =
@@ -813,7 +816,7 @@ namespace NADA.VFX.Modules.Effects
 
         private void ApplyOrbsScale(float scale)
         {
-            float clampedScale = ClampOrbScale(scale);
+            float clampedScale = ClampVisualScale(scale);
             float scaleMultiplier = DefaultOrbBaselineScaleMultiplier * clampedScale;
 
             if (_orbsRootTransform != null && _hasOrbsBaseLocalScale)
@@ -838,7 +841,7 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        private static float ClampOrbScale(float value)
+        private static float ClampVisualScale(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))
                 return 1f;

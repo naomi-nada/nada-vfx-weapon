@@ -18,15 +18,13 @@ namespace NADA.VFX.Runtime.Structure
         public Transform OrbitalsRigRootTransform { get; private set; }
 
         public Transform OrbitalsOrbsRootTransform { get; private set; }
+        public Transform OrbitalsPrismsRootTransform { get; private set; }
         public Transform OrbitalsFlamesRootTransform { get; private set; }
         public Transform OrbitalsEmbersRootTransform { get; private set; }
 
+        public Transform OrbitalsPrismsPoolRootTransform { get; private set; }
         public Transform OrbitalsFlamesPoolRootTransform { get; private set; }
         public Transform OrbitalsEmbersPoolRootTransform { get; private set; }
-
-        // Other Effects
-        public Transform MirageTransform { get; private set; }
-        public Transform SparksTransform { get; private set; }
 
         public bool IsValid =>
             LocalWeaponRootTransform != null &&
@@ -53,13 +51,6 @@ namespace NADA.VFX.Runtime.Structure
 
                 catalog.InnerFlamesTransform =
                     NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.InnerFlamesName);
-
-                // Other effects
-                catalog.MirageTransform =
-                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.MirageName);
-
-                catalog.SparksTransform =
-                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.SparksName);
 
                 // Orbitals
                 catalog.OrbitalsRootTransform =

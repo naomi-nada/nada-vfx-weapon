@@ -19,15 +19,6 @@ namespace NADA.VFX.Modules.Motion
             (DefaultOneWayPassDuration * 2f) +
             (DefaultTurnDuration * 2f);
 
-        internal static readonly float DefaultLinearSpeed =
-            BuildArcLengthTable(
-                radiusMultiplier: 1.0f,
-                orbitLengthMultiplier: DefaultOrbitLengthMultiplier,
-                turnsPerOneWayPass: DefaultTurnsPerOneWayPass,
-                sampleCount: 192,
-                sampledLocalPositions: new List<Vector3>(),
-                sampledCumulativeLengths: new List<float>()) / DefaultCycleDurationSeconds;
-
         internal static Vector3 EvaluateLocalPositionAtCycleT(
             float cycleT,
             float radiusMultiplier,

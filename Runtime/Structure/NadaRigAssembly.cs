@@ -73,7 +73,7 @@ namespace NADA.VFX.Runtime.Structure
 
             return outerFlamesTransform;
         }
-
+        
         internal static Transform EnsureLocalOrbsBranch(
             Transform localWeaponRootTransform,
             string ownerNameForLogs)
@@ -134,131 +134,9 @@ namespace NADA.VFX.Runtime.Structure
                     $"{Plugin.ModName}: Removed ZSyncTransform from '{NadaWeaponTargets.FullPath(orbsRootTransform)}'.");
             }
 
-            EnsureLocalOrbitalsChildren(orbitalsRootTransform, orbsRootTransform);
+            EnsureLocalOrbitalsChildren(orbitalsRootTransform, orbsRootTransform, ownerNameForLogs);
 
             return orbsRootTransform;
-        }
-
-        internal static Transform EnsureLocalMirage(
-            Transform localEffectsRootTransform,
-            Transform localOrbsRootTransform,
-            string ownerNameForLogs)
-        {
-            if (localEffectsRootTransform == null || localOrbsRootTransform == null)
-                return null;
-
-            Transform existingMirageTransform =
-                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.MirageName);
-
-            if (existingMirageTransform != null)
-                return existingMirageTransform;
-
-            Transform orbitalsEffectsRootTransform =
-                NadaRigPaths.FindDirectChild(localOrbsRootTransform, "effects");
-
-            if (orbitalsEffectsRootTransform == null)
-                return null;
-
-            Transform flameRootTransform =
-                NadaRigPaths.FindDirectChild(orbitalsEffectsRootTransform, "flame");
-
-            if (flameRootTransform == null)
-                return null;
-
-            Transform mirageSourceTransform =
-                NadaRigPaths.FindDirectChild(flameRootTransform, "distortiion");
-
-            if (mirageSourceTransform == null)
-                return null;
-
-            var mirageObject =
-                Object.Instantiate(mirageSourceTransform.gameObject, localEffectsRootTransform, false);
-
-            mirageObject.name = Plugin.MirageName;
-            mirageObject.SetActive(true);
-
-            mirageObject.transform.localPosition = mirageSourceTransform.localPosition;
-            mirageObject.transform.localRotation = mirageSourceTransform.localRotation;
-            mirageObject.transform.localScale = mirageSourceTransform.localScale;
-
-            foreach (var targetFollowMotion in mirageObject.GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaTargetFollowMotion>(true))
-            {
-                if (targetFollowMotion == null)
-                    continue;
-
-                Object.Destroy(targetFollowMotion);
-            }
-
-            NadaRigTransforms.NormalizeParticleSpacesUnder(
-                mirageObject.transform,
-                ParticleSystemSimulationSpace.World);
-
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: Added local Mirage branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
-                $"as '{Plugin.MirageName}' (owner='{ownerNameForLogs}').");
-
-            return mirageObject.transform;
-        }
-
-        internal static Transform EnsureLocalSparks(
-            Transform localEffectsRootTransform,
-            Transform localOrbsRootTransform,
-            string ownerNameForLogs)
-        {
-            if (localEffectsRootTransform == null || localOrbsRootTransform == null)
-                return null;
-
-            Transform existingSparksTransform =
-                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.SparksName);
-
-            if (existingSparksTransform != null)
-                return existingSparksTransform;
-
-            Transform orbitalsEffectsRootTransform =
-                NadaRigPaths.FindDirectChild(localOrbsRootTransform, "effects");
-
-            if (orbitalsEffectsRootTransform == null)
-                return null;
-
-            Transform flameRootTransform =
-                NadaRigPaths.FindDirectChild(orbitalsEffectsRootTransform, "flame");
-
-            if (flameRootTransform == null)
-                return null;
-
-            Transform sparksSourceTransform =
-                NadaRigPaths.FindDirectChild(flameRootTransform, "sparcs_front");
-
-            if (sparksSourceTransform == null)
-                return null;
-
-            var sparksObject =
-                Object.Instantiate(sparksSourceTransform.gameObject, localEffectsRootTransform, false);
-
-            sparksObject.name = Plugin.SparksName;
-            sparksObject.SetActive(true);
-
-            sparksObject.transform.localPosition = sparksSourceTransform.localPosition;
-            sparksObject.transform.localRotation = sparksSourceTransform.localRotation;
-            sparksObject.transform.localScale = sparksSourceTransform.localScale;
-
-            foreach (var targetFollowMotion in sparksObject.GetComponentsInChildren<NADA.VFX.Modules.Motion.NadaTargetFollowMotion>(true))
-            {
-                if (targetFollowMotion == null)
-                    continue;
-
-                Object.Destroy(targetFollowMotion);
-            }
-
-            NadaRigTransforms.NormalizeParticleSpacesUnder(
-                sparksObject.transform,
-                ParticleSystemSimulationSpace.World);
-
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: Added local Sparks branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
-                $"as '{Plugin.SparksName}' (owner='{ownerNameForLogs}').");
-
-            return sparksObject.transform;
         }
 
         internal static void FinalizeLocalOrbsBranch(Transform localOrbsRootTransform)
@@ -286,7 +164,8 @@ namespace NADA.VFX.Runtime.Structure
 
         internal static void EnsureLocalOrbitalsChildren(
             Transform orbitalsRootTransform,
-            Transform localOrbsRootTransform)
+            Transform localOrbsRootTransform,
+            string ownerNameForLogs)
         {
             if (orbitalsRootTransform == null || localOrbsRootTransform == null)
                 return;

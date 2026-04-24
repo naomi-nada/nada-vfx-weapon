@@ -53,15 +53,6 @@ namespace NADA.VFX.Runtime.Binding
                 followTargetTransform);
         }
 
-        internal static void BindTargetFollow(
-            Transform targetFollowerTransform,
-            Transform followTargetTransform)
-        {
-            BindTargetFollowInternal(
-                targetFollowerTransform,
-                followTargetTransform);
-        }
-
         internal static void BindOuterFlamesMotion(
             Transform outerFlamesRootTransform,
             global::ItemDrop.ItemData itemData)

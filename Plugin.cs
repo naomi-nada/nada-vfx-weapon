@@ -15,7 +15,7 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.5.9";
+        public const string ModVersion = "0.6.0";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -36,9 +36,7 @@ namespace NADA.VFX
         internal const string InnerFlamesName = "Inner Flames";
         internal const string OuterFlamesName = "Outer Flames";
         internal const string FlareName = "Flare";
-        internal const string SparksName = "Sparks";
-        internal const string MirageName = "Mirage";
-        
+
         // Orbitals names
         internal const string OrbitalsName = "Orbitals";
         internal const string OrbitalsRigRootName = "Orbitals Rig";

@@ -278,7 +278,7 @@ namespace NADA.VFX.Modules.Motion
                 PluginConfig.MinOrbitalsSpeed,
                 PluginConfig.MaxOrbitalsSpeed);
         }
-        
+
         private float ResolveTurnsPerOneWayPass(VfxState state)
         {
             float value = _orbitalsFamily switch

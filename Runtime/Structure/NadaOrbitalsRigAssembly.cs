@@ -80,7 +80,7 @@ namespace NADA.VFX.Runtime.Structure
                 Plugin.OrbitalsOrbsName,
                 Plugin.MaxOrbitalsOrbsVisuals,
                 ownerNameForLogs);
-
+            
             Transform flamesPoolRootTransform = EnsureOrbitalsPool(
                 orbitalsRigTransform,
                 Plugin.OrbitalsFlamesPoolName,
@@ -97,18 +97,18 @@ namespace NADA.VFX.Runtime.Structure
                 Plugin.MaxOrbitalsEmberVisuals,
                 ownerNameForLogs);
 
-            StripRuntimeMotionComponents(orbsMotionRootTransform);
-            StripRuntimeMotionComponents(flamesMotionRootTransform);
-            StripRuntimeMotionComponents(embersMotionRootTransform);
+            StripRuntimeArtifacts(orbsMotionRootTransform);
+            StripRuntimeArtifacts(flamesMotionRootTransform);
+            StripRuntimeArtifacts(embersMotionRootTransform);
 
-            StripRuntimeMotionComponents(liveOrbsTransform);
-            StripRuntimeMotionComponents(liveOrbsHeadVisualTransform);
-            StripRuntimeMotionComponents(liveFlamesTransform);
-            StripRuntimeMotionComponents(liveEmbersTransform);
+            StripRuntimeArtifacts(liveOrbsTransform);
+            StripRuntimeArtifacts(liveOrbsHeadVisualTransform);
+            StripRuntimeArtifacts(liveFlamesTransform);
+            StripRuntimeArtifacts(liveEmbersTransform);
 
-            StripRuntimeMotionComponents(orbsPoolRootTransform);
-            StripRuntimeMotionComponents(flamesPoolRootTransform);
-            StripRuntimeMotionComponents(embersPoolRootTransform);
+            StripRuntimeArtifacts(orbsPoolRootTransform);
+            StripRuntimeArtifacts(flamesPoolRootTransform);
+            StripRuntimeArtifacts(embersPoolRootTransform);
 
             if (orbsMotionRootTransform != null &&
                 liveOrbsHeadVisualTransform != null &&
@@ -120,10 +120,6 @@ namespace NADA.VFX.Runtime.Structure
                     itemData,
                     liveOrbsHeadVisualTransform,
                     orbsPoolRootTransform);
-
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Bound unified Orbitals motion for Orbs on '{NadaWeaponTargets.FullPath(orbsMotionRootTransform)}' " +
-                    $"using head='{NadaWeaponTargets.FullPath(liveOrbsHeadVisualTransform)}' and pool='{NadaWeaponTargets.FullPath(orbsPoolRootTransform)}'.");
             }
 
             if (flamesMotionRootTransform != null &&
@@ -136,10 +132,6 @@ namespace NADA.VFX.Runtime.Structure
                     itemData,
                     liveFlamesTransform,
                     flamesPoolRootTransform);
-
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Bound unified Orbitals motion for Flames on '{NadaWeaponTargets.FullPath(flamesMotionRootTransform)}' " +
-                    $"using live='{NadaWeaponTargets.FullPath(liveFlamesTransform)}' and pool='{NadaWeaponTargets.FullPath(flamesPoolRootTransform)}'.");
             }
 
             if (embersMotionRootTransform != null &&
@@ -152,10 +144,6 @@ namespace NADA.VFX.Runtime.Structure
                     itemData,
                     liveEmbersTransform,
                     embersPoolRootTransform);
-
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Bound unified Orbitals motion for Embers on '{NadaWeaponTargets.FullPath(embersMotionRootTransform)}' " +
-                    $"using live='{NadaWeaponTargets.FullPath(liveEmbersTransform)}' and pool='{NadaWeaponTargets.FullPath(embersPoolRootTransform)}'.");
             }
         }
 
@@ -256,7 +244,7 @@ namespace NADA.VFX.Runtime.Structure
                 if (pooledVisualTransform == null)
                     continue;
 
-                StripRuntimeMotionComponents(pooledVisualTransform);
+                StripRuntimeArtifacts(pooledVisualTransform);
             }
 
             EnsurePooledVisualChildren(
@@ -287,7 +275,10 @@ namespace NADA.VFX.Runtime.Structure
                     NadaRigPaths.FindDirectChild(poolRootTransform, pooledVisualName);
 
                 if (existingPooledVisualTransform != null)
+                {
+                    StripRuntimeArtifacts(existingPooledVisualTransform);
                     continue;
+                }
 
                 var pooledVisualObject =
                     Object.Instantiate(sourceVisualTransform.gameObject, poolRootTransform, false);
@@ -299,14 +290,11 @@ namespace NADA.VFX.Runtime.Structure
                     pooledVisualObject.transform,
                     sourceVisualTransform);
 
-                StripRuntimeMotionComponents(pooledVisualObject.transform);
+                StripRuntimeArtifacts(pooledVisualObject.transform);
+
                 NadaRigTransforms.NormalizeParticleSpacesUnder(
                     pooledVisualObject.transform,
                     ParticleSystemSimulationSpace.World);
-
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added pooled Orbitals visual '{pooledVisualName}' under '{NadaWeaponTargets.FullPath(poolRootTransform)}' " +
-                    $"(owner='{ownerNameForLogs}').");
             }
         }
 
@@ -323,7 +311,7 @@ namespace NADA.VFX.Runtime.Structure
                 : liveOrbsTransform;
         }
 
-        private static void StripRuntimeMotionComponents(Transform rootTransform)
+        private static void StripRuntimeArtifacts(Transform rootTransform)
         {
             if (rootTransform == null)
                 return;
@@ -335,13 +323,14 @@ namespace NADA.VFX.Runtime.Structure
 
                 Object.Destroy(followMotion);
             }
-        }
-        
-        private static float SafeDivide(float a, float b)
-        {
-            if (Mathf.Approximately(b, 0f))
-                return a;
-            return a / b;
+
+            foreach (var collider in rootTransform.GetComponentsInChildren<Collider>(true))
+            {
+                if (collider == null)
+                    continue;
+
+                Object.Destroy(collider);
+            }
         }
     }
 }

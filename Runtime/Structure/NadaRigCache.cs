@@ -8,6 +8,7 @@ namespace NADA.VFX.Runtime.Structure
     {
         internal static bool CacheReady { get; private set; }
         internal static Material PickupMat { get; private set; }
+        internal static Material HeatDistortionMaterial { get; private set; }
         internal static GameObject RefRigTemplateInactive { get; private set; }
         internal static GameObject DemisterTemplateInactive { get; private set; }
 
@@ -16,6 +17,7 @@ namespace NADA.VFX.Runtime.Structure
             DemisterTemplateInactive = null;
             CacheReady = false;
             PickupMat = null;
+            HeatDistortionMaterial = null;
             RefRigTemplateInactive = null;
 
             while (ObjectDB.instance == null && ZNetScene.instance == null)
@@ -39,7 +41,8 @@ namespace NADA.VFX.Runtime.Structure
             var refRigTf = reference.transform.Find(Plugin.ReferenceRigPath);
             if (refRigTf == null)
             {
-                Plugin.Log.LogWarning($"{Plugin.ModName}: Could not cache reference rig '{Plugin.ReferenceRigPath}' from '{Plugin.ReferencePrefabName}'.");
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Could not cache reference rig '{Plugin.ReferenceRigPath}' from '{Plugin.ReferencePrefabName}'.");
                 yield break;
             }
 
@@ -67,7 +70,8 @@ namespace NADA.VFX.Runtime.Structure
             }
 
             CacheReady = true;
-            Plugin.Log.LogInfo($"{Plugin.ModName}: Cached Burny rig template '{Plugin.ReferenceRigPath}' from '{Plugin.ReferencePrefabName}'.");
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: Cached Burny rig template '{Plugin.ReferenceRigPath}' from '{Plugin.ReferencePrefabName}'.");
         }
 
         private static GameObject FindTopLevelDemisterSource()
@@ -79,7 +83,8 @@ namespace NADA.VFX.Runtime.Structure
             }
 
             var all = Resources.FindObjectsOfTypeAll<GameObject>();
-            if (all == null) return null;
+            if (all == null)
+                return null;
 
             GameObject best = null;
             int bestScore = int.MinValue;
