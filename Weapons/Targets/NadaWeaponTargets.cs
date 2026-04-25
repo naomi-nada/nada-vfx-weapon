@@ -31,7 +31,6 @@ namespace NADA.VFX.Weapons.Targets
                     }
                 }
             }
-
             return false;
         }
 
@@ -54,37 +53,44 @@ namespace NADA.VFX.Weapons.Targets
             if (IsTargetRoot(gameObject))
                 return true;
 
+            return IsEquippedAttachClone(gameObject);
+        }
+
+        internal static bool IsEquippedAttachClone(GameObject gameObject)
+        {
+            if (gameObject == null)
+                return false;
+
             string objectName = gameObject.name ?? string.Empty;
 
             return objectName.StartsWith("attach", StringComparison.OrdinalIgnoreCase) &&
-                   FindSword15Lava(gameObject.transform) != null;
+                   FindEquippedWeaponVisualRoot(gameObject.transform) != null;
         }
 
-        // Finds Sword15_Lava* beneath the supplied root, but only if it lives under an attach* ancestor.
-        internal static Transform FindSword15Lava(Transform searchRootTransform)
+        internal static Transform FindEquippedWeaponVisualRoot(Transform searchRootTransform)
         {
             if (searchRootTransform == null)
                 return null;
 
-            foreach (Transform candidateTransform in searchRootTransform.GetComponentsInChildren<Transform>(true))
+            foreach (Transform childTransform in searchRootTransform)
             {
-                if (candidateTransform == null)
+                if (childTransform == null)
                     continue;
 
-                if (!candidateTransform.name.StartsWith("Sword15_Lava", StringComparison.Ordinal))
+                string childName = childTransform.name ?? string.Empty;
+
+                if (childName == Plugin.LocalWeaponRootName)
                     continue;
 
-                Transform parentTransform = candidateTransform.parent;
-                while (parentTransform != null)
+                if (childName.StartsWith("attach", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (childTransform.GetComponentInChildren<Renderer>(true) != null ||
+                    childTransform.GetComponentInChildren<ParticleSystem>(true) != null)
                 {
-                    string parentName = parentTransform.name ?? string.Empty;
-                    if (parentName.StartsWith("attach", StringComparison.OrdinalIgnoreCase))
-                        return candidateTransform;
-
-                    parentTransform = parentTransform.parent;
+                    return childTransform;
                 }
             }
-
             return null;
         }
 

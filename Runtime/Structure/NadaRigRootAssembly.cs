@@ -1,5 +1,6 @@
 using UnityEngine;
 using NADA.VFX.Weapons.Targets;
+using NADA.VFX.Weapons.Runtime;
 
 namespace NADA.VFX.Runtime.Structure
 {
@@ -7,7 +8,8 @@ namespace NADA.VFX.Runtime.Structure
     {
         internal static Transform EnsureAttachedLocalWeaponBranch(
             Transform weaponVisualRootTransform,
-            string ownerNameForLogs)
+            string ownerNameForLogs,
+            NadaWeaponRigAlignment alignment)
         {
             if (weaponVisualRootTransform == null)
                 return null;
@@ -30,6 +32,10 @@ namespace NADA.VFX.Runtime.Structure
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: Attached local weapon subtree under '{NadaWeaponTargets.FullPath(weaponVisualRootTransform)}' " +
                 $"as '{Plugin.LocalWeaponRootName}' (owner='{ownerNameForLogs}').");
+            
+            localWeaponRootTransform.localPosition = alignment.LocalPosition;
+            localWeaponRootTransform.localEulerAngles = alignment.LocalEulerAngles;
+            localWeaponRootTransform.localScale = alignment.LocalScale;
 
             return localWeaponRootTransform;
         }

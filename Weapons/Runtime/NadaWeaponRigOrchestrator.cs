@@ -22,14 +22,21 @@ namespace NADA.VFX.Weapons.Runtime
             if (!NadaWeaponTargets.IsTargetOrAttachClone(rootObject))
                 return;
 
-            NadaRigMaintenance.DisableBrokenFlameRenderer(
-                weaponVisualRootTransform,
-                rootObject.name);
+            if (weaponVisualRootTransform.name.StartsWith("Sword15_Lava", System.StringComparison.Ordinal))
+            {
+                NadaRigMaintenance.DisableBrokenFlameRenderer(
+                    weaponVisualRootTransform,
+                    rootObject.name);
+            }
+
+            NadaWeaponRigAlignment alignment =
+                NadaWeaponRigAlignmentResolver.Resolve(weaponVisualRootTransform);
 
             Transform localWeaponRootTransform =
                 NadaRigRootAssembly.EnsureAttachedLocalWeaponBranch(
                     weaponVisualRootTransform,
-                    rootObject.name);
+                    rootObject.name,
+                    alignment);
 
             if (localWeaponRootTransform == null)
                 return;
@@ -49,7 +56,7 @@ namespace NADA.VFX.Weapons.Runtime
                 return;
 
             Transform outerFlamesTransform =
-                NadaRigAssembly.EnsureLocalFlameBranchAndAlign(
+                NadaRigAssembly.EnsureLocalFlameBranch(
                     localWeaponRootTransform,
                     rootObject.name);
 

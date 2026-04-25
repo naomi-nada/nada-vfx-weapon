@@ -14,7 +14,8 @@ namespace NADA.VFX.Weapons.Runtime
             if (!NadaWeaponTargets.IsTargetOrAttachClone(root))
                 return false;
 
-            Transform weaponVisualRootTransform = NadaWeaponTargets.FindSword15Lava(root.transform);
+            Transform weaponVisualRootTransform =
+                NadaWeaponTargets.FindEquippedWeaponVisualRoot(root.transform);
             if (weaponVisualRootTransform == null)
                 return false;
 

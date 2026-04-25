@@ -1,11 +1,12 @@
 using UnityEngine;
+using NADA.VFX.Weapons.Runtime;
 using NADA.VFX.Weapons.Targets;
 
 namespace NADA.VFX.Runtime.Structure
 {
     internal static class NadaRigAssembly
     {
-        internal static Transform EnsureLocalFlameBranchAndAlign(
+        internal static Transform EnsureLocalFlameBranch(
             Transform localWeaponRootTransform,
             string ownerNameForLogs)
         {
@@ -41,9 +42,7 @@ namespace NADA.VFX.Runtime.Structure
                     $"as '{Plugin.OuterFlamesName}' (owner='{ownerNameForLogs}').");
             }
 
-            outerFlamesTransform.localPosition = Plugin.RigLocalPosition;
-            outerFlamesTransform.localEulerAngles = Plugin.RigLocalEulerAngles;
-            outerFlamesTransform.localScale = Plugin.RigLocalScale;
+            NadaRigTransforms.ResetLocalTransform(outerFlamesTransform);
 
             SplitFlameChildrenIntoEffects(localEffectsRootTransform, outerFlamesTransform);
 
