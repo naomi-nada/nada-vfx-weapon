@@ -138,7 +138,6 @@ namespace NADA.VFX.Weapons.Targets
             if (solidRendererCount <= 0)
                 return float.MinValue;
 
-            // Prefer real mesh-heavy roots. Penalize VFX-heavy children like "poison drip".
             return
                 solidRendererCount * 1000f +
                 totalBoundsVolume * 10f -

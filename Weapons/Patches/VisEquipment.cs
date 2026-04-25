@@ -5,7 +5,6 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapons.Patches
 {
-    [HarmonyPatch(typeof(global::VisEquipment), "UpdateEquipmentVisuals")]
     internal static class VisEquipment
     {
         private static readonly AccessTools.FieldRef<global::VisEquipment, GameObject> RightInst =

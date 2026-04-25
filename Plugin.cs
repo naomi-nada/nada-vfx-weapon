@@ -8,6 +8,8 @@ using HarmonyLib;
 using UnityEngine;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Runtime.Structure;
+using NADA.VFX.Weapons.Runtime;
+using NADA.VFX.Weapons.Targets;
 
 namespace NADA.VFX
 {
@@ -86,6 +88,79 @@ namespace NADA.VFX
             Log.LogInfo($"{ModName}: Applied Harmony patches.");
 
             StartCoroutine(NadaRigCache.CacheReferenceAssetsWhenReady());
+        }
+        
+        private void Update()
+        {
+            if (PluginConfig.AttachHotkey.Value.IsDown())
+            {
+                TryAttachToEquipped();
+            }
+
+            if (PluginConfig.BindHotkey.Value.IsDown())
+            {
+                Log.LogInfo($"{ModName}: Bind hotkey pressed.");
+            }
+
+            if (PluginConfig.SaveStyleHotkey.Value.IsDown())
+            {
+                Log.LogInfo($"{ModName}: Save Style hotkey pressed.");
+            }
+        }
+        
+        private void TryAttachToEquipped()
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null)
+                return;
+
+            var controller = new NadaWeaponRigController();
+
+            Transform rightHandAttach =
+                FindDescendantByName(player.transform, "RightHand_Attach");
+
+            Transform leftHandAttach =
+                FindDescendantByName(player.transform, "LeftHand_Attach");
+
+            TryApplyToAttachChildren(rightHandAttach, controller);
+            TryApplyToAttachChildren(leftHandAttach, controller);
+        }
+
+        private static void TryApplyToAttachChildren(
+            Transform handAttachTransform,
+            NadaWeaponRigController controller)
+        {
+            if (handAttachTransform == null || controller == null)
+                return;
+
+            foreach (Transform childTransform in handAttachTransform)
+            {
+                if (childTransform == null)
+                    continue;
+
+                GameObject childObject = childTransform.gameObject;
+                if (childObject == null)
+                    continue;
+
+                if (!NadaWeaponTargets.IsEquippedAttachClone(childObject))
+                    continue;
+
+                controller.TryApply(childObject);
+            }
+        }
+
+        private static Transform FindDescendantByName(Transform rootTransform, string targetName)
+        {
+            if (rootTransform == null)
+                return null;
+
+            foreach (Transform childTransform in rootTransform.GetComponentsInChildren<Transform>(true))
+            {
+                if (childTransform != null && childTransform.name == targetName)
+                    return childTransform;
+            }
+
+            return null;
         }
     }
 }

@@ -41,7 +41,7 @@ namespace NADA.VFX.Weapons.Runtime
             return new NadaWeaponRigAlignment(
                 localCenter,
                 Plugin.RigLocalEulerAngles,
-                Plugin.RigLocalScale);
+                ResolveScaleCompensated(weaponVisualRootTransform));
         }
 
         private static Vector3 ResolveVisualLocalCenter(Transform weaponVisualRootTransform)
@@ -77,6 +77,27 @@ namespace NADA.VFX.Weapons.Runtime
                 return Plugin.RigLocalPosition;
 
             return weaponVisualRootTransform.InverseTransformPoint(combinedBounds.center);
+        }
+        
+        private static Vector3 ResolveScaleCompensated(Transform weaponVisualRootTransform)
+        {
+            if (weaponVisualRootTransform == null)
+                return Plugin.RigLocalScale;
+
+            Vector3 parentScale = weaponVisualRootTransform.lossyScale;
+
+            return new Vector3(
+                SafeDivide(Plugin.RigLocalScale.x, parentScale.x),
+                SafeDivide(Plugin.RigLocalScale.y, parentScale.y),
+                SafeDivide(Plugin.RigLocalScale.z, parentScale.z));
+        }
+
+        private static float SafeDivide(float value, float divisor)
+        {
+            if (Mathf.Abs(divisor) < 0.0001f)
+                return value;
+
+            return value / divisor;
         }
 
         private static bool IsLikelyVfxRenderer(Renderer renderer)

@@ -20,6 +20,10 @@ namespace NADA.VFX.Runtime.Structure
 
             if (localWeaponRootTransform != null)
             {
+                NadaLogControl.Equip(
+                    $"rig-exists:{weaponVisualRootTransform.GetInstanceID()}",
+                    $"{Plugin.ModName}: [Equip] rig already exists on '{weaponVisualRootTransform.name}'");
+
                 NadaRigTransforms.EnsureChild(localWeaponRootTransform, Plugin.EffectsRootName);
 
                 localWeaponRootTransform.localPosition = alignment.LocalPosition;
@@ -42,7 +46,7 @@ namespace NADA.VFX.Runtime.Structure
                 $"weaponRootId={weaponVisualRootTransform.GetInstanceID()} " +
                 $"nadaRootId={localWeaponRootTransform.GetInstanceID()} " +
                 $"(owner='{ownerNameForLogs}').");
-            
+
             localWeaponRootTransform.localPosition = alignment.LocalPosition;
             localWeaponRootTransform.localEulerAngles = alignment.LocalEulerAngles;
             localWeaponRootTransform.localScale = alignment.LocalScale;

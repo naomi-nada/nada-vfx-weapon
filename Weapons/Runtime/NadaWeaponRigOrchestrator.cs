@@ -69,17 +69,19 @@ namespace NADA.VFX.Weapons.Runtime
             if (catalog == null || !catalog.IsValid)
                 return;
 
+            Transform activeOrbitalsRigRootTransform = catalog.OrbitalsRigRootTransform;
+
             if (catalog.OrbitalsRootTransform != null)
             {
-                Transform localOrbitalsRigRootTransform =
+                activeOrbitalsRigRootTransform =
                     NadaOrbitalsRigAssembly.EnsureLocalOrbitalsRig(
                         catalog.OrbitalsRootTransform,
                         rootObject.name);
 
-                if (localOrbitalsRigRootTransform != null)
+                if (activeOrbitalsRigRootTransform != null)
                 {
                     NadaOrbitalsRigAssembly.EnsureOrbitalsFamilyMotion(
-                        localOrbitalsRigRootTransform,
+                        activeOrbitalsRigRootTransform,
                         catalog.OrbitalsRootTransform,
                         itemData,
                         rootObject.name);
@@ -117,7 +119,7 @@ namespace NADA.VFX.Weapons.Runtime
                 itemData);
 
             NadaMotionBinder.BindOrbitalsRigFollow(
-                catalog.OrbitalsRigRootTransform,
+                activeOrbitalsRigRootTransform,
                 weaponVisualRootTransform);
 
             NadaRigMaintenance.ApplyPickupFix(rootObject);

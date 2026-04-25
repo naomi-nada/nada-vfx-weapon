@@ -1,5 +1,7 @@
 using NADA.VFX.Core.State;
 using NADA.VFX.Weapons.Targets;
+using NADA.VFX.Runtime.Structure;
+using NADA.VFX.Core.Debug;
 using UnityEngine;
 using System.Reflection;
 
@@ -20,20 +22,49 @@ namespace NADA.VFX.Weapons.Runtime
             if (weaponVisualRootTransform == null)
                 return false;
 
+            Transform existingRoot =
+                NadaRigPaths.FindDirectChild(
+                    weaponVisualRootTransform,
+                    Plugin.LocalWeaponRootName);
+
+            if (existingRoot != null)
+            {
+                NadaLogControl.Equip(
+                    $"refresh:{existingRoot.GetInstanceID()}",
+                    $"{Plugin.ModName}: [Attach] refreshing existing rig on '{weaponVisualRootTransform.name}'.");
+
+                itemData ??= ResolveItemData(root);
+
+                VfxState state = NadaWeaponStateResolver.Resolve(itemData);
+
+                var context = new NadaWeaponRigContext(
+                    root,
+                    itemData,
+                    state,
+                    weaponVisualRootTransform);
+
+                if (!context.IsValid)
+                    return false;
+
+                NadaWeaponRigOrchestrator.Run(context);
+
+                return true;
+            }
+
             itemData ??= ResolveItemData(root);
 
-            VfxState state = NadaWeaponStateResolver.Resolve(itemData);
+            VfxState refreshState = NadaWeaponStateResolver.Resolve(itemData);
 
-            var context = new NadaWeaponRigContext(
+            var refreshContext = new NadaWeaponRigContext(
                 root,
                 itemData,
-                state,
+                refreshState,
                 weaponVisualRootTransform);
 
-            if (!context.IsValid)
+            if (!refreshContext.IsValid)
                 return false;
 
-            NadaWeaponRigOrchestrator.Run(context);
+            NadaWeaponRigOrchestrator.Run(refreshContext);
             return true;
         }
 

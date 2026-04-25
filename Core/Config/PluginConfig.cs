@@ -4,6 +4,10 @@ namespace NADA.VFX.Core.Config
 {
     internal static class PluginConfig
     {
+        internal static ConfigEntry<KeyboardShortcut> AttachHotkey;
+        internal static ConfigEntry<KeyboardShortcut> BindHotkey;
+        internal static ConfigEntry<KeyboardShortcut> SaveStyleHotkey;
+        
         internal static ConfigEntry<bool> InnerFlames = null;
         internal static ConfigEntry<float> InnerFlamesEnergy = null;
         internal static ConfigEntry<float> InnerFlamesScale = null;
@@ -96,6 +100,7 @@ namespace NADA.VFX.Core.Config
 
         internal static void Bind(ConfigFile config)
         {
+            const string hotkeysSection = "CONTROLS";
             const string innerFlamesSection = "INNER FLAMES";
             const string outerFlamesSection = "OUTER FLAMES";
             const string flareSection = "FLARE";
@@ -103,12 +108,67 @@ namespace NADA.VFX.Core.Config
             const string orbitalsFlamesSection = "Orbitals: FLAMES";
             const string orbitalsEmbersSection = "Orbitals: EMBERS";
             
+            Plugin.DebugLoggingEnabled = config.Bind(
+                "Debug",
+                "Enable Debug Logging",
+                true,
+                OrderedDescription(
+                    "Enables verbose NADA VFX structure/discovery logs.",
+                    500,
+                    isAdvanced: true
+                )
+            );
+
             Plugin.EquipLoggingEnabled = config.Bind(
                 "Debug",
                 "Enable Equip Logging",
                 true,
-                "Logs one concise NADA VFX line when an equipped item is processed.");
+                OrderedDescription(
+                    "Logs one concise NADA VFX line when an equipped item is processed.",
+                    450,
+                    isAdvanced: true
+                )
+            );
 
+            AttachHotkey = config.Bind(
+                hotkeysSection,
+                "Attach to Weapon Hotkey",
+                KeyboardShortcut.Empty,
+                OrderedDescription(
+                    "Press to attach NADA VFX to the equipped weapon.",
+                    300,
+                    dispName: "Attach to Weapon Hotkey"
+                )
+            );
+            
+            AttachHotkey.SettingChanged += (_, __) => config.Save();
+
+            BindHotkey = config.Bind(
+                hotkeysSection,
+                "Bind to Weapon Hotkey",
+                KeyboardShortcut.Empty,
+                OrderedDescription(
+                    "Press to bind the current NADA VFX rig/settings to the equipped weapon.",
+                    275,
+                    dispName: "Bind to Weapon Hotkey"
+                )
+            );
+            
+            BindHotkey.SettingChanged += (_, __) => config.Save();
+
+            SaveStyleHotkey = config.Bind(
+                hotkeysSection,
+                "Save Style Hotkey",
+                KeyboardShortcut.Empty,
+                OrderedDescription(
+                    "Press to save the current NADA VFX settings as a style.",
+                    250,
+                    dispName: "Save Style Hotkey"
+                )
+            );
+            
+            SaveStyleHotkey.SettingChanged += (_, __) => config.Save();
+            
             InnerFlames = config.Bind(
                 innerFlamesSection,
                 "Enabled",
@@ -628,6 +688,8 @@ namespace NADA.VFX.Core.Config
                     dispName: "Cycles"
                 )
             );
+            
+            config.Save();
         }
 
         private static ConfigDescription OrderedDescription(
