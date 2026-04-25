@@ -3,6 +3,7 @@
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
+using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 using NADA.VFX.Core.Config;
@@ -21,6 +22,9 @@ namespace NADA.VFX
         internal static Plugin Instance;
 
         private static readonly Harmony Harmony = new Harmony(ModGuid);
+        
+        internal static ConfigEntry<bool> DebugLoggingEnabled;
+        internal static ConfigEntry<bool> EquipLoggingEnabled;
 
         // Runtime root names
         internal const string LocalWeaponRootName = "NADA Weapon";
@@ -69,6 +73,12 @@ namespace NADA.VFX
             Log = Logger;
 
             PluginConfig.Bind(Config);
+            
+            DebugLoggingEnabled = Config.Bind(
+                "Debug",
+                "Enable Debug Logging",
+                false,
+                "Enables verbose NADA VFX structure/discovery logs.");
 
             Log.LogInfo($"{ModName} loaded! Version {ModVersion}");
 

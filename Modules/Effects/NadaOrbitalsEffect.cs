@@ -858,9 +858,6 @@ namespace NADA.VFX.Modules.Effects
             if (hasLastEnabledValue && lastEnabledValue == enabled)
                 return;
 
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: {effectDisplayName} toggle applied on '{name}' (enabled={enabled}).");
-
             lastEnabledValue = enabled;
             hasLastEnabledValue = true;
         }

@@ -31,6 +31,7 @@ namespace NADA.VFX.Weapons.Targets
                     }
                 }
             }
+
             return false;
         }
 
@@ -72,26 +73,86 @@ namespace NADA.VFX.Weapons.Targets
             if (searchRootTransform == null)
                 return null;
 
+            Transform bestTransform = null;
+            float bestScore = float.MinValue;
+
             foreach (Transform childTransform in searchRootTransform)
             {
                 if (childTransform == null)
                     continue;
 
-                string childName = childTransform.name ?? string.Empty;
-
-                if (childName == Plugin.LocalWeaponRootName)
+                if (ShouldIgnoreRootCandidate(childTransform))
                     continue;
 
-                if (childName.StartsWith("attach", StringComparison.OrdinalIgnoreCase))
-                    continue;
+                float score = ScoreRootCandidate(childTransform);
 
-                if (childTransform.GetComponentInChildren<Renderer>(true) != null ||
-                    childTransform.GetComponentInChildren<ParticleSystem>(true) != null)
+                if (score > bestScore)
                 {
-                    return childTransform;
+                    bestScore = score;
+                    bestTransform = childTransform;
                 }
             }
-            return null;
+
+            return bestTransform;
+        }
+
+        private static bool ShouldIgnoreRootCandidate(Transform candidateTransform)
+        {
+            string candidateName = candidateTransform.name ?? string.Empty;
+
+            if (candidateName == Plugin.LocalWeaponRootName)
+                return true;
+
+            if (candidateName.StartsWith("attach", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }
+
+        private static float ScoreRootCandidate(Transform candidateTransform)
+        {
+            Renderer[] renderers =
+                candidateTransform.GetComponentsInChildren<Renderer>(true);
+
+            int solidRendererCount = 0;
+            int vfxRendererCount = 0;
+            float totalBoundsVolume = 0f;
+
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer == null)
+                    continue;
+
+                if (IsLikelyVfxRenderer(renderer))
+                {
+                    vfxRendererCount++;
+                    continue;
+                }
+
+                solidRendererCount++;
+
+                Vector3 size = renderer.bounds.size;
+                totalBoundsVolume += size.x * size.y * size.z;
+            }
+
+            if (solidRendererCount <= 0)
+                return float.MinValue;
+
+            // Prefer real mesh-heavy roots. Penalize VFX-heavy children like "poison drip".
+            return
+                solidRendererCount * 1000f +
+                totalBoundsVolume * 10f -
+                vfxRendererCount * 100f;
+        }
+
+        private static bool IsLikelyVfxRenderer(Renderer renderer)
+        {
+            if (renderer == null)
+                return true;
+
+            return renderer is ParticleSystemRenderer ||
+                   renderer is TrailRenderer ||
+                   renderer is LineRenderer;
         }
 
         internal static string FullPath(Transform transform)

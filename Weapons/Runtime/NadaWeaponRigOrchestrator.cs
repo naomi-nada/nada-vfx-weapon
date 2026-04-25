@@ -30,7 +30,7 @@ namespace NADA.VFX.Weapons.Runtime
             }
 
             NadaWeaponRigAlignment alignment =
-                NadaWeaponRigAlignmentResolver.Resolve(weaponVisualRootTransform);
+                NadaWeaponRigAlignmentResolver.Resolve(itemData, weaponVisualRootTransform);
 
             Transform localWeaponRootTransform =
                 NadaRigRootAssembly.EnsureAttachedLocalWeaponBranch(

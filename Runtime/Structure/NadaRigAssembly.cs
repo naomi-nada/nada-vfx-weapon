@@ -1,6 +1,6 @@
 using UnityEngine;
-using NADA.VFX.Weapons.Runtime;
 using NADA.VFX.Weapons.Targets;
+using NADA.VFX.Core.Debug;
 
 namespace NADA.VFX.Runtime.Structure
 {
@@ -36,8 +36,9 @@ namespace NADA.VFX.Runtime.Structure
                 outerFlamesObject.name = Plugin.OuterFlamesName;
                 outerFlamesObject.SetActive(true);
                 outerFlamesTransform = outerFlamesObject.transform;
-
-                Plugin.Log.LogInfo(
+                
+                NadaLogControl.Info(
+                    $"outer-flames:{outerFlamesTransform.GetInstanceID()}",
                     $"{Plugin.ModName}: Added local outer flames branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
                     $"as '{Plugin.OuterFlamesName}' (owner='{ownerNameForLogs}').");
             }
@@ -100,9 +101,9 @@ namespace NADA.VFX.Runtime.Structure
                 orbitalsRootTransform =
                     NadaRigTransforms.EnsureChild(localEffectsRootTransform, Plugin.OrbitalsName);
 
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added local Orbitals branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
-                    $"as '{Plugin.OrbitalsName}' (owner='{ownerNameForLogs}').");
+                NadaLogControl.Info(
+                    $"orbitals-branch:{orbitalsRootTransform.GetInstanceID()}",
+                    $"{Plugin.ModName}: Added local Orbitals branch under '{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' as '{Plugin.OrbitalsName}' (owner='{ownerNameForLogs}').");
             }
 
             Transform orbsRootTransform =
@@ -119,7 +120,8 @@ namespace NADA.VFX.Runtime.Structure
 
                 NadaRigTransforms.ResetLocalTransform(orbsRootTransform);
 
-                Plugin.Log.LogInfo(
+                NadaLogControl.Info(
+                    $"orbs-subtree:{orbsRootTransform.GetInstanceID()}",
                     $"{Plugin.ModName}: Added local orb subtree under '{NadaWeaponTargets.FullPath(orbitalsRootTransform)}' " +
                     $"as '{Plugin.OrbitalsOrbsName}' (owner='{ownerNameForLogs}').");
             }
@@ -129,7 +131,8 @@ namespace NADA.VFX.Runtime.Structure
             {
                 Object.Destroy(zSyncTransform);
 
-                Plugin.Log.LogInfo(
+                NadaLogControl.Info(
+                    $"remove-zsync:{orbsRootTransform.GetInstanceID()}",
                     $"{Plugin.ModName}: Removed ZSyncTransform from '{NadaWeaponTargets.FullPath(orbsRootTransform)}'.");
             }
 
@@ -232,7 +235,8 @@ namespace NADA.VFX.Runtime.Structure
 
             NadaRigTransforms.DisableRootVisualContent(localOrbsRootTransform);
 
-            Plugin.Log.LogInfo(
+            NadaLogControl.Info(
+                $"orb-visual:{orbVisualTransform.GetInstanceID()}",
                 $"{Plugin.ModName}: Created clean orb visual child 'Orb_00' under '{NadaWeaponTargets.FullPath(localOrbsRootTransform)}'.");
 
             return orbVisualTransform;

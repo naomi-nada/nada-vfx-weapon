@@ -102,6 +102,12 @@ namespace NADA.VFX.Core.Config
             const string orbitalsOrbsSection = "Orbitals: ORBS";
             const string orbitalsFlamesSection = "Orbitals: FLAMES";
             const string orbitalsEmbersSection = "Orbitals: EMBERS";
+            
+            Plugin.EquipLoggingEnabled = config.Bind(
+                "Debug",
+                "Enable Equip Logging",
+                true,
+                "Logs one concise NADA VFX line when an equipped item is processed.");
 
             InnerFlames = config.Bind(
                 innerFlamesSection,
@@ -622,8 +628,6 @@ namespace NADA.VFX.Core.Config
                     dispName: "Cycles"
                 )
             );
-
-            Plugin.Log.LogInfo($"{Plugin.ModName}: Config bound.");
         }
 
         private static ConfigDescription OrderedDescription(

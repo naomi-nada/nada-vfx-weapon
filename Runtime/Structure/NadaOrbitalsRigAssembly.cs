@@ -2,6 +2,7 @@ using UnityEngine;
 using NADA.VFX.Modules.Motion;
 using NADA.VFX.Runtime.Binding;
 using NADA.VFX.Weapons.Targets;
+using NADA.VFX.Core.Debug;
 
 namespace NADA.VFX.Runtime.Structure
 {
@@ -24,9 +25,10 @@ namespace NADA.VFX.Runtime.Structure
                 orbitalsRigTransform.SetParent(orbitalsRootTransform, false);
                 NadaRigTransforms.ResetLocalTransform(orbitalsRigTransform);
 
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals rig '{Plugin.OrbitalsRigRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRootTransform)}' " +
-                    $"(owner='{ownerNameForLogs}').");
+                NadaLogControl.Info(
+                    $"orbitals-rig:{orbitalsRigTransform.GetInstanceID()}",
+                    $"{Plugin.ModName}: Added Orbitals rig '{orbitalsRigTransform.name}' under '{orbitalsRigTransform.parent?.name}'."
+                );
             }
 
             NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsMotionRootsName);
@@ -164,9 +166,10 @@ namespace NADA.VFX.Runtime.Structure
                 motionRootsTransform =
                     NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsMotionRootsName);
 
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals motion roots '{Plugin.OrbitalsMotionRootsName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTransform)}' " +
-                    $"(owner='{ownerNameForLogs}').");
+                NadaLogControl.Info(
+                    $"orbitals-motion-roots:{orbitalsRigTransform.GetInstanceID()}",
+                    $"{Plugin.ModName}: Added Orbitals motion roots '{Plugin.OrbitalsMotionRootsName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTransform)}' (owner='{ownerNameForLogs}')."
+                );
             }
 
             Transform motionRootTransform =
@@ -181,9 +184,10 @@ namespace NADA.VFX.Runtime.Structure
                 motionRootTransform.SetParent(motionRootsTransform, false);
                 createdMotionRoot = true;
 
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals motion root '{motionRootName}' under '{NadaWeaponTargets.FullPath(motionRootsTransform)}' " +
-                    $"(owner='{ownerNameForLogs}').");
+                NadaLogControl.Info(
+                    $"orbitals-motion-root:{motionRootName}:{motionRootsTransform.GetInstanceID()}",
+                    $"{Plugin.ModName}: Added Orbitals motion root '{motionRootName}' under '{NadaWeaponTargets.FullPath(motionRootsTransform)}' (owner='{ownerNameForLogs}')."
+                );
             }
 
             if (createdMotionRoot)
@@ -218,9 +222,10 @@ namespace NADA.VFX.Runtime.Structure
                 poolsRootTransform =
                     NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsPoolsRootName);
 
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals pools root '{Plugin.OrbitalsPoolsRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTransform)}' " +
-                    $"(owner='{ownerNameForLogs}').");
+                NadaLogControl.Info(
+                    $"orbitals-pools-root:{orbitalsRigTransform.GetInstanceID()}",
+                    $"{Plugin.ModName}: Added Orbitals pools root '{Plugin.OrbitalsPoolsRootName}' under '{NadaWeaponTargets.FullPath(orbitalsRigTransform)}' (owner='{ownerNameForLogs}')."
+                );
             }
 
             Transform poolRootTransform =
@@ -232,9 +237,10 @@ namespace NADA.VFX.Runtime.Structure
                 poolRootTransform = poolRootObject.transform;
                 poolRootTransform.SetParent(poolsRootTransform, false);
 
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Added Orbitals visual pool '{poolName}' under '{NadaWeaponTargets.FullPath(poolsRootTransform)}' " +
-                    $"(owner='{ownerNameForLogs}').");
+                NadaLogControl.Info(
+                    $"orbitals-visual-pool:{poolName}:{poolsRootTransform.GetInstanceID()}",
+                    $"{Plugin.ModName}: Added Orbitals visual pool '{poolName}' under '{NadaWeaponTargets.FullPath(poolsRootTransform)}' (owner='{ownerNameForLogs}')."
+                );
             }
 
             NadaRigTransforms.ResetLocalTransform(poolRootTransform);

@@ -1,6 +1,7 @@
 using UnityEngine;
 using NADA.VFX.Weapons.Targets;
 using NADA.VFX.Weapons.Runtime;
+using NADA.VFX.Core.Debug;
 
 namespace NADA.VFX.Runtime.Structure
 {
@@ -20,6 +21,11 @@ namespace NADA.VFX.Runtime.Structure
             if (localWeaponRootTransform != null)
             {
                 NadaRigTransforms.EnsureChild(localWeaponRootTransform, Plugin.EffectsRootName);
+
+                localWeaponRootTransform.localPosition = alignment.LocalPosition;
+                localWeaponRootTransform.localEulerAngles = alignment.LocalEulerAngles;
+                localWeaponRootTransform.localScale = alignment.LocalScale;
+
                 return localWeaponRootTransform;
             }
 
@@ -29,9 +35,13 @@ namespace NADA.VFX.Runtime.Structure
 
             NadaRigTransforms.EnsureChild(localWeaponRootTransform, Plugin.EffectsRootName);
 
-            Plugin.Log.LogInfo(
+            NadaLogControl.Info(
+                $"local-root:{localWeaponRootTransform.GetInstanceID()}",
                 $"{Plugin.ModName}: Attached local weapon subtree under '{NadaWeaponTargets.FullPath(weaponVisualRootTransform)}' " +
-                $"as '{Plugin.LocalWeaponRootName}' (owner='{ownerNameForLogs}').");
+                $"as '{Plugin.LocalWeaponRootName}' " +
+                $"weaponRootId={weaponVisualRootTransform.GetInstanceID()} " +
+                $"nadaRootId={localWeaponRootTransform.GetInstanceID()} " +
+                $"(owner='{ownerNameForLogs}').");
             
             localWeaponRootTransform.localPosition = alignment.LocalPosition;
             localWeaponRootTransform.localEulerAngles = alignment.LocalEulerAngles;

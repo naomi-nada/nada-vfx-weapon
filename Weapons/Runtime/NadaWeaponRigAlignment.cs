@@ -1,3 +1,4 @@
+using NADA.VFX.Core.Debug;
 using UnityEngine;
 
 namespace NADA.VFX.Weapons.Runtime
@@ -21,9 +22,88 @@ namespace NADA.VFX.Weapons.Runtime
 
     internal static class NadaWeaponRigAlignmentResolver
     {
-        internal static NadaWeaponRigAlignment Resolve(Transform weaponVisualRootTransform)
+        internal static NadaWeaponRigAlignment Resolve(
+            global::ItemDrop.ItemData itemData,
+            Transform weaponVisualRootTransform)
         {
-            // First pass: preserve the existing lava-sword-tuned default.
+            if (weaponVisualRootTransform == null)
+                return Default();
+
+            string itemName = itemData?.m_shared?.m_name ?? string.Empty;
+            string itemType = itemData?.m_shared?.m_itemType.ToString() ?? string.Empty;
+
+            Vector3 localCenter = ResolveVisualLocalCenter(weaponVisualRootTransform);
+
+            NadaLogControl.Equip(
+                $"equip:{itemName}:{itemType}:{weaponVisualRootTransform.name}:{weaponVisualRootTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [Equip] item='{itemName}' type='{itemType}' visual='{weaponVisualRootTransform.name}' center={localCenter}");
+
+            return new NadaWeaponRigAlignment(
+                localCenter,
+                Plugin.RigLocalEulerAngles,
+                Plugin.RigLocalScale);
+        }
+
+        private static Vector3 ResolveVisualLocalCenter(Transform weaponVisualRootTransform)
+        {
+            Renderer[] renderers =
+                weaponVisualRootTransform.GetComponentsInChildren<Renderer>(true);
+
+            bool hasBounds = false;
+            Bounds combinedBounds = default;
+
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer == null)
+                    continue;
+
+                if (IsInsideNadaRig(renderer.transform))
+                    continue;
+
+                if (IsLikelyVfxRenderer(renderer))
+                    continue;
+
+                if (!hasBounds)
+                {
+                    combinedBounds = renderer.bounds;
+                    hasBounds = true;
+                    continue;
+                }
+
+                combinedBounds.Encapsulate(renderer.bounds);
+            }
+
+            if (!hasBounds)
+                return Plugin.RigLocalPosition;
+
+            return weaponVisualRootTransform.InverseTransformPoint(combinedBounds.center);
+        }
+
+        private static bool IsLikelyVfxRenderer(Renderer renderer)
+        {
+            if (renderer == null)
+                return true;
+
+            return renderer is ParticleSystemRenderer ||
+                   renderer is TrailRenderer ||
+                   renderer is LineRenderer;
+        }
+
+        private static bool IsInsideNadaRig(Transform transform)
+        {
+            while (transform != null)
+            {
+                if (transform.name == Plugin.LocalWeaponRootName)
+                    return true;
+
+                transform = transform.parent;
+            }
+
+            return false;
+        }
+
+        private static NadaWeaponRigAlignment Default()
+        {
             return new NadaWeaponRigAlignment(
                 Plugin.RigLocalPosition,
                 Plugin.RigLocalEulerAngles,

@@ -85,14 +85,6 @@ namespace NADA.VFX.Modules.Effects
                 _lastHue = state.FlareHue;
                 _hasLastHue = true;
             }
-
-            if (!_hasLastEnabled || _lastEnabled != enabled)
-            {
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Flare toggle applied on '{name}' (enabled={enabled}).");
-                _lastEnabled = enabled;
-                _hasLastEnabled = true;
-            }
         }
 
         private VfxState ResolveState()

@@ -80,14 +80,6 @@ namespace NADA.VFX.Modules.Effects
             ApplyScale(state.InnerFlamesScale);
             ApplyHueShift(state.InnerFlamesHue);
             ApplyEnergy(state.InnerFlamesEnergy);
-
-            if (!_hasLastEnabled || _lastEnabled != enabled)
-            {
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Inner Flames toggle applied on '{name}' (enabled={enabled}).");
-                _lastEnabled = enabled;
-                _hasLastEnabled = true;
-            }
         }
 
         private VfxState ResolveState()

@@ -83,14 +83,6 @@ namespace NADA.VFX.Modules.Effects
             ApplyHueShift(state.OuterFlamesHue);
             ApplyScale(state.OuterFlamesScale);
             ApplyEnergy(state.OuterFlamesEnergy);
-
-            if (!_hasLastEnabled || _lastEnabled != enabled)
-            {
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: Outer Flames toggle applied on '{name}' (enabled={enabled}).");
-                _lastEnabled = enabled;
-                _hasLastEnabled = true;
-            }
         }
 
         private VfxState ResolveState()
