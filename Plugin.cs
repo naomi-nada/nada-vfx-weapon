@@ -7,6 +7,7 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 using NADA.VFX.Core.Config;
+using NADA.VFX.Core.State;
 using NADA.VFX.Runtime.Structure;
 using NADA.VFX.Weapons.Runtime;
 using NADA.VFX.Weapons.Targets;
@@ -99,7 +100,7 @@ namespace NADA.VFX
 
             if (PluginConfig.BindHotkey.Value.IsDown())
             {
-                Log.LogInfo($"{ModName}: Bind hotkey pressed.");
+                TryBindEquipped();
             }
 
             if (PluginConfig.SaveStyleHotkey.Value.IsDown())
@@ -122,33 +123,186 @@ namespace NADA.VFX
             Transform leftHandAttach =
                 FindDescendantByName(player.transform, "LeftHand_Attach");
 
-            TryApplyToAttachChildren(rightHandAttach, controller);
-            TryApplyToAttachChildren(leftHandAttach, controller);
-        }
+            global::ItemDrop.ItemData rightItem =
+                NadaEquippedItemResolver.ResolveRightHandItem();
 
-        private static void TryApplyToAttachChildren(
-            Transform handAttachTransform,
-            NadaWeaponRigController controller)
-        {
-            if (handAttachTransform == null || controller == null)
+            global::ItemDrop.ItemData leftItem =
+                NadaEquippedItemResolver.ResolveLeftHandItem();
+
+            if (TryApplyToFirstAttachChild(rightHandAttach, controller, rightItem, requireMissingRig: true))
                 return;
 
-            foreach (Transform childTransform in handAttachTransform)
+            if (TryApplyToFirstAttachChild(leftHandAttach, controller, leftItem, requireMissingRig: true))
+                return;
+
+            if (TryApplyToFirstAttachChild(rightHandAttach, controller, rightItem, requireMissingRig: false))
+                return;
+
+            TryApplyToFirstAttachChild(leftHandAttach, controller, leftItem, requireMissingRig: false);
+        }
+
+        private bool TryApplyToFirstAttachChild(
+            Transform attachTransform,
+            NadaWeaponRigController controller,
+            global::ItemDrop.ItemData itemData,
+            bool requireMissingRig)
+        {
+            if (attachTransform == null || controller == null || itemData == null)
+                return false;
+
+            foreach (Transform childTransform in attachTransform)
             {
                 if (childTransform == null)
                     continue;
 
-                GameObject childObject = childTransform.gameObject;
-                if (childObject == null)
+                Transform weaponVisualRootTransform =
+                    NadaWeaponTargets.FindEquippedWeaponVisualRoot(childTransform);
+
+                if (weaponVisualRootTransform == null)
                     continue;
 
-                if (!NadaWeaponTargets.IsEquippedAttachClone(childObject))
+                Transform existingRig =
+                    NadaRigPaths.FindDirectChild(
+                        weaponVisualRootTransform,
+                        Plugin.LocalWeaponRootName);
+
+                if (requireMissingRig && existingRig != null)
                     continue;
 
-                controller.TryApply(childObject);
+                if (!requireMissingRig && existingRig == null)
+                    continue;
+
+                return controller.TryApply(childTransform.gameObject, itemData);
             }
-        }
 
+            return false;
+        }
+        
+        private void TryBindEquipped()
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null)
+                return;
+
+            Transform rightHandAttach =
+                FindDescendantByName(player.transform, "RightHand_Attach");
+
+            Transform leftHandAttach =
+                FindDescendantByName(player.transform, "LeftHand_Attach");
+
+            global::ItemDrop.ItemData rightItem =
+                NadaEquippedItemResolver.ResolveRightHandItem();
+
+            global::ItemDrop.ItemData leftItem =
+                NadaEquippedItemResolver.ResolveLeftHandItem();
+
+            if (TryBindUnboundAttachedItem(rightHandAttach, rightItem))
+                return;
+
+            if (TryBindUnboundAttachedItem(leftHandAttach, leftItem))
+                return;
+
+            Plugin.Log.LogInfo(
+                $"{ModName}: [Bind] no unbound equipped NADA rig found to bind.");
+        }
+        
+        private bool TryBindUnboundAttachedItem(
+            Transform attachTransform,
+            global::ItemDrop.ItemData itemData)
+        {
+            if (attachTransform == null || itemData == null)
+                return false;
+
+            if (VfxStateIO.IsBound(itemData))
+                return false;
+
+            foreach (Transform childTransform in attachTransform)
+            {
+                if (childTransform == null)
+                    continue;
+
+                Transform weaponVisualRootTransform =
+                    NadaWeaponTargets.FindEquippedWeaponVisualRoot(childTransform);
+
+                if (weaponVisualRootTransform == null)
+                    continue;
+
+                Transform existingRig =
+                    NadaRigPaths.FindDirectChild(
+                        weaponVisualRootTransform,
+                        LocalWeaponRootName);
+
+                if (existingRig == null)
+                    continue;
+
+                if (!NadaWeaponBinder.Bind(itemData))
+                    return false;
+
+                var controller = new NadaWeaponRigController();
+                controller.TryApply(childTransform.gameObject, itemData);
+
+                return true;
+            }
+
+            return false;
+        }
+        
+        internal void TryUnbindEquipped()
+        {
+            bool unboundAny = false;
+
+            global::ItemDrop.ItemData rightItem =
+                NadaEquippedItemResolver.ResolveRightHandItem();
+
+            global::ItemDrop.ItemData leftItem =
+                NadaEquippedItemResolver.ResolveLeftHandItem();
+
+            if (rightItem != null && VfxStateIO.IsBound(rightItem))
+            {
+                NadaWeaponBinder.Unbind(rightItem);
+                unboundAny = true;
+            }
+
+            if (leftItem != null && leftItem != rightItem && VfxStateIO.IsBound(leftItem))
+            {
+                NadaWeaponBinder.Unbind(leftItem);
+                unboundAny = true;
+            }
+
+            if (!unboundAny)
+            {
+                Plugin.Log.LogInfo(
+                    $"{ModName}: [Unbind] no bound equipped items found.");
+                return;
+            }
+
+            RefreshExistingEquippedRigsOnly();
+        }
+        
+        private void RefreshExistingEquippedRigsOnly()
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null)
+                return;
+
+            var controller = new NadaWeaponRigController();
+
+            Transform rightHandAttach =
+                FindDescendantByName(player.transform, "RightHand_Attach");
+
+            Transform leftHandAttach =
+                FindDescendantByName(player.transform, "LeftHand_Attach");
+
+            global::ItemDrop.ItemData rightItem =
+                NadaEquippedItemResolver.ResolveRightHandItem();
+
+            global::ItemDrop.ItemData leftItem =
+                NadaEquippedItemResolver.ResolveLeftHandItem();
+
+            TryApplyToFirstAttachChild(rightHandAttach, controller, rightItem, requireMissingRig: false);
+            TryApplyToFirstAttachChild(leftHandAttach, controller, leftItem, requireMissingRig: false);
+        }
+        
         private static Transform FindDescendantByName(Transform rootTransform, string targetName)
         {
             if (rootTransform == null)

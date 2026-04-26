@@ -7,6 +7,17 @@ namespace NADA.VFX.Core.Config
 {
     internal static class ConfigurationManagerDrawers
     {
+        internal static void DrawUnbindWeaponButton(ConfigEntryBase entry)
+        {
+            if (GUILayout.Button("Unbind Current Weapon"))
+            {
+                Plugin.Instance.TryUnbindEquipped();
+
+                // Keep this config value from behaving like a real toggle.
+                entry.BoxedValue = false;
+            }
+        }
+        
         internal static void DrawEnabledCheckboxWithLabel(ConfigEntryBase entry)
         {
             bool current = (bool)entry.BoxedValue;

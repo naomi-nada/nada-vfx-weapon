@@ -6,6 +6,7 @@ namespace NADA.VFX.Core.Config
     {
         internal static ConfigEntry<KeyboardShortcut> AttachHotkey;
         internal static ConfigEntry<KeyboardShortcut> BindHotkey;
+        internal static ConfigEntry<bool> UnbindWeapon;
         internal static ConfigEntry<KeyboardShortcut> SaveStyleHotkey;
         
         internal static ConfigEntry<bool> InnerFlames = null;
@@ -155,6 +156,18 @@ namespace NADA.VFX.Core.Config
             );
             
             BindHotkey.SettingChanged += (_, __) => config.Save();
+            
+            UnbindWeapon = config.Bind(
+                hotkeysSection,
+                "Unbind Current Weapon",
+                false,
+                OrderedDescription(
+                    "Clears NADA VFX from the equipped weapon and refreshes it using current manager settings.",
+                    260,
+                    dispName: "Unbind Current Weapon",
+                    customDrawer: ConfigurationManagerDrawers.DrawUnbindWeaponButton
+                )
+            );
 
             SaveStyleHotkey = config.Bind(
                 hotkeysSection,

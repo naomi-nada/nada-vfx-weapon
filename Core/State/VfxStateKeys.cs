@@ -2,6 +2,8 @@ namespace NADA.VFX.Core.State
 {
     internal static class VfxStateKeys
     {
+        internal const string Bound = "nada.vfx.bound";
+        
         internal const string InnerFlamesEnabled = "nada.vfx.innerflames.enabled";
         internal const string InnerFlamesEnergy = "nada.vfx.innerflames.energy";
         internal const string InnerFlamesScale = "nada.vfx.innerflames.scale";

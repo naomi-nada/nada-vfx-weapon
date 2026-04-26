@@ -6,8 +6,6 @@ namespace NADA.VFX.Core.State
 {
     internal static class VfxStateIO
     {
-        private const string LegacyInnerPresetKey = "nada.vfxfix.inner";
-
         internal static VfxState FromConfig()
         {
             return new VfxState
@@ -66,6 +64,67 @@ namespace NADA.VFX.Core.State
                 OrbitalsEmbersRadius = PluginConfig.OrbitalsEmbersRadius.Value,
                 OrbitalsEmbersCycles = PluginConfig.OrbitalsEmbersCycles.Value
             };
+        }
+        
+        internal static void Write(global::ItemDrop.ItemData item, VfxState state, bool bound)
+        {
+            if (item == null)
+                return;
+
+            if (item.m_customData == null)
+                item.m_customData = new Dictionary<string, string>();
+
+            Dictionary<string, string> customData = item.m_customData;
+
+            WriteBool(customData, VfxStateKeys.Bound, bound);
+
+            WriteBool(customData, VfxStateKeys.InnerFlamesEnabled, state.InnerFlamesEnabled);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesScale, state.InnerFlamesScale);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesHue, state.InnerFlamesHue);
+
+            WriteBool(customData, VfxStateKeys.OuterFlamesEnabled, state.OuterFlamesEnabled);
+            WriteBool(customData, VfxStateKeys.OuterFlamesDragEnabled, state.OuterFlamesDragEnabled);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesEnergy, state.OuterFlamesEnergy);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesScale, state.OuterFlamesScale);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
+
+            WriteBool(customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
+            WriteFloat(customData, VfxStateKeys.FlareScale, state.FlareScale);
+            WriteFloat(customData, VfxStateKeys.FlareHue, state.FlareHue);
+
+            WriteBool(customData, VfxStateKeys.OrbitalsOrbsEnabled, state.OrbitalsOrbsEnabled);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsCount, state.OrbitalsOrbsCount);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsDrift, state.OrbitalsOrbsDrift);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsScale, state.OrbitalsOrbsScale);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsHue, state.OrbitalsOrbsHue);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsSpeed, state.OrbitalsOrbsSpeed);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsSpacing, state.OrbitalsOrbsSpacing);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsLength, state.OrbitalsOrbsLength);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsRadius, state.OrbitalsOrbsRadius);
+            WriteFloat(customData, VfxStateKeys.OrbitalsOrbsCycles, state.OrbitalsOrbsCycles);
+
+            WriteBool(customData, VfxStateKeys.OrbitalsFlamesEnabled, state.OrbitalsFlamesEnabled);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesCount, state.OrbitalsFlamesCount);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesEnergy, state.OrbitalsFlamesEnergy);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesDrift, state.OrbitalsFlamesDrift);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesHue, state.OrbitalsFlamesHue);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesSpeed, state.OrbitalsFlamesSpeed);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesSpacing, state.OrbitalsFlamesSpacing);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesLength, state.OrbitalsFlamesLength);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesRadius, state.OrbitalsFlamesRadius);
+            WriteFloat(customData, VfxStateKeys.OrbitalsFlamesCycles, state.OrbitalsFlamesCycles);
+
+            WriteBool(customData, VfxStateKeys.OrbitalsEmbersEnabled, state.OrbitalsEmbersEnabled);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersCount, state.OrbitalsEmbersCount);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersEnergy, state.OrbitalsEmbersEnergy);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersDrift, state.OrbitalsEmbersDrift);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersHue, state.OrbitalsEmbersHue);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersSpeed, state.OrbitalsEmbersSpeed);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersSpacing, state.OrbitalsEmbersSpacing);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersLength, state.OrbitalsEmbersLength);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersRadius, state.OrbitalsEmbersRadius);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersCycles, state.OrbitalsEmbersCycles);
         }
 
         internal static bool TryRead(global::ItemDrop.ItemData item, out VfxState state)
@@ -139,6 +198,9 @@ namespace NADA.VFX.Core.State
         {
             if (item == null)
                 return;
+            
+            if (IsBound(item))
+                return;
 
             if (item.m_customData == null)
                 item.m_customData = new Dictionary<string, string>();
@@ -199,6 +261,62 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersCycles, PluginConfig.OrbitalsEmbersCycles.Value);
         }
+        
+        internal static void Clear(global::ItemDrop.ItemData item)
+        {
+            if (item?.m_customData == null)
+                return;
+
+            item.m_customData.Remove(VfxStateKeys.Bound);
+
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesEnabled);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesEnergy);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesScale);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesHue);
+
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesEnabled);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesDragEnabled);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesEnergy);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesScale);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesHue);
+
+            item.m_customData.Remove(VfxStateKeys.FlareEnabled);
+            item.m_customData.Remove(VfxStateKeys.FlareScale);
+            item.m_customData.Remove(VfxStateKeys.FlareHue);
+
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsEnabled);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsCount);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsDrift);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsScale);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsHue);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsSpeed);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsSpacing);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsLength);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsRadius);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsCycles);
+
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesEnabled);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesCount);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesEnergy);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesDrift);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesHue);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesSpeed);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesSpacing);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesLength);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesRadius);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesCycles);
+
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersEnabled);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersCount);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersEnergy);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersDrift);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersHue);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersSpeed);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersSpacing);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersLength);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersRadius);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersCycles);
+        }
 
         private static float ReadFloat(Dictionary<string, string> customData, string key, float fallback)
         {
@@ -233,6 +351,22 @@ namespace NADA.VFX.Core.State
 
             return fallback;
         }
+        
+        private static void WriteFloat(Dictionary<string, string> customData, string key, float value)
+        {
+            if (customData == null)
+                return;
+
+            customData[key] = value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static void WriteBool(Dictionary<string, string> customData, string key, bool value)
+        {
+            if (customData == null)
+                return;
+
+            customData[key] = value ? "true" : "false";
+        }
 
         private static void BackfillMissing(Dictionary<string, string> customData, string key, float value)
         {
@@ -248,6 +382,17 @@ namespace NADA.VFX.Core.State
                 return;
 
             customData[key] = value ? "true" : "false";
+        }
+        
+        internal static bool IsBound(global::ItemDrop.ItemData item)
+        {
+            if (item?.m_customData == null)
+                return false;
+
+            return ReadBool(
+                item.m_customData,
+                VfxStateKeys.Bound,
+                false);
         }
     }
 }

@@ -1,23 +1,19 @@
 using System;
 using HarmonyLib;
+using NADA.VFX.Core.State;
 using NADA.VFX.Weapons.Runtime;
 using UnityEngine;
 
 namespace NADA.VFX.Weapons.Patches
 {
+    [HarmonyPatch(typeof(global::VisEquipment), "UpdateEquipmentVisuals")]
     internal static class VisEquipment
     {
-        private static readonly AccessTools.FieldRef<global::VisEquipment, GameObject> RightInst =
-            AccessTools.FieldRefAccess<global::VisEquipment, GameObject>("m_rightItemInstance");
+        private static readonly System.Reflection.FieldInfo RightInstField =
+            AccessTools.Field(typeof(global::VisEquipment), "m_rightItemInstance");
 
-        private static readonly AccessTools.FieldRef<global::VisEquipment, GameObject> LeftInst =
-            AccessTools.FieldRefAccess<global::VisEquipment, GameObject>("m_leftItemInstance");
-
-        private static readonly System.Reflection.FieldInfo RightItemField =
-            AccessTools.Field(typeof(global::VisEquipment), "m_rightItem");
-
-        private static readonly System.Reflection.FieldInfo LeftItemField =
-            AccessTools.Field(typeof(global::VisEquipment), "m_leftItem");
+        private static readonly System.Reflection.FieldInfo LeftInstField =
+            AccessTools.Field(typeof(global::VisEquipment), "m_leftItemInstance");
 
         private static readonly NadaWeaponRigController WeaponRigController = new();
 
@@ -25,19 +21,20 @@ namespace NADA.VFX.Weapons.Patches
         {
             try
             {
-                if (__instance == null) return;
+                if (__instance == null)
+                    return;
 
-                var rightGo = RightInst(__instance);
-                var leftGo = LeftInst(__instance);
+                GameObject rightInstance = SafeGetGameObject(RightInstField, __instance);
+                GameObject leftInstance = SafeGetGameObject(LeftInstField, __instance);
 
-                var rightItem = SafeGetItem(RightItemField, __instance);
-                var leftItem = SafeGetItem(LeftItemField, __instance);
+                global::ItemDrop.ItemData rightItem =
+                    NadaEquippedItemResolver.ResolveRightHandItem();
 
-                if (rightGo != null)
-                    WeaponRigController.TryApply(rightGo, rightItem);
+                global::ItemDrop.ItemData leftItem =
+                    NadaEquippedItemResolver.ResolveLeftHandItem();
 
-                if (leftGo != null)
-                    WeaponRigController.TryApply(leftGo, leftItem);
+                TryApplyIfBound(rightInstance, rightItem);
+                TryApplyIfBound(leftInstance, leftItem);
             }
             catch (Exception e)
             {
@@ -45,12 +42,29 @@ namespace NADA.VFX.Weapons.Patches
             }
         }
 
-        private static global::ItemDrop.ItemData SafeGetItem(System.Reflection.FieldInfo field, global::VisEquipment ve)
+        private static void TryApplyIfBound(
+            GameObject itemInstance,
+            global::ItemDrop.ItemData itemData)
+        {
+            if (itemInstance == null || itemData == null)
+                return;
+
+            if (!VfxStateIO.IsBound(itemData))
+                return;
+
+            WeaponRigController.TryApply(itemInstance, itemData);
+        }
+
+        private static GameObject SafeGetGameObject(
+            System.Reflection.FieldInfo field,
+            global::VisEquipment ve)
         {
             try
             {
-                if (field == null || ve == null) return null;
-                return field.GetValue(ve) as global::ItemDrop.ItemData;
+                if (field == null || ve == null)
+                    return null;
+
+                return field.GetValue(ve) as GameObject;
             }
             catch
             {
