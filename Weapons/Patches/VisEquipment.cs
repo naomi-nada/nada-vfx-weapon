@@ -1,6 +1,9 @@
 using System;
 using HarmonyLib;
 using NADA.VFX.Core.State;
+using NADA.VFX.Core.Config;
+using NADA.VFX.Core.Debug;
+using NADA.VFX.Weapons.Targets;
 using NADA.VFX.Weapons.Runtime;
 using UnityEngine;
 
@@ -23,6 +26,16 @@ namespace NADA.VFX.Weapons.Patches
             {
                 if (__instance == null)
                     return;
+                
+                if (Player.m_localPlayer == null &&
+                    PluginConfig.CharacterSelectionVisibility.Value)
+                {
+                    NadaLogControl.Info(
+                        $"char-select-probe:{__instance.GetInstanceID()}",
+                        $"{Plugin.ModName}: [CharSelectProbe] " +
+                        $"vis='{__instance.name}' " +
+                        $"path='{NadaWeaponTargets.FullPath(__instance.transform)}'");
+                }
 
                 GameObject rightInstance = SafeGetGameObject(RightInstField, __instance);
                 GameObject leftInstance = SafeGetGameObject(LeftInstField, __instance);

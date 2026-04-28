@@ -11,9 +11,13 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<string> StyleName;
         internal static ConfigEntry<bool> SaveStyle;
         internal static ConfigEntry<string> LoadStyle;
+        
+        internal static ConfigEntry<bool> CharacterSelectionVisibility;
+        internal static ConfigEntry<bool> DroppedItemVisibility;
 
         internal static ConfigEntry<bool> ControlsBottomSpacer;
         internal static ConfigEntry<bool> StylesBottomSpacer;
+        internal static ConfigEntry<bool> VisibilityBottomSpacer;
         internal static ConfigEntry<bool> InnerFlamesBottomSpacer;
         internal static ConfigEntry<bool> OuterFlamesBottomSpacer;
         internal static ConfigEntry<bool> FlareBottomSpacer;
@@ -114,6 +118,7 @@ namespace NADA.VFX.Core.Config
         {
             const string hotkeysSection = "CONTROLS";
             const string stylesSection = "STYLES";
+            const string visibilitySection = "VISIBILITY";
             const string innerFlamesSection = "INNER FLAMES";
             const string outerFlamesSection = "OUTER FLAMES";
             const string flareSection = "FLARE";
@@ -216,9 +221,8 @@ namespace NADA.VFX.Core.Config
                 OrderedDescription(
                     "Load a saved style into the manager settings.",
                     230,
-                    dispName: "Load Style",
-                    customDrawer: ConfigurationManagerDrawers.DrawLoadStyleDropdown,
-                    hideSettingName: true
+                    dispName: "Choose Style",
+                    customDrawer: ConfigurationManagerDrawers.DrawLoadStyleDropdown
                 )
             );
 
@@ -239,7 +243,6 @@ namespace NADA.VFX.Core.Config
                     220,
                     dispName: "Save Style",
                     customDrawer: ConfigurationManagerDrawers.DrawSaveStyleRow,
-                    hideSettingName: true,
                     hideDefaultButton: true
                 )
             );
@@ -247,6 +250,45 @@ namespace NADA.VFX.Core.Config
             StylesBottomSpacer = config.Bind(
                 stylesSection,
                 "__Styles Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true
+                )
+            );
+            
+            CharacterSelectionVisibility = config.Bind(
+                visibilitySection,
+                "VFX Visibility on Character Selection",
+                true,
+                OrderedDescription(
+                    "Show bound NADA VFX on character selection / start screen weapon previews.",
+                    210,
+                    dispName: "Character Selection",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true
+                )
+            );
+
+            DroppedItemVisibility = config.Bind(
+                visibilitySection,
+                "VFX Visibility on Dropped Items",
+                false,
+                OrderedDescription(
+                    "Show bound NADA VFX on dropped world item instances.",
+                    209,
+                    dispName: "Dropped Items",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true
+                )
+            );
+            
+            VisibilityBottomSpacer = config.Bind(
+                visibilitySection,
+                "__Visibility Bottom Space",
                 false,
                 OrderedDescription(
                     "",
@@ -312,7 +354,7 @@ namespace NADA.VFX.Core.Config
                 false,
                 OrderedDescription(
                     "",
-                    -999,
+                    -998,
                     customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
                     hideSettingName: true,
                     hideDefaultButton: true

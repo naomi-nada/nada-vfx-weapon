@@ -12,6 +12,7 @@ using NADA.VFX.Core.Styles;
 using NADA.VFX.Runtime.Structure;
 using NADA.VFX.Weapons.Runtime;
 using NADA.VFX.Weapons.Targets;
+using UnityEngine.SceneManagement;
 
 namespace NADA.VFX
 {
@@ -29,6 +30,8 @@ namespace NADA.VFX
         
         internal static ConfigEntry<bool> DebugLoggingEnabled;
         internal static ConfigEntry<bool> EquipLoggingEnabled;
+        
+        private float _nextCharacterSelectionProbeTime;
 
         // Runtime root names
         internal const string LocalWeaponRootName = "NADA Weapon";
@@ -103,6 +106,8 @@ namespace NADA.VFX
             {
                 TryBindEquipped();
             }
+            
+            ApplyCharacterSelectionWeaponPreview();
         }
         
         private void TryAttachToEquipped()
@@ -366,6 +371,72 @@ namespace NADA.VFX
             RefreshExistingEquippedRigsOnly();
 
             Log.LogInfo($"{ModName}: [Style] deleted '{styleName}'.");
+        }
+
+        private void ApplyCharacterSelectionWeaponPreview()
+        {
+            if (!PluginConfig.CharacterSelectionVisibility.Value)
+                return;
+
+            if (Player.m_localPlayer != null)
+                return;
+            
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "start")
+                return;
+
+            if (Time.time < _nextCharacterSelectionProbeTime)
+                return;
+
+            _nextCharacterSelectionProbeTime = Time.time + 1f;
+
+            GameObject[] roots = UnityEngine.SceneManagement.SceneManager
+                .GetActiveScene()
+                .GetRootGameObjects();
+
+            var controller = new NadaWeaponRigController();
+
+            foreach (GameObject root in roots)
+            {
+                if (root == null || !root.name.StartsWith("Player", System.StringComparison.Ordinal))
+                    continue;
+
+                Transform rightHandAttach =
+                    FindDescendantByName(root.transform, "RightHand_Attach");
+
+                if (rightHandAttach == null)
+                    continue;
+
+                foreach (Transform childTransform in rightHandAttach)
+                {
+                    if (childTransform == null)
+                        continue;
+
+                    Transform weaponVisualRootTransform =
+                        NadaWeaponTargets.FindEquippedWeaponVisualRoot(childTransform);
+
+                    if (weaponVisualRootTransform == null)
+                        continue;
+
+                    Transform existingRig =
+                        NadaRigPaths.FindDirectChild(
+                            weaponVisualRootTransform,
+                            LocalWeaponRootName);
+
+                    if (existingRig != null)
+                        return;
+
+                    bool applied =
+                        controller.TryApply(childTransform.gameObject, null);
+
+                    if (!applied)
+                        continue;
+
+                    Log.LogInfo(
+                        $"{ModName}: [CharSelectPreview] applied preview rig to '{NadaWeaponTargets.FullPath(childTransform)}'.");
+
+                    return;
+                }
+            }
         }
     }
 }
