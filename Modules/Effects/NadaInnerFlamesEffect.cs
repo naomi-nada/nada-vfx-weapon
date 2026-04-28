@@ -48,9 +48,6 @@ namespace NADA.VFX.Modules.Effects
             public ParticleSystem.MinMaxCurve RateOverDistance;
         }
 
-        private bool _lastEnabled;
-        private bool _hasLastEnabled;
-
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;

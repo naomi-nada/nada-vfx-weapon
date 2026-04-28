@@ -42,9 +42,6 @@ namespace NADA.VFX.Modules.Effects
             public Color? Emission;
         }
 
-        private bool _lastEnabled;
-        private bool _hasLastEnabled;
-
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;

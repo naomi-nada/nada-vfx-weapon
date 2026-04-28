@@ -8,6 +8,7 @@ using HarmonyLib;
 using UnityEngine;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
+using NADA.VFX.Core.Styles;
 using NADA.VFX.Runtime.Structure;
 using NADA.VFX.Weapons.Runtime;
 using NADA.VFX.Weapons.Targets;
@@ -19,7 +20,7 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.6.0";
+        public const string ModVersion = "0.7.0";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -101,11 +102,6 @@ namespace NADA.VFX
             if (PluginConfig.BindHotkey.Value.IsDown())
             {
                 TryBindEquipped();
-            }
-
-            if (PluginConfig.SaveStyleHotkey.Value.IsDown())
-            {
-                Log.LogInfo($"{ModName}: Save Style hotkey pressed.");
             }
         }
         
@@ -315,6 +311,61 @@ namespace NADA.VFX
             }
 
             return null;
+        }
+        
+        internal void SaveCurrentStyleFromManager(string styleName)
+        {
+            if (string.IsNullOrWhiteSpace(styleName))
+            {
+                Log.LogInfo($"{ModName}: [Style] no style name entered.");
+                return;
+            }
+
+            VfxState state = VfxStateIO.FromConfig();
+
+            if (!VfxStyleStore.Save(styleName, state))
+            {
+                Log.LogInfo($"{ModName}: [Style] failed to save style '{styleName}'.");
+                return;
+            }
+
+            PluginConfig.StyleName.Value = string.Empty;
+            Config.Save();
+
+            Log.LogInfo($"{ModName}: [Style] saved '{styleName.Trim()}'.");
+        }
+
+        internal void LoadStyleIntoManager(string styleName)
+        {
+            if (!VfxStyleStore.TryGet(styleName, out VfxState state))
+            {
+                Log.LogInfo($"{ModName}: [Style] could not find style '{styleName}'.");
+                return;
+            }
+
+            VfxStateIO.ApplyToConfig(state);
+            Config.Save();
+
+            RefreshExistingEquippedRigsOnly();
+
+            Log.LogInfo($"{ModName}: [Style] loaded '{styleName}'.");
+        }
+        
+        internal void DeleteStyleFromManager(string styleName)
+        {
+            if (!VfxStyleStore.Delete(styleName))
+            {
+                Log.LogInfo($"{ModName}: [Style] could not delete style '{styleName}'.");
+                return;
+            }
+
+            PluginConfig.LoadStyle.Value = "Default";
+            VfxStateIO.ApplyToConfig(VfxStateIO.FromDefaults());
+            Config.Save();
+
+            RefreshExistingEquippedRigsOnly();
+
+            Log.LogInfo($"{ModName}: [Style] deleted '{styleName}'.");
         }
     }
 }

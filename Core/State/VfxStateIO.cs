@@ -317,6 +317,111 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersRadius);
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersCycles);
         }
+        
+        internal static VfxState FromDefaults()
+        {
+            return new VfxState
+            {
+                InnerFlamesEnabled = true,
+                InnerFlamesEnergy = PluginConfig.DefaultEnergy,
+                InnerFlamesScale = 1f,
+                InnerFlamesHue = PluginConfig.DefaultHue,
+
+                OuterFlamesEnabled = true,
+                OuterFlamesDragEnabled = false,
+                OuterFlamesEnergy = PluginConfig.DefaultEnergy,
+                OuterFlamesScale = 1f,
+                OuterFlamesHue = PluginConfig.DefaultHue,
+
+                FlareEnabled = true,
+                FlareScale = 1f,
+                FlareHue = PluginConfig.DefaultHue,
+
+                OrbitalsOrbsEnabled = true,
+                OrbitalsOrbsCount = PluginConfig.DefaultCountNormalized,
+                OrbitalsOrbsDrift = PluginConfig.DefaultDrift,
+                OrbitalsOrbsScale = 1f,
+                OrbitalsOrbsHue = PluginConfig.DefaultHue,
+                OrbitalsOrbsSpeed = PluginConfig.DefaultOrbitalsSpeed,
+                OrbitalsOrbsSpacing = PluginConfig.DefaultOrbitalsSpacing,
+                OrbitalsOrbsLength = PluginConfig.DefaultOrbitalsLengthMultiplier,
+                OrbitalsOrbsRadius = PluginConfig.DefaultOrbitalsRadiusMultiplier,
+                OrbitalsOrbsCycles = PluginConfig.DefaultOrbitalsCycles,
+
+                OrbitalsFlamesEnabled = true,
+                OrbitalsFlamesCount = PluginConfig.DefaultCountNormalized,
+                OrbitalsFlamesEnergy = PluginConfig.DefaultEnergy,
+                OrbitalsFlamesDrift = PluginConfig.DefaultDrift,
+                OrbitalsFlamesHue = PluginConfig.DefaultHue,
+                OrbitalsFlamesSpeed = PluginConfig.DefaultOrbitalsSpeed,
+                OrbitalsFlamesSpacing = PluginConfig.DefaultOrbitalsSpacing,
+                OrbitalsFlamesLength = PluginConfig.DefaultOrbitalsLengthMultiplier,
+                OrbitalsFlamesRadius = PluginConfig.DefaultOrbitalsRadiusMultiplier,
+                OrbitalsFlamesCycles = PluginConfig.DefaultOrbitalsCycles,
+
+                OrbitalsEmbersEnabled = true,
+                OrbitalsEmbersCount = PluginConfig.DefaultCountNormalized,
+                OrbitalsEmbersEnergy = PluginConfig.DefaultEnergy,
+                OrbitalsEmbersDrift = PluginConfig.DefaultDrift,
+                OrbitalsEmbersHue = PluginConfig.DefaultHue,
+                OrbitalsEmbersSpeed = PluginConfig.DefaultOrbitalsSpeed,
+                OrbitalsEmbersSpacing = PluginConfig.DefaultOrbitalsSpacing,
+                OrbitalsEmbersLength = PluginConfig.DefaultOrbitalsLengthMultiplier,
+                OrbitalsEmbersRadius = PluginConfig.DefaultOrbitalsRadiusMultiplier,
+                OrbitalsEmbersCycles = PluginConfig.DefaultOrbitalsCycles
+            };
+        }
+        
+        internal static void ApplyToConfig(VfxState state)
+        {
+            PluginConfig.InnerFlames.Value = state.InnerFlamesEnabled;
+            PluginConfig.InnerFlamesEnergy.Value = state.InnerFlamesEnergy;
+            PluginConfig.InnerFlamesScale.Value = state.InnerFlamesScale;
+            PluginConfig.InnerFlamesHue.Value = state.InnerFlamesHue;
+
+            PluginConfig.OuterFlames.Value = state.OuterFlamesEnabled;
+            PluginConfig.OuterFlamesDragEnabled.Value = state.OuterFlamesDragEnabled;
+            PluginConfig.OuterFlamesEnergy.Value = state.OuterFlamesEnergy;
+            PluginConfig.OuterFlamesScale.Value = state.OuterFlamesScale;
+            PluginConfig.OuterFlamesHue.Value = state.OuterFlamesHue;
+
+            PluginConfig.Flare.Value = state.FlareEnabled;
+            PluginConfig.FlareScale.Value = state.FlareScale;
+            PluginConfig.FlareHue.Value = state.FlareHue;
+
+            PluginConfig.OrbitalsOrbs.Value = state.OrbitalsOrbsEnabled;
+            PluginConfig.OrbitalsOrbsCount.Value = state.OrbitalsOrbsCount;
+            PluginConfig.OrbitalsOrbsDrift.Value = state.OrbitalsOrbsDrift;
+            PluginConfig.OrbitalsOrbsScale.Value = state.OrbitalsOrbsScale;
+            PluginConfig.OrbitalsOrbsHue.Value = state.OrbitalsOrbsHue;
+            PluginConfig.OrbitalsOrbsSpeed.Value = state.OrbitalsOrbsSpeed;
+            PluginConfig.OrbitalsOrbsSpacing.Value = state.OrbitalsOrbsSpacing;
+            PluginConfig.OrbitalsOrbsLength.Value = state.OrbitalsOrbsLength;
+            PluginConfig.OrbitalsOrbsRadius.Value = state.OrbitalsOrbsRadius;
+            PluginConfig.OrbitalsOrbsCycles.Value = state.OrbitalsOrbsCycles;
+
+            PluginConfig.OrbitalsFlames.Value = state.OrbitalsFlamesEnabled;
+            PluginConfig.OrbitalsFlamesCount.Value = state.OrbitalsFlamesCount;
+            PluginConfig.OrbitalsFlamesEnergy.Value = state.OrbitalsFlamesEnergy;
+            PluginConfig.OrbitalsFlamesDrift.Value = state.OrbitalsFlamesDrift;
+            PluginConfig.OrbitalsFlamesHue.Value = state.OrbitalsFlamesHue;
+            PluginConfig.OrbitalsFlamesSpeed.Value = state.OrbitalsFlamesSpeed;
+            PluginConfig.OrbitalsFlamesSpacing.Value = state.OrbitalsFlamesSpacing;
+            PluginConfig.OrbitalsFlamesLength.Value = state.OrbitalsFlamesLength;
+            PluginConfig.OrbitalsFlamesRadius.Value = state.OrbitalsFlamesRadius;
+            PluginConfig.OrbitalsFlamesCycles.Value = state.OrbitalsFlamesCycles;
+
+            PluginConfig.OrbitalsEmbers.Value = state.OrbitalsEmbersEnabled;
+            PluginConfig.OrbitalsEmbersCount.Value = state.OrbitalsEmbersCount;
+            PluginConfig.OrbitalsEmbersEnergy.Value = state.OrbitalsEmbersEnergy;
+            PluginConfig.OrbitalsEmbersDrift.Value = state.OrbitalsEmbersDrift;
+            PluginConfig.OrbitalsEmbersHue.Value = state.OrbitalsEmbersHue;
+            PluginConfig.OrbitalsEmbersSpeed.Value = state.OrbitalsEmbersSpeed;
+            PluginConfig.OrbitalsEmbersSpacing.Value = state.OrbitalsEmbersSpacing;
+            PluginConfig.OrbitalsEmbersLength.Value = state.OrbitalsEmbersLength;
+            PluginConfig.OrbitalsEmbersRadius.Value = state.OrbitalsEmbersRadius;
+            PluginConfig.OrbitalsEmbersCycles.Value = state.OrbitalsEmbersCycles;
+        }
 
         private static float ReadFloat(Dictionary<string, string> customData, string key, float fallback)
         {

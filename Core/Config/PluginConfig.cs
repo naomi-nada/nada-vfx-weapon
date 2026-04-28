@@ -7,8 +7,19 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<KeyboardShortcut> AttachHotkey;
         internal static ConfigEntry<KeyboardShortcut> BindHotkey;
         internal static ConfigEntry<bool> UnbindWeapon;
-        internal static ConfigEntry<KeyboardShortcut> SaveStyleHotkey;
-        
+
+        internal static ConfigEntry<string> StyleName;
+        internal static ConfigEntry<bool> SaveStyle;
+        internal static ConfigEntry<string> LoadStyle;
+
+        internal static ConfigEntry<bool> ControlsBottomSpacer;
+        internal static ConfigEntry<bool> StylesBottomSpacer;
+        internal static ConfigEntry<bool> InnerFlamesBottomSpacer;
+        internal static ConfigEntry<bool> OuterFlamesBottomSpacer;
+        internal static ConfigEntry<bool> FlareBottomSpacer;
+        internal static ConfigEntry<bool> OrbitalsOrbsBottomSpacer;
+        internal static ConfigEntry<bool> OrbitalsFlamesBottomSpacer;
+
         internal static ConfigEntry<bool> InnerFlames = null;
         internal static ConfigEntry<float> InnerFlamesEnergy = null;
         internal static ConfigEntry<float> InnerFlamesScale = null;
@@ -102,13 +113,14 @@ namespace NADA.VFX.Core.Config
         internal static void Bind(ConfigFile config)
         {
             const string hotkeysSection = "CONTROLS";
+            const string stylesSection = "STYLES";
             const string innerFlamesSection = "INNER FLAMES";
             const string outerFlamesSection = "OUTER FLAMES";
             const string flareSection = "FLARE";
             const string orbitalsOrbsSection = "Orbitals: ORBS";
             const string orbitalsFlamesSection = "Orbitals: FLAMES";
             const string orbitalsEmbersSection = "Orbitals: EMBERS";
-            
+
             Plugin.DebugLoggingEnabled = config.Bind(
                 "Debug",
                 "Enable Debug Logging",
@@ -141,7 +153,7 @@ namespace NADA.VFX.Core.Config
                     dispName: "Attach to Weapon Hotkey"
                 )
             );
-            
+
             AttachHotkey.SettingChanged += (_, __) => config.Save();
 
             BindHotkey = config.Bind(
@@ -154,9 +166,9 @@ namespace NADA.VFX.Core.Config
                     dispName: "Bind to Weapon Hotkey"
                 )
             );
-            
+
             BindHotkey.SettingChanged += (_, __) => config.Save();
-            
+
             UnbindWeapon = config.Bind(
                 hotkeysSection,
                 "Unbind Current Weapon",
@@ -165,23 +177,86 @@ namespace NADA.VFX.Core.Config
                     "Clears NADA VFX from the equipped weapon and refreshes it using current manager settings.",
                     260,
                     dispName: "Unbind Current Weapon",
-                    customDrawer: ConfigurationManagerDrawers.DrawUnbindWeaponButton
+                    customDrawer: ConfigurationManagerDrawers.DrawUnbindWeaponButton,
+                    hideSettingName: true,
+                    hideDefaultButton: true
                 )
             );
 
-            SaveStyleHotkey = config.Bind(
+            ControlsBottomSpacer = config.Bind(
                 hotkeysSection,
-                "Save Style Hotkey",
-                KeyboardShortcut.Empty,
+                "__Controls Bottom Spacer",
+                false,
                 OrderedDescription(
-                    "Press to save the current NADA VFX settings as a style.",
-                    250,
-                    dispName: "Save Style Hotkey"
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true
                 )
             );
+
+            StyleName = config.Bind(
+                stylesSection,
+                "Style Name",
+                string.Empty,
+                OrderedDescription(
+                    "Name used when saving the current style.",
+                    240,
+                    dispName: "Style Name",
+                    isAdvanced: true,
+                    browsable: false
+                )
+            );
+
+            LoadStyle = config.Bind(
+                stylesSection,
+                "Load Style",
+                "Default",
+                OrderedDescription(
+                    "Load a saved style into the manager settings.",
+                    230,
+                    dispName: "Load Style",
+                    customDrawer: ConfigurationManagerDrawers.DrawLoadStyleDropdown,
+                    hideSettingName: true
+                )
+            );
+
+            LoadStyle.SettingChanged += (_, __) =>
+            {
+                if (Plugin.Instance != null)
+                    Plugin.Instance.LoadStyleIntoManager(LoadStyle.Value);
+
+                config.Save();
+            };
             
-            SaveStyleHotkey.SettingChanged += (_, __) => config.Save();
-            
+            SaveStyle = config.Bind(
+                stylesSection,
+                "Save Style",
+                false,
+                OrderedDescription(
+                    "Save the current manager settings as a named style.",
+                    220,
+                    dispName: "Save Style",
+                    customDrawer: ConfigurationManagerDrawers.DrawSaveStyleRow,
+                    hideSettingName: true,
+                    hideDefaultButton: true
+                )
+            );
+
+            StylesBottomSpacer = config.Bind(
+                stylesSection,
+                "__Styles Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true
+                )
+            );
+
             InnerFlames = config.Bind(
                 innerFlamesSection,
                 "Enabled",
@@ -194,7 +269,7 @@ namespace NADA.VFX.Core.Config
                     hideSettingName: true
                 )
             );
-            
+
             InnerFlamesEnergy = config.Bind(
                 innerFlamesSection,
                 "Energy",
@@ -231,6 +306,19 @@ namespace NADA.VFX.Core.Config
                 )
             );
 
+            InnerFlamesBottomSpacer = config.Bind(
+                innerFlamesSection,
+                "__Inner Flames Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true
+                )
+            );
+
             OuterFlames = config.Bind(
                 outerFlamesSection,
                 "Enabled",
@@ -256,7 +344,7 @@ namespace NADA.VFX.Core.Config
                     hideSettingName: true
                 )
             );
-            
+
             OuterFlamesEnergy = config.Bind(
                 outerFlamesSection,
                 "Energy",
@@ -290,6 +378,19 @@ namespace NADA.VFX.Core.Config
                     186,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"
+                )
+            );
+
+            OuterFlamesBottomSpacer = config.Bind(
+                outerFlamesSection,
+                "__Outer Flames Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true
                 )
             );
 
@@ -330,6 +431,19 @@ namespace NADA.VFX.Core.Config
                 )
             );
 
+            FlareBottomSpacer = config.Bind(
+                flareSection,
+                "__Flare Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true
+                )
+            );
+
             OrbitalsOrbs = config.Bind(
                 orbitalsOrbsSection,
                 "Enabled",
@@ -355,7 +469,7 @@ namespace NADA.VFX.Core.Config
                     showRangeAsPercent: true
                 )
             );
-            
+
             OrbitalsOrbsDrift = config.Bind(
                 orbitalsOrbsSection,
                 "Drift",
@@ -454,6 +568,19 @@ namespace NADA.VFX.Core.Config
                 )
             );
 
+            OrbitalsOrbsBottomSpacer = config.Bind(
+                orbitalsOrbsSection,
+                "__Orbitals Orbs Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true
+                )
+            );
+
             OrbitalsFlames = config.Bind(
                 orbitalsFlamesSection,
                 "Enabled",
@@ -479,7 +606,7 @@ namespace NADA.VFX.Core.Config
                     showRangeAsPercent: true
                 )
             );
-            
+
             OrbitalsFlamesEnergy = config.Bind(
                 orbitalsFlamesSection,
                 "Energy",
@@ -491,7 +618,7 @@ namespace NADA.VFX.Core.Config
                     dispName: "Energy"
                 )
             );
-            
+
             OrbitalsFlamesDrift = config.Bind(
                 orbitalsFlamesSection,
                 "Drift",
@@ -578,6 +705,19 @@ namespace NADA.VFX.Core.Config
                 )
             );
 
+            OrbitalsFlamesBottomSpacer = config.Bind(
+                orbitalsFlamesSection,
+                "__Orbitals Flames Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true
+                )
+            );
+
             OrbitalsEmbers = config.Bind(
                 orbitalsEmbersSection,
                 "Enabled",
@@ -603,7 +743,7 @@ namespace NADA.VFX.Core.Config
                     showRangeAsPercent: true
                 )
             );
-            
+
             OrbitalsEmbersEnergy = config.Bind(
                 orbitalsEmbersSection,
                 "Energy",
@@ -615,7 +755,7 @@ namespace NADA.VFX.Core.Config
                     dispName: "Energy"
                 )
             );
-            
+
             OrbitalsEmbersDrift = config.Bind(
                 orbitalsEmbersSection,
                 "Drift",
@@ -701,7 +841,7 @@ namespace NADA.VFX.Core.Config
                     dispName: "Cycles"
                 )
             );
-            
+
             config.Save();
         }
 
@@ -713,7 +853,9 @@ namespace NADA.VFX.Core.Config
             System.Action<ConfigEntryBase> customDrawer = null,
             bool? showRangeAsPercent = null,
             bool? isAdvanced = null,
-            bool? hideSettingName = null)
+            bool? hideSettingName = null,
+            bool? browsable = null,
+            bool? hideDefaultButton = null)
         {
             return new ConfigDescription(
                 description,
@@ -725,7 +867,9 @@ namespace NADA.VFX.Core.Config
                     CustomDrawer = customDrawer,
                     ShowRangeAsPercent = showRangeAsPercent,
                     IsAdvanced = isAdvanced,
-                    HideSettingName = hideSettingName
+                    HideSettingName = hideSettingName,
+                    Browsable = browsable,
+                    HideDefaultButton = hideDefaultButton
                 }
             );
         }

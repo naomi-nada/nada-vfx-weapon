@@ -1,5 +1,8 @@
+using System;
+
 namespace NADA.VFX.Core.State
 {
+    [Serializable]
     internal struct VfxState
     {
         // Inner Flames
