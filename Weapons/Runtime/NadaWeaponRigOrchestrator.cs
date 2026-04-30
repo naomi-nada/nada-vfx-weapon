@@ -1,6 +1,7 @@
 using NADA.VFX.Runtime.Binding;
 using NADA.VFX.Runtime.Structure;
 using NADA.VFX.Weapons.Targets;
+using NADA.VFX.Core.State;
 using UnityEngine;
 
 namespace NADA.VFX.Weapons.Runtime
@@ -19,7 +20,15 @@ namespace NADA.VFX.Weapons.Runtime
             if (!NadaRigCache.CacheReady)
                 return;
 
-            if (!NadaWeaponTargets.IsTargetOrAttachClone(rootObject))
+            bool isEquippedTarget =
+                NadaWeaponTargets.IsTargetOrAttachClone(rootObject);
+
+            bool isBoundDroppedItem =
+                itemData != null &&
+                VfxStateIO.IsBound(itemData) &&
+                rootObject.GetComponent<global::ItemDrop>() != null;
+
+            if (!isEquippedTarget && !isBoundDroppedItem)
                 return;
 
             if (weaponVisualRootTransform.name.StartsWith("Sword15_Lava", System.StringComparison.Ordinal))
@@ -117,10 +126,16 @@ namespace NADA.VFX.Weapons.Runtime
             NadaMotionBinder.BindOrbsMotion(
                 catalog.OrbitalsOrbsRootTransform ?? localOrbsRootTransform,
                 itemData);
+            
+            NadaRigTransformApplier.Apply(
+                localWeaponRootTransform,
+                context.State);
 
             NadaMotionBinder.BindOrbitalsRigFollow(
                 activeOrbitalsRigRootTransform,
-                weaponVisualRootTransform);
+                localWeaponRootTransform,
+                Vector3.zero,
+                Quaternion.Euler(-90f, 0f, 0f));
 
             NadaRigMaintenance.ApplyPickupFix(rootObject);
         }

@@ -77,7 +77,7 @@ namespace NADA.VFX.Core.Styles
                         continue;
 
                     string[] parts = line.Split('|');
-                    if (parts.Length != 43)
+                    if (parts.Length != 47)
                         continue;
 
                     string name = parts[0].Trim();
@@ -134,7 +134,12 @@ namespace NADA.VFX.Core.Styles
             return string.Join("|", new[]
             {
                 name,
-
+                
+                F(state.RigRotation),
+                F(state.RigSideRotation),
+                F(state.RigLengthPosition),
+                F(state.RigSidePosition),
+                
                 B(state.InnerFlamesEnabled),
                 F(state.InnerFlamesEnergy),
                 F(state.InnerFlamesScale),
@@ -191,6 +196,11 @@ namespace NADA.VFX.Core.Styles
 
             return new VfxState
             {
+                RigRotation = ReadFloat(parts[i++]),
+                RigSideRotation = ReadFloat(parts[i++]),
+                RigLengthPosition = ReadFloat(parts[i++]),
+                RigSidePosition = ReadFloat(parts[i++]),
+                
                 InnerFlamesEnabled = ReadBool(parts[i++]),
                 InnerFlamesEnergy = ReadFloat(parts[i++]),
                 InnerFlamesScale = ReadFloat(parts[i++]),

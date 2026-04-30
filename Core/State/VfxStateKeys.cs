@@ -4,6 +4,11 @@ namespace NADA.VFX.Core.State
     {
         internal const string Bound = "nada.vfx.bound";
         
+        internal const string RigRotation = "nada.vfx.rig.rotation";
+        internal const string RigSideRotation = "nada.vfx.rig.siderotation";
+        internal const string RigLengthPosition = "nada.vfx.rig.lengthposition";
+        internal const string RigSidePosition = "nada.vfx.rig.sideposition";
+        
         internal const string InnerFlamesEnabled = "nada.vfx.innerflames.enabled";
         internal const string InnerFlamesEnergy = "nada.vfx.innerflames.energy";
         internal const string InnerFlamesScale = "nada.vfx.innerflames.scale";

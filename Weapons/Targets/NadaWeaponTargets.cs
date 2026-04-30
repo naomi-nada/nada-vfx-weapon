@@ -95,6 +95,30 @@ namespace NADA.VFX.Weapons.Targets
 
             return bestTransform;
         }
+        
+        internal static Transform FindVisualMeshRoot(Transform root)
+        {
+            if (root == null)
+                return null;
+
+            // Prefer MeshRenderer (most weapon meshes)
+            var meshRenderers = root.GetComponentsInChildren<MeshRenderer>(true);
+            foreach (var r in meshRenderers)
+            {
+                if (r == null) continue;
+                return r.transform;
+            }
+
+            // Fallback: SkinnedMeshRenderer (rare but safe)
+            var skinned = root.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            foreach (var r in skinned)
+            {
+                if (r == null) continue;
+                return r.transform;
+            }
+
+            return null;
+        }
 
         private static bool ShouldIgnoreRootCandidate(Transform candidateTransform)
         {

@@ -46,11 +46,15 @@ namespace NADA.VFX.Runtime.Binding
 
         internal static void BindOrbitalsRigFollow(
             Transform orbitalsRigRootTransform,
-            Transform followTargetTransform)
+            Transform followTargetTransform,
+            Vector3 localPositionOffset,
+            Quaternion localRotationOffset)
         {
             BindTargetFollowInternal(
                 orbitalsRigRootTransform,
-                followTargetTransform);
+                followTargetTransform,
+                localPositionOffset,
+                localRotationOffset);
         }
 
         internal static void BindOuterFlamesMotion(
@@ -66,13 +70,15 @@ namespace NADA.VFX.Runtime.Binding
 
         private static void BindTargetFollowInternal(
             Transform targetFollowerTransform,
-            Transform followTargetTransform)
+            Transform followTargetTransform,
+            Vector3 localPositionOffset,
+            Quaternion localRotationOffset)
         {
             if (targetFollowerTransform == null || followTargetTransform == null)
                 return;
 
             var targetFollowMotion = GetOrAddMotion<NadaTargetFollowMotion>(targetFollowerTransform);
-            targetFollowMotion.SetLocalOffset(Vector3.zero, Quaternion.identity);
+            targetFollowMotion.SetLocalOffset(localPositionOffset, localRotationOffset);
             targetFollowMotion.SetTargetTransform(followTargetTransform);
         }
 

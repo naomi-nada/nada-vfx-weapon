@@ -10,6 +10,12 @@ namespace NADA.VFX.Core.State
         {
             return new VfxState
             {
+                // Rig Positioning
+                RigRotation = PluginConfig.RigRotation.Value,
+                RigSideRotation = PluginConfig.RigSideRotation.Value,
+                RigLengthPosition = PluginConfig.RigLengthPosition.Value,
+                RigSidePosition = PluginConfig.RigSidePosition.Value,
+                
                 // Inner Flames
                 InnerFlamesEnabled = PluginConfig.InnerFlames.Value,
                 InnerFlamesEnergy = PluginConfig.InnerFlamesEnergy.Value,
@@ -77,6 +83,11 @@ namespace NADA.VFX.Core.State
             Dictionary<string, string> customData = item.m_customData;
 
             WriteBool(customData, VfxStateKeys.Bound, bound);
+            
+            WriteFloat(customData, VfxStateKeys.RigRotation, state.RigRotation);
+            WriteFloat(customData, VfxStateKeys.RigSideRotation, state.RigSideRotation);
+            WriteFloat(customData, VfxStateKeys.RigLengthPosition, state.RigLengthPosition);
+            WriteFloat(customData, VfxStateKeys.RigSidePosition, state.RigSidePosition);
 
             WriteBool(customData, VfxStateKeys.InnerFlamesEnabled, state.InnerFlamesEnabled);
             WriteFloat(customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
@@ -136,7 +147,13 @@ namespace NADA.VFX.Core.State
             Dictionary<string, string> customData = item.m_customData;
             if (customData == null)
                 return false;
-
+            
+            // Rig Position
+            state.RigRotation = ReadFloat(customData, VfxStateKeys.RigRotation, PluginConfig.RigRotation.Value);
+            state.RigSideRotation = ReadFloat(customData, VfxStateKeys.RigSideRotation, PluginConfig.RigSideRotation.Value);
+            state.RigLengthPosition = ReadFloat(customData, VfxStateKeys.RigLengthPosition, PluginConfig.RigLengthPosition.Value);
+            state.RigSidePosition = ReadFloat(customData, VfxStateKeys.RigSidePosition, PluginConfig.RigSidePosition.Value);
+            
             // Inner Flames
             state.InnerFlamesEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
             state.InnerFlamesEnergy = ReadFloat(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
@@ -207,6 +224,12 @@ namespace NADA.VFX.Core.State
 
             Dictionary<string, string> customData = item.m_customData;
 
+            // Rig Position
+            BackfillMissing(customData, VfxStateKeys.RigRotation, PluginConfig.RigRotation.Value);
+            BackfillMissing(customData, VfxStateKeys.RigSideRotation, PluginConfig.RigSideRotation.Value);
+            BackfillMissing(customData, VfxStateKeys.RigLengthPosition, PluginConfig.RigLengthPosition.Value);
+            BackfillMissing(customData, VfxStateKeys.RigSidePosition, PluginConfig.RigSidePosition.Value);
+            
             // Inner Flames
             BackfillMissing(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
@@ -266,6 +289,11 @@ namespace NADA.VFX.Core.State
         {
             if (item?.m_customData == null)
                 return;
+            
+            item.m_customData.Remove(VfxStateKeys.RigRotation);
+            item.m_customData.Remove(VfxStateKeys.RigSideRotation);
+            item.m_customData.Remove(VfxStateKeys.RigLengthPosition);
+            item.m_customData.Remove(VfxStateKeys.RigSidePosition);
 
             item.m_customData.Remove(VfxStateKeys.Bound);
 
@@ -322,6 +350,11 @@ namespace NADA.VFX.Core.State
         {
             return new VfxState
             {
+                RigRotation = PluginConfig.DefaultRigRotation,
+                RigSideRotation = PluginConfig.DefaultRigSideRotation,
+                RigLengthPosition = PluginConfig.DefaultRigLengthPosition,
+                RigSidePosition = PluginConfig.DefaultRigSidePosition,
+                
                 InnerFlamesEnabled = true,
                 InnerFlamesEnergy = PluginConfig.DefaultEnergy,
                 InnerFlamesScale = 1f,
@@ -374,6 +407,11 @@ namespace NADA.VFX.Core.State
         
         internal static void ApplyToConfig(VfxState state)
         {
+            PluginConfig.RigRotation.Value = state.RigRotation;
+            PluginConfig.RigSideRotation.Value = state.RigSideRotation;
+            PluginConfig.RigLengthPosition.Value = state.RigLengthPosition;
+            PluginConfig.RigSidePosition.Value = state.RigSidePosition;
+            
             PluginConfig.InnerFlames.Value = state.InnerFlamesEnabled;
             PluginConfig.InnerFlamesEnergy.Value = state.InnerFlamesEnergy;
             PluginConfig.InnerFlamesScale.Value = state.InnerFlamesScale;

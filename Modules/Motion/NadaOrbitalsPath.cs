@@ -7,7 +7,7 @@ namespace NADA.VFX.Modules.Motion
     {
         internal const float DefaultTravelLength = 2.0f;
         internal const float DefaultSpiralRadius = 0.35f;
-        internal const float DefaultBladeCenterOffset = 0.85f;
+        internal const float DefaultBladeCenterOffset = 0.0f;
 
         internal const float DefaultOneWayPassDuration = 5.0f;
         internal const float DefaultTurnDuration = 0.80f;

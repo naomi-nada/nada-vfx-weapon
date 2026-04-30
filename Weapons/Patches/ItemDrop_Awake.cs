@@ -1,5 +1,8 @@
 using System;
+using System.Collections;
 using HarmonyLib;
+using NADA.VFX.Core.Config;
+using NADA.VFX.Core.State;
 using NADA.VFX.Weapons.Targets;
 
 namespace NADA.VFX.Weapons.Patches
@@ -11,19 +14,59 @@ namespace NADA.VFX.Weapons.Patches
         {
             try
             {
-                // Reserved for dropped-item / pickup-side runtime fixes.
-                // This remains the intended entry point for dropped instance
-                // shader repair and visual rig application work.
-                if (__instance == null) return;
+                if (__instance == null)
+                    return;
 
-                var itemDropObject = __instance.gameObject;
-                if (itemDropObject == null) return;
-                if (!NadaWeaponTargets.IsTargetRoot(itemDropObject)) return;
+                if (!PluginConfig.DroppedItemVisibility.Value)
+                    return;
+
+                if (Plugin.Instance == null)
+                    return;
+
+                Plugin.Instance.StartCoroutine(CheckDroppedItemWhenReady(__instance));
             }
             catch (Exception e)
             {
                 Plugin.Log.LogWarning($"{Plugin.ModName}: ItemDrop.Awake postfix error: {e}");
             }
+        }
+
+        private static IEnumerator CheckDroppedItemWhenReady(global::ItemDrop itemDrop)
+        {
+            yield return null;
+            yield return null;
+
+            if (itemDrop == null || itemDrop.gameObject == null)
+                yield break;
+
+            var itemData = itemDrop.m_itemData;
+            if (itemData == null)
+                yield break;
+
+            bool isBound = VfxStateIO.IsBound(itemData);
+            if (!isBound)
+                yield break;
+
+            var controller = new Runtime.NadaWeaponRigController();
+
+            bool applied =
+                controller.TryApplyDroppedItem(itemDrop.gameObject, itemData);
+
+            if (!applied)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [DropApply FAIL] " +
+                    $"object='{itemDrop.gameObject.name}' " +
+                    $"item='{itemData.m_shared?.m_name}' " +
+                    $"path='{NadaWeaponTargets.FullPath(itemDrop.transform)}'");
+                yield break;
+            }
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [DropApply OK] " +
+                $"object='{itemDrop.gameObject.name}' " +
+                $"item='{itemData.m_shared?.m_name}' " +
+                $"path='{NadaWeaponTargets.FullPath(itemDrop.transform)}'");
         }
     }
 }

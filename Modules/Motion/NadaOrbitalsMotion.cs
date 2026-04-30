@@ -330,20 +330,15 @@ namespace NADA.VFX.Modules.Motion
 
         private VfxState ResolveState()
         {
-            if (_itemData != null)
+            if (_itemData != null && VfxStateIO.IsBound(_itemData))
             {
                 if (VfxStateIO.TryRead(_itemData, out var itemState))
-                    return itemState;
-
-                VfxStateIO.EnsureInitializedFromConfig(_itemData);
-
-                if (VfxStateIO.TryRead(_itemData, out itemState))
                     return itemState;
             }
 
             return VfxStateIO.FromConfig();
         }
-
+        
         private void EnsureArcLengthCache(
             float radiusMultiplier,
             float orbitLengthMultiplier,

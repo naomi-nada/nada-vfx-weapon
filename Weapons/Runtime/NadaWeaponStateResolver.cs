@@ -6,14 +6,9 @@ namespace NADA.VFX.Weapons.Runtime
     {
         public static VfxState Resolve(global::ItemDrop.ItemData itemData)
         {
-            if (itemData != null && VfxStateIO.TryRead(itemData, out VfxState loadedState))
-                return loadedState;
-
-            if (itemData != null)
+            if (itemData != null && VfxStateIO.IsBound(itemData))
             {
-                VfxStateIO.EnsureInitializedFromConfig(itemData);
-
-                if (VfxStateIO.TryRead(itemData, out loadedState))
+                if (VfxStateIO.TryRead(itemData, out VfxState loadedState))
                     return loadedState;
             }
 

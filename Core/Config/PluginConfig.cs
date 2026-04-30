@@ -8,16 +8,22 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<KeyboardShortcut> BindHotkey;
         internal static ConfigEntry<bool> UnbindWeapon;
 
-        internal static ConfigEntry<string> StyleName;
-        internal static ConfigEntry<bool> SaveStyle;
-        internal static ConfigEntry<string> LoadStyle;
-        
         internal static ConfigEntry<bool> CharacterSelectionVisibility;
         internal static ConfigEntry<bool> DroppedItemVisibility;
 
+        internal static ConfigEntry<string> StyleName;
+        internal static ConfigEntry<bool> SaveStyle;
+        internal static ConfigEntry<string> LoadStyle;
+
+        internal static ConfigEntry<float> RigRotation;
+        internal static ConfigEntry<float> RigSideRotation;
+        internal static ConfigEntry<float> RigLengthPosition;
+        internal static ConfigEntry<float> RigSidePosition;
+
         internal static ConfigEntry<bool> ControlsBottomSpacer;
-        internal static ConfigEntry<bool> StylesBottomSpacer;
         internal static ConfigEntry<bool> VisibilityBottomSpacer;
+        internal static ConfigEntry<bool> StylesBottomSpacer;
+        internal static ConfigEntry<bool> PositionBottomSpacer;
         internal static ConfigEntry<bool> InnerFlamesBottomSpacer;
         internal static ConfigEntry<bool> OuterFlamesBottomSpacer;
         internal static ConfigEntry<bool> FlareBottomSpacer;
@@ -72,6 +78,22 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsEmbersRadius = null;
         internal static ConfigEntry<float> OrbitalsEmbersCycles = null;
 
+        internal const float MinRigRotation = -180f;
+        internal const float MaxRigRotation = 180f;
+        internal const float DefaultRigRotation = 0f;
+        
+        internal const float MinRigSideRotation = -180f;
+        internal const float MaxRigSideRotation = 180f;
+        internal const float DefaultRigSideRotation = 0f;
+
+        internal const float MinRigLengthPosition = -1.00f;
+        internal const float MaxRigLengthPosition = 1.00f;
+        internal const float DefaultRigLengthPosition = 0f;
+
+        internal const float MinRigSidePosition = -1.00f;
+        internal const float MaxRigSidePosition = 1.00f;
+        internal const float DefaultRigSidePosition = 0f;
+
         internal const float MaxScaleMult = 1.50f;
         internal const float MinScaleMult = 0.50f;
 
@@ -117,8 +139,9 @@ namespace NADA.VFX.Core.Config
         internal static void Bind(ConfigFile config)
         {
             const string hotkeysSection = "CONTROLS";
-            const string stylesSection = "STYLES";
             const string visibilitySection = "VISIBILITY";
+            const string stylesSection = "STYLES";
+            const string positionSection = "POSITIONING";
             const string innerFlamesSection = "INNER FLAMES";
             const string outerFlamesSection = "OUTER FLAMES";
             const string flareSection = "FLARE";
@@ -130,33 +153,54 @@ namespace NADA.VFX.Core.Config
                 "Debug",
                 "Enable Debug Logging",
                 true,
-                OrderedDescription(
-                    "Enables verbose NADA VFX structure/discovery logs.",
-                    500,
-                    isAdvanced: true
-                )
+                OrderedDescription("Enables verbose NADA VFX structure/discovery logs.", 500, isAdvanced: true)
             );
 
             Plugin.EquipLoggingEnabled = config.Bind(
                 "Debug",
                 "Enable Equip Logging",
                 true,
+                OrderedDescription("Logs one concise NADA VFX line when an equipped item is processed.", 450, isAdvanced: true)
+            );
+            
+            CharacterSelectionVisibility = config.Bind(
+                visibilitySection,
+                "VFX Visibility on Character Selection",
+                true,
                 OrderedDescription(
-                    "Logs one concise NADA VFX line when an equipped item is processed.",
-                    450,
-                    isAdvanced: true
+                    "Show bound NADA VFX on character selection / start screen weapon previews.",
+                    300,
+                    dispName: "Character Selection",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true
                 )
+            );
+
+            DroppedItemVisibility = config.Bind(
+                visibilitySection,
+                "VFX Visibility on Dropped Items",
+                false,
+                OrderedDescription(
+                    "Show bound NADA VFX on dropped world item instances.",
+                    295,
+                    dispName: "Dropped Items",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true
+                )
+            );
+
+            VisibilityBottomSpacer = config.Bind(
+                visibilitySection,
+                "__Visibility Bottom Spacer",
+                false,
+                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
             );
 
             AttachHotkey = config.Bind(
                 hotkeysSection,
                 "Attach to Weapon Hotkey",
                 KeyboardShortcut.Empty,
-                OrderedDescription(
-                    "Press to attach NADA VFX to the equipped weapon.",
-                    300,
-                    dispName: "Attach to Weapon Hotkey"
-                )
+                OrderedDescription("Press to attach NADA VFX to the equipped weapon.", 300, dispName: "Attach to Weapon Hotkey")
             );
 
             AttachHotkey.SettingChanged += (_, __) => config.Save();
@@ -165,11 +209,7 @@ namespace NADA.VFX.Core.Config
                 hotkeysSection,
                 "Bind to Weapon Hotkey",
                 KeyboardShortcut.Empty,
-                OrderedDescription(
-                    "Press to bind the current NADA VFX rig/settings to the equipped weapon.",
-                    275,
-                    dispName: "Bind to Weapon Hotkey"
-                )
+                OrderedDescription("Press to bind the current NADA VFX rig/settings to the equipped weapon.", 275, dispName: "Bind to Weapon Hotkey")
             );
 
             BindHotkey.SettingChanged += (_, __) => config.Save();
@@ -192,26 +232,14 @@ namespace NADA.VFX.Core.Config
                 hotkeysSection,
                 "__Controls Bottom Spacer",
                 false,
-                OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true
-                )
+                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
             );
 
             StyleName = config.Bind(
                 stylesSection,
                 "Style Name",
                 string.Empty,
-                OrderedDescription(
-                    "Name used when saving the current style.",
-                    240,
-                    dispName: "Style Name",
-                    isAdvanced: true,
-                    browsable: false
-                )
+                OrderedDescription("Name used when saving the current style.", 240, dispName: "Style Name", isAdvanced: true, browsable: false)
             );
 
             LoadStyle = config.Bind(
@@ -233,7 +261,7 @@ namespace NADA.VFX.Core.Config
 
                 config.Save();
             };
-            
+
             SaveStyle = config.Bind(
                 stylesSection,
                 "Save Style",
@@ -251,637 +279,403 @@ namespace NADA.VFX.Core.Config
                 stylesSection,
                 "__Styles Bottom Spacer",
                 false,
+                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
+            );
+
+            RigRotation = config.Bind(
+                positionSection,
+                "Rotation",
+                DefaultRigRotation,
                 OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true
+                    "Rotate the whole NADA rig around the weapon.",
+                    205,
+                    new AcceptableValueRange<float>(MinRigRotation, MaxRigRotation),
+                    dispName: "Forward Tilt"
                 )
             );
             
-            CharacterSelectionVisibility = config.Bind(
-                visibilitySection,
-                "VFX Visibility on Character Selection",
-                true,
+            RigSideRotation = config.Bind(
+                positionSection,
+                "Side Rotation",
+                DefaultRigSideRotation,
                 OrderedDescription(
-                    "Show bound NADA VFX on character selection / start screen weapon previews.",
-                    210,
-                    dispName: "Character Selection",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
+                    "Rotate the whole NADA rig left or right around the weapon.",
+                    204,
+                    new AcceptableValueRange<float>(MinRigSideRotation, MaxRigSideRotation),
+                    dispName: "Side Tilt"
                 )
             );
 
-            DroppedItemVisibility = config.Bind(
-                visibilitySection,
-                "VFX Visibility on Dropped Items",
-                false,
+            RigLengthPosition = config.Bind(
+                positionSection,
+                "Length Position",
+                DefaultRigLengthPosition,
                 OrderedDescription(
-                    "Show bound NADA VFX on dropped world item instances.",
-                    209,
-                    dispName: "Dropped Items",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
+                    "Slide the whole NADA rig up or down the weapon length.",
+                    203,
+                    new AcceptableValueRange<float>(MinRigLengthPosition, MaxRigLengthPosition),
+                    dispName: "Forward Position"
                 )
             );
             
-            VisibilityBottomSpacer = config.Bind(
-                visibilitySection,
-                "__Visibility Bottom Space",
-                false,
+            RigSidePosition = config.Bind(
+                positionSection,
+                "Side Position",
+                DefaultRigSidePosition,
                 OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true
+                    "Slide the whole NADA rig left or right across the weapon.",
+                    202,
+                    new AcceptableValueRange<float>(MinRigSidePosition, MaxRigSidePosition),
+                    dispName: "Side Position"
                 )
+            );
+            
+            RigSidePosition.SettingChanged += (_, __) =>
+                Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
+
+            RigLengthPosition.SettingChanged += (_, __) =>
+                Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
+
+            RigSideRotation.SettingChanged += (_, __) =>
+                Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
+
+            RigRotation.SettingChanged += (_, __) =>
+                Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
+
+            PositionBottomSpacer = config.Bind(
+                positionSection,
+                "__Position Bottom Spacer",
+                false,
+                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
             );
 
             InnerFlames = config.Bind(
                 innerFlamesSection,
                 "Enabled",
                 true,
-                OrderedDescription(
-                    "Turn Inner Flames on or off.",
-                    200,
-                    dispName: "Enabled",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
-                )
+                OrderedDescription("Turn Inner Flames on or off.", 200, dispName: "Enabled", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
             );
 
             InnerFlamesEnergy = config.Bind(
                 innerFlamesSection,
                 "Energy",
                 DefaultEnergy,
-                OrderedDescription(
-                    "Adjust how intense Inner Flames feels.",
-                    199,
-                    new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
-                    dispName: "Energy"
-                )
+                OrderedDescription("Adjust how intense Inner Flames feels.", 199, new AcceptableValueRange<float>(MinEnergy, MaxEnergy), dispName: "Energy")
             );
 
             InnerFlamesScale = config.Bind(
                 innerFlamesSection,
                 "Scale",
                 1.00f,
-                OrderedDescription(
-                    "Adjust the size of Inner Flames.",
-                    198,
-                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
-                    dispName: "Scale"
-                )
+                OrderedDescription("Adjust the size of Inner Flames.", 198, new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult), dispName: "Scale")
             );
 
             InnerFlamesHue = config.Bind(
                 innerFlamesSection,
                 "Color",
                 DefaultHue,
-                OrderedDescription(
-                    "Adjust the color of Inner Flames.",
-                    197,
-                    new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"
-                )
+                OrderedDescription("Adjust the color of Inner Flames.", 197, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
             );
 
             InnerFlamesBottomSpacer = config.Bind(
                 innerFlamesSection,
                 "__Inner Flames Bottom Spacer",
                 false,
-                OrderedDescription(
-                    "",
-                    -998,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true
-                )
+                OrderedDescription("", -998, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
             );
 
             OuterFlames = config.Bind(
                 outerFlamesSection,
                 "Enabled",
                 true,
-                OrderedDescription(
-                    "Turn Outer Flames on or off.",
-                    190,
-                    dispName: "Enabled",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
-                )
+                OrderedDescription("Turn Outer Flames on or off.", 190, dispName: "Enabled", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
             );
 
             OuterFlamesDragEnabled = config.Bind(
                 outerFlamesSection,
                 "Drag Enabled",
                 false,
-                OrderedDescription(
-                    "Enable or disable motion-based drag on Outer Flames.",
-                    189,
-                    dispName: "Drag",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
-                )
+                OrderedDescription("Enable or disable motion-based drag on Outer Flames.", 189, dispName: "Drag", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
             );
 
             OuterFlamesEnergy = config.Bind(
                 outerFlamesSection,
                 "Energy",
                 DefaultEnergy,
-                OrderedDescription(
-                    "Adjust how intense Outer Flames feels.",
-                    188,
-                    new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
-                    dispName: "Energy"
-                )
+                OrderedDescription("Adjust how intense Outer Flames feels.", 188, new AcceptableValueRange<float>(MinEnergy, MaxEnergy), dispName: "Energy")
             );
 
             OuterFlamesScale = config.Bind(
                 outerFlamesSection,
                 "Scale",
                 1.00f,
-                OrderedDescription(
-                    "Adjust the size of Outer Flames.",
-                    187,
-                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
-                    dispName: "Scale"
-                )
+                OrderedDescription("Adjust the size of Outer Flames.", 187, new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult), dispName: "Scale")
             );
 
             OuterFlamesHue = config.Bind(
                 outerFlamesSection,
                 "Color",
                 DefaultHue,
-                OrderedDescription(
-                    "Adjust the color of Outer Flames.",
-                    186,
-                    new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"
-                )
+                OrderedDescription("Adjust the color of Outer Flames.", 186, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
             );
 
             OuterFlamesBottomSpacer = config.Bind(
                 outerFlamesSection,
                 "__Outer Flames Bottom Spacer",
                 false,
-                OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true
-                )
+                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
             );
 
             Flare = config.Bind(
                 flareSection,
                 "Enabled",
                 true,
-                OrderedDescription(
-                    "Turn Flare on or off.",
-                    180,
-                    dispName: "Enabled",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
-                )
+                OrderedDescription("Turn Flare on or off.", 180, dispName: "Enabled", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
             );
 
             FlareScale = config.Bind(
                 flareSection,
                 "Scale",
                 1.00f,
-                OrderedDescription(
-                    "Adjust the size of Flare.",
-                    179,
-                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
-                    dispName: "Scale"
-                )
+                OrderedDescription("Adjust the size of Flare.", 179, new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult), dispName: "Scale")
             );
 
             FlareHue = config.Bind(
                 flareSection,
                 "Color",
                 DefaultHue,
-                OrderedDescription(
-                    "Adjust the color of Flare.",
-                    178,
-                    new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"
-                )
+                OrderedDescription("Adjust the color of Flare.", 178, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
             );
 
             FlareBottomSpacer = config.Bind(
                 flareSection,
                 "__Flare Bottom Spacer",
                 false,
-                OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true
-                )
+                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
             );
 
             OrbitalsOrbs = config.Bind(
                 orbitalsOrbsSection,
                 "Enabled",
                 true,
-                OrderedDescription(
-                    "Turn Orbs on or off.",
-                    170,
-                    dispName: "Enabled",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
-                )
+                OrderedDescription("Turn Orbs on or off.", 170, dispName: "Enabled", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
             );
 
             OrbitalsOrbsCount = config.Bind(
                 orbitalsOrbsSection,
                 "Count",
                 DefaultCountNormalized,
-                OrderedDescription(
-                    "Adjust how many orbs are active.",
-                    169,
-                    new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
-                    dispName: "Count",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how many orbs are active.", 169, new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized), dispName: "Count", showRangeAsPercent: true)
             );
 
             OrbitalsOrbsDrift = config.Bind(
                 orbitalsOrbsSection,
                 "Drift",
                 DefaultDrift,
-                OrderedDescription(
-                    "Adjust how much the orbs drift away from their locked orbit path.",
-                    168,
-                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
-                    dispName: "Drift",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how much the orbs drift away from their locked orbit path.", 168, new AcceptableValueRange<float>(MinDrift, MaxDrift), dispName: "Drift", showRangeAsPercent: true)
             );
 
             OrbitalsOrbsScale = config.Bind(
                 orbitalsOrbsSection,
                 "Scale",
                 1f,
-                OrderedDescription(
-                    "Adjust the size of the orbs.",
-                    167,
-                    new AcceptableValueRange<float>(MinOrbScaleMult, MaxOrbScaleMult),
-                    dispName: "Scale"
-                )
+                OrderedDescription("Adjust the size of the orbs.", 167, new AcceptableValueRange<float>(MinOrbScaleMult, MaxOrbScaleMult), dispName: "Scale")
             );
 
             OrbitalsOrbsHue = config.Bind(
                 orbitalsOrbsSection,
                 "Color",
                 DefaultHue,
-                OrderedDescription(
-                    "Adjust the color of the orbs.",
-                    166,
-                    new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"
-                )
+                OrderedDescription("Adjust the color of the orbs.", 166, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
             );
 
             OrbitalsOrbsSpeed = config.Bind(
                 orbitalsOrbsSection,
                 "Speed",
                 DefaultOrbitalsSpeed,
-                OrderedDescription(
-                    "Adjust how quickly the orbs travel through their orbit.",
-                    165,
-                    new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
-                    dispName: "Speed"
-                )
+                OrderedDescription("Adjust how quickly the orbs travel through their orbit.", 165, new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed), dispName: "Speed")
             );
 
             OrbitalsOrbsSpacing = config.Bind(
                 orbitalsOrbsSection,
                 "Spacing",
                 DefaultOrbitalsSpacing,
-                OrderedDescription(
-                    "Adjust how closely the orbs follow each other.",
-                    164,
-                    new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
-                    dispName: "Spacing",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how closely the orbs follow each other.", 164, new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing), dispName: "Spacing", showRangeAsPercent: true)
             );
 
             OrbitalsOrbsLength = config.Bind(
                 orbitalsOrbsSection,
                 "Orbit Length",
                 DefaultOrbitalsLengthMultiplier,
-                OrderedDescription(
-                    "Adjust how far the orbs travel along the weapon before turning around.",
-                    163,
-                    new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier),
-                    dispName: "Length"
-                )
+                OrderedDescription("Adjust how far the orbs travel along the weapon before turning around.", 163, new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier), dispName: "Length")
             );
 
             OrbitalsOrbsRadius = config.Bind(
                 orbitalsOrbsSection,
                 "Radius",
                 DefaultOrbitalsRadiusMultiplier,
-                OrderedDescription(
-                    "Adjust how wide the orbs wrap around the weapon.",
-                    162,
-                    new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
-                    dispName: "Radius"
-                )
+                OrderedDescription("Adjust how wide the orbs wrap around the weapon.", 162, new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier), dispName: "Radius")
             );
 
             OrbitalsOrbsCycles = config.Bind(
                 orbitalsOrbsSection,
                 "Cycles",
                 DefaultOrbitalsCycles,
-                OrderedDescription(
-                    "Adjust how many turns the orbs make before reversing direction.",
-                    161,
-                    new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
-                    dispName: "Cycles"
-                )
+                OrderedDescription("Adjust how many turns the orbs make before reversing direction.", 161, new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles), dispName: "Cycles")
             );
 
             OrbitalsOrbsBottomSpacer = config.Bind(
                 orbitalsOrbsSection,
                 "__Orbitals Orbs Bottom Spacer",
                 false,
-                OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true
-                )
+                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
             );
 
             OrbitalsFlames = config.Bind(
                 orbitalsFlamesSection,
                 "Enabled",
                 true,
-                OrderedDescription(
-                    "Turn Flames on or off.",
-                    160,
-                    dispName: "Enabled",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
-                )
+                OrderedDescription("Turn Flames on or off.", 160, dispName: "Enabled", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
             );
 
             OrbitalsFlamesCount = config.Bind(
                 orbitalsFlamesSection,
                 "Count",
                 DefaultCountNormalized,
-                OrderedDescription(
-                    "Adjust how many flames are active.",
-                    159,
-                    new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
-                    dispName: "Count",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how many flames are active.", 159, new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized), dispName: "Count", showRangeAsPercent: true)
             );
 
             OrbitalsFlamesEnergy = config.Bind(
                 orbitalsFlamesSection,
                 "Energy",
                 DefaultEnergy,
-                OrderedDescription(
-                    "Adjust how intense the flames feel.",
-                    158,
-                    new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
-                    dispName: "Energy"
-                )
+                OrderedDescription("Adjust how intense the flames feel.", 158, new AcceptableValueRange<float>(MinEnergy, MaxEnergy), dispName: "Energy")
             );
 
             OrbitalsFlamesDrift = config.Bind(
                 orbitalsFlamesSection,
                 "Drift",
                 DefaultDrift,
-                OrderedDescription(
-                    "Adjust how much the flames drift away from their locked orbit path.",
-                    157,
-                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
-                    dispName: "Drift",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how much the flames drift away from their locked orbit path.", 157, new AcceptableValueRange<float>(MinDrift, MaxDrift), dispName: "Drift", showRangeAsPercent: true)
             );
 
             OrbitalsFlamesHue = config.Bind(
                 orbitalsFlamesSection,
                 "Color",
                 DefaultHue,
-                OrderedDescription(
-                    "Adjust the color of the flames.",
-                    156,
-                    new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"
-                )
+                OrderedDescription("Adjust the color of the flames.", 156, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
             );
 
             OrbitalsFlamesSpeed = config.Bind(
                 orbitalsFlamesSection,
                 "Speed",
                 DefaultOrbitalsSpeed,
-                OrderedDescription(
-                    "Adjust how quickly the flames travel through their orbit.",
-                    155,
-                    new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
-                    dispName: "Speed"
-                )
+                OrderedDescription("Adjust how quickly the flames travel through their orbit.", 155, new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed), dispName: "Speed")
             );
 
             OrbitalsFlamesSpacing = config.Bind(
                 orbitalsFlamesSection,
                 "Spacing",
                 DefaultOrbitalsSpacing,
-                OrderedDescription(
-                    "Adjust how closely the flames follow each other.",
-                    154,
-                    new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
-                    dispName: "Spacing",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how closely the flames follow each other.", 154, new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing), dispName: "Spacing", showRangeAsPercent: true)
             );
 
             OrbitalsFlamesLength = config.Bind(
                 orbitalsFlamesSection,
                 "Orbit Length",
                 DefaultOrbitalsLengthMultiplier,
-                OrderedDescription(
-                    "Adjust how far the flames travel along the weapon before turning around.",
-                    153,
-                    new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier),
-                    dispName: "Length"
-                )
+                OrderedDescription("Adjust how far the flames travel along the weapon before turning around.", 153, new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier), dispName: "Length")
             );
 
             OrbitalsFlamesRadius = config.Bind(
                 orbitalsFlamesSection,
                 "Radius",
                 DefaultOrbitalsRadiusMultiplier,
-                OrderedDescription(
-                    "Adjust how wide the flames wrap around the weapon.",
-                    152,
-                    new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
-                    dispName: "Radius"
-                )
+                OrderedDescription("Adjust how wide the flames wrap around the weapon.", 152, new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier), dispName: "Radius")
             );
 
             OrbitalsFlamesCycles = config.Bind(
                 orbitalsFlamesSection,
                 "Cycles",
                 DefaultOrbitalsCycles,
-                OrderedDescription(
-                    "Adjust how many turns the flames make before reversing direction.",
-                    151,
-                    new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
-                    dispName: "Cycles"
-                )
+                OrderedDescription("Adjust how many turns the flames make before reversing direction.", 151, new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles), dispName: "Cycles")
             );
 
             OrbitalsFlamesBottomSpacer = config.Bind(
                 orbitalsFlamesSection,
                 "__Orbitals Flames Bottom Spacer",
                 false,
-                OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true
-                )
+                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
             );
 
             OrbitalsEmbers = config.Bind(
                 orbitalsEmbersSection,
                 "Enabled",
                 true,
-                OrderedDescription(
-                    "Turn Embers on or off.",
-                    150,
-                    dispName: "Enabled",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true
-                )
+                OrderedDescription("Turn Embers on or off.", 150, dispName: "Enabled", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
             );
 
             OrbitalsEmbersCount = config.Bind(
                 orbitalsEmbersSection,
                 "Count",
                 DefaultCountNormalized,
-                OrderedDescription(
-                    "Adjust how many embers are active.",
-                    149,
-                    new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
-                    dispName: "Count",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how many embers are active.", 149, new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized), dispName: "Count", showRangeAsPercent: true)
             );
 
             OrbitalsEmbersEnergy = config.Bind(
                 orbitalsEmbersSection,
                 "Energy",
                 DefaultEnergy,
-                OrderedDescription(
-                    "Adjust how intense the embers feel.",
-                    148,
-                    new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
-                    dispName: "Energy"
-                )
+                OrderedDescription("Adjust how intense the embers feel.", 148, new AcceptableValueRange<float>(MinEnergy, MaxEnergy), dispName: "Energy")
             );
 
             OrbitalsEmbersDrift = config.Bind(
                 orbitalsEmbersSection,
                 "Drift",
                 DefaultDrift,
-                OrderedDescription(
-                    "Adjust how much the embers drift away from their locked orbit path.",
-                    147,
-                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
-                    dispName: "Drift",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how much the embers drift away from their locked orbit path.", 147, new AcceptableValueRange<float>(MinDrift, MaxDrift), dispName: "Drift", showRangeAsPercent: true)
             );
 
             OrbitalsEmbersHue = config.Bind(
                 orbitalsEmbersSection,
                 "Color",
                 DefaultHue,
-                OrderedDescription(
-                    "Adjust the color of the embers.",
-                    146,
-                    new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"
-                )
+                OrderedDescription("Adjust the color of the embers.", 146, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
             );
 
             OrbitalsEmbersSpeed = config.Bind(
                 orbitalsEmbersSection,
                 "Speed",
                 DefaultOrbitalsSpeed,
-                OrderedDescription(
-                    "Adjust how quickly the embers travel through their orbit.",
-                    145,
-                    new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
-                    dispName: "Speed"
-                )
+                OrderedDescription("Adjust how quickly the embers travel through their orbit.", 145, new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed), dispName: "Speed")
             );
 
             OrbitalsEmbersSpacing = config.Bind(
                 orbitalsEmbersSection,
                 "Spacing",
                 DefaultOrbitalsSpacing,
-                OrderedDescription(
-                    "Adjust how closely the embers follow each other.",
-                    144,
-                    new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
-                    dispName: "Spacing",
-                    showRangeAsPercent: true
-                )
+                OrderedDescription("Adjust how closely the embers follow each other.", 144, new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing), dispName: "Spacing", showRangeAsPercent: true)
             );
 
             OrbitalsEmbersLength = config.Bind(
                 orbitalsEmbersSection,
                 "Orbit Length",
                 DefaultOrbitalsLengthMultiplier,
-                OrderedDescription(
-                    "Adjust how far the embers travel along the weapon before turning around.",
-                    143,
-                    new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier),
-                    dispName: "Length"
-                )
+                OrderedDescription("Adjust how far the embers travel along the weapon before turning around.", 143, new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier), dispName: "Length")
             );
 
             OrbitalsEmbersRadius = config.Bind(
                 orbitalsEmbersSection,
                 "Radius",
                 DefaultOrbitalsRadiusMultiplier,
-                OrderedDescription(
-                    "Adjust how wide the embers wrap around the weapon.",
-                    142,
-                    new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
-                    dispName: "Radius"
-                )
+                OrderedDescription("Adjust how wide the embers wrap around the weapon.", 142, new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier), dispName: "Radius")
             );
 
             OrbitalsEmbersCycles = config.Bind(
                 orbitalsEmbersSection,
                 "Cycles",
                 DefaultOrbitalsCycles,
-                OrderedDescription(
-                    "Adjust how many turns the embers make before reversing direction.",
-                    141,
-                    new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
-                    dispName: "Cycles"
-                )
+                OrderedDescription("Adjust how many turns the embers make before reversing direction.", 141, new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles), dispName: "Cycles")
             );
 
             config.Save();
