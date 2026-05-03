@@ -95,22 +95,17 @@ namespace NADA.VFX.Core.Config
             GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
 
             if (GUILayout.Button(current, GUILayout.ExpandWidth(true)))
-                _loadStyleDropdownOpen = !_loadStyleDropdownOpen;
-
-            bool canDelete =
-                !string.Equals(current, "Default", StringComparison.OrdinalIgnoreCase);
-
-            bool oldEnabled = GUI.enabled;
-            GUI.enabled = oldEnabled && canDelete;
-
-            if (GUILayout.Button("Delete", GUILayout.Width(StyleButtonWidth)))
             {
-                Plugin.Instance.DeleteStyleFromManager(current);
-                entry.BoxedValue = "Default";
-                _loadStyleDropdownOpen = false;
+                Plugin.Instance.LoadStyleIntoManager(current);
+                _loadStyleDropdownOpen = !_loadStyleDropdownOpen;
             }
 
-            GUI.enabled = oldEnabled;
+            if (GUILayout.Button("Reset", GUILayout.Width(StyleButtonWidth)))
+            {
+                entry.BoxedValue = "Default";
+                Plugin.Instance.LoadStyleIntoManager("Default");
+                _loadStyleDropdownOpen = false;
+            }
 
             GUILayout.EndHorizontal();
 

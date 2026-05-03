@@ -14,9 +14,6 @@ namespace NADA.VFX.Modules.Effects
         private Renderer[] _renderers;
         private Light[] _lights;
         private ParticleSystem[] _systems;
-        
-        private Vector3 _baseScale;
-        private bool _hasBaseScale;
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColor = new();
         private readonly Dictionary<int, bool> _baseColOverLifetimeEnabled = new();
@@ -32,6 +29,15 @@ namespace NADA.VFX.Modules.Effects
         private readonly Dictionary<int, Color> _baseLightColor = new();
 
         private readonly Dictionary<int, EmissionBaseline> _baseEmission = new();
+        
+        private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSize = new();
+        private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartLifetime = new();
+        private readonly Dictionary<int, float> _baseSimulationSpeed = new();
+        private readonly Dictionary<int, bool> _baseSizeOverLifetimeEnabled = new();
+        private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseSizeOverLifetime = new();
+
+        private readonly Dictionary<int, Vector3> _baseShapeScale = new();
+        private readonly Dictionary<int, Vector3> _baseShapePosition = new();
 
         private sealed class MatBaseline
         {
@@ -75,20 +81,16 @@ namespace NADA.VFX.Modules.Effects
 
             ApplyEnabled(enabled);
             ApplyScale(state.InnerFlamesScale);
+            ApplyLength(state.InnerFlamesLength, state.InnerFlamesPosition);
             ApplyHueShift(state.InnerFlamesHue);
             ApplyEnergy(state.InnerFlamesEnergy);
         }
 
         private VfxState ResolveState()
         {
-            if (_itemData != null)
+            if (_itemData != null && VfxStateIO.IsBound(_itemData))
             {
                 if (VfxStateIO.TryRead(_itemData, out var itemState))
-                    return itemState;
-
-                VfxStateIO.EnsureInitializedFromConfig(_itemData);
-
-                if (VfxStateIO.TryRead(_itemData, out itemState))
                     return itemState;
             }
 
@@ -104,19 +106,14 @@ namespace NADA.VFX.Modules.Effects
         
         private void CacheBaselines()
         {
-            if (!_hasBaseScale)
-            {
-                _baseScale = transform.localScale;
-                _hasBaseScale = true;
-            }
-
             CacheParticleBaselines();
             CacheEmissionBaselines();
             CacheRendererBaselines();
             CacheLightBaselines();
+            CacheScaleBaselines();
         }
         
-                private void CacheParticleBaselines()
+        private void CacheParticleBaselines()
         {
             if (_systems == null) return;
 
@@ -157,6 +154,71 @@ namespace NADA.VFX.Modules.Effects
                         _baseCustom2Mode[id] = custom.GetMode(ParticleSystemCustomData.Custom2);
                         _baseCustom1Color[id] = custom.GetColor(ParticleSystemCustomData.Custom1);
                         _baseCustom2Color[id] = custom.GetColor(ParticleSystemCustomData.Custom2);
+                    }
+                    catch { }
+                }
+            }
+        }
+        
+        private void CacheScaleBaselines()
+        {
+            if (_systems == null) return;
+
+            foreach (var ps in _systems)
+            {
+                if (ps == null) continue;
+
+                int id = ps.GetInstanceID();
+
+                if (!_baseStartSize.ContainsKey(id))
+                {
+                    try
+                    {
+                        var main = ps.main;
+                        _baseStartSize[id] = main.startSize;
+                    }
+                    catch { }
+                }
+
+                if (!_baseStartLifetime.ContainsKey(id))
+                {
+                    try
+                    {
+                        var main = ps.main;
+                        _baseStartLifetime[id] = main.startLifetime;
+                    }
+                    catch { }
+                }
+
+                if (!_baseSimulationSpeed.ContainsKey(id))
+                {
+                    try
+                    {
+                        var main = ps.main;
+                        _baseSimulationSpeed[id] = main.simulationSpeed;
+                    }
+                    catch { }
+                }
+
+                if (!_baseSizeOverLifetimeEnabled.ContainsKey(id) ||
+                    !_baseSizeOverLifetime.ContainsKey(id))
+                {
+                    try
+                    {
+                        var sizeOverLifetime = ps.sizeOverLifetime;
+                        _baseSizeOverLifetimeEnabled[id] = sizeOverLifetime.enabled;
+                        _baseSizeOverLifetime[id] = sizeOverLifetime.size;
+                    }
+                    catch { }
+                }
+
+                if (!_baseShapeScale.ContainsKey(id))
+                {
+                    try
+                    {
+                        var shape = ps.shape;
+                        _baseShapeScale[id] = shape.scale;
+                        _baseShapePosition[id] = shape.position;
                     }
                     catch { }
                 }
@@ -281,11 +343,92 @@ namespace NADA.VFX.Modules.Effects
         
         private void ApplyScale(float scale)
         {
-            if (!_hasBaseScale)
+            if (_systems == null) return;
+
+            float innerMult = ClampScale(scale);
+
+            foreach (var ps in _systems)
+            {
+                if (ps == null) continue;
+
+                int id = ps.GetInstanceID();
+
+                try
+                {
+                    var main = ps.main;
+
+                    if (_baseStartSize.TryGetValue(id, out var baseStartSize))
+                        main.startSize = ScaleMinMaxCurve(baseStartSize, innerMult);
+
+                    if (_baseStartLifetime.TryGetValue(id, out var baseStartLifetime))
+                        main.startLifetime = ScaleMinMaxCurve(baseStartLifetime, innerMult);
+
+                    if (_baseSimulationSpeed.TryGetValue(id, out var baseSimulationSpeed))
+                    {
+                        float simulationSpeedMult = innerMult < 1f ? innerMult : 1f;
+                        main.simulationSpeed = baseSimulationSpeed * simulationSpeedMult;
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    var sizeOverLifetime = ps.sizeOverLifetime;
+
+                    if (_baseSizeOverLifetimeEnabled.TryGetValue(id, out var wasEnabled))
+                        sizeOverLifetime.enabled = wasEnabled;
+
+                    if (wasEnabled && _baseSizeOverLifetime.TryGetValue(id, out var baseSize))
+                        sizeOverLifetime.size = ScaleMinMaxCurve(baseSize, innerMult);
+                }
+                catch { }
+            }
+        }
+        
+        private void ApplyLength(float length, float position)
+        {
+            if (_systems == null)
                 return;
 
-            float clamped = ClampScale(scale);
-            transform.localScale = _baseScale * clamped;
+            float clamped = Mathf.Clamp(
+                length,
+                PluginConfig.MinFlameLength,
+                PluginConfig.MaxFlameLength);
+
+            float clampedPosition = Mathf.Clamp(
+                position,
+                PluginConfig.MinFlamePosition,
+                PluginConfig.MaxFlamePosition);
+
+            foreach (var ps in _systems)
+            {
+                if (ps == null)
+                    continue;
+
+                int id = ps.GetInstanceID();
+
+                if (!_baseShapeScale.TryGetValue(id, out var baseScale) ||
+                    !_baseShapePosition.TryGetValue(id, out var basePosition))
+                    continue;
+
+                try
+                {
+                    var shape = ps.shape;
+
+                    Vector3 nextScale = baseScale;
+                    nextScale.z = baseScale.z * clamped;
+
+                    Vector3 nextPosition = basePosition;
+                    nextPosition.z =
+                        basePosition.z -
+                        ((baseScale.z - nextScale.z) * 0.5f) +
+                        clampedPosition;
+
+                    shape.scale = nextScale;
+                    shape.position = nextPosition;
+                }
+                catch { }
+            }
         }
 
         private static float ClampScale(float v)

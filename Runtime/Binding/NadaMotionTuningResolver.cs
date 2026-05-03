@@ -34,7 +34,7 @@ namespace NADA.VFX.Runtime.Binding
 
         internal static float GetOuterFlamesDrag(global::ItemDrop.ItemData itemData)
         {
-            return 0.25f;
+            return 0.35f;
         }
 
         private static VfxState ResolveState(global::ItemDrop.ItemData itemData)

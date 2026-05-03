@@ -14,7 +14,9 @@ namespace NADA.VFX.Modules.Effects
         private Renderer[] _renderers;
         private Light[] _lights;
         private ParticleSystem[] _systems;
-        
+
+        private const float OuterFlamesVisualScaleMultiplier = 1.25f;
+
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColor = new();
         private readonly Dictionary<int, bool> _baseColOverLifetimeEnabled = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseColOverLifetime = new();
@@ -35,6 +37,9 @@ namespace NADA.VFX.Modules.Effects
         private readonly Dictionary<int, float> _baseSimulationSpeed = new();
         private readonly Dictionary<int, bool> _baseSizeOverLifetimeEnabled = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseSizeOverLifetime = new();
+        
+        private readonly Dictionary<int, Vector3> _baseShapeScale = new();
+        private readonly Dictionary<int, Vector3> _baseShapePosition = new();
 
         private sealed class MatBaseline
         {
@@ -79,19 +84,15 @@ namespace NADA.VFX.Modules.Effects
             ApplyEnabled(enabled);
             ApplyHueShift(state.OuterFlamesHue);
             ApplyScale(state.OuterFlamesScale);
+            ApplyLength(state.OuterFlamesLength, state.OuterFlamesPosition);
             ApplyEnergy(state.OuterFlamesEnergy);
         }
 
         private VfxState ResolveState()
         {
-            if (_itemData != null)
+            if (_itemData != null && VfxStateIO.IsBound(_itemData))
             {
                 if (VfxStateIO.TryRead(_itemData, out var itemState))
-                    return itemState;
-
-                VfxStateIO.EnsureInitializedFromConfig(_itemData);
-
-                if (VfxStateIO.TryRead(_itemData, out itemState))
                     return itemState;
             }
 
@@ -104,7 +105,7 @@ namespace NADA.VFX.Modules.Effects
             _lights = GetComponentsInChildren<Light>(true);
             _systems = GetComponentsInChildren<ParticleSystem>(true);
         }
-        
+
         private void CacheBaselines()
         {
             CacheParticleBaselines();
@@ -113,7 +114,7 @@ namespace NADA.VFX.Modules.Effects
             CacheLightBaselines();
             CacheScaleBaselines();
         }
-        
+
         private void CacheParticleBaselines()
         {
             if (_systems == null) return;
@@ -160,7 +161,7 @@ namespace NADA.VFX.Modules.Effects
                 }
             }
         }
-        
+
         private void CacheScaleBaselines()
         {
             if (_systems == null) return;
@@ -212,9 +213,20 @@ namespace NADA.VFX.Modules.Effects
                     }
                     catch { }
                 }
+
+                if (!_baseShapeScale.ContainsKey(id))
+                {
+                    try
+                    {
+                        var shape = ps.shape;
+                        _baseShapeScale[id] = shape.scale;
+                        _baseShapePosition[id] = shape.position;
+                    }
+                    catch { }
+                }
             }
         }
-        
+
         private void CacheEmissionBaselines()
         {
             if (_systems == null) return;
@@ -241,7 +253,7 @@ namespace NADA.VFX.Modules.Effects
                 catch { }
             }
         }
-        
+
         private void CacheRendererBaselines()
         {
             if (_renderers == null) return;
@@ -330,12 +342,12 @@ namespace NADA.VFX.Modules.Effects
                 }
             }
         }
-        
+
         private void ApplyScale(float scale)
         {
             if (_systems == null) return;
 
-            float outerMult = ClampScale(scale);
+            float outerMult = ClampScale(scale) * OuterFlamesVisualScaleMultiplier;
 
             foreach (var ps in _systems)
             {
@@ -374,13 +386,59 @@ namespace NADA.VFX.Modules.Effects
                 catch { }
             }
         }
+        
+        private void ApplyLength(float length, float position)
+        {
+            if (_systems == null)
+                return;
+
+            float clamped = Mathf.Clamp(
+                length,
+                PluginConfig.MinFlameLength,
+                PluginConfig.MaxFlameLength);
+
+            float clampedPosition = Mathf.Clamp(
+                position,
+                PluginConfig.MinFlamePosition,
+                PluginConfig.MaxFlamePosition);
+
+            foreach (var ps in _systems)
+            {
+                if (ps == null)
+                    continue;
+
+                int id = ps.GetInstanceID();
+
+                if (!_baseShapeScale.TryGetValue(id, out var baseScale) ||
+                    !_baseShapePosition.TryGetValue(id, out var basePosition))
+                    continue;
+
+                try
+                {
+                    var shape = ps.shape;
+
+                    Vector3 nextScale = baseScale;
+                    nextScale.z = baseScale.z * clamped;
+
+                    Vector3 nextPosition = basePosition;
+                    nextPosition.z =
+                        basePosition.z +
+                        ((baseScale.z - nextScale.z) * 0.5f) +
+                        clampedPosition;
+
+                    shape.scale = nextScale;
+                    shape.position = nextPosition;
+                }
+                catch { }
+            }
+        }
 
         private static float ClampScale(float v)
         {
             if (float.IsNaN(v) || float.IsInfinity(v)) return 1f;
             return Mathf.Clamp(v, PluginConfig.MinScaleMult, PluginConfig.MaxScaleMult);
         }
-        
+
         private void ApplyHueShift(float sliderValue)
         {
             float targetHue = NadaHueShiftUtility.SliderValueToTargetHue(sliderValue);
@@ -495,7 +553,7 @@ namespace NADA.VFX.Modules.Effects
                 }
             }
         }
-        
+
         private void ApplyEnergy(float energy)
         {
             if (_systems == null) return;
@@ -544,7 +602,7 @@ namespace NADA.VFX.Modules.Effects
                     return source;
             }
         }
-        
+
         private static ParticleSystem.MinMaxCurve ScaleMinMaxCurve(
             ParticleSystem.MinMaxCurve source,
             float multiplier)

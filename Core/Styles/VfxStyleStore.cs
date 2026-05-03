@@ -77,7 +77,7 @@ namespace NADA.VFX.Core.Styles
                         continue;
 
                     string[] parts = line.Split('|');
-                    if (parts.Length != 47)
+                    if (parts.Length != 51)
                         continue;
 
                     string name = parts[0].Trim();
@@ -144,12 +144,14 @@ namespace NADA.VFX.Core.Styles
                 F(state.InnerFlamesEnergy),
                 F(state.InnerFlamesScale),
                 F(state.InnerFlamesHue),
+                F(state.InnerFlamesPosition),
 
                 B(state.OuterFlamesEnabled),
                 B(state.OuterFlamesDragEnabled),
                 F(state.OuterFlamesEnergy),
                 F(state.OuterFlamesScale),
                 F(state.OuterFlamesHue),
+                F(state.OuterFlamesPosition),
 
                 B(state.FlareEnabled),
                 F(state.FlareScale),
@@ -205,12 +207,14 @@ namespace NADA.VFX.Core.Styles
                 InnerFlamesEnergy = ReadFloat(parts[i++]),
                 InnerFlamesScale = ReadFloat(parts[i++]),
                 InnerFlamesHue = ReadFloat(parts[i++]),
+                InnerFlamesPosition = ReadFloat(parts[i++]),
 
                 OuterFlamesEnabled = ReadBool(parts[i++]),
                 OuterFlamesDragEnabled = ReadBool(parts[i++]),
                 OuterFlamesEnergy = ReadFloat(parts[i++]),
                 OuterFlamesScale = ReadFloat(parts[i++]),
                 OuterFlamesHue = ReadFloat(parts[i++]),
+                OuterFlamesPosition = ReadFloat(parts[i++]),
 
                 FlareEnabled = ReadBool(parts[i++]),
                 FlareScale = ReadFloat(parts[i++]),

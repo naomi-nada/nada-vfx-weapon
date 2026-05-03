@@ -560,6 +560,43 @@ namespace NADA.VFX
             }
         }
         
+        internal void RefreshDroppedItemVisibility()
+        {
+            var drops = FindObjectsOfType<global::ItemDrop>(true);
+
+            foreach (var itemDrop in drops)
+            {
+                if (itemDrop == null || itemDrop.gameObject == null)
+                    continue;
+
+                if (!VfxStateIO.IsBound(itemDrop.m_itemData))
+                    continue;
+
+                Transform attachTarget =
+                    NadaWeaponTargets.FindVisualMeshRoot(itemDrop.transform)
+                    ?? itemDrop.transform;
+
+                Transform existingRig =
+                    NadaRigPaths.FindDirectChild(
+                        attachTarget,
+                        LocalWeaponRootName);
+
+                if (!PluginConfig.DroppedItemVisibility.Value)
+                {
+                    if (existingRig != null)
+                        Destroy(existingRig.gameObject);
+
+                    continue;
+                }
+
+                if (existingRig != null)
+                    continue;
+
+                var controller = new NadaWeaponRigController();
+                controller.TryApplyDroppedItem(itemDrop.gameObject, itemDrop.m_itemData);
+            }
+        }
+        
         private static global::ItemDrop.ItemData ResolvePreviewItemData(Transform previewRoot)
         {
             if (previewRoot == null)

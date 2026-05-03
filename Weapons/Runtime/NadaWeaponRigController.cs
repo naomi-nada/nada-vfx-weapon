@@ -64,6 +64,12 @@ namespace NADA.VFX.Weapons.Runtime
                 itemData,
                 refreshState,
                 attachTarget);
+            
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [AttachTarget] root='{root.name}' " +
+                $"visualRoot='{weaponVisualRootTransform.name}' " +
+                $"attachTarget='{attachTarget?.name}' " +
+                $"path='{NadaWeaponTargets.FullPath(attachTarget)}'");
 
             if (!refreshContext.IsValid)
                 return false;

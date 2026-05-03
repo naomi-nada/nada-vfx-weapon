@@ -33,13 +33,18 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<bool> InnerFlames = null;
         internal static ConfigEntry<float> InnerFlamesEnergy = null;
         internal static ConfigEntry<float> InnerFlamesScale = null;
+        internal static ConfigEntry<float> InnerFlamesLength = null;
         internal static ConfigEntry<float> InnerFlamesHue = null;
+        internal static ConfigEntry<float> InnerFlamesPosition = null;
+        
 
         internal static ConfigEntry<bool> OuterFlames = null;
         internal static ConfigEntry<bool> OuterFlamesDragEnabled = null;
         internal static ConfigEntry<float> OuterFlamesEnergy = null;
         internal static ConfigEntry<float> OuterFlamesScale = null;
+        internal static ConfigEntry<float> OuterFlamesLength = null;
         internal static ConfigEntry<float> OuterFlamesHue = null;
+        internal static ConfigEntry<float> OuterFlamesPosition = null;
 
         internal static ConfigEntry<bool> Flare = null;
         internal static ConfigEntry<float> FlareScale = null;
@@ -93,6 +98,10 @@ namespace NADA.VFX.Core.Config
         internal const float MinRigSidePosition = -1.00f;
         internal const float MaxRigSidePosition = 1.00f;
         internal const float DefaultRigSidePosition = 0f;
+        
+        internal const float MinFlamePosition = -1.50f;
+        internal const float MaxFlamePosition = 1.50f;
+        internal const float DefaultFlamePosition = 0f;
 
         internal const float MaxScaleMult = 1.50f;
         internal const float MinScaleMult = 0.50f;
@@ -104,6 +113,10 @@ namespace NADA.VFX.Core.Config
         internal const float MinEnergy = 0.00f;
         internal const float MaxEnergy = 1.00f;
         internal const float DefaultEnergy = 0.00f;
+        
+        internal const float MinFlameLength = 0.10f;
+        internal const float MaxFlameLength = 1.50f;
+        internal const float DefaultFlameLength = 0.80f;
 
         internal const float MinOrbScaleMult = 0.2f;
         internal const float MaxOrbScaleMult = 1.8f;
@@ -120,8 +133,8 @@ namespace NADA.VFX.Core.Config
         internal const float MaxOrbitalsSpacing = 1.00f;
         internal const float DefaultOrbitalsSpacing = 0.50f;
 
-        internal const float MinOrbitalsRadiusMultiplier = 0.25f;
-        internal const float MaxOrbitalsRadiusMultiplier = 1.75f;
+        internal const float MinOrbitalsRadiusMultiplier = 0.20f;
+        internal const float MaxOrbitalsRadiusMultiplier = 1.80f;
         internal const float DefaultOrbitalsRadiusMultiplier = 1.00f;
 
         internal const float MinOrbitalsLengthMultiplier = 0.50f;
@@ -188,19 +201,31 @@ namespace NADA.VFX.Core.Config
                     hideSettingName: true
                 )
             );
+            
+            DroppedItemVisibility.SettingChanged += (_, __) =>
+            {
+                Plugin.Instance?.RefreshDroppedItemVisibility();
+                config.Save();
+            };
 
             VisibilityBottomSpacer = config.Bind(
                 visibilitySection,
                 "__Visibility Bottom Spacer",
                 false,
-                OrderedDescription("", -999, customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, hideSettingName: true, hideDefaultButton: true)
+                OrderedDescription("", 
+                    -999, 
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer, 
+                    hideSettingName: true, 
+                    hideDefaultButton: true)
             );
 
             AttachHotkey = config.Bind(
                 hotkeysSection,
                 "Attach to Weapon Hotkey",
                 KeyboardShortcut.Empty,
-                OrderedDescription("Press to attach NADA VFX to the equipped weapon.", 300, dispName: "Attach to Weapon Hotkey")
+                OrderedDescription("Press to attach NADA VFX to the equipped weapon.", 
+                    300, 
+                    dispName: "Attach to Weapon Hotkey")
             );
 
             AttachHotkey.SettingChanged += (_, __) => config.Save();
@@ -209,7 +234,9 @@ namespace NADA.VFX.Core.Config
                 hotkeysSection,
                 "Bind to Weapon Hotkey",
                 KeyboardShortcut.Empty,
-                OrderedDescription("Press to bind the current NADA VFX rig/settings to the equipped weapon.", 275, dispName: "Bind to Weapon Hotkey")
+                OrderedDescription("Press to bind the current NADA VFX rig/settings to the equipped weapon.", 
+                    275,
+                    dispName: "Bind to Weapon Hotkey")
             );
 
             BindHotkey.SettingChanged += (_, __) => config.Save();
@@ -250,7 +277,8 @@ namespace NADA.VFX.Core.Config
                     "Load a saved style into the manager settings.",
                     230,
                     dispName: "Choose Style",
-                    customDrawer: ConfigurationManagerDrawers.DrawLoadStyleDropdown
+                    customDrawer: ConfigurationManagerDrawers.DrawLoadStyleDropdown,
+                    hideDefaultButton: true
                 )
             );
 
@@ -370,11 +398,35 @@ namespace NADA.VFX.Core.Config
                 OrderedDescription("Adjust the size of Inner Flames.", 198, new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult), dispName: "Scale")
             );
 
+            InnerFlamesLength = config.Bind(
+                innerFlamesSection,
+                "Length",
+                DefaultFlameLength,
+                OrderedDescription(
+                    "Adjust how much of the blade emits inner flames.",
+                    197,
+                    new AcceptableValueRange<float>(MinFlameLength, MaxFlameLength),
+                    dispName: "Length"
+                )
+            );
+            
             InnerFlamesHue = config.Bind(
                 innerFlamesSection,
                 "Color",
                 DefaultHue,
-                OrderedDescription("Adjust the color of Inner Flames.", 197, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
+                OrderedDescription("Adjust the color of Inner Flames.", 196, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
+            );
+            
+            InnerFlamesPosition = config.Bind(
+                innerFlamesSection,
+                "Position",
+                DefaultFlamePosition,
+                OrderedDescription(
+                    "Move Inner Flames forward or backward along the blade.",
+                    195,
+                    new AcceptableValueRange<float>(MinFlamePosition, MaxFlamePosition),
+                    dispName: "Position"
+                )
             );
 
             InnerFlamesBottomSpacer = config.Bind(
@@ -388,35 +440,77 @@ namespace NADA.VFX.Core.Config
                 outerFlamesSection,
                 "Enabled",
                 true,
-                OrderedDescription("Turn Outer Flames on or off.", 190, dispName: "Enabled", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
+                OrderedDescription("Turn Outer Flames on or off.", 
+                    190, 
+                    dispName: "Enabled", 
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, 
+                    hideSettingName: true)
             );
 
             OuterFlamesDragEnabled = config.Bind(
                 outerFlamesSection,
                 "Drag Enabled",
                 false,
-                OrderedDescription("Enable or disable motion-based drag on Outer Flames.", 189, dispName: "Drag", customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, hideSettingName: true)
+                OrderedDescription
+                    ("Enable or disable motion-based drag on Outer Flames.", 
+                        189, 
+                        dispName: "Drag", 
+                        customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel, 
+                        hideSettingName: true)
             );
 
             OuterFlamesEnergy = config.Bind(
                 outerFlamesSection,
                 "Energy",
                 DefaultEnergy,
-                OrderedDescription("Adjust how intense Outer Flames feels.", 188, new AcceptableValueRange<float>(MinEnergy, MaxEnergy), dispName: "Energy")
+                OrderedDescription("Adjust how intense Outer Flames feels.", 
+                    188, 
+                    new AcceptableValueRange<float>(MinEnergy, MaxEnergy), 
+                    dispName: "Energy")
             );
 
             OuterFlamesScale = config.Bind(
                 outerFlamesSection,
                 "Scale",
                 1.00f,
-                OrderedDescription("Adjust the size of Outer Flames.", 187, new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult), dispName: "Scale")
+                OrderedDescription("Adjust the size of Outer Flames.", 
+                    187, 
+                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult), 
+                    dispName: "Scale")
+            );
+            
+            OuterFlamesLength = config.Bind(
+                outerFlamesSection,
+                "Length",
+                DefaultFlameLength,
+                OrderedDescription(
+                    "Adjust how much of the blade emits flames.",
+                    186,
+                    new AcceptableValueRange<float>(MinFlameLength, MaxFlameLength),
+                    dispName: "Length"
+                )
             );
 
             OuterFlamesHue = config.Bind(
                 outerFlamesSection,
                 "Color",
                 DefaultHue,
-                OrderedDescription("Adjust the color of Outer Flames.", 186, new AcceptableValueRange<float>(MinHue, MaxHue), dispName: "Color")
+                OrderedDescription("Adjust the color of Outer Flames.", 
+                    185, 
+                    new AcceptableValueRange<float>(MinHue, MaxHue), 
+                    dispName: "Color")
+            );
+            
+            OuterFlamesPosition = config.Bind(
+                outerFlamesSection,
+                "Position",
+                DefaultFlamePosition,
+                OrderedDescription(
+                    "Move Outer Flames forward or backward along the blade.",
+                    184,
+                    new AcceptableValueRange<float>(MinFlamePosition, MaxFlamePosition),
+                    dispName: "Position"
+                )
             );
 
             OuterFlamesBottomSpacer = config.Bind(

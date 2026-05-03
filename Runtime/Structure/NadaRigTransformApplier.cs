@@ -23,9 +23,9 @@ namespace NADA.VFX.Runtime.Structure
 
             rigRoot.localPosition =
                 basePosition + new Vector3(
-                    state.RigSidePosition,
+                    0f,
                     state.RigLengthPosition,
-                    0f);
+                    state.RigSidePosition);
 
             rigRoot.localRotation =
                 Quaternion.Euler(baseEuler) *

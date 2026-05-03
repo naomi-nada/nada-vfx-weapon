@@ -15,14 +15,18 @@ namespace NADA.VFX.Core.State
         public bool InnerFlamesEnabled;
         public float InnerFlamesEnergy;
         public float InnerFlamesScale;
+        public float InnerFlamesLength;
         public float InnerFlamesHue;
+        public float InnerFlamesPosition;
 
         // Outer Flames
         public bool OuterFlamesEnabled;
         public bool OuterFlamesDragEnabled;
         public float OuterFlamesEnergy;
         public float OuterFlamesScale;
+        public float OuterFlamesLength;
         public float OuterFlamesHue;
+        public float OuterFlamesPosition;
 
         // Flare
         public bool FlareEnabled;

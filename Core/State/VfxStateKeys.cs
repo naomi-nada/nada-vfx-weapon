@@ -12,13 +12,17 @@ namespace NADA.VFX.Core.State
         internal const string InnerFlamesEnabled = "nada.vfx.innerflames.enabled";
         internal const string InnerFlamesEnergy = "nada.vfx.innerflames.energy";
         internal const string InnerFlamesScale = "nada.vfx.innerflames.scale";
+        internal const string InnerFlamesLength = "nada.vfx.innerflames.length";
         internal const string InnerFlamesHue = "nada.vfx.innerflames.hue";
+        internal const string InnerFlamesPosition = "nada.vfx.innerflames.position";
 
         internal const string OuterFlamesEnabled = "nada.vfx.outerflames.enabled";
         internal const string OuterFlamesDragEnabled = "nada.vfx.outerflames.drag.enabled";
         internal const string OuterFlamesEnergy = "nada.vfx.outerflames.energy";
         internal const string OuterFlamesScale = "nada.vfx.outerflames.scale";
+        internal const string OuterFlamesLength = "nada.vfx.outerflames.length";
         internal const string OuterFlamesHue = "nada.vfx.outerflames.hue";
+        internal const string OuterFlamesPosition = "nada.vfx.outerflames.position";
 
         internal const string FlareEnabled = "nada.vfx.flare.enabled";
         internal const string FlareScale = "nada.vfx.flare.scale";

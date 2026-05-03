@@ -20,14 +20,18 @@ namespace NADA.VFX.Core.State
                 InnerFlamesEnabled = PluginConfig.InnerFlames.Value,
                 InnerFlamesEnergy = PluginConfig.InnerFlamesEnergy.Value,
                 InnerFlamesScale = PluginConfig.InnerFlamesScale.Value,
+                InnerFlamesLength = PluginConfig.InnerFlamesLength.Value,
                 InnerFlamesHue = PluginConfig.InnerFlamesHue.Value,
+                InnerFlamesPosition = PluginConfig.InnerFlamesPosition.Value,
 
                 // Outer Flames
                 OuterFlamesEnabled = PluginConfig.OuterFlames.Value,
                 OuterFlamesDragEnabled = PluginConfig.OuterFlamesDragEnabled.Value,
                 OuterFlamesEnergy = PluginConfig.OuterFlamesEnergy.Value,
                 OuterFlamesScale = PluginConfig.OuterFlamesScale.Value,
+                OuterFlamesLength = PluginConfig.OuterFlamesLength.Value,
                 OuterFlamesHue = PluginConfig.OuterFlamesHue.Value,
+                OuterFlamesPosition = PluginConfig.OuterFlamesPosition.Value,
                 
                 // Flare
                 FlareEnabled = PluginConfig.Flare.Value,
@@ -92,13 +96,17 @@ namespace NADA.VFX.Core.State
             WriteBool(customData, VfxStateKeys.InnerFlamesEnabled, state.InnerFlamesEnabled);
             WriteFloat(customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
             WriteFloat(customData, VfxStateKeys.InnerFlamesScale, state.InnerFlamesScale);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesLength, state.InnerFlamesLength);
             WriteFloat(customData, VfxStateKeys.InnerFlamesHue, state.InnerFlamesHue);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesPosition, state.InnerFlamesPosition);
 
             WriteBool(customData, VfxStateKeys.OuterFlamesEnabled, state.OuterFlamesEnabled);
             WriteBool(customData, VfxStateKeys.OuterFlamesDragEnabled, state.OuterFlamesDragEnabled);
             WriteFloat(customData, VfxStateKeys.OuterFlamesEnergy, state.OuterFlamesEnergy);
             WriteFloat(customData, VfxStateKeys.OuterFlamesScale, state.OuterFlamesScale);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesLength, state.OuterFlamesLength);
             WriteFloat(customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesPosition, state.OuterFlamesPosition);
 
             WriteBool(customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
             WriteFloat(customData, VfxStateKeys.FlareScale, state.FlareScale);
@@ -158,14 +166,18 @@ namespace NADA.VFX.Core.State
             state.InnerFlamesEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
             state.InnerFlamesEnergy = ReadFloat(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
             state.InnerFlamesScale = ReadFloat(customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
+            state.InnerFlamesLength = ReadFloat(customData, VfxStateKeys.InnerFlamesLength, PluginConfig.InnerFlamesLength.Value);
             state.InnerFlamesHue = ReadFloat(customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
-
+            state.InnerFlamesPosition = ReadFloat(customData, VfxStateKeys.InnerFlamesPosition, PluginConfig.InnerFlamesPosition.Value);
+            
             // Outer Flames
             state.OuterFlamesEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
             state.OuterFlamesDragEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesDragEnabled, PluginConfig.OuterFlamesDragEnabled.Value);
             state.OuterFlamesEnergy = ReadFloat(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
             state.OuterFlamesScale = ReadFloat(customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
+            state.OuterFlamesLength = ReadFloat(customData, VfxStateKeys.OuterFlamesLength, PluginConfig.OuterFlamesLength.Value);
             state.OuterFlamesHue = ReadFloat(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
+            state.OuterFlamesPosition = ReadFloat(customData, VfxStateKeys.OuterFlamesPosition, PluginConfig.OuterFlamesPosition.Value);
 
             // Flare
             state.FlareEnabled = ReadBool(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
@@ -234,14 +246,18 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesLength, PluginConfig.InnerFlamesLength.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesPosition, PluginConfig.InnerFlamesPosition.Value);
 
             // Outer Flames
             BackfillMissing(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesDragEnabled, PluginConfig.OuterFlamesDragEnabled.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesLength, PluginConfig.OuterFlamesLength.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesPosition, PluginConfig.OuterFlamesPosition.Value);
 
             // Flare
             BackfillMissing(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
@@ -300,13 +316,17 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.InnerFlamesEnabled);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesEnergy);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesScale);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesLength);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesHue);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesPosition);
 
             item.m_customData.Remove(VfxStateKeys.OuterFlamesEnabled);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesDragEnabled);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesEnergy);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesScale);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesLength);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesHue);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesPosition);
 
             item.m_customData.Remove(VfxStateKeys.FlareEnabled);
             item.m_customData.Remove(VfxStateKeys.FlareScale);
@@ -358,13 +378,17 @@ namespace NADA.VFX.Core.State
                 InnerFlamesEnabled = true,
                 InnerFlamesEnergy = PluginConfig.DefaultEnergy,
                 InnerFlamesScale = 1f,
+                InnerFlamesLength = PluginConfig.DefaultFlameLength,
                 InnerFlamesHue = PluginConfig.DefaultHue,
+                InnerFlamesPosition = PluginConfig.DefaultFlamePosition,
 
                 OuterFlamesEnabled = true,
                 OuterFlamesDragEnabled = false,
                 OuterFlamesEnergy = PluginConfig.DefaultEnergy,
                 OuterFlamesScale = 1f,
+                OuterFlamesLength = PluginConfig.DefaultFlameLength,
                 OuterFlamesHue = PluginConfig.DefaultHue,
+                OuterFlamesPosition = PluginConfig.DefaultFlamePosition,
 
                 FlareEnabled = true,
                 FlareScale = 1f,
@@ -415,13 +439,17 @@ namespace NADA.VFX.Core.State
             PluginConfig.InnerFlames.Value = state.InnerFlamesEnabled;
             PluginConfig.InnerFlamesEnergy.Value = state.InnerFlamesEnergy;
             PluginConfig.InnerFlamesScale.Value = state.InnerFlamesScale;
+            PluginConfig.InnerFlamesLength.Value = state.InnerFlamesLength;
             PluginConfig.InnerFlamesHue.Value = state.InnerFlamesHue;
+            PluginConfig.InnerFlamesPosition.Value = state.InnerFlamesPosition;
 
             PluginConfig.OuterFlames.Value = state.OuterFlamesEnabled;
             PluginConfig.OuterFlamesDragEnabled.Value = state.OuterFlamesDragEnabled;
             PluginConfig.OuterFlamesEnergy.Value = state.OuterFlamesEnergy;
             PluginConfig.OuterFlamesScale.Value = state.OuterFlamesScale;
+            PluginConfig.OuterFlamesLength.Value = state.OuterFlamesLength;
             PluginConfig.OuterFlamesHue.Value = state.OuterFlamesHue;
+            PluginConfig.OuterFlamesPosition.Value = state.OuterFlamesPosition;
 
             PluginConfig.Flare.Value = state.FlareEnabled;
             PluginConfig.FlareScale.Value = state.FlareScale;
