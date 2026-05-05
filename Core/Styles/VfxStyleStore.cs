@@ -63,29 +63,49 @@ namespace NADA.VFX.Core.Styles
 
         private static void EnsureLoaded()
         {
+            Plugin.Log?.LogInfo($"{Plugin.ModName}: [Styles] EnsureLoaded() called.");
+            
             if (Styles.Count > 0)
                 return;
 
             if (!File.Exists(FilePath))
+            {
+                Plugin.Log?.LogWarning(
+                    $"{Plugin.ModName}: [Styles] file not found at '{FilePath}'.");
                 return;
+            }
 
             try
             {
+                int loaded = 0;
+                int skipped = 0;
+
                 foreach (string line in File.ReadAllLines(FilePath))
                 {
                     if (string.IsNullOrWhiteSpace(line))
                         continue;
 
                     string[] parts = line.Split('|');
-                    if (parts.Length != 51)
+
+                    if (parts.Length < 2)
+                    {
+                        skipped++;
                         continue;
+                    }
 
                     string name = parts[0].Trim();
                     if (string.IsNullOrWhiteSpace(name))
+                    {
+                        skipped++;
                         continue;
+                    }
 
                     Styles[name] = Deserialize(parts);
+                    loaded++;
                 }
+
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [Styles] loaded={loaded} skipped={skipped} file='{FilePath}'.");
             }
             catch (Exception e)
             {
@@ -143,6 +163,7 @@ namespace NADA.VFX.Core.Styles
                 B(state.InnerFlamesEnabled),
                 F(state.InnerFlamesEnergy),
                 F(state.InnerFlamesScale),
+                F(state.InnerFlamesLength),
                 F(state.InnerFlamesHue),
                 F(state.InnerFlamesPosition),
 
@@ -150,12 +171,22 @@ namespace NADA.VFX.Core.Styles
                 B(state.OuterFlamesDragEnabled),
                 F(state.OuterFlamesEnergy),
                 F(state.OuterFlamesScale),
+                F(state.OuterFlamesLength),
                 F(state.OuterFlamesHue),
                 F(state.OuterFlamesPosition),
 
                 B(state.FlareEnabled),
                 F(state.FlareScale),
                 F(state.FlareHue),
+                F(state.FlarePosition),
+                
+                B(state.SparksEnabled),
+                F(state.SparksEnergy),
+                F(state.SparksScale),
+                F(state.SparksLength),
+                F(state.SparksWidth),
+                F(state.SparksHue),
+                F(state.SparksPosition),
 
                 B(state.OrbitalsOrbsEnabled),
                 F(state.OrbitalsOrbsCount),
@@ -195,63 +226,75 @@ namespace NADA.VFX.Core.Styles
         private static VfxState Deserialize(string[] parts)
         {
             int i = 1;
+            VfxState defaults = VfxStateIO.FromDefaults();
 
             return new VfxState
             {
-                RigRotation = ReadFloat(parts[i++]),
-                RigSideRotation = ReadFloat(parts[i++]),
-                RigLengthPosition = ReadFloat(parts[i++]),
-                RigSidePosition = ReadFloat(parts[i++]),
+                RigRotation = ReadFloat(parts, ref i, defaults.RigRotation),
+                RigSideRotation = ReadFloat(parts, ref i, defaults.RigSideRotation),
+                RigLengthPosition = ReadFloat(parts, ref i, defaults.RigLengthPosition),
+                RigSidePosition = ReadFloat(parts, ref i, defaults.RigSidePosition),
+
+                InnerFlamesEnabled = ReadBool(parts, ref i, defaults.InnerFlamesEnabled),
+                InnerFlamesEnergy = ReadFloat(parts, ref i, defaults.InnerFlamesEnergy),
+                InnerFlamesScale = ReadFloat(parts, ref i, defaults.InnerFlamesScale),
+                InnerFlamesLength =  ReadFloat(parts, ref i, defaults.InnerFlamesLength),
+                InnerFlamesHue = ReadFloat(parts, ref i, defaults.InnerFlamesHue),
+                InnerFlamesPosition = ReadFloat(parts, ref i, defaults.InnerFlamesPosition),
+
+                OuterFlamesEnabled = ReadBool(parts, ref i, defaults.OuterFlamesEnabled),
+                OuterFlamesDragEnabled = ReadBool(parts, ref i, defaults.OuterFlamesDragEnabled),
+                OuterFlamesEnergy = ReadFloat(parts, ref i, defaults.OuterFlamesEnergy),
+                OuterFlamesScale = ReadFloat(parts, ref i, defaults.OuterFlamesScale),
+                OuterFlamesLength = ReadFloat(parts, ref i, defaults.OuterFlamesLength),
+                OuterFlamesHue = ReadFloat(parts, ref i, defaults.OuterFlamesHue),
+                OuterFlamesPosition = ReadFloat(parts, ref i, defaults.OuterFlamesPosition),
+
+                FlareEnabled = ReadBool(parts, ref i, defaults.FlareEnabled),
+                FlareScale = ReadFloat(parts, ref i, defaults.FlareScale),
+                FlareHue = ReadFloat(parts, ref i, defaults.FlareHue),
+                FlarePosition = ReadFloat(parts, ref i, defaults.FlarePosition),
                 
-                InnerFlamesEnabled = ReadBool(parts[i++]),
-                InnerFlamesEnergy = ReadFloat(parts[i++]),
-                InnerFlamesScale = ReadFloat(parts[i++]),
-                InnerFlamesHue = ReadFloat(parts[i++]),
-                InnerFlamesPosition = ReadFloat(parts[i++]),
+                SparksEnabled = ReadBool(parts, ref i, defaults.SparksEnabled),
+                SparksEnergy = ReadFloat(parts, ref i, defaults.SparksEnergy),
+                SparksScale = ReadFloat(parts, ref i, defaults.SparksScale),
+                SparksLength = ReadFloat(parts, ref i, defaults.SparksLength),
+                SparksWidth =  ReadFloat(parts, ref i, defaults.SparksWidth),
+                SparksHue = ReadFloat(parts, ref i, defaults.SparksHue),
+                SparksPosition = ReadFloat(parts, ref i, defaults.SparksPosition),
 
-                OuterFlamesEnabled = ReadBool(parts[i++]),
-                OuterFlamesDragEnabled = ReadBool(parts[i++]),
-                OuterFlamesEnergy = ReadFloat(parts[i++]),
-                OuterFlamesScale = ReadFloat(parts[i++]),
-                OuterFlamesHue = ReadFloat(parts[i++]),
-                OuterFlamesPosition = ReadFloat(parts[i++]),
+                OrbitalsOrbsEnabled = ReadBool(parts, ref i, defaults.OrbitalsOrbsEnabled),
+                OrbitalsOrbsCount = ReadFloat(parts, ref i, defaults.OrbitalsOrbsCount),
+                OrbitalsOrbsDrift = ReadFloat(parts, ref i, defaults.OrbitalsOrbsDrift),
+                OrbitalsOrbsScale = ReadFloat(parts, ref i, defaults.OrbitalsOrbsScale),
+                OrbitalsOrbsHue = ReadFloat(parts, ref i, defaults.OrbitalsOrbsHue),
+                OrbitalsOrbsSpeed = ReadFloat(parts, ref i, defaults.OrbitalsOrbsSpeed),
+                OrbitalsOrbsSpacing = ReadFloat(parts, ref i, defaults.OrbitalsOrbsSpacing),
+                OrbitalsOrbsLength = ReadFloat(parts, ref i, defaults.OrbitalsOrbsLength),
+                OrbitalsOrbsRadius = ReadFloat(parts, ref i, defaults.OrbitalsOrbsRadius),
+                OrbitalsOrbsCycles = ReadFloat(parts, ref i, defaults.OrbitalsOrbsCycles),
 
-                FlareEnabled = ReadBool(parts[i++]),
-                FlareScale = ReadFloat(parts[i++]),
-                FlareHue = ReadFloat(parts[i++]),
+                OrbitalsFlamesEnabled = ReadBool(parts, ref i, defaults.OrbitalsFlamesEnabled),
+                OrbitalsFlamesCount = ReadFloat(parts, ref i, defaults.OrbitalsFlamesCount),
+                OrbitalsFlamesEnergy = ReadFloat(parts, ref i, defaults.OrbitalsFlamesEnergy),
+                OrbitalsFlamesDrift = ReadFloat(parts, ref i, defaults.OrbitalsFlamesDrift),
+                OrbitalsFlamesHue = ReadFloat(parts, ref i, defaults.OrbitalsFlamesHue),
+                OrbitalsFlamesSpeed = ReadFloat(parts, ref i, defaults.OrbitalsFlamesSpeed),
+                OrbitalsFlamesSpacing = ReadFloat(parts, ref i, defaults.OrbitalsFlamesSpacing),
+                OrbitalsFlamesLength = ReadFloat(parts, ref i, defaults.OrbitalsFlamesLength),
+                OrbitalsFlamesRadius = ReadFloat(parts, ref i, defaults.OrbitalsFlamesRadius),
+                OrbitalsFlamesCycles = ReadFloat(parts, ref i, defaults.OrbitalsFlamesCycles),
 
-                OrbitalsOrbsEnabled = ReadBool(parts[i++]),
-                OrbitalsOrbsCount = ReadFloat(parts[i++]),
-                OrbitalsOrbsDrift = ReadFloat(parts[i++]),
-                OrbitalsOrbsScale = ReadFloat(parts[i++]),
-                OrbitalsOrbsHue = ReadFloat(parts[i++]),
-                OrbitalsOrbsSpeed = ReadFloat(parts[i++]),
-                OrbitalsOrbsSpacing = ReadFloat(parts[i++]),
-                OrbitalsOrbsLength = ReadFloat(parts[i++]),
-                OrbitalsOrbsRadius = ReadFloat(parts[i++]),
-                OrbitalsOrbsCycles = ReadFloat(parts[i++]),
-
-                OrbitalsFlamesEnabled = ReadBool(parts[i++]),
-                OrbitalsFlamesCount = ReadFloat(parts[i++]),
-                OrbitalsFlamesEnergy = ReadFloat(parts[i++]),
-                OrbitalsFlamesDrift = ReadFloat(parts[i++]),
-                OrbitalsFlamesHue = ReadFloat(parts[i++]),
-                OrbitalsFlamesSpeed = ReadFloat(parts[i++]),
-                OrbitalsFlamesSpacing = ReadFloat(parts[i++]),
-                OrbitalsFlamesLength = ReadFloat(parts[i++]),
-                OrbitalsFlamesRadius = ReadFloat(parts[i++]),
-                OrbitalsFlamesCycles = ReadFloat(parts[i++]),
-
-                OrbitalsEmbersEnabled = ReadBool(parts[i++]),
-                OrbitalsEmbersCount = ReadFloat(parts[i++]),
-                OrbitalsEmbersEnergy = ReadFloat(parts[i++]),
-                OrbitalsEmbersDrift = ReadFloat(parts[i++]),
-                OrbitalsEmbersHue = ReadFloat(parts[i++]),
-                OrbitalsEmbersSpeed = ReadFloat(parts[i++]),
-                OrbitalsEmbersSpacing = ReadFloat(parts[i++]),
-                OrbitalsEmbersLength = ReadFloat(parts[i++]),
-                OrbitalsEmbersRadius = ReadFloat(parts[i++]),
-                OrbitalsEmbersCycles = ReadFloat(parts[i++])
+                OrbitalsEmbersEnabled = ReadBool(parts, ref i, defaults.OrbitalsEmbersEnabled),
+                OrbitalsEmbersCount = ReadFloat(parts, ref i, defaults.OrbitalsEmbersCount),
+                OrbitalsEmbersEnergy = ReadFloat(parts, ref i, defaults.OrbitalsEmbersEnergy),
+                OrbitalsEmbersDrift = ReadFloat(parts, ref i, defaults.OrbitalsEmbersDrift),
+                OrbitalsEmbersHue = ReadFloat(parts, ref i, defaults.OrbitalsEmbersHue),
+                OrbitalsEmbersSpeed = ReadFloat(parts, ref i, defaults.OrbitalsEmbersSpeed),
+                OrbitalsEmbersSpacing = ReadFloat(parts, ref i, defaults.OrbitalsEmbersSpacing),
+                OrbitalsEmbersLength = ReadFloat(parts, ref i, defaults.OrbitalsEmbersLength),
+                OrbitalsEmbersRadius = ReadFloat(parts, ref i, defaults.OrbitalsEmbersRadius),
+                OrbitalsEmbersCycles = ReadFloat(parts, ref i, defaults.OrbitalsEmbersCycles)
             };
         }
 
@@ -264,21 +307,32 @@ namespace NADA.VFX.Core.Styles
         {
             return value.ToString(CultureInfo.InvariantCulture);
         }
-
-        private static bool ReadBool(string value)
+        
+        private static bool ReadBool(string[] parts, ref int index, bool fallback)
         {
-            return bool.TryParse(value, out bool parsed) && parsed;
+            if (parts == null || index >= parts.Length)
+                return fallback;
+
+            string value = parts[index++];
+            return bool.TryParse(value, out bool parsed)
+                ? parsed
+                : fallback;
         }
 
-        private static float ReadFloat(string value)
+        private static float ReadFloat(string[] parts, ref int index, float fallback)
         {
+            if (parts == null || index >= parts.Length)
+                return fallback;
+
+            string value = parts[index++];
+
             return float.TryParse(
                 value,
                 NumberStyles.Float,
                 CultureInfo.InvariantCulture,
                 out float parsed)
                 ? parsed
-                : 0f;
+                : fallback;
         }
     }
 }

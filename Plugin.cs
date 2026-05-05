@@ -21,7 +21,7 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.7.0";
+        public const string ModVersion = "0.7.1";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -42,6 +42,9 @@ namespace NADA.VFX
         internal const string ReferencePrefabName = "SwordDyrnwyn";
         internal const string ReferenceRigPath = "attach/Burny vfx";
         internal const string DemisterPrefabName = "demister_ball";
+        internal const string SparksName = "Sparks";
+        internal const string SparksReferencePrefabName = "AtgeirHimminAfl";
+        internal const string SparksReferencePath = "attach/equiped/Sparcs";
 
         // Core effect names
         internal const string InnerFlamesName = "Inner Flames";
@@ -57,17 +60,17 @@ namespace NADA.VFX
         internal const string OrbitalsOrbsName = "Orbs";
         internal const string OrbitalsOrbsMotionRootName = "Orbs Motion Root";
         internal const string OrbitalsOrbsPoolName = "Orbs Pool";
-        internal const int MaxOrbitalsOrbsVisuals = 30;
+        internal const int MaxOrbitalsOrbsVisuals = 40;
 
         internal const string OrbitalsFlamesName = "Flames";
         internal const string OrbitalsFlamesMotionRootName = "Flames Motion Root";
         internal const string OrbitalsFlamesPoolName = "Flames Pool";
-        internal const int MaxOrbitalsFlameVisuals = 30;
+        internal const int MaxOrbitalsFlameVisuals = 40;
 
         internal const string OrbitalsEmbersName = "Embers";
         internal const string OrbitalsEmbersMotionRootName = "Embers Motion Root";
         internal const string OrbitalsEmbersPoolName = "Embers Pool";
-        internal const int MaxOrbitalsEmberVisuals = 30;
+        internal const int MaxOrbitalsEmberVisuals = 40;
 
         // Reference rig transform
         internal static readonly Vector3 RigLocalPosition = new Vector3(0.0f, 1.1f, 0.0f);

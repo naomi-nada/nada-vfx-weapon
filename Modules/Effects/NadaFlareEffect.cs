@@ -18,6 +18,9 @@ namespace NADA.VFX.Modules.Effects
         private Vector3 _baseScale;
         private bool _hasBaseScale;
         
+        private Vector3 _baseLocalPosition;
+        private bool _hasBaseLocalPosition;
+        
         private float _lastHue;
         private bool _hasLastHue;
 
@@ -70,6 +73,7 @@ namespace NADA.VFX.Modules.Effects
             ApplyEnabled(enabled);
             ApplyScale(state.FlareScale);
             ApplyHueShift(state.FlareHue);
+            ApplyPosition(state.FlarePosition);
 
             bool hueChanged =
                 !_hasLastHue ||
@@ -107,12 +111,18 @@ namespace NADA.VFX.Modules.Effects
             _systems = GetComponentsInChildren<ParticleSystem>(true);
         }
         
-                private void CacheBaselines()
+        private void CacheBaselines()
         {
             if (!_hasBaseScale)
             {
                 _baseScale = transform.localScale;
                 _hasBaseScale = true;
+            }
+            
+            if (!_hasBaseLocalPosition)
+            {
+                _baseLocalPosition = transform.localPosition;
+                _hasBaseLocalPosition = true;
             }
 
             CacheParticleBaselines();
@@ -384,6 +394,20 @@ namespace NADA.VFX.Modules.Effects
                     }
                 }
             }
+        }
+        
+        private void ApplyPosition(float position)
+        {
+            if (!_hasBaseLocalPosition)
+                return;
+
+            float clampedPosition = Mathf.Clamp(
+                position,
+                PluginConfig.MinFlamePosition,
+                PluginConfig.MaxFlamePosition);
+
+            transform.localPosition =
+                _baseLocalPosition + new Vector3(0f, 0f, clampedPosition);
         }
         
         private void RestartSystems()

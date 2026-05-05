@@ -8,17 +8,17 @@ namespace NADA.VFX.Runtime.Structure
     {
         internal static bool CacheReady { get; private set; }
         internal static Material PickupMat { get; private set; }
-        internal static Material HeatDistortionMaterial { get; private set; }
         internal static GameObject RefRigTemplateInactive { get; private set; }
         internal static GameObject DemisterTemplateInactive { get; private set; }
+        internal static GameObject SparksTemplateInactive { get; private set; }
 
         internal static IEnumerator CacheReferenceAssetsWhenReady()
         {
             DemisterTemplateInactive = null;
             CacheReady = false;
             PickupMat = null;
-            HeatDistortionMaterial = null;
             RefRigTemplateInactive = null;
+            SparksTemplateInactive = null;
 
             while (ObjectDB.instance == null && ZNetScene.instance == null)
                 yield return null;
@@ -68,6 +68,8 @@ namespace NADA.VFX.Runtime.Structure
                 Plugin.Log.LogWarning(
                     $"{Plugin.ModName}: Could not find top-level demister source '{Plugin.DemisterPrefabName}'.");
             }
+            
+            CacheSparksTemplate();
 
             CacheReady = true;
             Plugin.Log.LogInfo(
@@ -132,6 +134,37 @@ namespace NADA.VFX.Runtime.Structure
             if (go.transform.Find("Point light") != null) score += 2;
 
             return score;
+        }
+        
+        private static void CacheSparksTemplate()
+        {
+            if (!NadaWeaponTargets.TryGetPrefab(Plugin.SparksReferencePrefabName, out GameObject sparksReference) ||
+                sparksReference == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Could not find Sparks reference prefab '{Plugin.SparksReferencePrefabName}'.");
+                return;
+            }
+
+            Transform sparksTransform =
+                sparksReference.transform.Find(Plugin.SparksReferencePath);
+
+            if (sparksTransform == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Could not find Sparks reference path '{Plugin.SparksReferencePath}' " +
+                    $"under '{Plugin.SparksReferencePrefabName}'.");
+                return;
+            }
+
+            SparksTemplateInactive = Object.Instantiate(sparksTransform.gameObject);
+            SparksTemplateInactive.name = "NADA_SparksTemplate";
+            SparksTemplateInactive.SetActive(false);
+            SparksTemplateInactive.hideFlags = HideFlags.HideAndDontSave;
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: Cached Sparks template from " +
+                $"'{Plugin.SparksReferencePrefabName}/{Plugin.SparksReferencePath}'.");
         }
     }
 }

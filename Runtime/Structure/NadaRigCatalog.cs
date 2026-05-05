@@ -12,6 +12,7 @@ namespace NADA.VFX.Runtime.Structure
         public Transform OuterFlamesTransform { get; private set; }
         public Transform FlareTransform { get; private set; }
         public Transform InnerFlamesTransform { get; private set; }
+        public Transform SparksTransform { get; private set; }
 
         // Orbitals
         public Transform OrbitalsRootTransform { get; private set; }
@@ -51,6 +52,9 @@ namespace NADA.VFX.Runtime.Structure
 
                 catalog.InnerFlamesTransform =
                     NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.InnerFlamesName);
+                
+                catalog.SparksTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.SparksName);
 
                 // Orbitals
                 catalog.OrbitalsRootTransform =

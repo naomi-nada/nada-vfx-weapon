@@ -71,6 +71,14 @@ namespace NADA.VFX.Weapons.Runtime
 
             if (outerFlamesTransform == null)
                 return;
+            
+            Transform sparksTransform =
+                NadaRigAssembly.EnsureLocalSparksBranch(
+                    localWeaponRootTransform,
+                    rootObject.name);
+            
+            if (sparksTransform == null)
+                return;
 
             NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsRootTransform);
 
@@ -115,6 +123,10 @@ namespace NADA.VFX.Weapons.Runtime
 
             NadaEffectBinder.BindFlareEffect(
                 catalog.FlareTransform,
+                itemData);
+            
+            NadaEffectBinder.BindSparksEffect(
+                catalog.SparksTransform,
                 itemData);
 
             // Orbitals: Orbs, Flames, Embers

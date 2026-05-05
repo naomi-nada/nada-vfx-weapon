@@ -27,6 +27,15 @@ namespace NADA.VFX.Core.State
         internal const string FlareEnabled = "nada.vfx.flare.enabled";
         internal const string FlareScale = "nada.vfx.flare.scale";
         internal const string FlareHue = "nada.vfx.flare.hue";
+        internal const string FlarePosition = "nada.vfx.flare.position";
+        
+        internal const string SparksEnabled = "nada_vfx_sparks_enabled";
+        internal const string SparksEnergy = "nada_vfx_sparks_energy";
+        internal const string SparksScale = "nada_vfx_sparks_scale";
+        internal const string SparksLength = "nada_vfx_sparks_length";
+        internal const string SparksWidth = "nada.vfx.sparks.width";
+        internal const string SparksHue = "nada_vfx_sparks_hue";
+        internal const string SparksPosition = "nada_vfx_sparks_position";
 
         internal const string OrbitalsOrbsEnabled = "nada.vfx.orbitals.orbs.enabled";
         internal const string OrbitalsOrbsCount = "nada.vfx.orbitals.orbs.count";
