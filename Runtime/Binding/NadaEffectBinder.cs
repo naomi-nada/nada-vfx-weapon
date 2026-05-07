@@ -18,6 +18,13 @@ namespace NADA.VFX.Runtime.Binding
         {
             BindItemDataEffect<NadaOuterFlamesEffect>(outerFlamesTransform, itemData);
         }
+        
+        internal static void BindSparksEffect(
+            Transform sparksTransform,
+            global::ItemDrop.ItemData itemData)
+        {
+            BindItemDataEffect<NadaSparksEffect>(sparksTransform, itemData);
+        }
 
         internal static void BindFlareEffect(
             Transform flareTransform,
@@ -26,11 +33,11 @@ namespace NADA.VFX.Runtime.Binding
             BindItemDataEffect<NadaFlareEffect>(flareTransform, itemData);
         }
         
-        internal static void BindSparksEffect(
+        internal static void BindAuraEffect(
             Transform sparksTransform,
             global::ItemDrop.ItemData itemData)
         {
-            BindItemDataEffect<NadaSparksEffect>(sparksTransform, itemData);
+            BindItemDataEffect<NadaAuraEffect>(sparksTransform, itemData);
         }
 
         internal static void BindOrbitalsEffect(

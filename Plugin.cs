@@ -45,6 +45,9 @@ namespace NADA.VFX
         internal const string SparksName = "Sparks";
         internal const string SparksReferencePrefabName = "AtgeirHimminAfl";
         internal const string SparksReferencePath = "attach/equiped/Sparcs";
+        internal const string AuraName = "Aura";
+        internal const string AuraReferencePrefabName = "fi_vil_combs_props_bone_skull";
+        internal const string AuraReferenceMaterialName = "glow_pulse_purple";
 
         // Core effect names
         internal const string InnerFlamesName = "Inner Flames";

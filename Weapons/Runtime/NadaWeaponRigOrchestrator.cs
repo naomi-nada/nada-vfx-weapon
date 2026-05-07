@@ -79,6 +79,15 @@ namespace NADA.VFX.Weapons.Runtime
             
             if (sparksTransform == null)
                 return;
+            
+            Transform auraTransform =
+                NadaRigAssembly.EnsureLocalAuraBranch(
+                    localWeaponRootTransform,
+                    weaponVisualRootTransform,
+                    rootObject.name);
+
+            if (auraTransform == null)
+                return;
 
             NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsRootTransform);
 
@@ -108,7 +117,8 @@ namespace NADA.VFX.Weapons.Runtime
             float orbOrbitAdherence = NadaMotionTuningResolver.GetOrbsOrbitAdherence(itemData);
             _ = orbOrbitAdherence;
 
-            // Inner Flames, Outer Flames, Flare
+            // Inner Flames, Outer Flames, Sparks, Flare, Aura
+            
             NadaEffectBinder.BindInnerFlamesEffect(
                 catalog.InnerFlamesTransform,
                 itemData);
@@ -120,13 +130,17 @@ namespace NADA.VFX.Weapons.Runtime
             NadaMotionBinder.BindOuterFlamesMotion(
                 catalog.OuterFlamesTransform,
                 itemData);
+            
+            NadaEffectBinder.BindSparksEffect(
+                catalog.SparksTransform,
+                itemData);
 
             NadaEffectBinder.BindFlareEffect(
                 catalog.FlareTransform,
                 itemData);
             
-            NadaEffectBinder.BindSparksEffect(
-                catalog.SparksTransform,
+            NadaEffectBinder.BindAuraEffect(
+                auraTransform,
                 itemData);
 
             // Orbitals: Orbs, Flames, Embers

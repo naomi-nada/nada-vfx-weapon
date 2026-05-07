@@ -10,13 +10,11 @@ namespace NADA.VFX.Core.State
         {
             return new VfxState
             {
-                // Rig Positioning
                 RigRotation = PluginConfig.RigRotation.Value,
                 RigSideRotation = PluginConfig.RigSideRotation.Value,
                 RigLengthPosition = PluginConfig.RigLengthPosition.Value,
                 RigSidePosition = PluginConfig.RigSidePosition.Value,
-                
-                // Inner Flames
+
                 InnerFlamesEnabled = PluginConfig.InnerFlames.Value,
                 InnerFlamesEnergy = PluginConfig.InnerFlamesEnergy.Value,
                 InnerFlamesScale = PluginConfig.InnerFlamesScale.Value,
@@ -24,7 +22,6 @@ namespace NADA.VFX.Core.State
                 InnerFlamesHue = PluginConfig.InnerFlamesHue.Value,
                 InnerFlamesPosition = PluginConfig.InnerFlamesPosition.Value,
 
-                // Outer Flames
                 OuterFlamesEnabled = PluginConfig.OuterFlames.Value,
                 OuterFlamesDragEnabled = PluginConfig.OuterFlamesDragEnabled.Value,
                 OuterFlamesEnergy = PluginConfig.OuterFlamesEnergy.Value,
@@ -32,15 +29,8 @@ namespace NADA.VFX.Core.State
                 OuterFlamesLength = PluginConfig.OuterFlamesLength.Value,
                 OuterFlamesHue = PluginConfig.OuterFlamesHue.Value,
                 OuterFlamesPosition = PluginConfig.OuterFlamesPosition.Value,
-                
-                // Flare
-                FlareEnabled = PluginConfig.Flare.Value,
-                FlareScale = PluginConfig.FlareScale.Value,
-                FlareHue = PluginConfig.FlareHue.Value,
-                FlarePosition = PluginConfig.FlarePosition.Value,
-                
-                // Sparks
-                SparksEnabled = PluginConfig.SparksEnabled.Value,
+
+                SparksEnabled = PluginConfig.Sparks.Value,
                 SparksEnergy = PluginConfig.SparksEnergy.Value,
                 SparksScale = PluginConfig.SparksScale.Value,
                 SparksLength = PluginConfig.SparksLength.Value,
@@ -48,7 +38,15 @@ namespace NADA.VFX.Core.State
                 SparksHue = PluginConfig.SparksHue.Value,
                 SparksPosition = PluginConfig.SparksPosition.Value,
 
-                // Orbitals - Orbs
+                FlareEnabled = PluginConfig.Flare.Value,
+                FlareScale = PluginConfig.FlareScale.Value,
+                FlareHue = PluginConfig.FlareHue.Value,
+                FlarePosition = PluginConfig.FlarePosition.Value,
+
+                AuraEnabled = PluginConfig.Aura.Value,
+                AuraScale = PluginConfig.AuraScale.Value,
+                AuraHue = PluginConfig.AuraHue.Value,
+
                 OrbitalsOrbsEnabled = PluginConfig.OrbitalsOrbs.Value,
                 OrbitalsOrbsCount = PluginConfig.OrbitalsOrbsCount.Value,
                 OrbitalsOrbsDrift = PluginConfig.OrbitalsOrbsDrift.Value,
@@ -60,7 +58,6 @@ namespace NADA.VFX.Core.State
                 OrbitalsOrbsRadius = PluginConfig.OrbitalsOrbsRadius.Value,
                 OrbitalsOrbsCycles = PluginConfig.OrbitalsOrbsCycles.Value,
 
-                // Orbitals - Flames
                 OrbitalsFlamesEnabled = PluginConfig.OrbitalsFlames.Value,
                 OrbitalsFlamesCount = PluginConfig.OrbitalsFlamesCount.Value,
                 OrbitalsFlamesEnergy = PluginConfig.OrbitalsFlamesEnergy.Value,
@@ -71,8 +68,7 @@ namespace NADA.VFX.Core.State
                 OrbitalsFlamesLength = PluginConfig.OrbitalsFlamesLength.Value,
                 OrbitalsFlamesRadius = PluginConfig.OrbitalsFlamesRadius.Value,
                 OrbitalsFlamesCycles = PluginConfig.OrbitalsFlamesCycles.Value,
-                
-                // Orbitals - Embers
+
                 OrbitalsEmbersEnabled = PluginConfig.OrbitalsEmbers.Value,
                 OrbitalsEmbersCount = PluginConfig.OrbitalsEmbersCount.Value,
                 OrbitalsEmbersEnergy = PluginConfig.OrbitalsEmbersEnergy.Value,
@@ -85,7 +81,7 @@ namespace NADA.VFX.Core.State
                 OrbitalsEmbersCycles = PluginConfig.OrbitalsEmbersCycles.Value
             };
         }
-        
+
         internal static void Write(global::ItemDrop.ItemData item, VfxState state, bool bound)
         {
             if (item == null)
@@ -97,7 +93,7 @@ namespace NADA.VFX.Core.State
             Dictionary<string, string> customData = item.m_customData;
 
             WriteBool(customData, VfxStateKeys.Bound, bound);
-            
+
             WriteFloat(customData, VfxStateKeys.RigRotation, state.RigRotation);
             WriteFloat(customData, VfxStateKeys.RigSideRotation, state.RigSideRotation);
             WriteFloat(customData, VfxStateKeys.RigLengthPosition, state.RigLengthPosition);
@@ -118,11 +114,6 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
             WriteFloat(customData, VfxStateKeys.OuterFlamesPosition, state.OuterFlamesPosition);
 
-            WriteBool(customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
-            WriteFloat(customData, VfxStateKeys.FlareScale, state.FlareScale);
-            WriteFloat(customData, VfxStateKeys.FlareHue, state.FlareHue);
-            WriteFloat(customData, VfxStateKeys.FlarePosition, state.FlarePosition);
-            
             WriteBool(customData, VfxStateKeys.SparksEnabled, state.SparksEnabled);
             WriteFloat(customData, VfxStateKeys.SparksEnergy, state.SparksEnergy);
             WriteFloat(customData, VfxStateKeys.SparksScale, state.SparksScale);
@@ -130,6 +121,15 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.SparksWidth, state.SparksWidth);
             WriteFloat(customData, VfxStateKeys.SparksHue, state.SparksHue);
             WriteFloat(customData, VfxStateKeys.SparksPosition, state.SparksPosition);
+
+            WriteBool(customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
+            WriteFloat(customData, VfxStateKeys.FlareScale, state.FlareScale);
+            WriteFloat(customData, VfxStateKeys.FlareHue, state.FlareHue);
+            WriteFloat(customData, VfxStateKeys.FlarePosition, state.FlarePosition);
+
+            WriteBool(customData, VfxStateKeys.AuraEnabled, state.AuraEnabled);
+            WriteFloat(customData, VfxStateKeys.AuraScale, state.AuraScale);
+            WriteFloat(customData, VfxStateKeys.AuraHue, state.AuraHue);
 
             WriteBool(customData, VfxStateKeys.OrbitalsOrbsEnabled, state.OrbitalsOrbsEnabled);
             WriteFloat(customData, VfxStateKeys.OrbitalsOrbsCount, state.OrbitalsOrbsCount);
@@ -174,22 +174,19 @@ namespace NADA.VFX.Core.State
             Dictionary<string, string> customData = item.m_customData;
             if (customData == null)
                 return false;
-            
-            // Rig Position
+
             state.RigRotation = ReadFloat(customData, VfxStateKeys.RigRotation, PluginConfig.RigRotation.Value);
             state.RigSideRotation = ReadFloat(customData, VfxStateKeys.RigSideRotation, PluginConfig.RigSideRotation.Value);
             state.RigLengthPosition = ReadFloat(customData, VfxStateKeys.RigLengthPosition, PluginConfig.RigLengthPosition.Value);
             state.RigSidePosition = ReadFloat(customData, VfxStateKeys.RigSidePosition, PluginConfig.RigSidePosition.Value);
-            
-            // Inner Flames
+
             state.InnerFlamesEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
             state.InnerFlamesEnergy = ReadFloat(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
             state.InnerFlamesScale = ReadFloat(customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
             state.InnerFlamesLength = ReadFloat(customData, VfxStateKeys.InnerFlamesLength, PluginConfig.InnerFlamesLength.Value);
             state.InnerFlamesHue = ReadFloat(customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
             state.InnerFlamesPosition = ReadFloat(customData, VfxStateKeys.InnerFlamesPosition, PluginConfig.InnerFlamesPosition.Value);
-            
-            // Outer Flames
+
             state.OuterFlamesEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
             state.OuterFlamesDragEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesDragEnabled, PluginConfig.OuterFlamesDragEnabled.Value);
             state.OuterFlamesEnergy = ReadFloat(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
@@ -198,14 +195,7 @@ namespace NADA.VFX.Core.State
             state.OuterFlamesHue = ReadFloat(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
             state.OuterFlamesPosition = ReadFloat(customData, VfxStateKeys.OuterFlamesPosition, PluginConfig.OuterFlamesPosition.Value);
 
-            // Flare
-            state.FlareEnabled = ReadBool(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
-            state.FlareScale = ReadFloat(customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
-            state.FlareHue = ReadFloat(customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
-            state.FlarePosition = ReadFloat(customData, VfxStateKeys.FlarePosition, PluginConfig.FlarePosition.Value);
-            
-            // Sparks
-            state.SparksEnabled = ReadBool(customData, VfxStateKeys.SparksEnabled, PluginConfig.SparksEnabled.Value);
+            state.SparksEnabled = ReadBool(customData, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
             state.SparksEnergy = ReadFloat(customData, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
             state.SparksScale = ReadFloat(customData, VfxStateKeys.SparksScale, PluginConfig.SparksScale.Value);
             state.SparksLength = ReadFloat(customData, VfxStateKeys.SparksLength, PluginConfig.SparksLength.Value);
@@ -213,7 +203,15 @@ namespace NADA.VFX.Core.State
             state.SparksHue = ReadFloat(customData, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
             state.SparksPosition = ReadFloat(customData, VfxStateKeys.SparksPosition, PluginConfig.SparksPosition.Value);
 
-            // Orbitals - Orbs
+            state.FlareEnabled = ReadBool(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
+            state.FlareScale = ReadFloat(customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
+            state.FlareHue = ReadFloat(customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
+            state.FlarePosition = ReadFloat(customData, VfxStateKeys.FlarePosition, PluginConfig.FlarePosition.Value);
+
+            state.AuraEnabled = ReadBool(customData, VfxStateKeys.AuraEnabled, PluginConfig.Aura.Value);
+            state.AuraScale = ReadFloat(customData, VfxStateKeys.AuraScale, PluginConfig.AuraScale.Value);
+            state.AuraHue = ReadFloat(customData, VfxStateKeys.AuraHue, PluginConfig.AuraHue.Value);
+
             state.OrbitalsOrbsEnabled = ReadBool(customData, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);
             state.OrbitalsOrbsCount = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
             state.OrbitalsOrbsDrift = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsDrift, PluginConfig.OrbitalsOrbsDrift.Value);
@@ -225,7 +223,6 @@ namespace NADA.VFX.Core.State
             state.OrbitalsOrbsRadius = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
             state.OrbitalsOrbsCycles = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsCycles, PluginConfig.OrbitalsOrbsCycles.Value);
 
-            // Orbitals - Flames
             state.OrbitalsFlamesEnabled = ReadBool(customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
             state.OrbitalsFlamesCount = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
             state.OrbitalsFlamesEnergy = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
@@ -237,7 +234,6 @@ namespace NADA.VFX.Core.State
             state.OrbitalsFlamesRadius = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
             state.OrbitalsFlamesCycles = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesCycles, PluginConfig.OrbitalsFlamesCycles.Value);
 
-            // Orbitals - Embers
             state.OrbitalsEmbersEnabled = ReadBool(customData, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
             state.OrbitalsEmbersCount = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersCount, PluginConfig.OrbitalsEmbersCount.Value);
             state.OrbitalsEmbersEnergy = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
@@ -256,7 +252,7 @@ namespace NADA.VFX.Core.State
         {
             if (item == null)
                 return;
-            
+
             if (IsBound(item))
                 return;
 
@@ -265,13 +261,11 @@ namespace NADA.VFX.Core.State
 
             Dictionary<string, string> customData = item.m_customData;
 
-            // Rig Position
             BackfillMissing(customData, VfxStateKeys.RigRotation, PluginConfig.RigRotation.Value);
             BackfillMissing(customData, VfxStateKeys.RigSideRotation, PluginConfig.RigSideRotation.Value);
             BackfillMissing(customData, VfxStateKeys.RigLengthPosition, PluginConfig.RigLengthPosition.Value);
             BackfillMissing(customData, VfxStateKeys.RigSidePosition, PluginConfig.RigSidePosition.Value);
-            
-            // Inner Flames
+
             BackfillMissing(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
@@ -279,7 +273,6 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesPosition, PluginConfig.InnerFlamesPosition.Value);
 
-            // Outer Flames
             BackfillMissing(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesDragEnabled, PluginConfig.OuterFlamesDragEnabled.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
@@ -288,22 +281,23 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesPosition, PluginConfig.OuterFlamesPosition.Value);
 
-            // Flare
-            BackfillMissing(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
-            BackfillMissing(customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
-            BackfillMissing(customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
-            BackfillMissing(customData, VfxStateKeys.FlarePosition, PluginConfig.FlarePosition.Value);
-
-            // Sparks
-            BackfillMissing(customData, VfxStateKeys.SparksEnabled, PluginConfig.SparksEnabled.Value);
+            BackfillMissing(customData, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
             BackfillMissing(customData, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.SparksScale, PluginConfig.SparksScale.Value);
             BackfillMissing(customData, VfxStateKeys.SparksLength, PluginConfig.SparksLength.Value);
             BackfillMissing(customData, VfxStateKeys.SparksWidth, PluginConfig.SparksWidth.Value);
             BackfillMissing(customData, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
             BackfillMissing(customData, VfxStateKeys.SparksPosition, PluginConfig.SparksPosition.Value);
-            
-            // Orbitals - Orbs
+
+            BackfillMissing(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
+            BackfillMissing(customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
+            BackfillMissing(customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
+            BackfillMissing(customData, VfxStateKeys.FlarePosition, PluginConfig.FlarePosition.Value);
+
+            BackfillMissing(customData, VfxStateKeys.AuraEnabled, PluginConfig.Aura.Value);
+            BackfillMissing(customData, VfxStateKeys.AuraScale, PluginConfig.AuraScale.Value);
+            BackfillMissing(customData, VfxStateKeys.AuraHue, PluginConfig.AuraHue.Value);
+
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsDrift, PluginConfig.OrbitalsOrbsDrift.Value);
@@ -315,7 +309,6 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsCycles, PluginConfig.OrbitalsOrbsCycles.Value);
 
-            // Orbitals - Flames
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
@@ -327,7 +320,6 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesCycles, PluginConfig.OrbitalsFlamesCycles.Value);
 
-            // Orbitals - Embers
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersCount, PluginConfig.OrbitalsEmbersCount.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
@@ -339,12 +331,12 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersCycles, PluginConfig.OrbitalsEmbersCycles.Value);
         }
-        
+
         internal static void Clear(global::ItemDrop.ItemData item)
         {
             if (item?.m_customData == null)
                 return;
-            
+
             item.m_customData.Remove(VfxStateKeys.RigRotation);
             item.m_customData.Remove(VfxStateKeys.RigSideRotation);
             item.m_customData.Remove(VfxStateKeys.RigLengthPosition);
@@ -367,11 +359,6 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OuterFlamesHue);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesPosition);
 
-            item.m_customData.Remove(VfxStateKeys.FlareEnabled);
-            item.m_customData.Remove(VfxStateKeys.FlareScale);
-            item.m_customData.Remove(VfxStateKeys.FlareHue);
-            item.m_customData.Remove(VfxStateKeys.FlarePosition);
-            
             item.m_customData.Remove(VfxStateKeys.SparksEnabled);
             item.m_customData.Remove(VfxStateKeys.SparksEnergy);
             item.m_customData.Remove(VfxStateKeys.SparksScale);
@@ -379,6 +366,15 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.SparksWidth);
             item.m_customData.Remove(VfxStateKeys.SparksHue);
             item.m_customData.Remove(VfxStateKeys.SparksPosition);
+
+            item.m_customData.Remove(VfxStateKeys.FlareEnabled);
+            item.m_customData.Remove(VfxStateKeys.FlareScale);
+            item.m_customData.Remove(VfxStateKeys.FlareHue);
+            item.m_customData.Remove(VfxStateKeys.FlarePosition);
+
+            item.m_customData.Remove(VfxStateKeys.AuraEnabled);
+            item.m_customData.Remove(VfxStateKeys.AuraScale);
+            item.m_customData.Remove(VfxStateKeys.AuraHue);
 
             item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsEnabled);
             item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsCount);
@@ -413,7 +409,7 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersRadius);
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersCycles);
         }
-        
+
         internal static VfxState FromDefaults()
         {
             return new VfxState
@@ -422,7 +418,7 @@ namespace NADA.VFX.Core.State
                 RigSideRotation = PluginConfig.DefaultRigSideRotation,
                 RigLengthPosition = PluginConfig.DefaultRigLengthPosition,
                 RigSidePosition = PluginConfig.DefaultRigSidePosition,
-                
+
                 InnerFlamesEnabled = true,
                 InnerFlamesEnergy = PluginConfig.DefaultEnergy,
                 InnerFlamesScale = 1f,
@@ -438,11 +434,6 @@ namespace NADA.VFX.Core.State
                 OuterFlamesHue = PluginConfig.DefaultHue,
                 OuterFlamesPosition = PluginConfig.DefaultFlamePosition,
 
-                FlareEnabled = true,
-                FlareScale = 1f,
-                FlareHue = PluginConfig.DefaultHue,
-                FlarePosition = PluginConfig.DefaultFlamePosition,
-                
                 SparksEnabled = true,
                 SparksEnergy = PluginConfig.DefaultEnergy,
                 SparksScale = 1f,
@@ -450,6 +441,15 @@ namespace NADA.VFX.Core.State
                 SparksWidth = PluginConfig.DefaultSparksWidth,
                 SparksHue = PluginConfig.DefaultHue,
                 SparksPosition = PluginConfig.DefaultFlamePosition,
+
+                FlareEnabled = true,
+                FlareScale = 1f,
+                FlareHue = PluginConfig.DefaultHue,
+                FlarePosition = PluginConfig.DefaultFlamePosition,
+
+                AuraEnabled = true,
+                AuraScale = 1f,
+                AuraHue = PluginConfig.DefaultHue,
 
                 OrbitalsOrbsEnabled = true,
                 OrbitalsOrbsCount = PluginConfig.DefaultCountNormalized,
@@ -485,14 +485,14 @@ namespace NADA.VFX.Core.State
                 OrbitalsEmbersCycles = PluginConfig.DefaultOrbitalsCycles
             };
         }
-        
+
         internal static void ApplyToConfig(VfxState state)
         {
             PluginConfig.RigRotation.Value = state.RigRotation;
             PluginConfig.RigSideRotation.Value = state.RigSideRotation;
             PluginConfig.RigLengthPosition.Value = state.RigLengthPosition;
             PluginConfig.RigSidePosition.Value = state.RigSidePosition;
-            
+
             PluginConfig.InnerFlames.Value = state.InnerFlamesEnabled;
             PluginConfig.InnerFlamesEnergy.Value = state.InnerFlamesEnergy;
             PluginConfig.InnerFlamesScale.Value = state.InnerFlamesScale;
@@ -508,18 +508,22 @@ namespace NADA.VFX.Core.State
             PluginConfig.OuterFlamesHue.Value = state.OuterFlamesHue;
             PluginConfig.OuterFlamesPosition.Value = state.OuterFlamesPosition;
 
-            PluginConfig.Flare.Value = state.FlareEnabled;
-            PluginConfig.FlareScale.Value = state.FlareScale;
-            PluginConfig.FlareHue.Value = state.FlareHue;
-            PluginConfig.FlarePosition.Value = state.FlarePosition;
-            
-            PluginConfig.SparksEnabled.Value = state.SparksEnabled;
+            PluginConfig.Sparks.Value = state.SparksEnabled;
             PluginConfig.SparksEnergy.Value = state.SparksEnergy;
             PluginConfig.SparksScale.Value = state.SparksScale;
             PluginConfig.SparksLength.Value = state.SparksLength;
             PluginConfig.SparksWidth.Value = state.SparksWidth;
             PluginConfig.SparksHue.Value = state.SparksHue;
             PluginConfig.SparksPosition.Value = state.SparksPosition;
+
+            PluginConfig.Flare.Value = state.FlareEnabled;
+            PluginConfig.FlareScale.Value = state.FlareScale;
+            PluginConfig.FlareHue.Value = state.FlareHue;
+            PluginConfig.FlarePosition.Value = state.FlarePosition;
+
+            PluginConfig.Aura.Value = state.AuraEnabled;
+            PluginConfig.AuraScale.Value = state.AuraScale;
+            PluginConfig.AuraHue.Value = state.AuraHue;
 
             PluginConfig.OrbitalsOrbs.Value = state.OrbitalsOrbsEnabled;
             PluginConfig.OrbitalsOrbsCount.Value = state.OrbitalsOrbsCount;
@@ -588,7 +592,7 @@ namespace NADA.VFX.Core.State
 
             return fallback;
         }
-        
+
         private static void WriteFloat(Dictionary<string, string> customData, string key, float value)
         {
             if (customData == null)
@@ -620,7 +624,7 @@ namespace NADA.VFX.Core.State
 
             customData[key] = value ? "true" : "false";
         }
-        
+
         internal static bool IsBound(global::ItemDrop.ItemData item)
         {
             if (item?.m_customData == null)

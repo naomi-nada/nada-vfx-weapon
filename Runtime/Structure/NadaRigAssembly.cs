@@ -74,6 +74,171 @@ namespace NADA.VFX.Runtime.Structure
             return outerFlamesTransform;
         }
         
+        internal static Transform EnsureLocalAuraBranch(
+            Transform localWeaponRootTransform,
+            Transform weaponVisualRootTransform,
+            string ownerNameForLogs)
+        {
+            if (!NadaRigCache.CacheReady)
+                return null;
+
+            if (NadaRigCache.AuraMaterial == null)
+                return null;
+
+            if (localWeaponRootTransform == null || weaponVisualRootTransform == null)
+                return null;
+
+            Transform auraRootTransform =
+                NadaRigPaths.FindDirectChild(weaponVisualRootTransform, Plugin.AuraName);
+            
+            bool createdAura = false;
+
+            if (auraRootTransform == null)
+            {
+                auraRootTransform =
+                    NadaRigTransforms.EnsureChild(weaponVisualRootTransform, Plugin.AuraName);
+
+                createdAura = true;
+
+                NadaLogControl.Info(
+                    $"aura:{auraRootTransform.GetInstanceID()}",
+                    $"{Plugin.ModName}: Added Aura branch under weapon root '{NadaWeaponTargets.FullPath(weaponVisualRootTransform)}' " +
+                    $"(owner='{ownerNameForLogs}').");
+            }
+
+            auraRootTransform.localPosition = Vector3.zero;
+            auraRootTransform.localRotation = Quaternion.identity;
+            auraRootTransform.localScale = Vector3.one;
+            
+            if (createdAura)
+                BuildAuraShells(auraRootTransform, weaponVisualRootTransform);
+
+            return auraRootTransform;
+        }
+        
+        private static void BuildAuraShells(
+            Transform auraRootTransform,
+            Transform weaponVisualRootTransform)
+        {
+            if (auraRootTransform == null || weaponVisualRootTransform == null)
+                return;
+
+            foreach (Transform child in weaponVisualRootTransform.GetComponentsInChildren<Transform>(true))
+            {
+                if (child != null &&
+                    child.name.StartsWith("Aura Shell", System.StringComparison.Ordinal))
+                {
+                    Object.Destroy(child.gameObject);
+                }
+            }
+
+            Transform nadaWeaponRoot =
+                NadaRigPaths.FindDirectChild(weaponVisualRootTransform, Plugin.LocalWeaponRootName);
+
+            MeshRenderer[] meshRenderers =
+                weaponVisualRootTransform.GetComponentsInChildren<MeshRenderer>(true);
+
+            int created = 0;
+
+            foreach (MeshRenderer sourceRenderer in meshRenderers)
+            {
+                if (sourceRenderer == null)
+                    continue;
+
+                Transform sourceTransform = sourceRenderer.transform;
+
+                if (sourceTransform.name == "VFX")
+                    continue;
+
+                if (sourceTransform.IsChildOf(auraRootTransform))
+                    continue;
+
+                if (nadaWeaponRoot != null && sourceTransform.IsChildOf(nadaWeaponRoot))
+                    continue;
+
+                if (sourceTransform.name.StartsWith("Aura Shell", System.StringComparison.Ordinal))
+                    continue;
+
+                MeshFilter sourceFilter = sourceRenderer.GetComponent<MeshFilter>();
+                if (sourceFilter == null || sourceFilter.sharedMesh == null)
+                    continue;
+
+                GameObject shellPivotObject = new GameObject($"Aura Shell {created:00}");
+                Transform shellPivotTransform = shellPivotObject.transform;
+
+                shellPivotTransform.SetParent(sourceTransform, false);
+                
+                Bounds meshBounds = sourceFilter.sharedMesh.bounds;
+                Vector3 meshCenter = meshBounds.center;
+
+                shellPivotTransform.localPosition = meshCenter;
+                shellPivotTransform.localRotation = Quaternion.identity;
+                shellPivotTransform.localScale = BuildAuraShellScale(meshBounds.size, 1.6f);
+
+                GameObject shellMeshObject = new GameObject("Aura Mesh");
+                Transform shellMeshTransform = shellMeshObject.transform;
+
+                shellMeshTransform.SetParent(shellPivotTransform, false);
+                shellMeshTransform.localPosition = -meshCenter;
+                shellMeshTransform.localRotation = Quaternion.identity;
+                shellMeshTransform.localScale = Vector3.one;
+                
+                MeshFilter shellFilter = shellMeshObject.AddComponent<MeshFilter>();
+                shellFilter.sharedMesh = sourceFilter.sharedMesh;
+
+                MeshRenderer shellRenderer = shellMeshObject.AddComponent<MeshRenderer>();
+                Material auraMaterial = new Material(NadaRigCache.AuraMaterial);
+                
+                Color tintColor = auraMaterial.GetColor("_TintColor");
+                tintColor.a = 0.05f;
+                auraMaterial.SetColor("_TintColor", tintColor);
+
+                shellRenderer.sharedMaterial = auraMaterial;
+                shellRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                shellRenderer.receiveShadows = false;
+                shellRenderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+                shellRenderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+                shellRenderer.allowOcclusionWhenDynamic = false;
+
+                created++;
+            }
+
+            if (created == 0)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [Aura] no valid weapon MeshRenderer/MeshFilter pairs found under '{NadaWeaponTargets.FullPath(weaponVisualRootTransform)}'.");
+            }
+        }
+        
+        private static Vector3 BuildAuraShellScale(Vector3 meshSize, float thicknessScale)
+        {
+            Vector3 scale = Vector3.one;
+
+            int lengthAxis = GetLargestAxis(meshSize);
+
+            if (lengthAxis != 0)
+                scale.x = thicknessScale;
+
+            if (lengthAxis != 1)
+                scale.y = thicknessScale;
+
+            if (lengthAxis != 2)
+                scale.z = thicknessScale;
+
+            return scale;
+        }
+
+        private static int GetLargestAxis(Vector3 value)
+        {
+            if (value.x >= value.y && value.x >= value.z)
+                return 0;
+
+            if (value.y >= value.x && value.y >= value.z)
+                return 1;
+
+            return 2;
+        }
+        
         internal static Transform EnsureLocalSparksBranch(
             Transform localWeaponRootTransform,
             string ownerNameForLogs)

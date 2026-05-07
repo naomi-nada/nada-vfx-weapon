@@ -9,21 +9,20 @@ namespace NADA.VFX.Runtime.Structure
         public Transform LocalEffectsRootTransform { get; private set; }
 
         // Core Effects
-        public Transform OuterFlamesTransform { get; private set; }
-        public Transform FlareTransform { get; private set; }
         public Transform InnerFlamesTransform { get; private set; }
+        public Transform OuterFlamesTransform { get; private set; }
         public Transform SparksTransform { get; private set; }
-
+        public Transform FlareTransform { get; private set; }
+        public Transform AuraTransform { get; private set; }
+        
         // Orbitals
         public Transform OrbitalsRootTransform { get; private set; }
         public Transform OrbitalsRigRootTransform { get; private set; }
 
         public Transform OrbitalsOrbsRootTransform { get; private set; }
-        public Transform OrbitalsPrismsRootTransform { get; private set; }
         public Transform OrbitalsFlamesRootTransform { get; private set; }
         public Transform OrbitalsEmbersRootTransform { get; private set; }
-
-        public Transform OrbitalsPrismsPoolRootTransform { get; private set; }
+        
         public Transform OrbitalsFlamesPoolRootTransform { get; private set; }
         public Transform OrbitalsEmbersPoolRootTransform { get; private set; }
 
@@ -44,17 +43,20 @@ namespace NADA.VFX.Runtime.Structure
                     NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTransform);
 
                 // Core effects
-                catalog.OuterFlamesTransform =
-                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.OuterFlamesName);
-
-                catalog.FlareTransform =
-                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.FlareName);
-
                 catalog.InnerFlamesTransform =
                     NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.InnerFlamesName);
                 
+                catalog.OuterFlamesTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.OuterFlamesName);
+                
                 catalog.SparksTransform =
                     NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.SparksName);
+
+                catalog.FlareTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.FlareName);
+                
+                catalog.AuraTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.AuraName);
 
                 // Orbitals
                 catalog.OrbitalsRootTransform =

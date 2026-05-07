@@ -3,12 +3,12 @@ namespace NADA.VFX.Core.State
     internal static class VfxStateKeys
     {
         internal const string Bound = "nada.vfx.bound";
-        
+
         internal const string RigRotation = "nada.vfx.rig.rotation";
         internal const string RigSideRotation = "nada.vfx.rig.siderotation";
         internal const string RigLengthPosition = "nada.vfx.rig.lengthposition";
         internal const string RigSidePosition = "nada.vfx.rig.sideposition";
-        
+
         internal const string InnerFlamesEnabled = "nada.vfx.innerflames.enabled";
         internal const string InnerFlamesEnergy = "nada.vfx.innerflames.energy";
         internal const string InnerFlamesScale = "nada.vfx.innerflames.scale";
@@ -24,11 +24,6 @@ namespace NADA.VFX.Core.State
         internal const string OuterFlamesHue = "nada.vfx.outerflames.hue";
         internal const string OuterFlamesPosition = "nada.vfx.outerflames.position";
 
-        internal const string FlareEnabled = "nada.vfx.flare.enabled";
-        internal const string FlareScale = "nada.vfx.flare.scale";
-        internal const string FlareHue = "nada.vfx.flare.hue";
-        internal const string FlarePosition = "nada.vfx.flare.position";
-        
         internal const string SparksEnabled = "nada_vfx_sparks_enabled";
         internal const string SparksEnergy = "nada_vfx_sparks_energy";
         internal const string SparksScale = "nada_vfx_sparks_scale";
@@ -36,6 +31,15 @@ namespace NADA.VFX.Core.State
         internal const string SparksWidth = "nada.vfx.sparks.width";
         internal const string SparksHue = "nada_vfx_sparks_hue";
         internal const string SparksPosition = "nada_vfx_sparks_position";
+
+        internal const string FlareEnabled = "nada.vfx.flare.enabled";
+        internal const string FlareScale = "nada.vfx.flare.scale";
+        internal const string FlareHue = "nada.vfx.flare.hue";
+        internal const string FlarePosition = "nada.vfx.flare.position";
+
+        internal const string AuraEnabled = "nada.vfx.aura.enabled";
+        internal const string AuraScale = "nada.vfx.aura.scale";
+        internal const string AuraHue = "nada.vfx.aura.hue";
 
         internal const string OrbitalsOrbsEnabled = "nada.vfx.orbitals.orbs.enabled";
         internal const string OrbitalsOrbsCount = "nada.vfx.orbitals.orbs.count";
@@ -47,7 +51,7 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsOrbsLength = "nada.vfx.orbitals.orbs.length";
         internal const string OrbitalsOrbsRadius = "nada.vfx.orbitals.orbs.radius";
         internal const string OrbitalsOrbsCycles = "nada.vfx.orbitals.orbs.cycles";
-        
+
         internal const string OrbitalsFlamesEnabled = "nada.vfx.orbitals.flames.enabled";
         internal const string OrbitalsFlamesCount = "nada.vfx.orbitals.flames.count";
         internal const string OrbitalsFlamesEnergy = "nada.vfx.orbitals.flames.energy";

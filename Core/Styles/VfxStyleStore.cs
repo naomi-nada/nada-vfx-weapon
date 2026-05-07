@@ -64,7 +64,7 @@ namespace NADA.VFX.Core.Styles
         private static void EnsureLoaded()
         {
             Plugin.Log?.LogInfo($"{Plugin.ModName}: [Styles] EnsureLoaded() called.");
-            
+
             if (Styles.Count > 0)
                 return;
 
@@ -129,7 +129,7 @@ namespace NADA.VFX.Core.Styles
                 Plugin.Log?.LogWarning($"{Plugin.ModName}: Failed to save style file: {e}");
             }
         }
-        
+
         internal static bool Delete(string name)
         {
             EnsureLoaded();
@@ -154,12 +154,12 @@ namespace NADA.VFX.Core.Styles
             return string.Join("|", new[]
             {
                 name,
-                
+
                 F(state.RigRotation),
                 F(state.RigSideRotation),
                 F(state.RigLengthPosition),
                 F(state.RigSidePosition),
-                
+
                 B(state.InnerFlamesEnabled),
                 F(state.InnerFlamesEnergy),
                 F(state.InnerFlamesScale),
@@ -175,11 +175,6 @@ namespace NADA.VFX.Core.Styles
                 F(state.OuterFlamesHue),
                 F(state.OuterFlamesPosition),
 
-                B(state.FlareEnabled),
-                F(state.FlareScale),
-                F(state.FlareHue),
-                F(state.FlarePosition),
-                
                 B(state.SparksEnabled),
                 F(state.SparksEnergy),
                 F(state.SparksScale),
@@ -187,6 +182,15 @@ namespace NADA.VFX.Core.Styles
                 F(state.SparksWidth),
                 F(state.SparksHue),
                 F(state.SparksPosition),
+
+                B(state.FlareEnabled),
+                F(state.FlareScale),
+                F(state.FlareHue),
+                F(state.FlarePosition),
+
+                B(state.AuraEnabled),
+                F(state.AuraScale),
+                F(state.AuraHue),
 
                 B(state.OrbitalsOrbsEnabled),
                 F(state.OrbitalsOrbsCount),
@@ -238,7 +242,7 @@ namespace NADA.VFX.Core.Styles
                 InnerFlamesEnabled = ReadBool(parts, ref i, defaults.InnerFlamesEnabled),
                 InnerFlamesEnergy = ReadFloat(parts, ref i, defaults.InnerFlamesEnergy),
                 InnerFlamesScale = ReadFloat(parts, ref i, defaults.InnerFlamesScale),
-                InnerFlamesLength =  ReadFloat(parts, ref i, defaults.InnerFlamesLength),
+                InnerFlamesLength = ReadFloat(parts, ref i, defaults.InnerFlamesLength),
                 InnerFlamesHue = ReadFloat(parts, ref i, defaults.InnerFlamesHue),
                 InnerFlamesPosition = ReadFloat(parts, ref i, defaults.InnerFlamesPosition),
 
@@ -250,18 +254,22 @@ namespace NADA.VFX.Core.Styles
                 OuterFlamesHue = ReadFloat(parts, ref i, defaults.OuterFlamesHue),
                 OuterFlamesPosition = ReadFloat(parts, ref i, defaults.OuterFlamesPosition),
 
-                FlareEnabled = ReadBool(parts, ref i, defaults.FlareEnabled),
-                FlareScale = ReadFloat(parts, ref i, defaults.FlareScale),
-                FlareHue = ReadFloat(parts, ref i, defaults.FlareHue),
-                FlarePosition = ReadFloat(parts, ref i, defaults.FlarePosition),
-                
                 SparksEnabled = ReadBool(parts, ref i, defaults.SparksEnabled),
                 SparksEnergy = ReadFloat(parts, ref i, defaults.SparksEnergy),
                 SparksScale = ReadFloat(parts, ref i, defaults.SparksScale),
                 SparksLength = ReadFloat(parts, ref i, defaults.SparksLength),
-                SparksWidth =  ReadFloat(parts, ref i, defaults.SparksWidth),
+                SparksWidth = ReadFloat(parts, ref i, defaults.SparksWidth),
                 SparksHue = ReadFloat(parts, ref i, defaults.SparksHue),
                 SparksPosition = ReadFloat(parts, ref i, defaults.SparksPosition),
+
+                FlareEnabled = ReadBool(parts, ref i, defaults.FlareEnabled),
+                FlareScale = ReadFloat(parts, ref i, defaults.FlareScale),
+                FlareHue = ReadFloat(parts, ref i, defaults.FlareHue),
+                FlarePosition = ReadFloat(parts, ref i, defaults.FlarePosition),
+
+                AuraEnabled = ReadBool(parts, ref i, defaults.AuraEnabled),
+                AuraScale = ReadFloat(parts, ref i, defaults.AuraScale),
+                AuraHue = ReadFloat(parts, ref i, defaults.AuraHue),
 
                 OrbitalsOrbsEnabled = ReadBool(parts, ref i, defaults.OrbitalsOrbsEnabled),
                 OrbitalsOrbsCount = ReadFloat(parts, ref i, defaults.OrbitalsOrbsCount),
@@ -307,7 +315,7 @@ namespace NADA.VFX.Core.Styles
         {
             return value.ToString(CultureInfo.InvariantCulture);
         }
-        
+
         private static bool ReadBool(string[] parts, ref int index, bool fallback)
         {
             if (parts == null || index >= parts.Length)
@@ -327,10 +335,10 @@ namespace NADA.VFX.Core.Styles
             string value = parts[index++];
 
             return float.TryParse(
-                value,
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out float parsed)
+                    value,
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture,
+                    out float parsed)
                 ? parsed
                 : fallback;
         }

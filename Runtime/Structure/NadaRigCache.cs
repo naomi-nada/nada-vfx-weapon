@@ -11,6 +11,7 @@ namespace NADA.VFX.Runtime.Structure
         internal static GameObject RefRigTemplateInactive { get; private set; }
         internal static GameObject DemisterTemplateInactive { get; private set; }
         internal static GameObject SparksTemplateInactive { get; private set; }
+        internal static Material AuraMaterial { get; private set; }
 
         internal static IEnumerator CacheReferenceAssetsWhenReady()
         {
@@ -19,6 +20,7 @@ namespace NADA.VFX.Runtime.Structure
             PickupMat = null;
             RefRigTemplateInactive = null;
             SparksTemplateInactive = null;
+            AuraMaterial = null;
 
             while (ObjectDB.instance == null && ZNetScene.instance == null)
                 yield return null;
@@ -70,6 +72,7 @@ namespace NADA.VFX.Runtime.Structure
             }
             
             CacheSparksTemplate();
+            CacheAuraMaterial();
 
             CacheReady = true;
             Plugin.Log.LogInfo(
@@ -165,6 +168,38 @@ namespace NADA.VFX.Runtime.Structure
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: Cached Sparks template from " +
                 $"'{Plugin.SparksReferencePrefabName}/{Plugin.SparksReferencePath}'.");
+        }
+        
+        private static void CacheAuraMaterial()
+        {
+            Material bestMaterial = null;
+
+            Material[] materials = Resources.FindObjectsOfTypeAll<Material>();
+            foreach (Material material in materials)
+            {
+                if (material == null)
+                    continue;
+
+                if (material.name.StartsWith(
+                        Plugin.AuraReferenceMaterialName,
+                        System.StringComparison.Ordinal))
+                {
+                    bestMaterial = material;
+                    break;
+                }
+            }
+
+            if (bestMaterial == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Could not cache Aura material '{Plugin.AuraReferenceMaterialName}'.");
+                return;
+            }
+
+            AuraMaterial = bestMaterial;
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: Cached Aura material '{AuraMaterial.name}'.");
         }
     }
 }
