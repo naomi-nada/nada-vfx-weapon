@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using NADA.VFX.Core.Config;
 using NADA.VFX.Core.Visuals;
 using NADA.VFX.Core.State;
 using NADA.VFX.Runtime.Binding;
@@ -49,6 +50,8 @@ namespace NADA.VFX.Modules.Effects
         private readonly List<ParticleSystem> _embersParticleSystems = new();
         private readonly List<Renderer> _embersRenderers = new();
         private readonly List<Light> _embersLights = new();
+        
+        private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartLifetimeByParticleSystemId = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColorByParticleSystemId = new();
         private readonly Dictionary<int, bool> _baseColorOverLifetimeEnabledByParticleSystemId = new();
@@ -128,6 +131,8 @@ namespace NADA.VFX.Modules.Effects
 
             ApplyFlamesEnergy(_flamesParticleSystems, state.OrbitalsFlamesEnergy);
             ApplyEmbersEnergy(_embersParticleSystems, state.OrbitalsEmbersEnergy);
+            
+            ApplyEmbersLifetime(_embersParticleSystems, state.OrbitalsEmbersLifetime);
 
             LogToggleStateIfChanged(
                 "Orbitals Orbs",
@@ -312,6 +317,16 @@ namespace NADA.VFX.Modules.Effects
                             customData.GetColor(ParticleSystemCustomData.Custom1);
                         _baseCustom2ColorByParticleSystemId[particleSystemId] =
                             customData.GetColor(ParticleSystemCustomData.Custom2);
+                    }
+                    catch { }
+                }
+                
+                if (!_baseStartLifetimeByParticleSystemId.ContainsKey(particleSystemId))
+                {
+                    try
+                    {
+                        var main = particleSystem.main;
+                        _baseStartLifetimeByParticleSystemId[particleSystemId] = main.startLifetime;
                     }
                     catch { }
                 }
@@ -714,6 +729,39 @@ namespace NADA.VFX.Modules.Effects
                 catch { }
             }
         }
+        
+        private void ApplyEmbersLifetime(List<ParticleSystem> particleSystems, float lifetime)
+        {
+            if (particleSystems == null)
+                return;
+
+            float clamped = Mathf.Clamp(
+                lifetime,
+                PluginConfig.MinLifetime,
+                PluginConfig.MaxLifetime);
+
+            foreach (var particleSystem in particleSystems)
+            {
+                if (particleSystem == null)
+                    continue;
+
+                int particleSystemId = particleSystem.GetInstanceID();
+
+                if (!_baseStartLifetimeByParticleSystemId.TryGetValue(
+                        particleSystemId,
+                        out var baseLifetime))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var main = particleSystem.main;
+                    main.startLifetime = MultiplyCurve(baseLifetime, clamped);
+                }
+                catch { }
+            }
+        }
 
         private static ParticleSystem.MinMaxCurve OverrideConstantBaseline(
             ParticleSystem.MinMaxCurve source,
@@ -730,6 +778,20 @@ namespace NADA.VFX.Modules.Effects
                 default:
                     return source;
             }
+        }
+        
+        private static ParticleSystem.MinMaxCurve MultiplyCurve(
+            ParticleSystem.MinMaxCurve source,
+            float multiplier)
+        {
+            ParticleSystem.MinMaxCurve result = source;
+
+            result.constant *= multiplier;
+            result.constantMin *= multiplier;
+            result.constantMax *= multiplier;
+            result.curveMultiplier *= multiplier;
+
+            return result;
         }
 
         private static void AppendUniqueGroupComponents(

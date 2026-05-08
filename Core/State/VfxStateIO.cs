@@ -59,11 +59,13 @@ namespace NADA.VFX.Core.State
                 OrbitalsOrbsCycles = PluginConfig.OrbitalsOrbsCycles.Value,
                 
                 OrbitalsStrandsEnabled = PluginConfig.OrbitalsStrands.Value,
+                OrbitalsStrandsSpectrumEnabled = PluginConfig.OrbitalsStrandsSpectrum.Value,
                 OrbitalsStrandsEnergy = PluginConfig.OrbitalsStrandsEnergy.Value,
                 OrbitalsStrandsDrift = PluginConfig.OrbitalsStrandsDrift.Value,
                 OrbitalsStrandsScaleWhole = PluginConfig.OrbitalsStrandsScaleWhole.Value,
                 OrbitalsStrandsScaleParts = PluginConfig.OrbitalsStrandsScaleParts.Value,
                 OrbitalsStrandsHue = PluginConfig.OrbitalsStrandsHue.Value,
+                OrbitalsStrandsSpectrumSpeed = PluginConfig.OrbitalsStrandsSpectrumSpeed.Value,
                 OrbitalsStrandsSpeed = PluginConfig.OrbitalsStrandsSpeed.Value,
                 OrbitalsStrandsLength = PluginConfig.OrbitalsStrandsLength.Value,
                 OrbitalsStrandsRadius = PluginConfig.OrbitalsStrandsRadius.Value,
@@ -90,7 +92,9 @@ namespace NADA.VFX.Core.State
                 OrbitalsEmbersSpacing = PluginConfig.OrbitalsEmbersSpacing.Value,
                 OrbitalsEmbersLength = PluginConfig.OrbitalsEmbersLength.Value,
                 OrbitalsEmbersRadius = PluginConfig.OrbitalsEmbersRadius.Value,
-                OrbitalsEmbersCycles = PluginConfig.OrbitalsEmbersCycles.Value
+                OrbitalsEmbersCycles = PluginConfig.OrbitalsEmbersCycles.Value,
+                OrbitalsEmbersLifetime = PluginConfig.OrbitalsEmbersLifetime.Value
+
             };
         }
 
@@ -155,11 +159,13 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OrbitalsOrbsCycles, state.OrbitalsOrbsCycles);
             
             WriteBool(customData, VfxStateKeys.OrbitalsStrandsEnabled, state.OrbitalsStrandsEnabled);
+            WriteBool(customData, VfxStateKeys.OrbitalsStrandsSpectrumEnabled, state.OrbitalsStrandsSpectrumEnabled);
             WriteFloat(customData, VfxStateKeys.OrbitalsStrandsEnergy, state.OrbitalsStrandsEnergy);
             WriteFloat(customData, VfxStateKeys.OrbitalsStrandsDrift, state.OrbitalsStrandsDrift);
             WriteFloat(customData, VfxStateKeys.OrbitalsStrandsScaleWhole, state.OrbitalsStrandsScaleWhole);
             WriteFloat(customData, VfxStateKeys.OrbitalsStrandsScaleParts, state.OrbitalsStrandsScaleParts);
             WriteFloat(customData, VfxStateKeys.OrbitalsStrandsHue, state.OrbitalsStrandsHue);
+            WriteFloat(customData, VfxStateKeys.OrbitalsStrandsSpectrumSpeed, state.OrbitalsStrandsSpectrumSpeed);
             WriteFloat(customData, VfxStateKeys.OrbitalsStrandsSpeed, state.OrbitalsStrandsSpeed);
             WriteFloat(customData, VfxStateKeys.OrbitalsStrandsLength, state.OrbitalsStrandsLength);
             WriteFloat(customData, VfxStateKeys.OrbitalsStrandsRadius, state.OrbitalsStrandsRadius);
@@ -187,6 +193,7 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersLength, state.OrbitalsEmbersLength);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersRadius, state.OrbitalsEmbersRadius);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersCycles, state.OrbitalsEmbersCycles);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersLifetime, state.OrbitalsEmbersLifetime);
         }
 
         internal static bool TryRead(global::ItemDrop.ItemData item, out VfxState state)
@@ -248,11 +255,13 @@ namespace NADA.VFX.Core.State
             state.OrbitalsOrbsCycles = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsCycles, PluginConfig.OrbitalsOrbsCycles.Value);
 
             state.OrbitalsStrandsEnabled = ReadBool(customData, VfxStateKeys.OrbitalsStrandsEnabled, PluginConfig.OrbitalsStrands.Value);
+            state.OrbitalsStrandsSpectrumEnabled = ReadBool(customData, VfxStateKeys.OrbitalsStrandsSpectrumEnabled, PluginConfig.OrbitalsStrandsSpectrum.Value);
             state.OrbitalsStrandsEnergy = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsEnergy, PluginConfig.OrbitalsStrandsEnergy.Value);
             state.OrbitalsStrandsDrift = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsDrift, PluginConfig.OrbitalsStrandsDrift.Value);
             state.OrbitalsStrandsScaleWhole = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsScaleWhole, PluginConfig.OrbitalsStrandsScaleWhole.Value);
             state.OrbitalsStrandsScaleParts = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsScaleParts, PluginConfig.OrbitalsStrandsScaleParts.Value);
             state.OrbitalsStrandsHue = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsHue, PluginConfig.OrbitalsStrandsHue.Value);
+            state.OrbitalsStrandsSpectrumSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsSpectrumSpeed, PluginConfig.OrbitalsStrandsSpectrumSpeed.Value);
             state.OrbitalsStrandsSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsSpeed, PluginConfig.OrbitalsStrandsSpeed.Value);
             state.OrbitalsStrandsLength = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsLength, PluginConfig.OrbitalsStrandsLength.Value);
             state.OrbitalsStrandsRadius = ReadFloat(customData, VfxStateKeys.OrbitalsStrandsRadius, PluginConfig.OrbitalsStrandsRadius.Value);
@@ -280,6 +289,7 @@ namespace NADA.VFX.Core.State
             state.OrbitalsEmbersLength = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersLength, PluginConfig.OrbitalsEmbersLength.Value);
             state.OrbitalsEmbersRadius = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
             state.OrbitalsEmbersCycles = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersCycles, PluginConfig.OrbitalsEmbersCycles.Value);
+            state.OrbitalsEmbersLifetime = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersLifetime, PluginConfig.OrbitalsEmbersLifetime.Value);
 
             return true;
         }
@@ -346,11 +356,13 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsCycles, PluginConfig.OrbitalsOrbsCycles.Value);
 
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsEnabled, PluginConfig.OrbitalsStrands.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsSpectrumEnabled, PluginConfig.OrbitalsStrandsSpectrum.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsEnergy, PluginConfig.OrbitalsStrandsEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsDrift, PluginConfig.OrbitalsStrandsDrift.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsScaleWhole, PluginConfig.OrbitalsStrandsScaleWhole.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsScaleParts, PluginConfig.OrbitalsStrandsScaleParts.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsHue, PluginConfig.OrbitalsStrandsHue.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsSpectrumSpeed, PluginConfig.OrbitalsStrandsSpectrumSpeed.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsSpeed, PluginConfig.OrbitalsStrandsSpeed.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsLength, PluginConfig.OrbitalsStrandsLength.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsStrandsRadius, PluginConfig.OrbitalsStrandsRadius.Value);
@@ -378,6 +390,7 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersLength, PluginConfig.OrbitalsEmbersLength.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersCycles, PluginConfig.OrbitalsEmbersCycles.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersLifetime, PluginConfig.OrbitalsEmbersLifetime.Value);
         }
 
         internal static void Clear(global::ItemDrop.ItemData item)
@@ -436,11 +449,13 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsCycles);
             
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsEnabled);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsSpectrumEnabled);
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsEnergy);
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsDrift);
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsScaleWhole);
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsScaleParts);
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsHue);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsSpectrumSpeed);
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsSpeed);
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsLength);
             item.m_customData.Remove(VfxStateKeys.OrbitalsStrandsRadius);
@@ -468,6 +483,7 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersLength);
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersRadius);
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersCycles);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersLifetime);
         }
 
         internal static VfxState FromDefaults()
@@ -523,16 +539,18 @@ namespace NADA.VFX.Core.State
                 OrbitalsOrbsCycles = PluginConfig.DefaultOrbitalsCycles,
                 
                 OrbitalsStrandsEnabled = true,
+                OrbitalsStrandsSpectrumEnabled = false,
                 OrbitalsStrandsEnergy = PluginConfig.DefaultEnergy,
                 OrbitalsStrandsDrift = PluginConfig.DefaultDrift,
                 OrbitalsStrandsScaleWhole = 0.50f,
                 OrbitalsStrandsScaleParts = 1f,
                 OrbitalsStrandsHue = PluginConfig.DefaultHue,
+                OrbitalsStrandsSpectrumSpeed = PluginConfig.DefaultSpectrumSpeed,
                 OrbitalsStrandsSpeed = PluginConfig.DefaultOrbitalsSpeed,
                 OrbitalsStrandsLength = PluginConfig.DefaultOrbitalsLength,
                 OrbitalsStrandsRadius = PluginConfig.DefaultOrbitalsRadiusMultiplier,
                 OrbitalsStrandsPosition = PluginConfig.DefaultFlamePosition,
-                OrbitalsStrandsLifetime = PluginConfig.DefaultStrandsLifetime,
+                OrbitalsStrandsLifetime = PluginConfig.DefaultLifetime,
 
                 OrbitalsFlamesEnabled = true,
                 OrbitalsFlamesCount = PluginConfig.DefaultCountNormalized,
@@ -554,7 +572,8 @@ namespace NADA.VFX.Core.State
                 OrbitalsEmbersSpacing = PluginConfig.DefaultOrbitalsSpacing,
                 OrbitalsEmbersLength = PluginConfig.DefaultOrbitalsLength,
                 OrbitalsEmbersRadius = PluginConfig.DefaultOrbitalsRadiusMultiplier,
-                OrbitalsEmbersCycles = PluginConfig.DefaultOrbitalsCycles
+                OrbitalsEmbersCycles = PluginConfig.DefaultOrbitalsCycles,
+                OrbitalsEmbersLifetime = PluginConfig.DefaultLifetime
             };
         }
 
@@ -610,10 +629,12 @@ namespace NADA.VFX.Core.State
             PluginConfig.OrbitalsOrbsCycles.Value = state.OrbitalsOrbsCycles;
             
             PluginConfig.OrbitalsStrands.Value = state.OrbitalsStrandsEnabled;
+            PluginConfig.OrbitalsStrandsSpectrum.Value = state.OrbitalsStrandsSpectrumEnabled;
             PluginConfig.OrbitalsStrandsEnergy.Value = state.OrbitalsStrandsEnergy;
             PluginConfig.OrbitalsStrandsScaleWhole.Value = state.OrbitalsStrandsScaleWhole;
             PluginConfig.OrbitalsStrandsScaleParts.Value = state.OrbitalsStrandsScaleParts;
             PluginConfig.OrbitalsStrandsHue.Value = state.OrbitalsStrandsHue;
+            PluginConfig.OrbitalsStrandsSpectrumSpeed.Value = state.OrbitalsStrandsSpectrumSpeed;
             PluginConfig.OrbitalsStrandsSpeed.Value = state.OrbitalsStrandsSpeed;
             PluginConfig.OrbitalsStrandsLength.Value = state.OrbitalsStrandsLength;
             PluginConfig.OrbitalsStrandsRadius.Value = state.OrbitalsStrandsRadius;
@@ -641,6 +662,7 @@ namespace NADA.VFX.Core.State
             PluginConfig.OrbitalsEmbersLength.Value = state.OrbitalsEmbersLength;
             PluginConfig.OrbitalsEmbersRadius.Value = state.OrbitalsEmbersRadius;
             PluginConfig.OrbitalsEmbersCycles.Value = state.OrbitalsEmbersCycles;
+            PluginConfig.OrbitalsEmbersLifetime.Value = state.OrbitalsEmbersLifetime;
         }
 
         private static float ReadFloat(Dictionary<string, string> customData, string key, float fallback)

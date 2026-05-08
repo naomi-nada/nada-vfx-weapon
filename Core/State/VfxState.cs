@@ -62,11 +62,13 @@ namespace NADA.VFX.Core.State
 
         // Orbitals - Strands
         public bool OrbitalsStrandsEnabled;
+        public bool OrbitalsStrandsSpectrumEnabled;
         public float OrbitalsStrandsEnergy;
         public float OrbitalsStrandsDrift;
         public float OrbitalsStrandsScaleWhole;
         public float OrbitalsStrandsScaleParts;
         public float OrbitalsStrandsHue;
+        public float OrbitalsStrandsSpectrumSpeed;
         public float OrbitalsStrandsSpeed;
         public float OrbitalsStrandsLength;
         public float OrbitalsStrandsRadius;
@@ -96,5 +98,6 @@ namespace NADA.VFX.Core.State
         public float OrbitalsEmbersLength;
         public float OrbitalsEmbersRadius;
         public float OrbitalsEmbersCycles;
+        public float OrbitalsEmbersLifetime;
     }
 }

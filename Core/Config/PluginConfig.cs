@@ -87,6 +87,8 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsStrandsRadius = null;
         internal static ConfigEntry<float> OrbitalsStrandsPosition = null;
         internal static ConfigEntry<float> OrbitalsStrandsLifetime = null;
+        internal static ConfigEntry<bool> OrbitalsStrandsSpectrum = null;
+        internal static ConfigEntry<float> OrbitalsStrandsSpectrumSpeed = null;
 
         internal static ConfigEntry<bool> OrbitalsFlames = null;
         internal static ConfigEntry<float> OrbitalsFlamesCount = null;
@@ -109,6 +111,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsEmbersLength = null;
         internal static ConfigEntry<float> OrbitalsEmbersRadius = null;
         internal static ConfigEntry<float> OrbitalsEmbersCycles = null;
+        internal static ConfigEntry<float> OrbitalsEmbersLifetime = null;
 
         internal const float MinRigRotation = -180f;
         internal const float MaxRigRotation = 180f;
@@ -136,6 +139,10 @@ namespace NADA.VFX.Core.Config
         internal const float MinHue = -0.50f;
         internal const float MaxHue = 0.50f;
         internal const float DefaultHue = 0.00f;
+        
+        internal const float MinSpectrumSpeed = 0.25f;
+        internal const float MaxSpectrumSpeed = 1.75f;
+        internal const float DefaultSpectrumSpeed = 1.00f;
 
         internal const float MinEnergy = 0.00f;
         internal const float MaxEnergy = 1.00f;
@@ -152,6 +159,14 @@ namespace NADA.VFX.Core.Config
         internal const float MinAuraScale = 1.25f;
         internal const float MaxAuraScale = 3.25f;
         internal const float DefaultAuraScale = 2.25f;
+        
+        internal const float MinLifetime = 0.25f;
+        internal const float MaxLifetime = 1.75f;
+        internal const float DefaultLifetime = 1.00f;
+
+        internal const float MinDrift = 0.00f;
+        internal const float MaxDrift = 1.00f;
+        internal const float DefaultDrift = 0.00f;
 
         internal const float MinOrbScaleMult = 0.2f;
         internal const float MaxOrbScaleMult = 1.8f;
@@ -179,14 +194,6 @@ namespace NADA.VFX.Core.Config
         internal const float MinOrbitalsCycles = 1.00f;
         internal const float MaxOrbitalsCycles = 5.00f;
         internal const float DefaultOrbitalsCycles = 3.00f;
-        
-        internal const float MinStrandsLifetime = 0.25f;
-        internal const float MaxStrandsLifetime = 1.75f;
-        internal const float DefaultStrandsLifetime = 1.00f;
-
-        internal const float MinDrift = 0.00f;
-        internal const float MaxDrift = 1.00f;
-        internal const float DefaultDrift = 0.00f;
 
         internal static void Bind(ConfigFile config)
         {
@@ -934,8 +941,20 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Strands on or off.",
-                    160,
+                    140,
                     dispName: "Enabled",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true)
+            );
+            
+            OrbitalsStrandsSpectrum = config.Bind(
+                orbitalsStrandsSection,
+                "Spectrum",
+                false,
+                OrderedDescription(
+                    "Continuously cycle Strands through the full color spectrum.",
+                    139,
+                    dispName: "Spectrum",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true)
             );
@@ -946,7 +965,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense the strands feel.",
-                    159,
+                    138,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy")
             );
@@ -957,7 +976,7 @@ namespace NADA.VFX.Core.Config
                 DefaultDrift,
                 OrderedDescription(
                     "Adjust how much the strands adhere to their orbit path.",
-                    158,
+                    137,
                     new AcceptableValueRange<float>(MinDrift, MaxDrift),
                     dispName: "Drift")
             );
@@ -968,7 +987,7 @@ namespace NADA.VFX.Core.Config
                 1.0f,
                 OrderedDescription(
                     "Adjust the overall size of the Strands effect.",
-                    157,
+                    136,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale Whole")
             );
@@ -979,7 +998,7 @@ namespace NADA.VFX.Core.Config
                 1.00f,
                 OrderedDescription(
                     "Adjust the size of the individual strand particles.",
-                    156,
+                    135,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale Parts")
             );
@@ -990,9 +1009,22 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of the strands.",
-                    155,
+                    134,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color")
+                    dispName: "Color",
+                    customDrawer: ConfigurationManagerDrawers.DrawStrandsColorSlider)
+            );
+            
+            OrbitalsStrandsSpectrumSpeed = config.Bind(
+                orbitalsStrandsSection,
+                "Spectrum Speed",
+                DefaultSpectrumSpeed,
+                OrderedDescription(
+                    "Adjust how quickly Strands cycle through the color spectrum.",
+                    133,
+                    new AcceptableValueRange<float>(MinSpectrumSpeed, MaxSpectrumSpeed),
+                    dispName: "Spectrum Speed",
+                    customDrawer: ConfigurationManagerDrawers.DrawStrandsSpectrumSpeedSlider)
             );
 
             OrbitalsStrandsSpeed = config.Bind(
@@ -1001,7 +1033,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpeed,
                 OrderedDescription(
                     "Adjust how quickly the strands animate.",
-                    154,
+                    132,
                     new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
                     dispName: "Speed")
             );
@@ -1012,7 +1044,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the strands stretch along the weapon.",
-                    153,
+                    131,
                     new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     dispName: "Length")
             );
@@ -1023,7 +1055,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsRadiusMultiplier,
                 OrderedDescription(
                     "Adjust how wide the strands wrap around the weapon.",
-                    152,
+                    130,
                     new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
                     dispName: "Radius")
             );
@@ -1034,7 +1066,7 @@ namespace NADA.VFX.Core.Config
                 DefaultFlamePosition,
                 OrderedDescription(
                     "Move Strands forward or backward along the weapon.",
-                    151,
+                    129,
                     new AcceptableValueRange<float>(MinFlamePosition, MaxFlamePosition),
                     dispName: "Position")
             );
@@ -1042,11 +1074,11 @@ namespace NADA.VFX.Core.Config
             OrbitalsStrandsLifetime = config.Bind(
                 orbitalsStrandsSection,
                 "Lifetime",
-                DefaultStrandsLifetime,
+                DefaultLifetime,
                 OrderedDescription(
                     "Adjust the length of time strands exist.",
-                    150,
-                    new AcceptableValueRange<float>(MinStrandsLifetime, MaxStrandsLifetime),
+                    128,
+                    new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime")
             );
             
@@ -1068,7 +1100,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Flames on or off.",
-                    150,
+                    120,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true)
@@ -1080,7 +1112,7 @@ namespace NADA.VFX.Core.Config
                 DefaultCountNormalized,
                 OrderedDescription(
                     "Adjust how many flames are active.",
-                    149,
+                    119,
                     new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
                     dispName: "Count",
                     showRangeAsPercent: true)
@@ -1092,7 +1124,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense the flames feel.",
-                    148,
+                    118,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy")
             );
@@ -1103,7 +1135,7 @@ namespace NADA.VFX.Core.Config
                 DefaultDrift,
                 OrderedDescription(
                     "Adjust how much the flames drift away from their locked orbit path.",
-                    147,
+                    117,
                     new AcceptableValueRange<float>(MinDrift, MaxDrift),
                     dispName: "Drift",
                     showRangeAsPercent: true)
@@ -1115,7 +1147,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of the flames.",
-                    146,
+                    116,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color")
             );
@@ -1126,7 +1158,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpeed,
                 OrderedDescription(
                     "Adjust how quickly the flames travel through their orbit.",
-                    145,
+                    115,
                     new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
                     dispName: "Speed")
             );
@@ -1137,7 +1169,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpacing,
                 OrderedDescription(
                     "Adjust how closely the flames follow each other.",
-                    144,
+                    114,
                     new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     dispName: "Spacing",
                     showRangeAsPercent: true)
@@ -1149,7 +1181,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the flames travel along the weapon before turning around.",
-                    143,
+                    113,
                     new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     dispName: "Length")
             );
@@ -1160,7 +1192,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsRadiusMultiplier,
                 OrderedDescription(
                     "Adjust how wide the flames wrap around the weapon.",
-                    142,
+                    112,
                     new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
                     dispName: "Radius")
             );
@@ -1171,7 +1203,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsCycles,
                 OrderedDescription(
                     "Adjust how many turns the flames make before reversing direction.",
-                    141,
+                    111,
                     new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
                     dispName: "Cycles")
             );
@@ -1194,7 +1226,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Embers on or off.",
-                    140,
+                    100,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true)
@@ -1206,7 +1238,7 @@ namespace NADA.VFX.Core.Config
                 DefaultCountNormalized,
                 OrderedDescription(
                     "Adjust how many embers are active.",
-                    139,
+                    99,
                     new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
                     dispName: "Count",
                     showRangeAsPercent: true)
@@ -1218,7 +1250,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense the embers feel.",
-                    138,
+                    98,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy")
             );
@@ -1229,7 +1261,7 @@ namespace NADA.VFX.Core.Config
                 DefaultDrift,
                 OrderedDescription(
                     "Adjust how much the embers drift away from their locked orbit path.",
-                    137,
+                    97,
                     new AcceptableValueRange<float>(MinDrift, MaxDrift),
                     dispName: "Drift",
                     showRangeAsPercent: true)
@@ -1241,7 +1273,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of the embers.",
-                    136,
+                    96,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color")
             );
@@ -1252,7 +1284,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpeed,
                 OrderedDescription(
                     "Adjust how quickly the embers travel through their orbit.",
-                    135,
+                    95,
                     new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
                     dispName: "Speed")
             );
@@ -1263,7 +1295,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpacing,
                 OrderedDescription(
                     "Adjust how closely the embers follow each other.",
-                    134,
+                    94,
                     new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     dispName: "Spacing",
                     showRangeAsPercent: true)
@@ -1275,7 +1307,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the embers travel along the weapon before turning around.",
-                    133,
+                    93,
                     new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     dispName: "Length")
             );
@@ -1286,7 +1318,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsRadiusMultiplier,
                 OrderedDescription(
                     "Adjust how wide the embers wrap around the weapon.",
-                    132,
+                    92,
                     new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
                     dispName: "Radius")
             );
@@ -1297,9 +1329,20 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsCycles,
                 OrderedDescription(
                     "Adjust how many turns the embers make before reversing direction.",
-                    131,
+                    91,
                     new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
                     dispName: "Cycles")
+            );
+            
+            OrbitalsEmbersLifetime = config.Bind(
+                orbitalsEmbersSection,
+                "Lifetime",
+                DefaultLifetime,
+                OrderedDescription(
+                    "Adjust how long emitted embers remain visible.",
+                    90,
+                    new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
+                    dispName: "Lifetime")
             );
 
             config.Save();

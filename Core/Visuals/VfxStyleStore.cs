@@ -204,11 +204,13 @@ namespace NADA.VFX.Core.Visuals
                 F(state.OrbitalsOrbsCycles),
                 
                 B(state.OrbitalsStrandsEnabled),
+                B(state.OrbitalsStrandsSpectrumEnabled),
                 F(state.OrbitalsStrandsEnergy),
                 F(state.OrbitalsStrandsDrift),
                 F(state.OrbitalsStrandsScaleWhole),
                 F(state.OrbitalsStrandsScaleParts),
                 F(state.OrbitalsStrandsHue),
+                F(state.OrbitalsStrandsSpectrumSpeed),
                 F(state.OrbitalsStrandsSpeed),
                 F(state.OrbitalsStrandsLength),
                 F(state.OrbitalsStrandsRadius),
@@ -235,7 +237,8 @@ namespace NADA.VFX.Core.Visuals
                 F(state.OrbitalsEmbersSpacing),
                 F(state.OrbitalsEmbersLength),
                 F(state.OrbitalsEmbersRadius),
-                F(state.OrbitalsEmbersCycles)
+                F(state.OrbitalsEmbersCycles),
+                F(state.OrbitalsEmbersLifetime)
             });
         }
 
@@ -295,11 +298,13 @@ namespace NADA.VFX.Core.Visuals
                 OrbitalsOrbsCycles = ReadFloat(parts, ref i, defaults.OrbitalsOrbsCycles),
                 
                 OrbitalsStrandsEnabled = ReadBool(parts, ref i, defaults.OrbitalsStrandsEnabled),
+                OrbitalsStrandsSpectrumEnabled = ReadBool(parts, ref i, defaults.OrbitalsStrandsSpectrumEnabled),
                 OrbitalsStrandsEnergy = ReadFloat(parts, ref i, defaults.OrbitalsStrandsEnergy),
                 OrbitalsStrandsDrift =  ReadFloat(parts, ref i, defaults.OrbitalsStrandsDrift),
                 OrbitalsStrandsScaleWhole = ReadFloat(parts, ref i, defaults.OrbitalsStrandsScaleWhole),
                 OrbitalsStrandsScaleParts = ReadFloat(parts, ref i, defaults.OrbitalsStrandsScaleParts),
                 OrbitalsStrandsHue = ReadFloat(parts, ref i, defaults.OrbitalsStrandsHue),
+                OrbitalsStrandsSpectrumSpeed = ReadFloat(parts, ref i, defaults.OrbitalsStrandsSpectrumSpeed),
                 OrbitalsStrandsSpeed = ReadFloat(parts, ref i, defaults.OrbitalsStrandsSpeed),
                 OrbitalsStrandsLength = ReadFloat(parts, ref i, defaults.OrbitalsStrandsLength),
                 OrbitalsStrandsRadius = ReadFloat(parts, ref i, defaults.OrbitalsStrandsRadius),
@@ -326,7 +331,8 @@ namespace NADA.VFX.Core.Visuals
                 OrbitalsEmbersSpacing = ReadFloat(parts, ref i, defaults.OrbitalsEmbersSpacing),
                 OrbitalsEmbersLength = ReadFloat(parts, ref i, defaults.OrbitalsEmbersLength),
                 OrbitalsEmbersRadius = ReadFloat(parts, ref i, defaults.OrbitalsEmbersRadius),
-                OrbitalsEmbersCycles = ReadFloat(parts, ref i, defaults.OrbitalsEmbersCycles)
+                OrbitalsEmbersCycles = ReadFloat(parts, ref i, defaults.OrbitalsEmbersCycles),
+                OrbitalsEmbersLifetime = ReadFloat(parts, ref i, defaults.OrbitalsEmbersLifetime)
             };
         }
 

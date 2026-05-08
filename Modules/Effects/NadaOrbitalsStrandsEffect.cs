@@ -23,15 +23,15 @@ namespace NADA.VFX.Modules.Effects
         private readonly Dictionary<int, MaterialBaseline> _baseMaterials = new();
         private readonly Dictionary<int, float> _baseShapeRadius = new();
         private readonly Dictionary<int, Vector3> _baseShapeScale = new();
-        
+
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeX = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeY = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeZ = new();
-        
+
         private bool _hasDriftWorldPose;
         private Vector3 _driftWorldPosition;
         private Quaternion _driftWorldRotation;
-        
+
         private const float AuthoredScaleMultiplier = 0.50f;
 
         private sealed class MaterialBaseline
@@ -67,12 +67,19 @@ namespace NADA.VFX.Modules.Effects
 
             ApplyEnabled(state.OrbitalsStrandsEnabled);
             ApplyEnergy(state.OrbitalsStrandsEnergy);
+
             ApplyDrift(
                 state.OrbitalsStrandsDrift,
                 state.OrbitalsStrandsPosition);
+
             ApplyScaleWhole(state.OrbitalsStrandsScaleWhole);
             ApplyScaleParts(state.OrbitalsStrandsScaleParts);
-            ApplyHue(state.OrbitalsStrandsHue);
+
+            if (state.OrbitalsStrandsSpectrumEnabled)
+                ApplySpectrum(state.OrbitalsStrandsSpectrumSpeed);
+            else
+                ApplyHue(state.OrbitalsStrandsHue);
+
             ApplySpeed(state.OrbitalsStrandsSpeed);
             ApplyLength(state.OrbitalsStrandsLength);
             ApplyRadius(state.OrbitalsStrandsRadius);
@@ -111,11 +118,12 @@ namespace NADA.VFX.Modules.Effects
                         continue;
 
                     var mainModule = system.main;
+
                     mainModule.loop = true;
                     mainModule.playOnAwake = true;
 
                     int id = system.GetInstanceID();
-                    
+
                     var shape = system.shape;
 
                     if (!_baseShapeRadius.ContainsKey(id))
@@ -123,7 +131,7 @@ namespace NADA.VFX.Modules.Effects
 
                     if (!_baseShapeScale.ContainsKey(id))
                         _baseShapeScale[id] = shape.scale;
-                    
+
                     if (!_baseStartSizeX.ContainsKey(id))
                         _baseStartSizeX[id] = mainModule.startSize;
 
@@ -148,6 +156,7 @@ namespace NADA.VFX.Modules.Effects
                     if (!_baseColorOverLifetime.ContainsKey(id))
                     {
                         var color = system.colorOverLifetime;
+
                         _baseColorOverLifetimeEnabled[id] = color.enabled;
                         _baseColorOverLifetime[id] = color.color;
                     }
@@ -162,10 +171,12 @@ namespace NADA.VFX.Modules.Effects
                         continue;
 
                     int id = renderer.GetInstanceID();
+
                     if (_baseMaterials.ContainsKey(id))
                         continue;
 
                     Material material = renderer.material;
+
                     if (material == null)
                         continue;
 
@@ -239,11 +250,13 @@ namespace NADA.VFX.Modules.Effects
                     baseRate = 10f;
 
                 var emission = system.emission;
+
                 emission.enabled = true;
-                emission.rateOverTime = new ParticleSystem.MinMaxCurve(baseRate * multiplier);
+                emission.rateOverTime =
+                    new ParticleSystem.MinMaxCurve(baseRate * multiplier);
             }
         }
-        
+
         private void ApplyDrift(float drift, float position)
         {
             float clampedDrift = Mathf.Clamp01(drift);
@@ -253,9 +266,10 @@ namespace NADA.VFX.Modules.Effects
 
             bool lockedToWeapon = clampedDrift <= 0.001f;
 
-            ApplySimulationSpace(lockedToWeapon
-                ? ParticleSystemSimulationSpace.Local
-                : ParticleSystemSimulationSpace.World);
+            ApplySimulationSpace(
+                lockedToWeapon
+                    ? ParticleSystemSimulationSpace.Local
+                    : ParticleSystemSimulationSpace.World);
 
             Transform parentTransform = transform.parent;
 
@@ -263,23 +277,34 @@ namespace NADA.VFX.Modules.Effects
             {
                 transform.localPosition = desiredLocalPosition;
                 transform.localRotation = desiredLocalRotation;
+
                 _hasDriftWorldPose = false;
                 return;
             }
 
-            Vector3 targetWorldPosition = parentTransform.TransformPoint(desiredLocalPosition);
-            Quaternion targetWorldRotation = parentTransform.rotation * desiredLocalRotation;
+            Vector3 targetWorldPosition =
+                parentTransform.TransformPoint(desiredLocalPosition);
+
+            Quaternion targetWorldRotation =
+                parentTransform.rotation * desiredLocalRotation;
 
             if (!_hasDriftWorldPose)
             {
                 _driftWorldPosition = targetWorldPosition;
                 _driftWorldRotation = targetWorldRotation;
+
                 _hasDriftWorldPose = true;
             }
 
-            float driftT = clampedDrift * clampedDrift;
-            float followSpeed = Mathf.Lerp(30f, 2f, driftT);
-            float t = 1f - Mathf.Exp(-followSpeed * Time.deltaTime);
+            float driftT = Mathf.Pow(clampedDrift, 0.35f);
+
+            float followSpeed = Mathf.Lerp(
+                30f,
+                0.15f,
+                driftT);
+
+            float t =
+                1f - Mathf.Exp(-followSpeed * Time.deltaTime);
 
             _driftWorldPosition = Vector3.Lerp(
                 _driftWorldPosition,
@@ -297,8 +322,14 @@ namespace NADA.VFX.Modules.Effects
 
         private void ApplyHue(float hue)
         {
-            float targetHue = NadaHueShiftUtility.SliderValueToTargetHue(hue);
+            float targetHue =
+                NadaHueShiftUtility.SliderValueToTargetHue(hue);
 
+            ApplyHueFromNormalizedHue(targetHue);
+        }
+
+        private void ApplyHueFromNormalizedHue(float targetHue)
+        {
             if (_systems != null)
             {
                 foreach (ParticleSystem system in _systems)
@@ -311,8 +342,11 @@ namespace NADA.VFX.Modules.Effects
                     if (_baseStartColors.TryGetValue(id, out var baseStartColor))
                     {
                         var mainModule = system.main;
+
                         mainModule.startColor =
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(baseStartColor, targetHue);
+                            NadaHueShiftUtility.RetintMinMaxGradientToHue(
+                                baseStartColor,
+                                targetHue);
                     }
 
                     if (_baseColorOverLifetime.TryGetValue(id, out var baseColor))
@@ -323,7 +357,9 @@ namespace NADA.VFX.Modules.Effects
                             color.enabled = wasEnabled;
 
                         color.color =
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(baseColor, targetHue);
+                            NadaHueShiftUtility.RetintMinMaxGradientToHue(
+                                baseColor,
+                                targetHue);
                     }
                 }
             }
@@ -336,35 +372,60 @@ namespace NADA.VFX.Modules.Effects
                         continue;
 
                     int id = renderer.GetInstanceID();
-                    if (!_baseMaterials.TryGetValue(id, out MaterialBaseline baseline) || baseline == null)
+
+                    if (!_baseMaterials.TryGetValue(id, out MaterialBaseline baseline) ||
+                        baseline == null)
                         continue;
 
                     Material material = renderer.material;
+
                     if (material == null)
                         continue;
 
-                    if (baseline.Color.HasValue && material.HasProperty("_Color"))
+                    if (baseline.Color.HasValue &&
+                        material.HasProperty("_Color"))
                     {
                         material.SetColor(
                             "_Color",
-                            NadaHueShiftUtility.RetintColorToHue(baseline.Color.Value, targetHue));
+                            NadaHueShiftUtility.RetintColorToHue(
+                                baseline.Color.Value,
+                                targetHue));
                     }
 
-                    if (baseline.TintColor.HasValue && material.HasProperty("_TintColor"))
+                    if (baseline.TintColor.HasValue &&
+                        material.HasProperty("_TintColor"))
                     {
                         material.SetColor(
                             "_TintColor",
-                            NadaHueShiftUtility.RetintColorToHue(baseline.TintColor.Value, targetHue));
+                            NadaHueShiftUtility.RetintColorToHue(
+                                baseline.TintColor.Value,
+                                targetHue));
                     }
 
-                    if (baseline.EmissionColor.HasValue && material.HasProperty("_EmissionColor"))
+                    if (baseline.EmissionColor.HasValue &&
+                        material.HasProperty("_EmissionColor"))
                     {
                         material.SetColor(
                             "_EmissionColor",
-                            NadaHueShiftUtility.RetintColorToHue(baseline.EmissionColor.Value, targetHue));
+                            NadaHueShiftUtility.RetintColorToHue(
+                                baseline.EmissionColor.Value,
+                                targetHue));
                     }
                 }
             }
+        }
+
+        private void ApplySpectrum(float speed)
+        {
+            float clampedSpeed = Mathf.Clamp(
+                speed,
+                PluginConfig.MinSpectrumSpeed,
+                PluginConfig.MaxSpectrumSpeed);
+
+            float hue =
+                Mathf.Repeat(Time.time * clampedSpeed, 1f);
+
+            ApplyHueFromNormalizedHue(hue);
         }
 
         private void ApplyScaleWhole(float scale)
@@ -374,9 +435,10 @@ namespace NADA.VFX.Modules.Effects
                 PluginConfig.MinScaleMult,
                 PluginConfig.MaxScaleMult);
 
-            transform.localScale = Vector3.one * (clamped * AuthoredScaleMultiplier);
+            transform.localScale =
+                Vector3.one * (clamped * AuthoredScaleMultiplier);
         }
-        
+
         private void ApplyScaleParts(float scale)
         {
             float clamped = Mathf.Clamp(
@@ -404,10 +466,17 @@ namespace NADA.VFX.Modules.Effects
                     baseSizeZ = baseSizeX;
 
                 var mainModule = system.main;
+
                 mainModule.startSize3D = true;
-                mainModule.startSize = MultiplyCurve(baseSizeX, clamped);
-                mainModule.startSizeY = MultiplyCurve(baseSizeY, clamped);
-                mainModule.startSizeZ = MultiplyCurve(baseSizeZ, clamped);
+
+                mainModule.startSizeX =
+                    MultiplyCurve(baseSizeX, clamped);
+
+                mainModule.startSizeY =
+                    MultiplyCurve(baseSizeY, clamped);
+
+                mainModule.startSizeZ =
+                    MultiplyCurve(baseSizeZ, clamped);
             }
         }
 
@@ -418,7 +487,8 @@ namespace NADA.VFX.Modules.Effects
                 PluginConfig.MaxOrbitalsSpeed,
                 speed);
 
-            float speedMultiplier = Mathf.Lerp(0.25f, 2.5f, normalized);
+            float speedMultiplier =
+                Mathf.Lerp(0.25f, 2.5f, normalized);
 
             if (_systems == null)
                 return;
@@ -429,10 +499,11 @@ namespace NADA.VFX.Modules.Effects
                     continue;
 
                 var mainModule = system.main;
+
                 mainModule.simulationSpeed = speedMultiplier;
             }
         }
-        
+
         private void ApplyLength(float length)
         {
             float clamped = Mathf.Clamp(
@@ -454,7 +525,9 @@ namespace NADA.VFX.Modules.Effects
                     baseScale = Vector3.one;
 
                 var shape = system.shape;
+
                 shape.enabled = true;
+
                 shape.scale = new Vector3(
                     baseScale.x,
                     baseScale.y * clamped,
@@ -466,8 +539,8 @@ namespace NADA.VFX.Modules.Effects
         {
             float clamped = Mathf.Clamp(
                 lifetime,
-                PluginConfig.MinStrandsLifetime,
-                PluginConfig.MaxStrandsLifetime);
+                PluginConfig.MinLifetime,
+                PluginConfig.MaxLifetime);
 
             if (_systems == null)
                 return;
@@ -483,7 +556,10 @@ namespace NADA.VFX.Modules.Effects
                     baseLifetime = 2f;
 
                 var mainModule = system.main;
-                mainModule.startLifetime = new ParticleSystem.MinMaxCurve(baseLifetime * clamped);
+
+                mainModule.startLifetime =
+                    new ParticleSystem.MinMaxCurve(
+                        baseLifetime * clamped);
             }
         }
 
@@ -508,11 +584,12 @@ namespace NADA.VFX.Modules.Effects
                     baseRadius = 0.5f;
 
                 var shape = system.shape;
+
                 shape.enabled = true;
                 shape.radius = baseRadius * clamped;
             }
         }
-        
+
         private static ParticleSystem.MinMaxCurve MultiplyCurve(
             ParticleSystem.MinMaxCurve source,
             float multiplier)
@@ -526,7 +603,7 @@ namespace NADA.VFX.Modules.Effects
 
             return result;
         }
-        
+
         private Vector3 ResolveDesiredLocalPosition(float position)
         {
             float clamped = Mathf.Clamp(
@@ -536,8 +613,9 @@ namespace NADA.VFX.Modules.Effects
 
             return new Vector3(0f, 0f, clamped);
         }
-        
-        private void ApplySimulationSpace(ParticleSystemSimulationSpace simulationSpace)
+
+        private void ApplySimulationSpace(
+            ParticleSystemSimulationSpace simulationSpace)
         {
             if (_systems == null)
                 return;

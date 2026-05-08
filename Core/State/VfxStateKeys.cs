@@ -53,11 +53,13 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsOrbsCycles = "nada.vfx.orbitals.orbs.cycles";
         
         internal const string OrbitalsStrandsEnabled = "nada.vfx.orbitals.strands.enabled";
+        internal const string OrbitalsStrandsSpectrumEnabled = "nada.vfx.orbitals.strands.spectrum.enabled";
         internal const string OrbitalsStrandsEnergy = "nada.vfx.orbitals.strands.energy";
         internal const string OrbitalsStrandsDrift = "nada.vfx.orbitals.strands.drift";
         internal const string OrbitalsStrandsScaleWhole = "nada.vfx.orbitals.strands.scalewhole";
         internal const string OrbitalsStrandsScaleParts = "nada.vfx.orbitals.strands.scaleparts";
         internal const string OrbitalsStrandsHue = "nada.vfx.orbitals.strands.hue";
+        internal const string OrbitalsStrandsSpectrumSpeed = "nada.vfx.orbitals.strands.spectrum.speed";
         internal const string OrbitalsStrandsSpeed = "nada.vfx.orbitals.strands.speed";
         internal const string OrbitalsStrandsLength = "nada.vfx.orbitals.strands.length";
         internal const string OrbitalsStrandsRadius = "nada.vfx.orbitals.strands.radius";
@@ -85,5 +87,6 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsEmbersLength = "nada.vfx.orbitals.embers.length";
         internal const string OrbitalsEmbersRadius = "nada.vfx.orbitals.embers.radius";
         internal const string OrbitalsEmbersCycles = "nada.vfx.orbitals.embers.cycles";
+        internal const string OrbitalsEmbersLifetime = "nada.vfx.orbitals.embers.lifetime";
     }
 }

@@ -15,7 +15,7 @@ namespace NADA.VFX.Core.Config
         internal static void DrawUnbindWeaponButton(ConfigEntryBase entry)
         {
             GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
-            
+
             GUILayout.Space(264f);
 
             if (GUILayout.Button("Unbind Current Weapon", GUILayout.Width(230f)))
@@ -57,6 +57,78 @@ namespace NADA.VFX.Core.Config
 
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
+        }
+
+        internal static void DrawStrandsColorSlider(ConfigEntryBase entry)
+        {
+            bool disabled =
+                PluginConfig.OrbitalsStrandsSpectrum != null &&
+                PluginConfig.OrbitalsStrandsSpectrum.Value;
+
+            DrawFloatSlider(entry, disabled);
+        }
+
+        internal static void DrawStrandsSpectrumSpeedSlider(ConfigEntryBase entry)
+        {
+            bool disabled =
+                PluginConfig.OrbitalsStrandsSpectrum == null ||
+                !PluginConfig.OrbitalsStrandsSpectrum.Value;
+
+            DrawFloatSlider(entry, disabled);
+        }
+
+        private static void DrawFloatSlider(ConfigEntryBase entry, bool disabled)
+        {
+            if (entry == null)
+                return;
+
+            if (entry.SettingType != typeof(float))
+            {
+                GUILayout.Label(entry.BoxedValue?.ToString() ?? string.Empty);
+                return;
+            }
+
+            float current = (float)entry.BoxedValue;
+
+            float min = 0f;
+            float max = 1f;
+
+            AcceptableValueRange<float> range = TryGetFloatRange(entry);
+            if (range != null)
+            {
+                min = range.MinValue;
+                max = range.MaxValue;
+            }
+
+            bool oldEnabled = GUI.enabled;
+            GUI.enabled = oldEnabled && !disabled;
+
+            GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
+
+            float next = GUILayout.HorizontalSlider(
+                current,
+                min,
+                max,
+                GUILayout.ExpandWidth(true));
+
+            GUILayout.Label(
+                next.ToString("0.###", CultureInfo.InvariantCulture),
+                GUILayout.Width(48f));
+
+            if (!Mathf.Approximately(next, current))
+                entry.BoxedValue = next;
+
+            GUILayout.EndHorizontal();
+
+            GUI.enabled = oldEnabled;
+        }
+
+        private static AcceptableValueRange<float> TryGetFloatRange(ConfigEntryBase entry)
+        {
+            if (entry?.Description?.AcceptableValues is AcceptableValueRange<float> range)
+                return range;
+
+            return null;
         }
 
         internal static void DrawSaveStyleRow(ConfigEntryBase entry)
