@@ -5,7 +5,7 @@ using System.IO;
 using BepInEx;
 using NADA.VFX.Core.State;
 
-namespace NADA.VFX.Core.Styles
+namespace NADA.VFX.Core.Visuals
 {
     internal static class VfxStyleStore
     {
@@ -202,6 +202,18 @@ namespace NADA.VFX.Core.Styles
                 F(state.OrbitalsOrbsLength),
                 F(state.OrbitalsOrbsRadius),
                 F(state.OrbitalsOrbsCycles),
+                
+                B(state.OrbitalsStrandsEnabled),
+                F(state.OrbitalsStrandsEnergy),
+                F(state.OrbitalsStrandsDrift),
+                F(state.OrbitalsStrandsScaleWhole),
+                F(state.OrbitalsStrandsScaleParts),
+                F(state.OrbitalsStrandsHue),
+                F(state.OrbitalsStrandsSpeed),
+                F(state.OrbitalsStrandsLength),
+                F(state.OrbitalsStrandsRadius),
+                F(state.OrbitalsStrandsPosition),
+                F(state.OrbitalsStrandsLifetime),
 
                 B(state.OrbitalsFlamesEnabled),
                 F(state.OrbitalsFlamesCount),
@@ -281,6 +293,18 @@ namespace NADA.VFX.Core.Styles
                 OrbitalsOrbsLength = ReadFloat(parts, ref i, defaults.OrbitalsOrbsLength),
                 OrbitalsOrbsRadius = ReadFloat(parts, ref i, defaults.OrbitalsOrbsRadius),
                 OrbitalsOrbsCycles = ReadFloat(parts, ref i, defaults.OrbitalsOrbsCycles),
+                
+                OrbitalsStrandsEnabled = ReadBool(parts, ref i, defaults.OrbitalsStrandsEnabled),
+                OrbitalsStrandsEnergy = ReadFloat(parts, ref i, defaults.OrbitalsStrandsEnergy),
+                OrbitalsStrandsDrift =  ReadFloat(parts, ref i, defaults.OrbitalsStrandsDrift),
+                OrbitalsStrandsScaleWhole = ReadFloat(parts, ref i, defaults.OrbitalsStrandsScaleWhole),
+                OrbitalsStrandsScaleParts = ReadFloat(parts, ref i, defaults.OrbitalsStrandsScaleParts),
+                OrbitalsStrandsHue = ReadFloat(parts, ref i, defaults.OrbitalsStrandsHue),
+                OrbitalsStrandsSpeed = ReadFloat(parts, ref i, defaults.OrbitalsStrandsSpeed),
+                OrbitalsStrandsLength = ReadFloat(parts, ref i, defaults.OrbitalsStrandsLength),
+                OrbitalsStrandsRadius = ReadFloat(parts, ref i, defaults.OrbitalsStrandsRadius),
+                OrbitalsStrandsPosition = ReadFloat(parts, ref i, defaults.OrbitalsStrandsPosition),
+                OrbitalsStrandsLifetime =  ReadFloat(parts, ref i, defaults.OrbitalsStrandsLifetime),
 
                 OrbitalsFlamesEnabled = ReadBool(parts, ref i, defaults.OrbitalsFlamesEnabled),
                 OrbitalsFlamesCount = ReadFloat(parts, ref i, defaults.OrbitalsFlamesCount),

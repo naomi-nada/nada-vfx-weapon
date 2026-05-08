@@ -63,6 +63,11 @@ namespace NADA.VFX.Weapons.Runtime
 
             if (localOrbsRootTransform == null)
                 return;
+            
+            Transform strandsTransform =
+                NadaRigAssembly.EnsureLocalStrandsBranch(
+                    localWeaponRootTransform,
+                    rootObject.name);
 
             Transform outerFlamesTransform =
                 NadaRigAssembly.EnsureLocalFlameBranch(
@@ -143,10 +148,14 @@ namespace NADA.VFX.Weapons.Runtime
                 auraTransform,
                 itemData);
 
-            // Orbitals: Orbs, Flames, Embers
+            // Orbitals: Orbs, Strands, Flames, Embers
             NadaEffectBinder.BindOrbitalsEffect(
                 catalog.OrbitalsRootTransform,
                 catalog.OrbitalsOrbsRootTransform ?? localOrbsRootTransform,
+                itemData);
+            
+            NadaEffectBinder.BindOrbitalsStrandsEffect(
+                strandsTransform,
                 itemData);
 
             NadaMotionBinder.BindOrbsMotion(

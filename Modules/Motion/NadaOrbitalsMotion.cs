@@ -256,8 +256,8 @@ namespace NADA.VFX.Modules.Motion
 
             return Mathf.Clamp(
                 value,
-                PluginConfig.MinOrbitalsLengthMultiplier,
-                PluginConfig.MaxOrbitalsLengthMultiplier);
+                PluginConfig.MinOrbitalsLength,
+                PluginConfig.MaxOrbitalsLength);
         }
 
         private float ResolveCycleProgressPerSecond(VfxState state)

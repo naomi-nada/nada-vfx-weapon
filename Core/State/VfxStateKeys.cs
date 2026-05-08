@@ -51,6 +51,18 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsOrbsLength = "nada.vfx.orbitals.orbs.length";
         internal const string OrbitalsOrbsRadius = "nada.vfx.orbitals.orbs.radius";
         internal const string OrbitalsOrbsCycles = "nada.vfx.orbitals.orbs.cycles";
+        
+        internal const string OrbitalsStrandsEnabled = "nada.vfx.orbitals.strands.enabled";
+        internal const string OrbitalsStrandsEnergy = "nada.vfx.orbitals.strands.energy";
+        internal const string OrbitalsStrandsDrift = "nada.vfx.orbitals.strands.drift";
+        internal const string OrbitalsStrandsScaleWhole = "nada.vfx.orbitals.strands.scalewhole";
+        internal const string OrbitalsStrandsScaleParts = "nada.vfx.orbitals.strands.scaleparts";
+        internal const string OrbitalsStrandsHue = "nada.vfx.orbitals.strands.hue";
+        internal const string OrbitalsStrandsSpeed = "nada.vfx.orbitals.strands.speed";
+        internal const string OrbitalsStrandsLength = "nada.vfx.orbitals.strands.length";
+        internal const string OrbitalsStrandsRadius = "nada.vfx.orbitals.strands.radius";
+        internal const string OrbitalsStrandsPosition = "nada.vfx.orbitals.strands.position";
+        internal const string OrbitalsStrandsLifetime = "nada.vfx.orbitals.strands.lifetime";
 
         internal const string OrbitalsFlamesEnabled = "nada.vfx.orbitals.flames.enabled";
         internal const string OrbitalsFlamesCount = "nada.vfx.orbitals.flames.count";

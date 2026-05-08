@@ -60,6 +60,19 @@ namespace NADA.VFX.Core.State
         public float OrbitalsOrbsRadius;
         public float OrbitalsOrbsCycles;
 
+        // Orbitals - Strands
+        public bool OrbitalsStrandsEnabled;
+        public float OrbitalsStrandsEnergy;
+        public float OrbitalsStrandsDrift;
+        public float OrbitalsStrandsScaleWhole;
+        public float OrbitalsStrandsScaleParts;
+        public float OrbitalsStrandsHue;
+        public float OrbitalsStrandsSpeed;
+        public float OrbitalsStrandsLength;
+        public float OrbitalsStrandsRadius;
+        public float OrbitalsStrandsPosition;
+        public float OrbitalsStrandsLifetime;
+        
         // Orbitals - Flames
         public bool OrbitalsFlamesEnabled;
         public float OrbitalsFlamesCount;

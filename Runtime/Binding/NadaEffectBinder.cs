@@ -34,10 +34,10 @@ namespace NADA.VFX.Runtime.Binding
         }
         
         internal static void BindAuraEffect(
-            Transform sparksTransform,
+            Transform auraTransform,
             global::ItemDrop.ItemData itemData)
         {
-            BindItemDataEffect<NadaAuraEffect>(sparksTransform, itemData);
+            BindItemDataEffect<NadaAuraEffect>(auraTransform, itemData);
         }
 
         internal static void BindOrbitalsEffect(
@@ -51,6 +51,13 @@ namespace NADA.VFX.Runtime.Binding
             var orbitalsEffect = GetOrAddEffect<NadaOrbitalsEffect>(orbitalsRootTransform);
             orbitalsEffect.SetItemData(itemData);
             orbitalsEffect.SetLocalOrbsRootTransform(localOrbsRootTransform);
+        }
+        
+        internal static void BindOrbitalsStrandsEffect(
+            Transform strandsTransform,
+            global::ItemDrop.ItemData itemData)
+        {
+            BindItemDataEffect<NadaOrbitalsStrandsEffect>(strandsTransform, itemData);
         }
 
         private static void BindItemDataEffect<TEffect>(

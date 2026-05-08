@@ -30,6 +30,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<bool> FlareBottomSpacer;
         internal static ConfigEntry<bool> AuraBottomSpacer;
         internal static ConfigEntry<bool> OrbitalsOrbsBottomSpacer;
+        internal static ConfigEntry<bool> OrbitalsStrandsBottomSpacer;
         internal static ConfigEntry<bool> OrbitalsFlamesBottomSpacer;
 
         internal static ConfigEntry<bool> InnerFlames = null;
@@ -74,6 +75,18 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsOrbsLength = null;
         internal static ConfigEntry<float> OrbitalsOrbsRadius = null;
         internal static ConfigEntry<float> OrbitalsOrbsCycles = null;
+        
+        internal static ConfigEntry<bool> OrbitalsStrands = null;
+        internal static ConfigEntry<float> OrbitalsStrandsEnergy = null;
+        internal static ConfigEntry<float> OrbitalsStrandsDrift = null;
+        internal static ConfigEntry<float> OrbitalsStrandsScaleWhole = null;
+        internal static ConfigEntry<float> OrbitalsStrandsScaleParts = null;
+        internal static ConfigEntry<float> OrbitalsStrandsHue = null;
+        internal static ConfigEntry<float> OrbitalsStrandsSpeed = null;
+        internal static ConfigEntry<float> OrbitalsStrandsLength = null;
+        internal static ConfigEntry<float> OrbitalsStrandsRadius = null;
+        internal static ConfigEntry<float> OrbitalsStrandsPosition = null;
+        internal static ConfigEntry<float> OrbitalsStrandsLifetime = null;
 
         internal static ConfigEntry<bool> OrbitalsFlames = null;
         internal static ConfigEntry<float> OrbitalsFlamesCount = null;
@@ -117,8 +130,8 @@ namespace NADA.VFX.Core.Config
         internal const float MaxFlamePosition = 1.50f;
         internal const float DefaultFlamePosition = 0f;
 
-        internal const float MaxScaleMult = 1.50f;
-        internal const float MinScaleMult = 0.50f;
+        internal const float MaxScaleMult = 1.75f;
+        internal const float MinScaleMult = 0.25f;
 
         internal const float MinHue = -0.50f;
         internal const float MaxHue = 0.50f;
@@ -158,14 +171,18 @@ namespace NADA.VFX.Core.Config
         internal const float MinOrbitalsRadiusMultiplier = 0.20f;
         internal const float MaxOrbitalsRadiusMultiplier = 1.80f;
         internal const float DefaultOrbitalsRadiusMultiplier = 1.00f;
-
-        internal const float MinOrbitalsLengthMultiplier = 0.50f;
-        internal const float MaxOrbitalsLengthMultiplier = 1.50f;
-        internal const float DefaultOrbitalsLengthMultiplier = 1.00f;
+        
+        internal const float MinOrbitalsLength = 0.25f;
+        internal const float MaxOrbitalsLength = 1.75f;
+        internal const float DefaultOrbitalsLength = 1.00f;
 
         internal const float MinOrbitalsCycles = 1.00f;
         internal const float MaxOrbitalsCycles = 5.00f;
         internal const float DefaultOrbitalsCycles = 3.00f;
+        
+        internal const float MinStrandsLifetime = 0.25f;
+        internal const float MaxStrandsLifetime = 1.75f;
+        internal const float DefaultStrandsLifetime = 1.00f;
 
         internal const float MinDrift = 0.00f;
         internal const float MaxDrift = 1.00f;
@@ -183,6 +200,7 @@ namespace NADA.VFX.Core.Config
             const string flareSection = "FLARE";
             const string auraSection = "AURA";
             const string orbitalsOrbsSection = "Orbitals: ORBS";
+            const string orbitalsStrandsSection = "Orbitals: STRANDS";
             const string orbitalsFlamesSection = "Orbitals: FLAMES";
             const string orbitalsEmbersSection = "Orbitals: EMBERS";
 
@@ -868,11 +886,11 @@ namespace NADA.VFX.Core.Config
             OrbitalsOrbsLength = config.Bind(
                 orbitalsOrbsSection,
                 "Orbit Length",
-                DefaultOrbitalsLengthMultiplier,
+                DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the orbs travel along the weapon before turning around.",
                     153,
-                    new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier),
+                    new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     dispName: "Length")
             );
 
@@ -901,6 +919,140 @@ namespace NADA.VFX.Core.Config
             OrbitalsOrbsBottomSpacer = config.Bind(
                 orbitalsOrbsSection,
                 "__Orbitals Orbs Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true)
+            );
+            
+            OrbitalsStrands = config.Bind(
+                orbitalsStrandsSection,
+                "Enabled",
+                true,
+                OrderedDescription(
+                    "Turn Strands on or off.",
+                    160,
+                    dispName: "Enabled",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true)
+            );
+
+            OrbitalsStrandsEnergy = config.Bind(
+                orbitalsStrandsSection,
+                "Energy",
+                DefaultEnergy,
+                OrderedDescription(
+                    "Adjust how intense the strands feel.",
+                    159,
+                    new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
+                    dispName: "Energy")
+            );
+            
+            OrbitalsStrandsDrift = config.Bind(
+                orbitalsStrandsSection,
+                "Drift",
+                DefaultDrift,
+                OrderedDescription(
+                    "Adjust how much the strands adhere to their orbit path.",
+                    158,
+                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
+                    dispName: "Drift")
+            );
+
+            OrbitalsStrandsScaleWhole = config.Bind(
+                orbitalsStrandsSection,
+                "Scale Whole",
+                1.0f,
+                OrderedDescription(
+                    "Adjust the overall size of the Strands effect.",
+                    157,
+                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
+                    dispName: "Scale Whole")
+            );
+
+            OrbitalsStrandsScaleParts = config.Bind(
+                orbitalsStrandsSection,
+                "Scale Parts",
+                1.00f,
+                OrderedDescription(
+                    "Adjust the size of the individual strand particles.",
+                    156,
+                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
+                    dispName: "Scale Parts")
+            );
+
+            OrbitalsStrandsHue = config.Bind(
+                orbitalsStrandsSection,
+                "Color",
+                DefaultHue,
+                OrderedDescription(
+                    "Adjust the color of the strands.",
+                    155,
+                    new AcceptableValueRange<float>(MinHue, MaxHue),
+                    dispName: "Color")
+            );
+
+            OrbitalsStrandsSpeed = config.Bind(
+                orbitalsStrandsSection,
+                "Speed",
+                DefaultOrbitalsSpeed,
+                OrderedDescription(
+                    "Adjust how quickly the strands animate.",
+                    154,
+                    new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
+                    dispName: "Speed")
+            );
+
+            OrbitalsStrandsLength = config.Bind(
+                orbitalsStrandsSection,
+                "Orbit Length",
+                DefaultOrbitalsLength,
+                OrderedDescription(
+                    "Adjust how far the strands stretch along the weapon.",
+                    153,
+                    new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
+                    dispName: "Length")
+            );
+
+            OrbitalsStrandsRadius = config.Bind(
+                orbitalsStrandsSection,
+                "Radius",
+                DefaultOrbitalsRadiusMultiplier,
+                OrderedDescription(
+                    "Adjust how wide the strands wrap around the weapon.",
+                    152,
+                    new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
+                    dispName: "Radius")
+            );
+
+            OrbitalsStrandsPosition = config.Bind(
+                orbitalsStrandsSection,
+                "Position",
+                DefaultFlamePosition,
+                OrderedDescription(
+                    "Move Strands forward or backward along the weapon.",
+                    151,
+                    new AcceptableValueRange<float>(MinFlamePosition, MaxFlamePosition),
+                    dispName: "Position")
+            );
+
+            OrbitalsStrandsLifetime = config.Bind(
+                orbitalsStrandsSection,
+                "Lifetime",
+                DefaultStrandsLifetime,
+                OrderedDescription(
+                    "Adjust the length of time strands exist.",
+                    150,
+                    new AcceptableValueRange<float>(MinStrandsLifetime, MaxStrandsLifetime),
+                    dispName: "Lifetime")
+            );
+            
+            OrbitalsStrandsBottomSpacer = config.Bind(
+                orbitalsStrandsSection,
+                "__Orbitals Strands Bottom Spacer",
                 false,
                 OrderedDescription(
                     "",
@@ -994,11 +1146,11 @@ namespace NADA.VFX.Core.Config
             OrbitalsFlamesLength = config.Bind(
                 orbitalsFlamesSection,
                 "Orbit Length",
-                DefaultOrbitalsLengthMultiplier,
+                DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the flames travel along the weapon before turning around.",
                     143,
-                    new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier),
+                    new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     dispName: "Length")
             );
 
@@ -1120,11 +1272,11 @@ namespace NADA.VFX.Core.Config
             OrbitalsEmbersLength = config.Bind(
                 orbitalsEmbersSection,
                 "Orbit Length",
-                DefaultOrbitalsLengthMultiplier,
+                DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the embers travel along the weapon before turning around.",
                     133,
-                    new AcceptableValueRange<float>(MinOrbitalsLengthMultiplier, MaxOrbitalsLengthMultiplier),
+                    new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     dispName: "Length")
             );
 

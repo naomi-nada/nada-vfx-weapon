@@ -12,6 +12,7 @@ namespace NADA.VFX.Runtime.Structure
         internal static GameObject DemisterTemplateInactive { get; private set; }
         internal static GameObject SparksTemplateInactive { get; private set; }
         internal static Material AuraMaterial { get; private set; }
+        internal static GameObject StrandsTemplateInactive { get; private set; }
 
         internal static IEnumerator CacheReferenceAssetsWhenReady()
         {
@@ -21,8 +22,9 @@ namespace NADA.VFX.Runtime.Structure
             RefRigTemplateInactive = null;
             SparksTemplateInactive = null;
             AuraMaterial = null;
+            StrandsTemplateInactive = null;
 
-            while (ObjectDB.instance == null && ZNetScene.instance == null)
+            while (ObjectDB.instance == null || ZNetScene.instance == null)
                 yield return null;
 
             GameObject reference = null;
@@ -73,6 +75,7 @@ namespace NADA.VFX.Runtime.Structure
             
             CacheSparksTemplate();
             CacheAuraMaterial();
+            CacheStrandsTemplate();
 
             CacheReady = true;
             Plugin.Log.LogInfo(
@@ -200,6 +203,50 @@ namespace NADA.VFX.Runtime.Structure
 
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: Cached Aura material '{AuraMaterial.name}'.");
+        }
+        
+        private static void CacheStrandsTemplate()
+        {
+            GameObject StrandsReference = null;
+
+            if (ZNetScene.instance != null)
+                StrandsReference = ZNetScene.instance.GetPrefab(Plugin.StrandsReferencePrefabName);
+
+            if (StrandsReference == null &&
+                !NadaWeaponTargets.TryGetPrefab(Plugin.StrandsReferencePrefabName, out StrandsReference))
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Could not find Strands reference prefab '{Plugin.StrandsReferencePrefabName}' in ZNetScene or ObjectDB.");
+                return;
+            }
+
+            if (StrandsReference == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Strands reference prefab '{Plugin.StrandsReferencePrefabName}' resolved null.");
+                return;
+            }
+
+            Transform StrandsTransform =
+                StrandsReference.transform.Find(Plugin.StrandsReferencePath);
+
+            if (StrandsTransform == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Could not find Strands reference path '{Plugin.StrandsReferencePath}' " +
+                    $"under '{Plugin.StrandsReferencePrefabName}'.");
+
+                return;
+            }
+
+            StrandsTemplateInactive = Object.Instantiate(StrandsTransform.gameObject);
+            StrandsTemplateInactive.name = "NADA_StrandsTemplate";
+            StrandsTemplateInactive.SetActive(false);
+            StrandsTemplateInactive.hideFlags = HideFlags.HideAndDontSave;
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: Cached Strands template from " +
+                $"'{Plugin.StrandsReferencePrefabName}/{Plugin.StrandsReferencePath}'.");
         }
     }
 }

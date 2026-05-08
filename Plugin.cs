@@ -8,7 +8,7 @@ using HarmonyLib;
 using UnityEngine;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
-using NADA.VFX.Core.Styles;
+using NADA.VFX.Core.Visuals;
 using NADA.VFX.Runtime.Structure;
 using NADA.VFX.Weapons.Runtime;
 using NADA.VFX.Weapons.Targets;
@@ -21,7 +21,7 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.7.1";
+        public const string ModVersion = "0.7.4";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -46,8 +46,9 @@ namespace NADA.VFX
         internal const string SparksReferencePrefabName = "AtgeirHimminAfl";
         internal const string SparksReferencePath = "attach/equiped/Sparcs";
         internal const string AuraName = "Aura";
-        internal const string AuraReferencePrefabName = "fi_vil_combs_props_bone_skull";
         internal const string AuraReferenceMaterialName = "glow_pulse_purple";
+        internal const string StrandsReferencePrefabName = "vfx_Potion_health_medium";
+        internal const string StrandsReferencePath = "trails";
 
         // Core effect names
         internal const string InnerFlamesName = "Inner Flames";
@@ -64,6 +65,8 @@ namespace NADA.VFX
         internal const string OrbitalsOrbsMotionRootName = "Orbs Motion Root";
         internal const string OrbitalsOrbsPoolName = "Orbs Pool";
         internal const int MaxOrbitalsOrbsVisuals = 40;
+        
+        internal const string OrbitalsStrandsName = "Strands";
 
         internal const string OrbitalsFlamesName = "Flames";
         internal const string OrbitalsFlamesMotionRootName = "Flames Motion Root";

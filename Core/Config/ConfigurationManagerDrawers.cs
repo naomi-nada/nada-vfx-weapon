@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using UnityEngine;
 using BepInEx.Configuration;
-using NADA.VFX.Core.Styles;
+using NADA.VFX.Core.Visuals;
 
 namespace NADA.VFX.Core.Config
 {
