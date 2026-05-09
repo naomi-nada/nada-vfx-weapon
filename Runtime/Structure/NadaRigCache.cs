@@ -24,7 +24,7 @@ namespace NADA.VFX.Runtime.Structure
             AuraMaterial = null;
             StrandsTemplateInactive = null;
 
-            while (ObjectDB.instance == null || ZNetScene.instance == null)
+            while (ObjectDB.instance == null)
                 yield return null;
 
             GameObject reference = null;
@@ -207,30 +207,18 @@ namespace NADA.VFX.Runtime.Structure
         
         private static void CacheStrandsTemplate()
         {
-            GameObject StrandsReference = null;
-
-            if (ZNetScene.instance != null)
-                StrandsReference = ZNetScene.instance.GetPrefab(Plugin.StrandsReferencePrefabName);
-
-            if (StrandsReference == null &&
-                !NadaWeaponTargets.TryGetPrefab(Plugin.StrandsReferencePrefabName, out StrandsReference))
+            if (!NadaWeaponTargets.TryGetPrefab(Plugin.StrandsReferencePrefabName, out GameObject strandsReference) ||
+                strandsReference == null)
             {
                 Plugin.Log.LogWarning(
-                    $"{Plugin.ModName}: Could not find Strands reference prefab '{Plugin.StrandsReferencePrefabName}' in ZNetScene or ObjectDB.");
+                    $"{Plugin.ModName}: Could not find Strands reference prefab '{Plugin.StrandsReferencePrefabName}'.");
                 return;
             }
 
-            if (StrandsReference == null)
-            {
-                Plugin.Log.LogWarning(
-                    $"{Plugin.ModName}: Strands reference prefab '{Plugin.StrandsReferencePrefabName}' resolved null.");
-                return;
-            }
+            Transform strandsTransform =
+                strandsReference.transform.Find(Plugin.StrandsReferencePath);
 
-            Transform StrandsTransform =
-                StrandsReference.transform.Find(Plugin.StrandsReferencePath);
-
-            if (StrandsTransform == null)
+            if (strandsTransform == null)
             {
                 Plugin.Log.LogWarning(
                     $"{Plugin.ModName}: Could not find Strands reference path '{Plugin.StrandsReferencePath}' " +
@@ -239,7 +227,7 @@ namespace NADA.VFX.Runtime.Structure
                 return;
             }
 
-            StrandsTemplateInactive = Object.Instantiate(StrandsTransform.gameObject);
+            StrandsTemplateInactive = Object.Instantiate(strandsTransform.gameObject);
             StrandsTemplateInactive.name = "NADA_StrandsTemplate";
             StrandsTemplateInactive.SetActive(false);
             StrandsTemplateInactive.hideFlags = HideFlags.HideAndDontSave;

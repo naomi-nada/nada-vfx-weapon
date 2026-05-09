@@ -7,6 +7,7 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 using NADA.VFX.Core.Config;
+using NADA.VFX.Core.Debug;
 using NADA.VFX.Core.State;
 using NADA.VFX.Core.Visuals;
 using NADA.VFX.Runtime.Structure;
@@ -412,23 +413,6 @@ namespace NADA.VFX
 
             Log.LogInfo($"{ModName}: [Style] loaded '{styleName}'.");
         }
-        
-        internal void DeleteStyleFromManager(string styleName)
-        {
-            if (!VfxStyleStore.Delete(styleName))
-            {
-                Log.LogInfo($"{ModName}: [Style] could not delete style '{styleName}'.");
-                return;
-            }
-
-            PluginConfig.LoadStyle.Value = "Default";
-            VfxStateIO.ApplyToConfig(VfxStateIO.FromDefaults());
-            Config.Save();
-
-            RefreshExistingEquippedRigsOnly();
-
-            Log.LogInfo($"{ModName}: [Style] deleted '{styleName}'.");
-        }
 
         private void ApplyCharacterSelectionWeaponPreview()
         {
@@ -440,8 +424,8 @@ namespace NADA.VFX
 
             if (Player.m_localPlayer != null)
                 return;
-            
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "start")
+
+            if (SceneManager.GetActiveScene().name != "start")
                 return;
 
             if (Time.time < _nextCharacterSelectionProbeTime)
@@ -449,7 +433,7 @@ namespace NADA.VFX
 
             _nextCharacterSelectionProbeTime = Time.time + 1f;
 
-            GameObject[] roots = UnityEngine.SceneManagement.SceneManager
+            GameObject[] roots = SceneManager
                 .GetActiveScene()
                 .GetRootGameObjects();
 
@@ -460,57 +444,106 @@ namespace NADA.VFX
                 if (root == null || !root.name.StartsWith("Player", System.StringComparison.Ordinal))
                     continue;
 
-                Transform rightHandAttach =
-                    FindDescendantByName(root.transform, "RightHand_Attach");
+                bool appliedAny = false;
 
-                if (rightHandAttach == null)
-                    continue;
+                appliedAny |= TryApplyCharacterSelectionHandPreview(
+                    root.transform,
+                    "RightHand_Attach",
+                    "m_rightItem",
+                    controller);
 
-                foreach (Transform childTransform in rightHandAttach)
-                {
-                    if (childTransform == null)
-                        continue;
+                appliedAny |= TryApplyCharacterSelectionHandPreview(
+                    root.transform,
+                    "LeftHand_Attach",
+                    "m_leftItem",
+                    controller);
 
-                    Transform weaponVisualRootTransform =
-                        NadaWeaponTargets.FindEquippedWeaponVisualRoot(childTransform);
-
-                    if (weaponVisualRootTransform == null)
-                        continue;
-
-                    Transform attachTarget =
-                        ResolveRigAttachTarget(weaponVisualRootTransform);
-
-                    if (attachTarget == null)
-                        continue;
-
-                    Transform existingRig =
-                        NadaRigPaths.FindDirectChild(
-                            attachTarget,
-                            LocalWeaponRootName);
-
-                    if (existingRig != null)
-                        return;
-
-                    global::ItemDrop.ItemData previewItem =
-                        ResolvePreviewItemData(root.transform);
-
-                    if (!VfxStateIO.IsBound(previewItem))
-                        continue;
-
-                    bool applied =
-                        controller.TryApply(childTransform.gameObject, previewItem);
-
-                    if (!applied)
-                        continue;
-
-                    Log.LogInfo(
-                        $"{ModName}: [CharSelectPreview] applied preview rig to '{NadaWeaponTargets.FullPath(childTransform)}'.");
-
+                if (appliedAny)
                     return;
-                }
             }
         }
         
+        private static bool TryApplyCharacterSelectionHandPreview(
+            Transform previewRoot,
+            string attachName,
+            string itemFieldName,
+            NadaWeaponRigController controller)
+        {
+            if (previewRoot == null || controller == null)
+                return false;
+
+            Transform handAttach =
+                FindDescendantByName(previewRoot, attachName);
+
+            if (handAttach == null)
+                return false;
+
+            global::ItemDrop.ItemData previewItem =
+                ResolvePreviewItemData(previewRoot, itemFieldName);
+
+            if (previewItem == null)
+            {
+                NadaLogControl.Info(
+                    $"char-preview-null-item:{previewRoot.GetInstanceID()}:{attachName}",
+                    $"{ModName}: [CharSelectPreview] {attachName} has visual attach but preview item is null.");
+
+                return false;
+            }
+
+            bool isBound = VfxStateIO.IsBound(previewItem);
+
+            NadaLogControl.Info(
+                $"char-preview-item:{previewRoot.GetInstanceID()}:{attachName}:{previewItem.m_shared?.m_name}",
+                $"{ModName}: [CharSelectPreview] {attachName} item='{previewItem.m_shared?.m_name}' bound={isBound} customData={(previewItem.m_customData?.Count ?? 0)}.");
+
+            if (!isBound)
+                return false;
+
+            bool appliedAny = false;
+
+            foreach (Transform childTransform in handAttach)
+            {
+                if (childTransform == null)
+                    continue;
+
+                Transform weaponVisualRootTransform =
+                    NadaWeaponTargets.FindEquippedWeaponVisualRoot(childTransform);
+
+                if (weaponVisualRootTransform == null)
+                    continue;
+
+                Transform attachTarget =
+                    ResolveRigAttachTarget(weaponVisualRootTransform);
+
+                if (attachTarget == null)
+                    continue;
+
+                Transform existingRig =
+                    NadaRigPaths.FindDirectChild(
+                        attachTarget,
+                        LocalWeaponRootName);
+
+                if (existingRig != null)
+                {
+                    controller.TryApply(childTransform.gameObject, previewItem);
+                    appliedAny = true;
+                    continue;
+                }
+
+                bool applied =
+                    controller.TryApply(childTransform.gameObject, previewItem);
+
+                if (!applied)
+                    continue;
+
+                Plugin.Log.LogInfo(
+                    $"{ModName}: [CharSelectPreview] applied preview rig to '{NadaWeaponTargets.FullPath(childTransform)}'.");
+
+                appliedAny = true;
+            }
+
+            return appliedAny;
+        }
         private void RemoveCharacterSelectionWeaponPreview()
         {
             if (Player.m_localPlayer != null)
@@ -606,23 +639,25 @@ namespace NADA.VFX
             }
         }
         
-        private static global::ItemDrop.ItemData ResolvePreviewItemData(Transform previewRoot)
+        private static global::ItemDrop.ItemData ResolvePreviewItemData(
+            Transform previewRoot,
+            string fieldName)
         {
-            if (previewRoot == null)
+            if (previewRoot == null || string.IsNullOrWhiteSpace(fieldName))
                 return null;
 
             Humanoid humanoid = previewRoot.GetComponent<Humanoid>();
             if (humanoid == null)
                 return null;
 
-            System.Reflection.FieldInfo rightItemField =
+            System.Reflection.FieldInfo itemField =
                 typeof(Humanoid).GetField(
-                    "m_rightItem",
+                    fieldName,
                     BindingFlags.Instance |
                     BindingFlags.NonPublic |
                     BindingFlags.Public);
 
-            return rightItemField?.GetValue(humanoid) as global::ItemDrop.ItemData;
+            return itemField?.GetValue(humanoid) as global::ItemDrop.ItemData;
         }
     }
 }

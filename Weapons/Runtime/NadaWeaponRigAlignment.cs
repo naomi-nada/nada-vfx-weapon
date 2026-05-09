@@ -50,7 +50,7 @@ namespace NADA.VFX.Weapons.Runtime
                 weaponVisualRootTransform.GetComponentsInChildren<Renderer>(true);
 
             bool hasBounds = false;
-            Bounds combinedBounds = default;
+            Bounds localBounds = default;
 
             foreach (Renderer renderer in renderers)
             {
@@ -63,20 +63,64 @@ namespace NADA.VFX.Weapons.Runtime
                 if (IsLikelyVfxRenderer(renderer))
                     continue;
 
-                if (!hasBounds)
-                {
-                    combinedBounds = renderer.bounds;
-                    hasBounds = true;
-                    continue;
-                }
+                Bounds rendererWorldBounds = renderer.bounds;
 
-                combinedBounds.Encapsulate(renderer.bounds);
+                EncapsulateWorldBoundsAsLocal(
+                    weaponVisualRootTransform,
+                    rendererWorldBounds,
+                    ref localBounds,
+                    ref hasBounds);
             }
 
             if (!hasBounds)
                 return Plugin.RigLocalPosition;
 
-            return weaponVisualRootTransform.InverseTransformPoint(combinedBounds.center);
+            Vector3 center = localBounds.center;
+
+            if (float.IsNaN(center.x) || float.IsNaN(center.y) || float.IsNaN(center.z) ||
+                float.IsInfinity(center.x) || float.IsInfinity(center.y) || float.IsInfinity(center.z))
+            {
+                return Plugin.RigLocalPosition;
+            }
+
+            return center;
+        }
+
+        private static void EncapsulateWorldBoundsAsLocal(
+            Transform rootTransform,
+            Bounds worldBounds,
+            ref Bounds localBounds,
+            ref bool hasBounds)
+        {
+            Vector3 min = worldBounds.min;
+            Vector3 max = worldBounds.max;
+
+            EncapsulateWorldPointAsLocal(rootTransform, new Vector3(min.x, min.y, min.z), ref localBounds, ref hasBounds);
+            EncapsulateWorldPointAsLocal(rootTransform, new Vector3(min.x, min.y, max.z), ref localBounds, ref hasBounds);
+            EncapsulateWorldPointAsLocal(rootTransform, new Vector3(min.x, max.y, min.z), ref localBounds, ref hasBounds);
+            EncapsulateWorldPointAsLocal(rootTransform, new Vector3(min.x, max.y, max.z), ref localBounds, ref hasBounds);
+            EncapsulateWorldPointAsLocal(rootTransform, new Vector3(max.x, min.y, min.z), ref localBounds, ref hasBounds);
+            EncapsulateWorldPointAsLocal(rootTransform, new Vector3(max.x, min.y, max.z), ref localBounds, ref hasBounds);
+            EncapsulateWorldPointAsLocal(rootTransform, new Vector3(max.x, max.y, min.z), ref localBounds, ref hasBounds);
+            EncapsulateWorldPointAsLocal(rootTransform, new Vector3(max.x, max.y, max.z), ref localBounds, ref hasBounds);
+        }
+
+        private static void EncapsulateWorldPointAsLocal(
+            Transform rootTransform,
+            Vector3 worldPoint,
+            ref Bounds localBounds,
+            ref bool hasBounds)
+        {
+            Vector3 localPoint = rootTransform.InverseTransformPoint(worldPoint);
+
+            if (!hasBounds)
+            {
+                localBounds = new Bounds(localPoint, Vector3.zero);
+                hasBounds = true;
+                return;
+            }
+
+            localBounds.Encapsulate(localPoint);
         }
         
         private static Vector3 ResolveScaleCompensated(Transform weaponVisualRootTransform)

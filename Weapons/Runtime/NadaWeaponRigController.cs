@@ -75,7 +75,13 @@ namespace NADA.VFX.Weapons.Runtime
                 return false;
 
             NadaWeaponRigOrchestrator.Run(refreshContext);
-            return true;
+
+            Transform createdRoot =
+                NadaRigPaths.FindDirectChild(
+                    attachTarget,
+                    Plugin.LocalWeaponRootName);
+
+            return createdRoot != null;
         }
 
         public bool TryApplyDroppedItem(GameObject root, global::ItemDrop.ItemData itemData)
@@ -110,7 +116,13 @@ namespace NADA.VFX.Weapons.Runtime
                 return false;
 
             NadaWeaponRigOrchestrator.Run(context);
-            return true;
+
+            Transform refreshedRoot =
+                NadaRigPaths.FindDirectChild(
+                    attachTarget,
+                    Plugin.LocalWeaponRootName);
+
+            return refreshedRoot != null;
         }
 
         private static global::ItemDrop.ItemData ResolveItemData(GameObject root)

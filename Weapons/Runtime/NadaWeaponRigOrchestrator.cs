@@ -18,7 +18,16 @@ namespace NADA.VFX.Weapons.Runtime
             Transform weaponVisualRootTransform = context.WeaponVisualRoot;
 
             if (!NadaRigCache.CacheReady)
+            {
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [OrchestratorSkip] cache not ready " +
+                    $"root='{rootObject?.name}' " +
+                    $"visual='{weaponVisualRootTransform?.name}' " +
+                    $"item='{itemData?.m_shared?.m_name}' " +
+                    $"bound={VfxStateIO.IsBound(itemData)}");
+
                 return;
+            }
 
             bool isEquippedTarget =
                 NadaWeaponTargets.IsTargetOrAttachClone(rootObject);
@@ -28,8 +37,27 @@ namespace NADA.VFX.Weapons.Runtime
                 VfxStateIO.IsBound(itemData) &&
                 rootObject.GetComponent<global::ItemDrop>() != null;
 
-            if (!isEquippedTarget && !isBoundDroppedItem)
+            bool isBoundPreviewOrEquippedVisual =
+                itemData != null &&
+                VfxStateIO.IsBound(itemData) &&
+                weaponVisualRootTransform != null;
+
+            if (!isEquippedTarget &&
+                !isBoundDroppedItem &&
+                !isBoundPreviewOrEquippedVisual)
+            {
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [OrchestratorSkip] " +
+                    $"root='{rootObject?.name}' " +
+                    $"visual='{weaponVisualRootTransform?.name}' " +
+                    $"item='{itemData?.m_shared?.m_name}' " +
+                    $"bound={VfxStateIO.IsBound(itemData)} " +
+                    $"isEquippedTarget={isEquippedTarget} " +
+                    $"isBoundDroppedItem={isBoundDroppedItem} " +
+                    $"isBoundPreviewOrEquippedVisual={isBoundPreviewOrEquippedVisual}");
+
                 return;
+            }
 
             if (weaponVisualRootTransform.name.StartsWith("Sword15_Lava", System.StringComparison.Ordinal))
             {
@@ -61,9 +89,6 @@ namespace NADA.VFX.Weapons.Runtime
                     localWeaponRootTransform,
                     rootObject.name);
 
-            if (localOrbsRootTransform == null)
-                return;
-            
             Transform strandsTransform =
                 NadaRigAssembly.EnsureLocalStrandsBranch(
                     localWeaponRootTransform,
@@ -74,30 +99,22 @@ namespace NADA.VFX.Weapons.Runtime
                     localWeaponRootTransform,
                     rootObject.name);
 
-            if (outerFlamesTransform == null)
-                return;
-            
             Transform sparksTransform =
                 NadaRigAssembly.EnsureLocalSparksBranch(
                     localWeaponRootTransform,
                     rootObject.name);
-            
-            if (sparksTransform == null)
-                return;
-            
+
             Transform auraTransform =
                 NadaRigAssembly.EnsureLocalAuraBranch(
                     localWeaponRootTransform,
                     weaponVisualRootTransform,
                     rootObject.name);
 
-            if (auraTransform == null)
-                return;
-
-            NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsRootTransform);
+            if (localOrbsRootTransform != null)
+                NadaRigAssembly.FinalizeLocalOrbsBranch(localOrbsRootTransform);
 
             NadaRigCatalog catalog = NadaRigCatalog.Build(localWeaponRootTransform);
-            if (catalog == null || !catalog.IsValid)
+            if (catalog == null)
                 return;
 
             Transform activeOrbitalsRigRootTransform = catalog.OrbitalsRigRootTransform;
@@ -119,11 +136,6 @@ namespace NADA.VFX.Weapons.Runtime
                 }
             }
 
-            float orbOrbitAdherence = NadaMotionTuningResolver.GetOrbsOrbitAdherence(itemData);
-            _ = orbOrbitAdherence;
-
-            // Inner Flames, Outer Flames, Sparks, Flare, Aura
-            
             NadaEffectBinder.BindInnerFlamesEffect(
                 catalog.InnerFlamesTransform,
                 itemData);
@@ -135,33 +147,35 @@ namespace NADA.VFX.Weapons.Runtime
             NadaMotionBinder.BindOuterFlamesMotion(
                 catalog.OuterFlamesTransform,
                 itemData);
-            
+
             NadaEffectBinder.BindSparksEffect(
-                catalog.SparksTransform,
+                catalog.SparksTransform ?? sparksTransform,
                 itemData);
 
             NadaEffectBinder.BindFlareEffect(
                 catalog.FlareTransform,
                 itemData);
-            
+
             NadaEffectBinder.BindAuraEffect(
                 auraTransform,
                 itemData);
 
-            // Orbitals: Orbs, Strands, Flames, Embers
             NadaEffectBinder.BindOrbitalsEffect(
                 catalog.OrbitalsRootTransform,
                 catalog.OrbitalsOrbsRootTransform ?? localOrbsRootTransform,
                 itemData);
-            
+
             NadaEffectBinder.BindOrbitalsStrandsEffect(
                 strandsTransform,
                 itemData);
 
-            NadaMotionBinder.BindOrbsMotion(
-                catalog.OrbitalsOrbsRootTransform ?? localOrbsRootTransform,
-                itemData);
-            
+            if (catalog.OrbitalsOrbsRootTransform != null || localOrbsRootTransform != null)
+            {
+                NadaMotionBinder.BindOrbsMotion(
+                    catalog.OrbitalsOrbsRootTransform ?? localOrbsRootTransform,
+                    itemData);
+            }
+
             NadaRigTransformApplier.Apply(
                 localWeaponRootTransform,
                 context.State);

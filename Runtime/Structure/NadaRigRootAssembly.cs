@@ -26,9 +26,7 @@ namespace NADA.VFX.Runtime.Structure
 
                 NadaRigTransforms.EnsureChild(localWeaponRootTransform, Plugin.EffectsRootName);
 
-                localWeaponRootTransform.localPosition = alignment.LocalPosition;
-                localWeaponRootTransform.localEulerAngles = alignment.LocalEulerAngles;
-                localWeaponRootTransform.localScale = alignment.LocalScale;
+                ApplyAlignment(localWeaponRootTransform, alignment);
 
                 return localWeaponRootTransform;
             }
@@ -47,11 +45,29 @@ namespace NADA.VFX.Runtime.Structure
                 $"nadaRootId={localWeaponRootTransform.GetInstanceID()} " +
                 $"(owner='{ownerNameForLogs}').");
 
+            ApplyAlignment(localWeaponRootTransform, alignment);
+
+            return localWeaponRootTransform;
+        }
+
+        private static void ApplyAlignment(
+            Transform localWeaponRootTransform,
+            NadaWeaponRigAlignment alignment)
+        {
+            if (localWeaponRootTransform == null)
+                return;
+
+            var anchor =
+                localWeaponRootTransform.GetComponent<NadaRigAlignmentAnchor>();
+
+            if (anchor == null)
+                anchor = localWeaponRootTransform.gameObject.AddComponent<NadaRigAlignmentAnchor>();
+
+            anchor.Set(alignment);
+
             localWeaponRootTransform.localPosition = alignment.LocalPosition;
             localWeaponRootTransform.localEulerAngles = alignment.LocalEulerAngles;
             localWeaponRootTransform.localScale = alignment.LocalScale;
-
-            return localWeaponRootTransform;
         }
     }
 }

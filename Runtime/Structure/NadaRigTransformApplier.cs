@@ -10,16 +10,20 @@ namespace NADA.VFX.Runtime.Structure
             if (rigRoot == null)
                 return;
 
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: [RigTransformApply] " +
-                $"root='{rigRoot.name}' " +
-                $"stateRot={state.RigRotation} " +
-                $"stateLen={state.RigLengthPosition} " +
-                $"beforePos={rigRoot.localPosition} " +
-                $"beforeRot={rigRoot.localEulerAngles}");
+            NadaRigAlignmentAnchor anchor =
+                rigRoot.GetComponent<NadaRigAlignmentAnchor>();
 
-            Vector3 basePosition = Plugin.RigLocalPosition;
-            Vector3 baseEuler = Plugin.RigLocalEulerAngles;
+            Vector3 basePosition = anchor != null
+                ? anchor.BaseLocalPosition
+                : Plugin.RigLocalPosition;
+
+            Vector3 baseEuler = anchor != null
+                ? anchor.BaseLocalEulerAngles
+                : Plugin.RigLocalEulerAngles;
+
+            Vector3 baseScale = anchor != null
+                ? anchor.BaseLocalScale
+                : Plugin.RigLocalScale;
 
             rigRoot.localPosition =
                 basePosition + new Vector3(
@@ -34,33 +38,7 @@ namespace NADA.VFX.Runtime.Structure
                     state.RigRotation,
                     0f);
 
-            if (rigRoot.parent != null)
-            {
-                Vector3 parentScale = rigRoot.parent.lossyScale;
-
-                rigRoot.localScale =
-                    new Vector3(
-                        SafeDivide(Plugin.RigLocalScale.x, parentScale.x),
-                        SafeDivide(Plugin.RigLocalScale.y, parentScale.y),
-                        SafeDivide(Plugin.RigLocalScale.z, parentScale.z));
-            }
-            else
-            {
-                rigRoot.localScale = Plugin.RigLocalScale;
-            }
-
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: [RigTransformApplied] " +
-                $"root='{rigRoot.name}' " +
-                $"afterPos={rigRoot.localPosition} " +
-                $"afterRot={rigRoot.localEulerAngles}");
-        }
-
-        private static float SafeDivide(float value, float divisor)
-        {
-            return Mathf.Abs(divisor) > 0.0001f
-                ? value / divisor
-                : value;
+            rigRoot.localScale = baseScale;
         }
     }
 }

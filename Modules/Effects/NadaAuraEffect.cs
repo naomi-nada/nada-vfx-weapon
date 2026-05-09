@@ -80,7 +80,7 @@ namespace NADA.VFX.Modules.Effects
 
                 if (material.HasProperty("_TintColor"))
                 {
-                    Color baseColor = new Color(0.925f, 0.157f, 0.953f, 0.04f);
+                    Color baseColor = new Color(0.925f, 0.157f, 0.953f, 0.03f);
 
                     material.SetColor(
                         "_TintColor",

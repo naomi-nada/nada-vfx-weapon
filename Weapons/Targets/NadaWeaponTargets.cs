@@ -32,6 +32,18 @@ namespace NADA.VFX.Weapons.Targets
                 }
             }
 
+            foreach (GameObject gameObject in Resources.FindObjectsOfTypeAll<GameObject>())
+            {
+                if (gameObject == null)
+                    continue;
+
+                if (string.Equals(gameObject.name, prefabName, StringComparison.Ordinal))
+                {
+                    prefab = gameObject;
+                    return true;
+                }
+            }
+
             return false;
         }
 
