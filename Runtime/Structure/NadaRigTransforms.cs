@@ -167,5 +167,23 @@ namespace NADA.VFX.Runtime.Structure
 
             return numerator / denominator;
         }
+        
+        internal static void ForceUniformWorldScale(Transform targetTransform)
+        {
+            if (targetTransform == null)
+                return;
+
+            Vector3 currentWorldScale = targetTransform.lossyScale;
+
+            float uniform =
+                (Mathf.Abs(currentWorldScale.x) +
+                 Mathf.Abs(currentWorldScale.y) +
+                 Mathf.Abs(currentWorldScale.z)) / 3f;
+
+            if (uniform <= 0.0001f)
+                uniform = 1f;
+
+            MatchWorldScale(targetTransform, Vector3.one * uniform);
+        }
     }
 }

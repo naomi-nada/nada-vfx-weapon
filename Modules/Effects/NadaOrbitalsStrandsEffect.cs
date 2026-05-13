@@ -1,22 +1,32 @@
 using System.Collections.Generic;
-using UnityEngine;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
 using NADA.VFX.Core.Visuals;
 using NADA.VFX.Runtime.Binding;
+using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
 {
     internal sealed class NadaOrbitalsStrandsEffect : MonoBehaviour, INadaItemDataReceiver
     {
+        private const float AuthoredScaleMultiplier = 0.50f;
+
         private global::ItemDrop.ItemData _itemData;
 
         private ParticleSystem[] _systems;
         private Renderer[] _renderers;
 
+        private bool _componentCacheDirty = true;
+        private bool _baselineCacheDirty = true;
+
+        private bool _hasDriftWorldPose;
+        private Vector3 _driftWorldPosition;
+        private Quaternion _driftWorldRotation;
+
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseStartColors = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseColorOverLifetime = new();
         private readonly Dictionary<int, bool> _baseColorOverLifetimeEnabled = new();
+
         private readonly Dictionary<int, float> _baseEmissionRates = new();
         private readonly Dictionary<int, float> _baseStartLifetimes = new();
 
@@ -27,12 +37,6 @@ namespace NADA.VFX.Modules.Effects
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeX = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeY = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeZ = new();
-
-        private bool _hasDriftWorldPose;
-        private Vector3 _driftWorldPosition;
-        private Quaternion _driftWorldRotation;
-
-        private const float AuthoredScaleMultiplier = 0.50f;
 
         private sealed class MaterialBaseline
         {
@@ -48,8 +52,12 @@ namespace NADA.VFX.Modules.Effects
 
         private void Awake()
         {
-            RebuildCaches();
+            RebuildComponentCache();
             CacheBaselines();
+
+            _componentCacheDirty = false;
+            _baselineCacheDirty = false;
+
             InvokeRepeating(nameof(TickApply), 0f, 0.05f);
         }
 
@@ -60,8 +68,18 @@ namespace NADA.VFX.Modules.Effects
 
         private void TickApply()
         {
-            RebuildCaches();
-            CacheBaselines();
+            if (_componentCacheDirty)
+            {
+                RebuildComponentCache();
+                _componentCacheDirty = false;
+                _baselineCacheDirty = true;
+            }
+
+            if (_baselineCacheDirty)
+            {
+                CacheBaselines();
+                _baselineCacheDirty = false;
+            }
 
             VfxState state = ResolveState();
 
@@ -102,7 +120,9 @@ namespace NADA.VFX.Modules.Effects
             return VfxStateIO.FromConfig();
         }
 
-        private void RebuildCaches()
+        // Cache / baselines
+
+        private void RebuildComponentCache()
         {
             _systems = GetComponentsInChildren<ParticleSystem>(true);
             _renderers = GetComponentsInChildren<Renderer>(true);
@@ -110,101 +130,121 @@ namespace NADA.VFX.Modules.Effects
 
         private void CacheBaselines()
         {
-            if (_systems != null)
+            CacheParticleBaselines();
+            CacheRendererBaselines();
+        }
+
+        private void CacheParticleBaselines()
+        {
+            if (_systems == null)
+                return;
+
+            foreach (ParticleSystem system in _systems)
             {
-                foreach (ParticleSystem system in _systems)
+                if (system == null)
+                    continue;
+
+                var mainModule = system.main;
+                mainModule.loop = true;
+                mainModule.playOnAwake = true;
+
+                int systemId = system.GetInstanceID();
+
+                var shape = system.shape;
+
+                if (!_baseShapeRadius.ContainsKey(systemId))
+                    _baseShapeRadius[systemId] = shape.radius;
+
+                if (!_baseShapeScale.ContainsKey(systemId))
+                    _baseShapeScale[systemId] = shape.scale;
+
+                if (!_baseStartSizeX.ContainsKey(systemId))
+                    _baseStartSizeX[systemId] = mainModule.startSize;
+
+                if (!_baseStartSizeY.ContainsKey(systemId))
+                    _baseStartSizeY[systemId] = mainModule.startSizeY;
+
+                if (!_baseStartSizeZ.ContainsKey(systemId))
+                    _baseStartSizeZ[systemId] = mainModule.startSizeZ;
+
+                if (!_baseStartColors.ContainsKey(systemId))
+                    _baseStartColors[systemId] = mainModule.startColor;
+
+                if (!_baseEmissionRates.ContainsKey(systemId))
                 {
-                    if (system == null)
-                        continue;
-
-                    var mainModule = system.main;
-
-                    mainModule.loop = true;
-                    mainModule.playOnAwake = true;
-
-                    int id = system.GetInstanceID();
-
-                    var shape = system.shape;
-
-                    if (!_baseShapeRadius.ContainsKey(id))
-                        _baseShapeRadius[id] = shape.radius;
-
-                    if (!_baseShapeScale.ContainsKey(id))
-                        _baseShapeScale[id] = shape.scale;
-
-                    if (!_baseStartSizeX.ContainsKey(id))
-                        _baseStartSizeX[id] = mainModule.startSize;
-
-                    if (!_baseStartSizeY.ContainsKey(id))
-                        _baseStartSizeY[id] = mainModule.startSizeY;
-
-                    if (!_baseStartSizeZ.ContainsKey(id))
-                        _baseStartSizeZ[id] = mainModule.startSizeZ;
-
-                    if (!_baseStartColors.ContainsKey(id))
-                        _baseStartColors[id] = mainModule.startColor;
-
-                    if (!_baseEmissionRates.ContainsKey(id))
-                    {
-                        var emission = system.emission;
-                        _baseEmissionRates[id] = emission.rateOverTime.constant;
-                    }
-
-                    if (!_baseStartLifetimes.ContainsKey(id))
-                        _baseStartLifetimes[id] = mainModule.startLifetime.constant;
-
-                    if (!_baseColorOverLifetime.ContainsKey(id))
-                    {
-                        var color = system.colorOverLifetime;
-
-                        _baseColorOverLifetimeEnabled[id] = color.enabled;
-                        _baseColorOverLifetime[id] = color.color;
-                    }
+                    var emission = system.emission;
+                    _baseEmissionRates[systemId] = emission.rateOverTime.constant;
                 }
-            }
 
-            if (_renderers != null)
-            {
-                foreach (Renderer renderer in _renderers)
+                if (!_baseStartLifetimes.ContainsKey(systemId))
+                    _baseStartLifetimes[systemId] = mainModule.startLifetime.constant;
+
+                if (!_baseColorOverLifetime.ContainsKey(systemId))
                 {
-                    if (renderer == null)
-                        continue;
+                    var colorOverLifetime = system.colorOverLifetime;
 
-                    int id = renderer.GetInstanceID();
-
-                    if (_baseMaterials.ContainsKey(id))
-                        continue;
-
-                    Material material = renderer.material;
-
-                    if (material == null)
-                        continue;
-
-                    var baseline = new MaterialBaseline();
-
-                    if (material.HasProperty("_Color"))
-                        baseline.Color = material.GetColor("_Color");
-
-                    if (material.HasProperty("_TintColor"))
-                        baseline.TintColor = material.GetColor("_TintColor");
-
-                    if (material.HasProperty("_EmissionColor"))
-                        baseline.EmissionColor = material.GetColor("_EmissionColor");
-
-                    _baseMaterials[id] = baseline;
+                    _baseColorOverLifetimeEnabled[systemId] = colorOverLifetime.enabled;
+                    _baseColorOverLifetime[systemId] = colorOverLifetime.color;
                 }
             }
         }
 
+        private void CacheRendererBaselines()
+        {
+            if (_renderers == null)
+                return;
+
+            foreach (Renderer renderer in _renderers)
+            {
+                if (renderer == null)
+                    continue;
+
+                int rendererId = renderer.GetInstanceID();
+
+                if (_baseMaterials.ContainsKey(rendererId))
+                    continue;
+
+                Material material;
+                try { material = renderer.material; } catch { continue; }
+
+                if (material == null)
+                    continue;
+
+                var baseline = new MaterialBaseline();
+
+                if (material.HasProperty("_Color"))
+                    baseline.Color = material.GetColor("_Color");
+
+                if (material.HasProperty("_TintColor"))
+                    baseline.TintColor = material.GetColor("_TintColor");
+
+                if (material.HasProperty("_EmissionColor"))
+                    baseline.EmissionColor = material.GetColor("_EmissionColor");
+
+                _baseMaterials[rendererId] = baseline;
+            }
+        }
+
+        // Enabled / energy
+
         private void ApplyEnabled(bool enabled)
         {
-            if (_systems != null)
-            {
-                foreach (ParticleSystem system in _systems)
-                {
-                    if (system == null)
-                        continue;
+            ApplyParticleSystemEnabledState(enabled);
+            ApplyRendererEnabledState(enabled);
+        }
 
+        private void ApplyParticleSystemEnabledState(bool enabled)
+        {
+            if (_systems == null)
+                return;
+
+            foreach (ParticleSystem system in _systems)
+            {
+                if (system == null)
+                    continue;
+
+                try
+                {
                     if (enabled)
                     {
                         if (!system.gameObject.activeSelf)
@@ -219,15 +259,21 @@ namespace NADA.VFX.Modules.Effects
                             system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                     }
                 }
+                catch { }
             }
+        }
 
-            if (_renderers != null)
+        private void ApplyRendererEnabledState(bool enabled)
+        {
+            if (_renderers == null)
+                return;
+
+            foreach (Renderer renderer in _renderers)
             {
-                foreach (Renderer renderer in _renderers)
-                {
-                    if (renderer != null)
-                        renderer.enabled = enabled;
-                }
+                if (renderer == null)
+                    continue;
+
+                try { renderer.enabled = enabled; } catch { }
             }
         }
 
@@ -244,18 +290,23 @@ namespace NADA.VFX.Modules.Effects
                 if (system == null)
                     continue;
 
-                int id = system.GetInstanceID();
+                int systemId = system.GetInstanceID();
 
-                if (!_baseEmissionRates.TryGetValue(id, out float baseRate))
+                if (!_baseEmissionRates.TryGetValue(systemId, out float baseRate))
                     baseRate = 10f;
 
-                var emission = system.emission;
-
-                emission.enabled = true;
-                emission.rateOverTime =
-                    new ParticleSystem.MinMaxCurve(baseRate * multiplier);
+                try
+                {
+                    var emission = system.emission;
+                    emission.enabled = true;
+                    emission.rateOverTime =
+                        new ParticleSystem.MinMaxCurve(baseRate * multiplier);
+                }
+                catch { }
             }
         }
+
+        // Drift / transform
 
         private void ApplyDrift(float drift, float position)
         {
@@ -292,7 +343,6 @@ namespace NADA.VFX.Modules.Effects
             {
                 _driftWorldPosition = targetWorldPosition;
                 _driftWorldRotation = targetWorldRotation;
-
                 _hasDriftWorldPose = true;
             }
 
@@ -320,6 +370,45 @@ namespace NADA.VFX.Modules.Effects
             transform.rotation = _driftWorldRotation;
         }
 
+        private Vector3 ResolveDesiredLocalPosition(float position)
+        {
+            float clamped = Mathf.Clamp(
+                position,
+                PluginConfig.MinFlamePosition,
+                PluginConfig.MaxFlamePosition);
+
+            return new Vector3(0f, 0f, clamped);
+        }
+
+        private void ApplySimulationSpace(
+            ParticleSystemSimulationSpace simulationSpace)
+        {
+            if (_systems == null)
+                return;
+
+            foreach (ParticleSystem system in _systems)
+            {
+                if (system == null)
+                    continue;
+
+                try
+                {
+                    var mainModule = system.main;
+
+                    if (mainModule.simulationSpace == simulationSpace)
+                        continue;
+
+                    mainModule.simulationSpace = simulationSpace;
+
+                    system.Clear(true);
+                    system.Play(true);
+                }
+                catch { }
+            }
+        }
+
+        // Color / spectrum
+
         private void ApplyHue(float hue)
         {
             float targetHue =
@@ -328,18 +417,40 @@ namespace NADA.VFX.Modules.Effects
             ApplyHueFromNormalizedHue(targetHue);
         }
 
+        private void ApplySpectrum(float speed)
+        {
+            float clampedSpeed = Mathf.Clamp(
+                speed,
+                PluginConfig.MinSpectrumSpeed,
+                PluginConfig.MaxSpectrumSpeed);
+
+            float hue =
+                Mathf.Repeat(Time.time * clampedSpeed, 1f);
+
+            ApplyHueFromNormalizedHue(hue);
+        }
+
         private void ApplyHueFromNormalizedHue(float targetHue)
         {
-            if (_systems != null)
+            ApplyParticleHue(targetHue);
+            ApplyRendererHue(targetHue);
+        }
+
+        private void ApplyParticleHue(float targetHue)
+        {
+            if (_systems == null)
+                return;
+
+            foreach (ParticleSystem system in _systems)
             {
-                foreach (ParticleSystem system in _systems)
+                if (system == null)
+                    continue;
+
+                int systemId = system.GetInstanceID();
+
+                try
                 {
-                    if (system == null)
-                        continue;
-
-                    int id = system.GetInstanceID();
-
-                    if (_baseStartColors.TryGetValue(id, out var baseStartColor))
+                    if (_baseStartColors.TryGetValue(systemId, out var baseStartColor))
                     {
                         var mainModule = system.main;
 
@@ -348,40 +459,54 @@ namespace NADA.VFX.Modules.Effects
                                 baseStartColor,
                                 targetHue);
                     }
+                }
+                catch { }
 
-                    if (_baseColorOverLifetime.TryGetValue(id, out var baseColor))
+                try
+                {
+                    if (_baseColorOverLifetime.TryGetValue(systemId, out var baseColor))
                     {
-                        var color = system.colorOverLifetime;
+                        var colorOverLifetime = system.colorOverLifetime;
 
-                        if (_baseColorOverLifetimeEnabled.TryGetValue(id, out bool wasEnabled))
-                            color.enabled = wasEnabled;
+                        if (_baseColorOverLifetimeEnabled.TryGetValue(systemId, out bool wasEnabled))
+                            colorOverLifetime.enabled = wasEnabled;
 
-                        color.color =
+                        colorOverLifetime.color =
                             NadaHueShiftUtility.RetintMinMaxGradientToHue(
                                 baseColor,
                                 targetHue);
                     }
                 }
+                catch { }
             }
+        }
 
-            if (_renderers != null)
+        private void ApplyRendererHue(float targetHue)
+        {
+            if (_renderers == null)
+                return;
+
+            foreach (Renderer renderer in _renderers)
             {
-                foreach (Renderer renderer in _renderers)
+                if (renderer == null)
+                    continue;
+
+                int rendererId = renderer.GetInstanceID();
+
+                if (!_baseMaterials.TryGetValue(rendererId, out MaterialBaseline baseline) ||
+                    baseline == null)
                 {
-                    if (renderer == null)
-                        continue;
+                    continue;
+                }
 
-                    int id = renderer.GetInstanceID();
+                Material material;
+                try { material = renderer.material; } catch { continue; }
 
-                    if (!_baseMaterials.TryGetValue(id, out MaterialBaseline baseline) ||
-                        baseline == null)
-                        continue;
+                if (material == null)
+                    continue;
 
-                    Material material = renderer.material;
-
-                    if (material == null)
-                        continue;
-
+                try
+                {
                     if (baseline.Color.HasValue &&
                         material.HasProperty("_Color"))
                     {
@@ -412,21 +537,11 @@ namespace NADA.VFX.Modules.Effects
                                 targetHue));
                     }
                 }
+                catch { }
             }
         }
 
-        private void ApplySpectrum(float speed)
-        {
-            float clampedSpeed = Mathf.Clamp(
-                speed,
-                PluginConfig.MinSpectrumSpeed,
-                PluginConfig.MaxSpectrumSpeed);
-
-            float hue =
-                Mathf.Repeat(Time.time * clampedSpeed, 1f);
-
-            ApplyHueFromNormalizedHue(hue);
-        }
+        // Scale / shape
 
         private void ApplyScaleWhole(float scale)
         {
@@ -454,31 +569,96 @@ namespace NADA.VFX.Modules.Effects
                 if (system == null)
                     continue;
 
-                int id = system.GetInstanceID();
+                int systemId = system.GetInstanceID();
 
-                if (!_baseStartSizeX.TryGetValue(id, out ParticleSystem.MinMaxCurve baseSizeX))
+                if (!_baseStartSizeX.TryGetValue(systemId, out ParticleSystem.MinMaxCurve baseSizeX))
                     continue;
 
-                if (!_baseStartSizeY.TryGetValue(id, out ParticleSystem.MinMaxCurve baseSizeY))
+                if (!_baseStartSizeY.TryGetValue(systemId, out ParticleSystem.MinMaxCurve baseSizeY))
                     baseSizeY = baseSizeX;
 
-                if (!_baseStartSizeZ.TryGetValue(id, out ParticleSystem.MinMaxCurve baseSizeZ))
+                if (!_baseStartSizeZ.TryGetValue(systemId, out ParticleSystem.MinMaxCurve baseSizeZ))
                     baseSizeZ = baseSizeX;
 
-                var mainModule = system.main;
+                try
+                {
+                    var mainModule = system.main;
 
-                mainModule.startSize3D = true;
-
-                mainModule.startSizeX =
-                    MultiplyCurve(baseSizeX, clamped);
-
-                mainModule.startSizeY =
-                    MultiplyCurve(baseSizeY, clamped);
-
-                mainModule.startSizeZ =
-                    MultiplyCurve(baseSizeZ, clamped);
+                    mainModule.startSize3D = true;
+                    mainModule.startSizeX = MultiplyCurve(baseSizeX, clamped);
+                    mainModule.startSizeY = MultiplyCurve(baseSizeY, clamped);
+                    mainModule.startSizeZ = MultiplyCurve(baseSizeZ, clamped);
+                }
+                catch { }
             }
         }
+
+        private void ApplyLength(float length)
+        {
+            float clamped = Mathf.Clamp(
+                length,
+                PluginConfig.MinOrbitalsLength,
+                PluginConfig.MaxOrbitalsLength);
+
+            if (_systems == null)
+                return;
+
+            foreach (ParticleSystem system in _systems)
+            {
+                if (system == null)
+                    continue;
+
+                int systemId = system.GetInstanceID();
+
+                if (!_baseShapeScale.TryGetValue(systemId, out Vector3 baseScale))
+                    baseScale = Vector3.one;
+
+                try
+                {
+                    var shape = system.shape;
+
+                    shape.enabled = true;
+                    shape.scale = new Vector3(
+                        baseScale.x,
+                        baseScale.y * clamped,
+                        baseScale.z);
+                }
+                catch { }
+            }
+        }
+
+        private void ApplyRadius(float radius)
+        {
+            float clamped = Mathf.Clamp(
+                radius,
+                PluginConfig.MinOrbitalsRadiusMultiplier,
+                PluginConfig.MaxOrbitalsRadiusMultiplier);
+
+            if (_systems == null)
+                return;
+
+            foreach (ParticleSystem system in _systems)
+            {
+                if (system == null)
+                    continue;
+
+                int systemId = system.GetInstanceID();
+
+                if (!_baseShapeRadius.TryGetValue(systemId, out float baseRadius))
+                    baseRadius = 0.5f;
+
+                try
+                {
+                    var shape = system.shape;
+
+                    shape.enabled = true;
+                    shape.radius = baseRadius * clamped;
+                }
+                catch { }
+            }
+        }
+
+        // Timing
 
         private void ApplySpeed(float speed)
         {
@@ -498,40 +678,12 @@ namespace NADA.VFX.Modules.Effects
                 if (system == null)
                     continue;
 
-                var mainModule = system.main;
-
-                mainModule.simulationSpeed = speedMultiplier;
-            }
-        }
-
-        private void ApplyLength(float length)
-        {
-            float clamped = Mathf.Clamp(
-                length,
-                PluginConfig.MinOrbitalsLength,
-                PluginConfig.MaxOrbitalsLength);
-
-            if (_systems == null)
-                return;
-
-            foreach (ParticleSystem system in _systems)
-            {
-                if (system == null)
-                    continue;
-
-                int id = system.GetInstanceID();
-
-                if (!_baseShapeScale.TryGetValue(id, out Vector3 baseScale))
-                    baseScale = Vector3.one;
-
-                var shape = system.shape;
-
-                shape.enabled = true;
-
-                shape.scale = new Vector3(
-                    baseScale.x,
-                    baseScale.y * clamped,
-                    baseScale.z);
+                try
+                {
+                    var mainModule = system.main;
+                    mainModule.simulationSpeed = speedMultiplier;
+                }
+                catch { }
             }
         }
 
@@ -550,43 +702,19 @@ namespace NADA.VFX.Modules.Effects
                 if (system == null)
                     continue;
 
-                int id = system.GetInstanceID();
+                int systemId = system.GetInstanceID();
 
-                if (!_baseStartLifetimes.TryGetValue(id, out float baseLifetime))
+                if (!_baseStartLifetimes.TryGetValue(systemId, out float baseLifetime))
                     baseLifetime = 2f;
 
-                var mainModule = system.main;
+                try
+                {
+                    var mainModule = system.main;
 
-                mainModule.startLifetime =
-                    new ParticleSystem.MinMaxCurve(
-                        baseLifetime * clamped);
-            }
-        }
-
-        private void ApplyRadius(float radius)
-        {
-            float clamped = Mathf.Clamp(
-                radius,
-                PluginConfig.MinOrbitalsRadiusMultiplier,
-                PluginConfig.MaxOrbitalsRadiusMultiplier);
-
-            if (_systems == null)
-                return;
-
-            foreach (ParticleSystem system in _systems)
-            {
-                if (system == null)
-                    continue;
-
-                int id = system.GetInstanceID();
-
-                if (!_baseShapeRadius.TryGetValue(id, out float baseRadius))
-                    baseRadius = 0.5f;
-
-                var shape = system.shape;
-
-                shape.enabled = true;
-                shape.radius = baseRadius * clamped;
+                    mainModule.startLifetime =
+                        new ParticleSystem.MinMaxCurve(baseLifetime * clamped);
+                }
+                catch { }
             }
         }
 
@@ -602,39 +730,6 @@ namespace NADA.VFX.Modules.Effects
             result.curveMultiplier *= multiplier;
 
             return result;
-        }
-
-        private Vector3 ResolveDesiredLocalPosition(float position)
-        {
-            float clamped = Mathf.Clamp(
-                position,
-                PluginConfig.MinFlamePosition,
-                PluginConfig.MaxFlamePosition);
-
-            return new Vector3(0f, 0f, clamped);
-        }
-
-        private void ApplySimulationSpace(
-            ParticleSystemSimulationSpace simulationSpace)
-        {
-            if (_systems == null)
-                return;
-
-            foreach (ParticleSystem system in _systems)
-            {
-                if (system == null)
-                    continue;
-
-                var mainModule = system.main;
-
-                if (mainModule.simulationSpace == simulationSpace)
-                    continue;
-
-                mainModule.simulationSpace = simulationSpace;
-
-                system.Clear(true);
-                system.Play(true);
-            }
         }
     }
 }

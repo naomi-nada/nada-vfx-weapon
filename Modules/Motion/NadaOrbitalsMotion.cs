@@ -7,31 +7,14 @@ using UnityEngine;
 namespace NADA.VFX.Modules.Motion
 {
     // Orbitals motion model:
-    // - transform = motion root (true locked head position)
+    // - transform = motion root / true locked head position
     // - _headVisualTransform = visible head representation
     // - _followerVisualTransforms = trailing visuals
-    // - All orbital families use explicit external visual chains
-    // - Drift is applied by lagging the parent/world carrier frame,
-    //   not by corrupting orbit spacing or orbit radius.
+    // - Drift is applied by lagging the parent/world carrier frame
     internal sealed class NadaOrbitalsMotion : MonoBehaviour
     {
         private const int MaxOrbitalsVisuals = 30;
         private const int ArcLengthSampleCount = 192;
-
-        private readonly List<Vector3> _sampledLocalPositions = new();
-        private readonly List<float> _sampledCumulativeLengths = new();
-
-        private readonly List<Vector3> _parentWorldPositionHistorySamples = new();
-        private readonly List<Quaternion> _parentWorldRotationHistorySamples = new();
-
-        private float _cachedRadiusMultiplier = -1f;
-        private float _cachedOrbitLengthMultiplier = -1f;
-        private float _cachedTurnsPerOneWayPass = -1f;
-        private float _cachedCycleLength = 0f;
-        private bool _hasArcLengthCache;
-
-        private float _currentCycleProgress01;
-        private bool _hasCurrentCycleProgress01;
 
         internal const float DefaultCycleProgressPerSecond = 0.10f;
 
@@ -40,20 +23,41 @@ namespace NADA.VFX.Modules.Motion
         private const int MaxHistoryStepPerFollower = 36;
         private const float HardLockAdherenceThreshold = 0.999f;
 
+        // Ownership / state
         private NadaOrbitalsFamily _orbitalsFamily = NadaOrbitalsFamily.Orbs;
         private global::ItemDrop.ItemData _itemData;
 
+        // External visual chain
         private Transform _headVisualTransform;
         private Transform _followerPoolRootTransform;
-        private bool _configuredVisualChain;
+        private readonly List<Transform> _followerVisualTransforms = new();
 
-        private Vector3 _baseHeadLocalPosition;
+        private bool _configuredVisualChain;
+        private bool _visualChainDirty = true;
         private bool _initialized;
+
+        // Path cache
+        private readonly List<Vector3> _sampledLocalPositions = new();
+        private readonly List<float> _sampledCumulativeLengths = new();
+
+        private float _cachedRadiusMultiplier = -1f;
+        private float _cachedOrbitLengthMultiplier = -1f;
+        private float _cachedTurnsPerOneWayPass = -1f;
+        private float _cachedCycleLength;
+        private bool _hasArcLengthCache;
+
+        // Motion state
+        private Vector3 _baseHeadLocalPosition;
+
+        private float _currentCycleProgress01;
+        private bool _hasCurrentCycleProgress01;
 
         private float _currentHistoryStepPerFollower;
         private bool _hasCurrentHistoryStepPerFollower;
 
-        private readonly List<Transform> _followerVisualTransforms = new();
+        // Drift history
+        private readonly List<Vector3> _parentWorldPositionHistorySamples = new();
+        private readonly List<Quaternion> _parentWorldRotationHistorySamples = new();
 
         internal void Configure(
             NadaOrbitalsFamily orbitalsFamily,
@@ -67,11 +71,20 @@ namespace NADA.VFX.Modules.Motion
             Transform headVisualTransform,
             Transform followerPoolRootTransform)
         {
+            if (_headVisualTransform == headVisualTransform &&
+                _followerPoolRootTransform == followerPoolRootTransform)
+            {
+                return;
+            }
+
             _headVisualTransform = headVisualTransform;
             _followerPoolRootTransform = followerPoolRootTransform;
+
             _configuredVisualChain =
                 headVisualTransform != null &&
                 followerPoolRootTransform != null;
+
+            _visualChainDirty = true;
         }
 
         private void Awake()
@@ -81,7 +94,12 @@ namespace NADA.VFX.Modules.Motion
 
         private void LateUpdate()
         {
-            ResolveVisualChain();
+            if (_visualChainDirty)
+            {
+                ResolveVisualChain();
+                _visualChainDirty = false;
+            }
+
             if (!_initialized)
                 return;
 
@@ -93,11 +111,14 @@ namespace NADA.VFX.Modules.Motion
                 return;
             }
 
-            int desiredTotalVisualCount = ResolveDesiredVisualCount(state);
-            int desiredFollowerCount = Mathf.Clamp(
-                desiredTotalVisualCount - 1,
-                0,
-                MaxOrbitalsVisuals - 1);
+            ApplyOrbitalsMotion(state);
+        }
+
+        // Main motion flow
+
+        private void ApplyOrbitalsMotion(VfxState state)
+        {
+            int desiredFollowerCount = ResolveDesiredFollowerCount(state);
 
             float radiusMultiplier = ResolveRadiusMultiplier(state);
             float orbitLengthMultiplier = ResolveOrbitLengthMultiplier(state);
@@ -108,42 +129,16 @@ namespace NADA.VFX.Modules.Motion
                 orbitLengthMultiplier,
                 turnsPerOneWayPass);
 
-            float targetHistoryStepPerFollower = ResolveHistoryStepPerFollowerFloat(state);
+            float historyStepPerFollower =
+                SmoothHistoryStepPerFollower(ResolveHistoryStepPerFollowerFloat(state));
 
-            if (!_hasCurrentHistoryStepPerFollower)
-            {
-                _currentHistoryStepPerFollower = targetHistoryStepPerFollower;
-                _hasCurrentHistoryStepPerFollower = true;
-            }
-            else
-            {
-                float smoothingSpeed =
-                    targetHistoryStepPerFollower > _currentHistoryStepPerFollower ? 4f : 10f;
-
-                _currentHistoryStepPerFollower = Mathf.Lerp(
-                    _currentHistoryStepPerFollower,
-                    targetHistoryStepPerFollower,
-                    1f - Mathf.Exp(-smoothingSpeed * Time.deltaTime));
-            }
-
-            float orbitAdherence = Mathf.Clamp01(ResolveOrbitAdherence());
+            float orbitAdherence =
+                Mathf.Clamp01(ResolveOrbitAdherence());
 
             ApplyHeadVisualEnabledState(true);
             ApplyFollowerVisualCount(desiredFollowerCount);
 
-            float cycleProgressPerSecond = ResolveCycleProgressPerSecond(state);
-
-            if (!_hasCurrentCycleProgress01)
-            {
-                _currentCycleProgress01 = 0f;
-                _hasCurrentCycleProgress01 = true;
-            }
-            else
-            {
-                _currentCycleProgress01 = Mathf.Repeat(
-                    _currentCycleProgress01 + (cycleProgressPerSecond * Time.deltaTime),
-                    1f);
-            }
+            AdvanceCycleProgress(ResolveCycleProgressPerSecond(state));
 
             float currentDistanceAlongCycle =
                 _cachedCycleLength > 0f
@@ -153,31 +148,68 @@ namespace NADA.VFX.Modules.Motion
             Vector3 currentHeadLocalPosition =
                 EvaluateHeadLocalPositionAtDistance(currentDistanceAlongCycle);
 
-            // Locked head motion root still follows the true orbit path.
             transform.localPosition = currentHeadLocalPosition;
 
-            // Record carrier-frame history after the motion root has updated.
             RecordParentWorldHistory();
 
-            // Visible head is blended between lagged carrier frame and locked carrier frame.
             ApplyHeadVisualPosition(
                 currentDistanceAlongCycle,
                 orbitAdherence);
 
             ApplyFollowerPositions(
                 desiredFollowerCount,
-                _currentHistoryStepPerFollower,
+                historyStepPerFollower,
                 currentDistanceAlongCycle,
                 orbitAdherence);
         }
+
+        private void AdvanceCycleProgress(float cycleProgressPerSecond)
+        {
+            if (!_hasCurrentCycleProgress01)
+            {
+                _currentCycleProgress01 = 0f;
+                _hasCurrentCycleProgress01 = true;
+                return;
+            }
+
+            _currentCycleProgress01 = Mathf.Repeat(
+                _currentCycleProgress01 + (cycleProgressPerSecond * Time.deltaTime),
+                1f);
+        }
+
+        private float SmoothHistoryStepPerFollower(float targetHistoryStepPerFollower)
+        {
+            if (!_hasCurrentHistoryStepPerFollower)
+            {
+                _currentHistoryStepPerFollower = targetHistoryStepPerFollower;
+                _hasCurrentHistoryStepPerFollower = true;
+                return _currentHistoryStepPerFollower;
+            }
+
+            float smoothingSpeed =
+                targetHistoryStepPerFollower > _currentHistoryStepPerFollower ? 4f : 10f;
+
+            _currentHistoryStepPerFollower = Mathf.Lerp(
+                _currentHistoryStepPerFollower,
+                targetHistoryStepPerFollower,
+                1f - Mathf.Exp(-smoothingSpeed * Time.deltaTime));
+
+            return _currentHistoryStepPerFollower;
+        }
+
+        // Visual chain
 
         private void ResolveVisualChain()
         {
             _followerVisualTransforms.Clear();
             _initialized = false;
 
-            if (!_configuredVisualChain || _headVisualTransform == null || _followerPoolRootTransform == null)
+            if (!_configuredVisualChain ||
+                _headVisualTransform == null ||
+                _followerPoolRootTransform == null)
+            {
                 return;
+            }
 
             foreach (Transform childTransform in _followerPoolRootTransform)
             {
@@ -186,6 +218,68 @@ namespace NADA.VFX.Modules.Motion
             }
 
             _initialized = true;
+        }
+
+        private void ApplyHeadVisualEnabledState(bool enabled)
+        {
+            if (_headVisualTransform == null)
+                return;
+
+            if (_headVisualTransform.gameObject.activeSelf != enabled)
+                _headVisualTransform.gameObject.SetActive(enabled);
+        }
+
+        private void ApplyFollowerVisualCount(int desiredFollowerCount)
+        {
+            desiredFollowerCount = Mathf.Clamp(
+                desiredFollowerCount,
+                0,
+                MaxOrbitalsVisuals - 1);
+
+            for (int visualIndex = 0; visualIndex < _followerVisualTransforms.Count; visualIndex++)
+            {
+                Transform followerVisualTransform = _followerVisualTransforms[visualIndex];
+                if (followerVisualTransform == null)
+                    continue;
+
+                bool shouldBeActive = visualIndex < desiredFollowerCount;
+                if (followerVisualTransform.gameObject.activeSelf != shouldBeActive)
+                    followerVisualTransform.gameObject.SetActive(shouldBeActive);
+            }
+        }
+
+        private void DisableAllVisualsAndResetState()
+        {
+            ApplyHeadVisualEnabledState(false);
+
+            for (int visualIndex = 0; visualIndex < _followerVisualTransforms.Count; visualIndex++)
+            {
+                Transform followerVisualTransform = _followerVisualTransforms[visualIndex];
+                if (followerVisualTransform != null && followerVisualTransform.gameObject.activeSelf)
+                    followerVisualTransform.gameObject.SetActive(false);
+            }
+
+            _currentCycleProgress01 = 0f;
+            _hasCurrentCycleProgress01 = false;
+
+            _currentHistoryStepPerFollower = 0f;
+            _hasCurrentHistoryStepPerFollower = false;
+
+            _parentWorldPositionHistorySamples.Clear();
+            _parentWorldRotationHistorySamples.Clear();
+        }
+
+        // Config-facing resolvers
+
+        private VfxState ResolveState()
+        {
+            if (_itemData != null && VfxStateIO.IsBound(_itemData))
+            {
+                if (VfxStateIO.TryRead(_itemData, out var itemState))
+                    return itemState;
+            }
+
+            return VfxStateIO.FromConfig();
         }
 
         private bool ResolveFamilyEnabled(VfxState state)
@@ -199,7 +293,7 @@ namespace NADA.VFX.Modules.Motion
             };
         }
 
-        private int ResolveDesiredVisualCount(VfxState state)
+        private int ResolveDesiredFollowerCount(VfxState state)
         {
             float normalizedCount = _orbitalsFamily switch
             {
@@ -210,7 +304,14 @@ namespace NADA.VFX.Modules.Motion
             };
 
             normalizedCount = Mathf.Clamp01(normalizedCount);
-            return 1 + Mathf.RoundToInt(normalizedCount * (MaxOrbitalsVisuals - 1));
+
+            int desiredTotalVisualCount =
+                1 + Mathf.RoundToInt(normalizedCount * (MaxOrbitalsVisuals - 1));
+
+            return Mathf.Clamp(
+                desiredTotalVisualCount - 1,
+                0,
+                MaxOrbitalsVisuals - 1);
         }
 
         private float ResolveHistoryStepPerFollowerFloat(VfxState state)
@@ -241,6 +342,25 @@ namespace NADA.VFX.Modules.Motion
                 spacingT);
         }
 
+        private float ResolveRadiusMultiplier(VfxState state)
+        {
+            float value = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsRadius,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesRadius,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersRadius,
+                _ => PluginConfig.DefaultOrbitalsRadiusMultiplier
+            };
+
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultOrbitalsRadiusMultiplier;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinOrbitalsRadiusMultiplier,
+                PluginConfig.MaxOrbitalsRadiusMultiplier);
+        }
+
         private float ResolveOrbitLengthMultiplier(VfxState state)
         {
             float value = _orbitalsFamily switch
@@ -258,25 +378,6 @@ namespace NADA.VFX.Modules.Motion
                 value,
                 PluginConfig.MinOrbitalsLength,
                 PluginConfig.MaxOrbitalsLength);
-        }
-
-        private float ResolveCycleProgressPerSecond(VfxState state)
-        {
-            float value = _orbitalsFamily switch
-            {
-                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsSpeed,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesSpeed,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersSpeed,
-                _ => DefaultCycleProgressPerSecond
-            };
-
-            if (float.IsNaN(value) || float.IsInfinity(value))
-                return DefaultCycleProgressPerSecond;
-
-            return Mathf.Clamp(
-                value,
-                PluginConfig.MinOrbitalsSpeed,
-                PluginConfig.MaxOrbitalsSpeed);
         }
 
         private float ResolveTurnsPerOneWayPass(VfxState state)
@@ -298,23 +399,23 @@ namespace NADA.VFX.Modules.Motion
                 PluginConfig.MaxOrbitalsCycles);
         }
 
-        private float ResolveRadiusMultiplier(VfxState state)
+        private float ResolveCycleProgressPerSecond(VfxState state)
         {
             float value = _orbitalsFamily switch
             {
-                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsRadius,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesRadius,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersRadius,
-                _ => PluginConfig.DefaultOrbitalsRadiusMultiplier
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsSpeed,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesSpeed,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersSpeed,
+                _ => DefaultCycleProgressPerSecond
             };
 
             if (float.IsNaN(value) || float.IsInfinity(value))
-                return PluginConfig.DefaultOrbitalsRadiusMultiplier;
+                return DefaultCycleProgressPerSecond;
 
             return Mathf.Clamp(
                 value,
-                PluginConfig.MinOrbitalsRadiusMultiplier,
-                PluginConfig.MaxOrbitalsRadiusMultiplier);
+                PluginConfig.MinOrbitalsSpeed,
+                PluginConfig.MaxOrbitalsSpeed);
         }
 
         private float ResolveOrbitAdherence()
@@ -328,17 +429,8 @@ namespace NADA.VFX.Modules.Motion
             };
         }
 
-        private VfxState ResolveState()
-        {
-            if (_itemData != null && VfxStateIO.IsBound(_itemData))
-            {
-                if (VfxStateIO.TryRead(_itemData, out var itemState))
-                    return itemState;
-            }
+        // Path cache / evaluation
 
-            return VfxStateIO.FromConfig();
-        }
-        
         private void EnsureArcLengthCache(
             float radiusMultiplier,
             float orbitLengthMultiplier,
@@ -368,11 +460,13 @@ namespace NADA.VFX.Modules.Motion
 
         private Vector3 EvaluateHeadLocalPositionAtDistance(float distanceAlongCycle)
         {
-            if (!_hasArcLengthCache || _sampledLocalPositions.Count == 0 || _sampledCumulativeLengths.Count == 0)
+            if (!_hasArcLengthCache ||
+                _sampledLocalPositions.Count == 0 ||
+                _sampledCumulativeLengths.Count == 0 ||
+                _cachedCycleLength <= 0f)
+            {
                 return _baseHeadLocalPosition;
-
-            if (_cachedCycleLength <= 0f)
-                return _baseHeadLocalPosition;
+            }
 
             float wrappedDistance = Mathf.Repeat(distanceAlongCycle, _cachedCycleLength);
 
@@ -445,50 +539,7 @@ namespace NADA.VFX.Modules.Motion
             return EvaluateHeadWorldPositionAtDistance(currentDistanceAlongCycle - distanceOffset);
         }
 
-        private void ApplyHeadVisualEnabledState(bool enabled)
-        {
-            if (_headVisualTransform == null)
-                return;
-
-            if (_headVisualTransform.gameObject.activeSelf != enabled)
-                _headVisualTransform.gameObject.SetActive(enabled);
-        }
-
-        private void ApplyFollowerVisualCount(int desiredFollowerCount)
-        {
-            desiredFollowerCount = Mathf.Clamp(desiredFollowerCount, 0, MaxOrbitalsVisuals - 1);
-
-            for (int visualIndex = 0; visualIndex < _followerVisualTransforms.Count; visualIndex++)
-            {
-                Transform followerVisualTransform = _followerVisualTransforms[visualIndex];
-                if (followerVisualTransform == null)
-                    continue;
-
-                bool shouldBeActive = visualIndex < desiredFollowerCount;
-                if (followerVisualTransform.gameObject.activeSelf != shouldBeActive)
-                    followerVisualTransform.gameObject.SetActive(shouldBeActive);
-            }
-        }
-
-        private void DisableAllVisualsAndResetState()
-        {
-            ApplyHeadVisualEnabledState(false);
-
-            for (int visualIndex = 0; visualIndex < _followerVisualTransforms.Count; visualIndex++)
-            {
-                Transform followerVisualTransform = _followerVisualTransforms[visualIndex];
-                if (followerVisualTransform != null && followerVisualTransform.gameObject.activeSelf)
-                    followerVisualTransform.gameObject.SetActive(false);
-            }
-
-            _currentCycleProgress01 = 0f;
-            _hasCurrentCycleProgress01 = false;
-            _currentHistoryStepPerFollower = 0f;
-            _hasCurrentHistoryStepPerFollower = false;
-
-            _parentWorldPositionHistorySamples.Clear();
-            _parentWorldRotationHistorySamples.Clear();
-        }
+        // World placement / drift
 
         private void ApplyHeadVisualPosition(
             float currentDistanceAlongCycle,
@@ -506,7 +557,7 @@ namespace NADA.VFX.Modules.Motion
                 return;
             }
 
-            float headHistorySampleIndex = 1f;
+            const float headHistorySampleIndex = 1f;
 
             Vector3 driftedHeadWorldPosition =
                 EvaluateDriftedWorldPosition(
@@ -527,9 +578,16 @@ namespace NADA.VFX.Modules.Motion
             float currentDistanceAlongCycle,
             float orbitAdherence)
         {
-            desiredFollowerCount = Mathf.Clamp(desiredFollowerCount, 0, MaxOrbitalsVisuals - 1);
+            desiredFollowerCount = Mathf.Clamp(
+                desiredFollowerCount,
+                0,
+                MaxOrbitalsVisuals - 1);
 
-            for (int visibleIndex = 0; visibleIndex < desiredFollowerCount; visibleIndex++)
+            int availableFollowerCount = Mathf.Min(
+                desiredFollowerCount,
+                _followerVisualTransforms.Count);
+
+            for (int visibleIndex = 0; visibleIndex < availableFollowerCount; visibleIndex++)
             {
                 Transform followerVisualTransform = _followerVisualTransforms[visibleIndex];
                 if (followerVisualTransform == null)
@@ -555,19 +613,19 @@ namespace NADA.VFX.Modules.Motion
                 float followerDistanceOffset =
                     EvaluateFollowerDistanceOffset(followerIndex, historyStepPerFollower);
 
-                float followerDistanceAlongCycle = currentDistanceAlongCycle - followerDistanceOffset;
+                float followerDistanceAlongCycle =
+                    currentDistanceAlongCycle - followerDistanceOffset;
 
                 Vector3 driftedWorldPosition =
                     EvaluateDriftedWorldPosition(
                         followerDistanceAlongCycle,
                         historySampleIndex);
 
-                Vector3 finalWorldPosition = Vector3.Lerp(
+                followerVisualTransform.position = Vector3.Lerp(
                     driftedWorldPosition,
                     lockedWorldPosition,
                     orbitAdherence);
 
-                followerVisualTransform.position = finalWorldPosition;
                 followerVisualTransform.rotation = Quaternion.identity;
             }
         }

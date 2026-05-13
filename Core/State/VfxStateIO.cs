@@ -524,7 +524,7 @@ namespace NADA.VFX.Core.State
                 FlarePosition = PluginConfig.DefaultFlamePosition,
 
                 AuraEnabled = true,
-                AuraScale = 1f,
+                AuraScale = PluginConfig.DefaultAuraScale,
                 AuraHue = PluginConfig.DefaultHue,
 
                 OrbitalsOrbsEnabled = true,

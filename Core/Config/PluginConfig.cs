@@ -156,9 +156,9 @@ namespace NADA.VFX.Core.Config
         internal const float MaxSparksWidth = 1.75f;
         internal const float DefaultSparksWidth = 1.00f;
         
-        internal const float MinAuraScale = 1.25f;
-        internal const float MaxAuraScale = 3.25f;
-        internal const float DefaultAuraScale = 2.25f;
+        internal const float MinAuraScale = 1.10f;
+        internal const float MaxAuraScale = 2.10f;
+        internal const float DefaultAuraScale = 1.6f;
         
         internal const float MinLifetime = 0.25f;
         internal const float MaxLifetime = 1.75f;

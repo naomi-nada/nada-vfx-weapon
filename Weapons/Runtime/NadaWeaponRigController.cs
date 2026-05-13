@@ -22,9 +22,7 @@ namespace NADA.VFX.Weapons.Runtime
             if (weaponVisualRootTransform == null)
                 return false;
 
-            Transform attachTarget =
-                NadaWeaponTargets.FindVisualMeshRoot(weaponVisualRootTransform)
-                ?? weaponVisualRootTransform;
+            Transform attachTarget = weaponVisualRootTransform;
 
             Transform existingRoot =
                 NadaRigPaths.FindDirectChild(
@@ -92,9 +90,7 @@ namespace NADA.VFX.Weapons.Runtime
             if (!VfxStateIO.IsBound(itemData))
                 return false;
 
-            Transform attachTarget =
-                NadaWeaponTargets.FindVisualMeshRoot(root.transform)
-                ?? root.transform;
+            Transform attachTarget = root.transform;
 
             Transform existingRoot =
                 NadaRigPaths.FindDirectChild(

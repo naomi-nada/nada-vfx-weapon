@@ -12,12 +12,6 @@ namespace NADA.VFX.Modules.Motion
 
         private global::ItemDrop.ItemData _itemData;
 
-        private sealed class CachedParticle
-        {
-            public ParticleSystem System;
-            public ParticleSystem.VelocityOverLifetimeModule Velocity;
-        }
-
         private readonly List<CachedParticle> _particles = new();
 
         private Vector3 _lastWorldPosition;
@@ -25,9 +19,15 @@ namespace NADA.VFX.Modules.Motion
         private Vector3 _smoothedVelocity;
         private bool _initialized;
 
-        private ParticleSystem.MinMaxCurve _xCurve;
-        private ParticleSystem.MinMaxCurve _yCurve;
-        private ParticleSystem.MinMaxCurve _zCurve;
+        private ParticleSystem.MinMaxCurve _xCurve = new(0f);
+        private ParticleSystem.MinMaxCurve _yCurve = new(0f);
+        private ParticleSystem.MinMaxCurve _zCurve = new(0f);
+
+        private sealed class CachedParticle
+        {
+            public ParticleSystem System;
+            public ParticleSystem.VelocityOverLifetimeModule Velocity;
+        }
 
         internal void SetItemData(global::ItemDrop.ItemData itemData)
         {
@@ -47,14 +47,33 @@ namespace NADA.VFX.Modules.Motion
             if (_particles.Count == 0)
                 return;
 
+            Vector3 weaponVelocity = CalculateSmoothedWeaponVelocity();
+
+            if (!NadaMotionTuningResolver.GetOuterFlamesDragEnabled(_itemData))
+            {
+                ApplyDragVelocity(Vector3.zero, 0f);
+                return;
+            }
+
+            ApplyDragVelocity(
+                weaponVelocity,
+                ResolveDragStrength());
+        }
+
+        private Vector3 CalculateSmoothedWeaponVelocity()
+        {
             Vector3 currentWorldPosition = transform.position;
             Vector3 weaponVelocity = Vector3.zero;
 
             if (_hasLastWorldPosition)
             {
                 float deltaTime = Mathf.Max(Time.deltaTime, 0.0001f);
-                weaponVelocity = (currentWorldPosition - _lastWorldPosition) / deltaTime;
-                weaponVelocity = Vector3.ClampMagnitude(weaponVelocity, MaxTrackedVelocity);
+
+                weaponVelocity =
+                    (currentWorldPosition - _lastWorldPosition) / deltaTime;
+
+                weaponVelocity =
+                    Vector3.ClampMagnitude(weaponVelocity, MaxTrackedVelocity);
             }
 
             _lastWorldPosition = currentWorldPosition;
@@ -65,14 +84,7 @@ namespace NADA.VFX.Modules.Motion
                 weaponVelocity,
                 Time.deltaTime * VelocitySmoothing);
 
-            if (!NadaMotionTuningResolver.GetOuterFlamesDragEnabled(_itemData))
-            {
-                ApplyDragVelocity(Vector3.zero, 0f);
-                return;
-            }
-
-            float dragStrength = ResolveDragStrength();
-            ApplyDragVelocity(_smoothedVelocity, dragStrength);
+            return _smoothedVelocity;
         }
 
         private void RebuildParticleSystems()
@@ -104,7 +116,8 @@ namespace NADA.VFX.Modules.Motion
 
         private float ResolveDragStrength()
         {
-            float tunedValue = NadaMotionTuningResolver.GetOuterFlamesDrag(_itemData);
+            float tunedValue =
+                NadaMotionTuningResolver.GetOuterFlamesDrag(_itemData);
 
             if (float.IsNaN(tunedValue) || float.IsInfinity(tunedValue))
                 return DefaultDragStrength;

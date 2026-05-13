@@ -27,6 +27,9 @@ namespace NADA.VFX.Weapons.Patches
                 if (__instance == null)
                     return;
                 
+                if (!IsAllowedRigOwner(__instance))
+                    return;
+                
                 if (Player.m_localPlayer == null &&
                     PluginConfig.CharacterSelectionVisibility.Value)
                 {
@@ -83,6 +86,25 @@ namespace NADA.VFX.Weapons.Patches
             {
                 return null;
             }
+        }
+        
+        private static bool IsAllowedRigOwner(global::VisEquipment visEquipment)
+        {
+            if (visEquipment == null)
+                return false;
+
+            if (Player.m_localPlayer != null)
+                return visEquipment.transform.IsChildOf(Player.m_localPlayer.transform);
+
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "start")
+                return false;
+
+            Transform root = visEquipment.transform;
+
+            while (root.parent != null)
+                root = root.parent;
+
+            return root.name.StartsWith("Player", System.StringComparison.Ordinal);
         }
     }
 }

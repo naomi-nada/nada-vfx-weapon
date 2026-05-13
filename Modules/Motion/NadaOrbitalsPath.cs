@@ -5,17 +5,20 @@ namespace NADA.VFX.Modules.Motion
 {
     internal static class NadaOrbitalsPath
     {
-        internal const float DefaultTravelLength = 2.0f;
-        internal const float DefaultSpiralRadius = 0.35f;
-        internal const float DefaultBladeCenterOffset = 0.0f;
-
-        internal const float DefaultOneWayPassDuration = 5.0f;
-        internal const float DefaultTurnDuration = 0.80f;
+        // Config-facing defaults
+        internal const float DefaultOrbitLengthMultiplier = 1.0f;
         internal const float DefaultTurnsPerOneWayPass = 2.0f;
 
-        internal const float DefaultOrbitLengthMultiplier = 1.0f;
+        // Path shape defaults
+        private const float DefaultTravelLength = 2.0f;
+        private const float DefaultSpiralRadius = 0.35f;
+        private const float DefaultBladeCenterOffset = 0.0f;
 
-        internal const float DefaultCycleDurationSeconds =
+        // Cycle shape defaults
+        private const float DefaultOneWayPassDuration = 5.0f;
+        private const float DefaultTurnDuration = 0.80f;
+
+        private const float DefaultCycleDurationSeconds =
             (DefaultOneWayPassDuration * 2f) +
             (DefaultTurnDuration * 2f);
 
@@ -31,65 +34,17 @@ namespace NADA.VFX.Modules.Motion
             float halfLength = (DefaultTravelLength * orbitLengthMultiplier) * 0.5f;
             float spiralRadius = DefaultSpiralRadius * radiusMultiplier;
 
-            float totalDuration = DefaultCycleDurationSeconds;
+            float upFraction = DefaultOneWayPassDuration / DefaultCycleDurationSeconds;
+            float turnFraction = DefaultTurnDuration / DefaultCycleDurationSeconds;
 
-            float upFraction = DefaultOneWayPassDuration / totalDuration;
-            float topTurnFraction = DefaultTurnDuration / totalDuration;
-            float downFraction = DefaultOneWayPassDuration / totalDuration;
-            float bottomTurnFraction = DefaultTurnDuration / totalDuration;
-
-            Vector3 localOffset;
-
-            if (cycleT < upFraction)
-            {
-                float segmentT = cycleT / upFraction;
-
-                float y = Mathf.Lerp(-halfLength, halfLength, segmentT) + DefaultBladeCenterOffset;
-                float angle = segmentT * turnsPerOneWayPass * Mathf.PI * 2f;
-
-                float x = Mathf.Cos(angle) * spiralRadius;
-                float z = Mathf.Sin(angle) * spiralRadius;
-
-                localOffset = new Vector3(x, y, z);
-            }
-            else if (cycleT < upFraction + topTurnFraction)
-            {
-                float segmentT = (cycleT - upFraction) / topTurnFraction;
-
-                float startAngle = turnsPerOneWayPass * Mathf.PI * 2f;
-                float angle = startAngle + (segmentT * Mathf.PI);
-
-                float x = Mathf.Cos(angle) * spiralRadius;
-                float z = Mathf.Sin(angle) * spiralRadius;
-                float y = halfLength + DefaultBladeCenterOffset;
-
-                localOffset = new Vector3(x, y, z);
-            }
-            else if (cycleT < upFraction + topTurnFraction + downFraction)
-            {
-                float segmentT = (cycleT - upFraction - topTurnFraction) / downFraction;
-
-                float y = Mathf.Lerp(halfLength, -halfLength, segmentT) + DefaultBladeCenterOffset;
-                float angle = Mathf.PI + (segmentT * turnsPerOneWayPass * Mathf.PI * 2f);
-
-                float x = Mathf.Cos(angle) * spiralRadius;
-                float z = Mathf.Sin(angle) * spiralRadius;
-
-                localOffset = new Vector3(x, y, z);
-            }
-            else
-            {
-                float segmentT = (cycleT - upFraction - topTurnFraction - downFraction) / bottomTurnFraction;
-
-                float startAngle = Mathf.PI + (turnsPerOneWayPass * Mathf.PI * 2f);
-                float angle = startAngle + (segmentT * Mathf.PI);
-
-                float x = Mathf.Cos(angle) * spiralRadius;
-                float z = Mathf.Sin(angle) * spiralRadius;
-                float y = -halfLength + DefaultBladeCenterOffset;
-
-                localOffset = new Vector3(x, y, z);
-            }
+            Vector3 localOffset =
+                EvaluateCycleSegment(
+                    cycleT,
+                    halfLength,
+                    spiralRadius,
+                    turnsPerOneWayPass,
+                    upFraction,
+                    turnFraction);
 
             return baseLocalPosition + localOffset;
         }
@@ -139,6 +94,92 @@ namespace NADA.VFX.Modules.Motion
             }
 
             return totalLength;
+        }
+
+        private static Vector3 EvaluateCycleSegment(
+            float cycleT,
+            float halfLength,
+            float spiralRadius,
+            float turnsPerOneWayPass,
+            float upFraction,
+            float turnFraction)
+        {
+            float downStart = upFraction + turnFraction;
+            float bottomTurnStart = downStart + upFraction;
+
+            if (cycleT < upFraction)
+            {
+                float segmentT = cycleT / upFraction;
+                return EvaluateSpiralPass(
+                    segmentT,
+                    -halfLength,
+                    halfLength,
+                    0f,
+                    turnsPerOneWayPass,
+                    spiralRadius);
+            }
+
+            if (cycleT < downStart)
+            {
+                float segmentT = (cycleT - upFraction) / turnFraction;
+                return EvaluateTurn(
+                    segmentT,
+                    halfLength,
+                    turnsPerOneWayPass * Mathf.PI * 2f,
+                    spiralRadius);
+            }
+
+            if (cycleT < bottomTurnStart)
+            {
+                float segmentT = (cycleT - downStart) / upFraction;
+                return EvaluateSpiralPass(
+                    segmentT,
+                    halfLength,
+                    -halfLength,
+                    Mathf.PI,
+                    turnsPerOneWayPass,
+                    spiralRadius);
+            }
+
+            {
+                float segmentT = (cycleT - bottomTurnStart) / turnFraction;
+                return EvaluateTurn(
+                    segmentT,
+                    -halfLength,
+                    Mathf.PI + (turnsPerOneWayPass * Mathf.PI * 2f),
+                    spiralRadius);
+            }
+        }
+
+        private static Vector3 EvaluateSpiralPass(
+            float segmentT,
+            float startY,
+            float endY,
+            float startAngle,
+            float turnsPerOneWayPass,
+            float spiralRadius)
+        {
+            float y = Mathf.Lerp(startY, endY, segmentT) + DefaultBladeCenterOffset;
+            float angle = startAngle + (segmentT * turnsPerOneWayPass * Mathf.PI * 2f);
+
+            return new Vector3(
+                Mathf.Cos(angle) * spiralRadius,
+                y,
+                Mathf.Sin(angle) * spiralRadius);
+        }
+
+        private static Vector3 EvaluateTurn(
+            float segmentT,
+            float y,
+            float startAngle,
+            float spiralRadius)
+        {
+            float angle = startAngle + (segmentT * Mathf.PI);
+
+            return new Vector3(
+                Mathf.Cos(angle) * spiralRadius,
+                y + DefaultBladeCenterOffset,
+                Mathf.Sin(angle) * spiralRadius);
         }
     }
 }

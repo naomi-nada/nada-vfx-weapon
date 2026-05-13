@@ -1,17 +1,23 @@
-using UnityEngine;
-using NADA.VFX.Runtime.Binding;
+using System.Collections.Generic;
+using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
 using NADA.VFX.Core.Visuals;
-using NADA.VFX.Core.Config;
+using NADA.VFX.Runtime.Binding;
+using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
 {
     internal sealed class NadaAuraEffect : MonoBehaviour, INadaItemDataReceiver
     {
+        private static readonly Color BaseAuraColor =
+            new(0.925f, 0.157f, 0.953f, 0.03f);
+
         private global::ItemDrop.ItemData _itemData;
 
-        private Transform AuraSearchRoot =>
-            transform.parent != null ? transform.parent : transform;
+        private readonly List<Renderer> _auraRenderers = new();
+        private readonly List<NadaAuraShell> _auraShells = new();
+
+        private bool _componentCacheDirty = true;
 
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
@@ -20,6 +26,9 @@ namespace NADA.VFX.Modules.Effects
 
         private void Awake()
         {
+            RebuildComponentCache();
+            _componentCacheDirty = false;
+
             InvokeRepeating(nameof(TickApply), 0f, 0.05f);
         }
 
@@ -30,6 +39,12 @@ namespace NADA.VFX.Modules.Effects
 
         private void TickApply()
         {
+            if (_componentCacheDirty)
+            {
+                RebuildComponentCache();
+                _componentCacheDirty = false;
+            }
+
             VfxState state = ResolveState();
 
             ApplyEnabled(state.AuraEnabled);
@@ -48,14 +63,48 @@ namespace NADA.VFX.Modules.Effects
             return VfxStateIO.FromConfig();
         }
 
+        private void RebuildComponentCache()
+        {
+            _auraRenderers.Clear();
+            _auraShells.Clear();
+
+            Transform searchRoot = ResolveAuraSearchRoot();
+
+            foreach (Renderer renderer in searchRoot.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer != null && IsAuraRenderer(renderer.transform))
+                    _auraRenderers.Add(renderer);
+            }
+
+            foreach (NadaAuraShell shell in searchRoot.GetComponentsInChildren<NadaAuraShell>(true))
+            {
+                if (shell != null)
+                    _auraShells.Add(shell);
+            }
+        }
+
+        private Transform ResolveAuraSearchRoot()
+        {
+            Transform current = transform;
+
+            while (current != null)
+            {
+                if (current.name == Plugin.LocalWeaponRootName)
+                    return current.parent != null ? current.parent : transform;
+
+                current = current.parent;
+            }
+
+            return transform;
+        }
+
+        // Config-facing apply path
+
         private void ApplyEnabled(bool enabled)
         {
-            foreach (Renderer renderer in AuraSearchRoot.GetComponentsInChildren<Renderer>(true))
+            foreach (Renderer renderer in _auraRenderers)
             {
                 if (renderer == null)
-                    continue;
-
-                if (!IsAuraRenderer(renderer.transform))
                     continue;
 
                 renderer.enabled = enabled;
@@ -66,25 +115,27 @@ namespace NADA.VFX.Modules.Effects
         {
             float targetHue = NadaHueShiftUtility.SliderValueToTargetHue(hue);
 
-            foreach (Renderer renderer in AuraSearchRoot.GetComponentsInChildren<Renderer>(true))
+            Color tintedColor =
+                NadaHueShiftUtility.RetintColorToHue(BaseAuraColor, targetHue);
+
+            foreach (Renderer renderer in _auraRenderers)
             {
                 if (renderer == null)
                     continue;
 
-                if (!IsAuraRenderer(renderer.transform))
+                Material[] materials = renderer.materials;
+                if (materials == null)
                     continue;
 
-                Material material = renderer.material;
-                if (material == null)
-                    continue;
-
-                if (material.HasProperty("_TintColor"))
+                foreach (Material material in materials)
                 {
-                    Color baseColor = new Color(0.925f, 0.157f, 0.953f, 0.03f);
+                    if (material == null)
+                        continue;
 
-                    material.SetColor(
-                        "_TintColor",
-                        NadaHueShiftUtility.RetintColorToHue(baseColor, targetHue));
+                    if (!material.HasProperty("_TintColor"))
+                        continue;
+
+                    material.SetColor("_TintColor", tintedColor);
                 }
             }
         }
@@ -96,56 +147,54 @@ namespace NADA.VFX.Modules.Effects
                 PluginConfig.MinAuraScale,
                 PluginConfig.MaxAuraScale);
 
-            foreach (Transform shellTransform in AuraSearchRoot.GetComponentsInChildren<Transform>(true))
+            foreach (NadaAuraShell shell in _auraShells)
             {
-                if (shellTransform == null)
+                if (shell == null)
                     continue;
 
-                if (!shellTransform.name.StartsWith("Aura Shell", System.StringComparison.Ordinal))
-                    continue;
-
-                Transform sourceTransform = shellTransform.parent;
-                if (sourceTransform == null)
-                    continue;
-
-                MeshFilter sourceFilter = sourceTransform.GetComponent<MeshFilter>();
-                if (sourceFilter == null || sourceFilter.sharedMesh == null)
-                    continue;
-
-                shellTransform.localScale =
-                    BuildAuraShellScale(sourceFilter.sharedMesh.bounds.size, clampedScale);
+                ApplyShellScale(shell, clampedScale);
             }
         }
 
-        private static bool IsAuraRenderer(Transform transform)
+        private static void ApplyShellScale(
+            NadaAuraShell shell,
+            float clampedScale)
         {
-            if (transform == null)
-                return false;
+            Transform scalePivot = shell.transform.parent;
 
-            if (transform.name == "Aura Mesh")
-                return true;
+            if (scalePivot != null &&
+                scalePivot.name.StartsWith("Aura Shell", System.StringComparison.Ordinal))
+            {
+                scalePivot.localScale = shell.UsesReadableMesh
+                    ? shell.BasePivotLocalScale
+                    : BuildBoundsAwareUnreadableScale(
+                        shell.BasePivotLocalScale,
+                        shell.SourceBoundsSize,
+                        clampedScale);
+            }
 
-            Transform parent = transform.parent;
-            return parent != null &&
-                   parent.name.StartsWith("Aura Shell", System.StringComparison.Ordinal);
+            shell.transform.localScale = Vector3.one;
+
+            if (shell.UsesReadableMesh)
+                shell.ApplyScale(clampedScale);
         }
 
-        private static Vector3 BuildAuraShellScale(Vector3 meshSize, float scaleValue)
+        private static Vector3 BuildBoundsAwareUnreadableScale(
+            Vector3 basePivotScale,
+            Vector3 boundsSize,
+            float scale)
         {
-            Vector3 scale = Vector3.one;
+            float delta = scale - 1f;
 
-            int lengthAxis = GetLargestAxis(meshSize);
+            int longAxis = GetLargestAxis(boundsSize);
 
-            if (lengthAxis != 0)
-                scale.x = scaleValue;
+            Vector3 weights = Vector3.one;
+            weights[longAxis] = 0.15f;
 
-            if (lengthAxis != 1)
-                scale.y = scaleValue;
-
-            if (lengthAxis != 2)
-                scale.z = scaleValue;
-
-            return scale;
+            return new Vector3(
+                basePivotScale.x * (1f + delta * weights.x),
+                basePivotScale.y * (1f + delta * weights.y),
+                basePivotScale.z * (1f + delta * weights.z));
         }
 
         private static int GetLargestAxis(Vector3 value)
@@ -157,6 +206,23 @@ namespace NADA.VFX.Modules.Effects
                 return 1;
 
             return 2;
+        }
+
+        private static bool IsAuraRenderer(Transform transform)
+        {
+            if (transform == null)
+                return false;
+
+            if (transform.name == "Aura Mesh")
+                return true;
+
+            if (transform.name.StartsWith("Aura Shell", System.StringComparison.Ordinal))
+                return true;
+
+            Transform parent = transform.parent;
+
+            return parent != null &&
+                   parent.name.StartsWith("Aura Shell", System.StringComparison.Ordinal);
         }
     }
 }
