@@ -48,6 +48,8 @@ namespace NADA.VFX.Modules.Motion
 
         // Motion state
         private Vector3 _baseHeadLocalPosition;
+        private Vector3 _currentLocalOffset;
+        private Quaternion _currentLocalRotationOffset = Quaternion.identity;
 
         private float _currentCycleProgress01;
         private bool _hasCurrentCycleProgress01;
@@ -123,6 +125,9 @@ namespace NADA.VFX.Modules.Motion
             float radiusMultiplier = ResolveRadiusMultiplier(state);
             float orbitLengthMultiplier = ResolveOrbitLengthMultiplier(state);
             float turnsPerOneWayPass = ResolveTurnsPerOneWayPass(state);
+            
+            _currentLocalOffset = ResolveLocalOffset(state);
+            _currentLocalRotationOffset = ResolveLocalRotationOffset(state);
 
             EnsureArcLengthCache(
                 radiusMultiplier,
@@ -332,7 +337,6 @@ namespace NADA.VFX.Modules.Motion
                     state.OrbitalsEmbersSpacing,
                     PluginConfig.MinOrbitalsSpacing,
                     PluginConfig.MaxOrbitalsSpacing),
-
                 _ => 0f
             };
 
@@ -460,12 +464,15 @@ namespace NADA.VFX.Modules.Motion
 
         private Vector3 EvaluateHeadLocalPositionAtDistance(float distanceAlongCycle)
         {
+            Vector3 basePosition =
+                _baseHeadLocalPosition + _currentLocalOffset;
+
             if (!_hasArcLengthCache ||
                 _sampledLocalPositions.Count == 0 ||
                 _sampledCumulativeLengths.Count == 0 ||
                 _cachedCycleLength <= 0f)
             {
-                return _baseHeadLocalPosition;
+                return basePosition;
             }
 
             float wrappedDistance = Mathf.Repeat(distanceAlongCycle, _cachedCycleLength);
@@ -475,10 +482,10 @@ namespace NADA.VFX.Modules.Motion
                 upperIndex = ~upperIndex;
 
             if (upperIndex <= 0)
-                return _baseHeadLocalPosition + _sampledLocalPositions[0];
+                return basePosition + (_currentLocalRotationOffset * _sampledLocalPositions[0]);
 
             if (upperIndex >= _sampledCumulativeLengths.Count)
-                return _baseHeadLocalPosition + _sampledLocalPositions[_sampledLocalPositions.Count - 1];
+                return basePosition + (_currentLocalRotationOffset * _sampledLocalPositions[_sampledLocalPositions.Count - 1]);
 
             int lowerIndex = upperIndex - 1;
 
@@ -494,18 +501,7 @@ namespace NADA.VFX.Modules.Motion
                 _sampledLocalPositions[upperIndex],
                 interpolationT);
 
-            return _baseHeadLocalPosition + localPosition;
-        }
-
-        private Vector3 EvaluateHeadWorldPositionAtDistance(float distanceAlongCycle)
-        {
-            Vector3 localPosition = EvaluateHeadLocalPositionAtDistance(distanceAlongCycle);
-
-            Transform parentTransform = transform.parent;
-            if (parentTransform != null)
-                return parentTransform.TransformPoint(localPosition);
-
-            return localPosition;
+            return basePosition + (_currentLocalRotationOffset * localPosition);
         }
 
         private float EvaluateFollowerDistanceOffset(
@@ -656,6 +652,17 @@ namespace NADA.VFX.Modules.Motion
                     _parentWorldRotationHistorySamples.Count - maxHistorySamples);
             }
         }
+        
+        private Vector3 EvaluateHeadWorldPositionAtDistance(float distanceAlongCycle)
+        {
+            Vector3 localPosition = EvaluateHeadLocalPositionAtDistance(distanceAlongCycle);
+
+            Transform parentTransform = transform.parent;
+            if (parentTransform != null)
+                return parentTransform.TransformPoint(localPosition);
+
+            return localPosition;
+        }
 
         private Vector3 EvaluateDriftedWorldPosition(
             float distanceAlongCycle,
@@ -730,6 +737,92 @@ namespace NADA.VFX.Modules.Motion
                 _parentWorldRotationHistorySamples[lowerIndex],
                 _parentWorldRotationHistorySamples[upperIndex],
                 interpolationT);
+        }
+        
+        private Vector3 ResolveLocalOffset(VfxState state)
+        {
+            float x = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsXOffset,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesXOffset,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersXOffset,
+                _ => PluginConfig.DefaultEffectOffset
+            };
+
+            float y = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsYOffset,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesYOffset,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersYOffset,
+                _ => PluginConfig.DefaultEffectOffset
+            };
+
+            float z = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsZOffset,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesZOffset,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersZOffset,
+                _ => PluginConfig.DefaultEffectOffset
+            };
+
+            return new Vector3(
+                ClampOffset(x),
+                ClampOffset(y),
+                ClampOffset(z));
+        }
+        
+        private Quaternion ResolveLocalRotationOffset(VfxState state)
+        {
+            float x = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsXRotation,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesXRotation,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersXRotation,
+                _ => PluginConfig.DefaultEffectRotation
+            };
+
+            float y = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsYRotation,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesYRotation,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersYRotation,
+                _ => PluginConfig.DefaultEffectRotation
+            };
+
+            float z = _orbitalsFamily switch
+            {
+                NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsZRotation,
+                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesZRotation,
+                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersZRotation,
+                _ => PluginConfig.DefaultEffectRotation
+            };
+
+            return Quaternion.Euler(
+                ClampRotation(x),
+                ClampRotation(y),
+                ClampRotation(z));
+        }
+        
+        private static float ClampOffset(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectOffset;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectOffset,
+                PluginConfig.MaxEffectOffset);
+        }
+        
+        private static float ClampRotation(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectRotation;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectRotation,
+                PluginConfig.MaxEffectRotation);
         }
     }
 }

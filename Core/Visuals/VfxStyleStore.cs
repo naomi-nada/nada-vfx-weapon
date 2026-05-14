@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using BepInEx;
 using NADA.VFX.Core.State;
+using UnityEngine;
 
 namespace NADA.VFX.Core.Visuals
 {
@@ -14,8 +14,8 @@ namespace NADA.VFX.Core.Visuals
         private static readonly Dictionary<string, VfxState> Styles =
             new(StringComparer.OrdinalIgnoreCase);
 
-        private static readonly string FilePath =
-            Path.Combine(Paths.ConfigPath, "naomi.nada.vfx.styles.txt");
+        private static readonly string StylesDirectory =
+            Path.Combine(Paths.ConfigPath, "NADA.VFX", "Styles");
 
         internal static IReadOnlyList<string> GetStyleNames()
         {
@@ -57,77 +57,9 @@ namespace NADA.VFX.Core.Visuals
                 return false;
 
             Styles[name] = state;
-            SaveToDisk();
+            SaveStyleToDisk(name, state);
+
             return true;
-        }
-
-        private static void EnsureLoaded()
-        {
-            Plugin.Log?.LogInfo($"{Plugin.ModName}: [Styles] EnsureLoaded() called.");
-
-            if (Styles.Count > 0)
-                return;
-
-            if (!File.Exists(FilePath))
-            {
-                Plugin.Log?.LogWarning(
-                    $"{Plugin.ModName}: [Styles] file not found at '{FilePath}'.");
-                return;
-            }
-
-            try
-            {
-                int loaded = 0;
-                int skipped = 0;
-
-                foreach (string line in File.ReadAllLines(FilePath))
-                {
-                    if (string.IsNullOrWhiteSpace(line))
-                        continue;
-
-                    string[] parts = line.Split('|');
-
-                    if (parts.Length < 2)
-                    {
-                        skipped++;
-                        continue;
-                    }
-
-                    string name = parts[0].Trim();
-                    if (string.IsNullOrWhiteSpace(name))
-                    {
-                        skipped++;
-                        continue;
-                    }
-
-                    Styles[name] = Deserialize(parts);
-                    loaded++;
-                }
-
-                Plugin.Log?.LogInfo(
-                    $"{Plugin.ModName}: [Styles] loaded={loaded} skipped={skipped} file='{FilePath}'.");
-            }
-            catch (Exception e)
-            {
-                Plugin.Log?.LogWarning($"{Plugin.ModName}: Failed to load style file: {e}");
-            }
-        }
-
-        private static void SaveToDisk()
-        {
-            try
-            {
-                var lines = new List<string>();
-
-                foreach (KeyValuePair<string, VfxState> pair in Styles)
-                    lines.Add(Serialize(pair.Key, pair.Value));
-
-                File.WriteAllLines(FilePath, lines);
-            }
-            catch (Exception e)
-            {
-                Plugin.Log?.LogWarning($"{Plugin.ModName}: Failed to save style file: {e}");
-            }
         }
 
         internal static bool Delete(string name)
@@ -145,232 +77,102 @@ namespace NADA.VFX.Core.Visuals
             if (!Styles.Remove(name))
                 return false;
 
-            SaveToDisk();
+            try
+            {
+                string filePath = GetStyleFilePath(name);
+
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log?.LogWarning($"{Plugin.ModName}: Failed to delete style '{name}': {e}");
+            }
+
             return true;
         }
 
-        private static string Serialize(string name, VfxState state)
+        private static void EnsureLoaded()
         {
-            return string.Join("|", new[]
+            if (Styles.Count > 0)
+                return;
+
+            if (!Directory.Exists(StylesDirectory))
+                return;
+
+            try
             {
-                name,
+                int loaded = 0;
+                int skipped = 0;
 
-                F(state.RigRotation),
-                F(state.RigSideRotation),
-                F(state.RigLengthPosition),
-                F(state.RigSidePosition),
+                foreach (string filePath in Directory.GetFiles(StylesDirectory, "*.json"))
+                {
+                    try
+                    {
+                        string json = File.ReadAllText(filePath);
+                        VfxStyleSave save = JsonUtility.FromJson<VfxStyleSave>(json);
 
-                B(state.InnerFlamesEnabled),
-                F(state.InnerFlamesEnergy),
-                F(state.InnerFlamesScale),
-                F(state.InnerFlamesLength),
-                F(state.InnerFlamesHue),
-                F(state.InnerFlamesPosition),
+                        if (save == null || string.IsNullOrWhiteSpace(save.Name))
+                        {
+                            skipped++;
+                            continue;
+                        }
 
-                B(state.OuterFlamesEnabled),
-                B(state.OuterFlamesDragEnabled),
-                F(state.OuterFlamesEnergy),
-                F(state.OuterFlamesScale),
-                F(state.OuterFlamesLength),
-                F(state.OuterFlamesHue),
-                F(state.OuterFlamesPosition),
+                        if (string.Equals(save.Name, DefaultStyleName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            skipped++;
+                            continue;
+                        }
 
-                B(state.SparksEnabled),
-                F(state.SparksEnergy),
-                F(state.SparksScale),
-                F(state.SparksLength),
-                F(state.SparksWidth),
-                F(state.SparksHue),
-                F(state.SparksPosition),
+                        Styles[save.Name.Trim()] = VfxStateIO.FromStyleSave(save);
+                        loaded++;
+                    }
+                    catch
+                    {
+                        skipped++;
+                    }
+                }
 
-                B(state.FlareEnabled),
-                F(state.FlareScale),
-                F(state.FlareHue),
-                F(state.FlarePosition),
-
-                B(state.AuraEnabled),
-                F(state.AuraScale),
-                F(state.AuraHue),
-
-                B(state.OrbitalsOrbsEnabled),
-                F(state.OrbitalsOrbsCount),
-                F(state.OrbitalsOrbsDrift),
-                F(state.OrbitalsOrbsScale),
-                F(state.OrbitalsOrbsHue),
-                F(state.OrbitalsOrbsSpeed),
-                F(state.OrbitalsOrbsSpacing),
-                F(state.OrbitalsOrbsLength),
-                F(state.OrbitalsOrbsRadius),
-                F(state.OrbitalsOrbsCycles),
-                
-                B(state.OrbitalsStrandsEnabled),
-                B(state.OrbitalsStrandsSpectrumEnabled),
-                F(state.OrbitalsStrandsEnergy),
-                F(state.OrbitalsStrandsDrift),
-                F(state.OrbitalsStrandsScaleWhole),
-                F(state.OrbitalsStrandsScaleParts),
-                F(state.OrbitalsStrandsHue),
-                F(state.OrbitalsStrandsSpectrumSpeed),
-                F(state.OrbitalsStrandsSpeed),
-                F(state.OrbitalsStrandsLength),
-                F(state.OrbitalsStrandsRadius),
-                F(state.OrbitalsStrandsPosition),
-                F(state.OrbitalsStrandsLifetime),
-
-                B(state.OrbitalsFlamesEnabled),
-                F(state.OrbitalsFlamesCount),
-                F(state.OrbitalsFlamesEnergy),
-                F(state.OrbitalsFlamesDrift),
-                F(state.OrbitalsFlamesHue),
-                F(state.OrbitalsFlamesSpeed),
-                F(state.OrbitalsFlamesSpacing),
-                F(state.OrbitalsFlamesLength),
-                F(state.OrbitalsFlamesRadius),
-                F(state.OrbitalsFlamesCycles),
-
-                B(state.OrbitalsEmbersEnabled),
-                F(state.OrbitalsEmbersCount),
-                F(state.OrbitalsEmbersEnergy),
-                F(state.OrbitalsEmbersDrift),
-                F(state.OrbitalsEmbersHue),
-                F(state.OrbitalsEmbersSpeed),
-                F(state.OrbitalsEmbersSpacing),
-                F(state.OrbitalsEmbersLength),
-                F(state.OrbitalsEmbersRadius),
-                F(state.OrbitalsEmbersCycles),
-                F(state.OrbitalsEmbersLifetime)
-            });
-        }
-
-        private static VfxState Deserialize(string[] parts)
-        {
-            int i = 1;
-            VfxState defaults = VfxStateIO.FromDefaults();
-
-            return new VfxState
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [Styles] loaded={loaded} skipped={skipped} dir='{StylesDirectory}'.");
+            }
+            catch (Exception e)
             {
-                RigRotation = ReadFloat(parts, ref i, defaults.RigRotation),
-                RigSideRotation = ReadFloat(parts, ref i, defaults.RigSideRotation),
-                RigLengthPosition = ReadFloat(parts, ref i, defaults.RigLengthPosition),
-                RigSidePosition = ReadFloat(parts, ref i, defaults.RigSidePosition),
-
-                InnerFlamesEnabled = ReadBool(parts, ref i, defaults.InnerFlamesEnabled),
-                InnerFlamesEnergy = ReadFloat(parts, ref i, defaults.InnerFlamesEnergy),
-                InnerFlamesScale = ReadFloat(parts, ref i, defaults.InnerFlamesScale),
-                InnerFlamesLength = ReadFloat(parts, ref i, defaults.InnerFlamesLength),
-                InnerFlamesHue = ReadFloat(parts, ref i, defaults.InnerFlamesHue),
-                InnerFlamesPosition = ReadFloat(parts, ref i, defaults.InnerFlamesPosition),
-
-                OuterFlamesEnabled = ReadBool(parts, ref i, defaults.OuterFlamesEnabled),
-                OuterFlamesDragEnabled = ReadBool(parts, ref i, defaults.OuterFlamesDragEnabled),
-                OuterFlamesEnergy = ReadFloat(parts, ref i, defaults.OuterFlamesEnergy),
-                OuterFlamesScale = ReadFloat(parts, ref i, defaults.OuterFlamesScale),
-                OuterFlamesLength = ReadFloat(parts, ref i, defaults.OuterFlamesLength),
-                OuterFlamesHue = ReadFloat(parts, ref i, defaults.OuterFlamesHue),
-                OuterFlamesPosition = ReadFloat(parts, ref i, defaults.OuterFlamesPosition),
-
-                SparksEnabled = ReadBool(parts, ref i, defaults.SparksEnabled),
-                SparksEnergy = ReadFloat(parts, ref i, defaults.SparksEnergy),
-                SparksScale = ReadFloat(parts, ref i, defaults.SparksScale),
-                SparksLength = ReadFloat(parts, ref i, defaults.SparksLength),
-                SparksWidth = ReadFloat(parts, ref i, defaults.SparksWidth),
-                SparksHue = ReadFloat(parts, ref i, defaults.SparksHue),
-                SparksPosition = ReadFloat(parts, ref i, defaults.SparksPosition),
-
-                FlareEnabled = ReadBool(parts, ref i, defaults.FlareEnabled),
-                FlareScale = ReadFloat(parts, ref i, defaults.FlareScale),
-                FlareHue = ReadFloat(parts, ref i, defaults.FlareHue),
-                FlarePosition = ReadFloat(parts, ref i, defaults.FlarePosition),
-
-                AuraEnabled = ReadBool(parts, ref i, defaults.AuraEnabled),
-                AuraScale = ReadFloat(parts, ref i, defaults.AuraScale),
-                AuraHue = ReadFloat(parts, ref i, defaults.AuraHue),
-
-                OrbitalsOrbsEnabled = ReadBool(parts, ref i, defaults.OrbitalsOrbsEnabled),
-                OrbitalsOrbsCount = ReadFloat(parts, ref i, defaults.OrbitalsOrbsCount),
-                OrbitalsOrbsDrift = ReadFloat(parts, ref i, defaults.OrbitalsOrbsDrift),
-                OrbitalsOrbsScale = ReadFloat(parts, ref i, defaults.OrbitalsOrbsScale),
-                OrbitalsOrbsHue = ReadFloat(parts, ref i, defaults.OrbitalsOrbsHue),
-                OrbitalsOrbsSpeed = ReadFloat(parts, ref i, defaults.OrbitalsOrbsSpeed),
-                OrbitalsOrbsSpacing = ReadFloat(parts, ref i, defaults.OrbitalsOrbsSpacing),
-                OrbitalsOrbsLength = ReadFloat(parts, ref i, defaults.OrbitalsOrbsLength),
-                OrbitalsOrbsRadius = ReadFloat(parts, ref i, defaults.OrbitalsOrbsRadius),
-                OrbitalsOrbsCycles = ReadFloat(parts, ref i, defaults.OrbitalsOrbsCycles),
-                
-                OrbitalsStrandsEnabled = ReadBool(parts, ref i, defaults.OrbitalsStrandsEnabled),
-                OrbitalsStrandsSpectrumEnabled = ReadBool(parts, ref i, defaults.OrbitalsStrandsSpectrumEnabled),
-                OrbitalsStrandsEnergy = ReadFloat(parts, ref i, defaults.OrbitalsStrandsEnergy),
-                OrbitalsStrandsDrift =  ReadFloat(parts, ref i, defaults.OrbitalsStrandsDrift),
-                OrbitalsStrandsScaleWhole = ReadFloat(parts, ref i, defaults.OrbitalsStrandsScaleWhole),
-                OrbitalsStrandsScaleParts = ReadFloat(parts, ref i, defaults.OrbitalsStrandsScaleParts),
-                OrbitalsStrandsHue = ReadFloat(parts, ref i, defaults.OrbitalsStrandsHue),
-                OrbitalsStrandsSpectrumSpeed = ReadFloat(parts, ref i, defaults.OrbitalsStrandsSpectrumSpeed),
-                OrbitalsStrandsSpeed = ReadFloat(parts, ref i, defaults.OrbitalsStrandsSpeed),
-                OrbitalsStrandsLength = ReadFloat(parts, ref i, defaults.OrbitalsStrandsLength),
-                OrbitalsStrandsRadius = ReadFloat(parts, ref i, defaults.OrbitalsStrandsRadius),
-                OrbitalsStrandsPosition = ReadFloat(parts, ref i, defaults.OrbitalsStrandsPosition),
-                OrbitalsStrandsLifetime =  ReadFloat(parts, ref i, defaults.OrbitalsStrandsLifetime),
-
-                OrbitalsFlamesEnabled = ReadBool(parts, ref i, defaults.OrbitalsFlamesEnabled),
-                OrbitalsFlamesCount = ReadFloat(parts, ref i, defaults.OrbitalsFlamesCount),
-                OrbitalsFlamesEnergy = ReadFloat(parts, ref i, defaults.OrbitalsFlamesEnergy),
-                OrbitalsFlamesDrift = ReadFloat(parts, ref i, defaults.OrbitalsFlamesDrift),
-                OrbitalsFlamesHue = ReadFloat(parts, ref i, defaults.OrbitalsFlamesHue),
-                OrbitalsFlamesSpeed = ReadFloat(parts, ref i, defaults.OrbitalsFlamesSpeed),
-                OrbitalsFlamesSpacing = ReadFloat(parts, ref i, defaults.OrbitalsFlamesSpacing),
-                OrbitalsFlamesLength = ReadFloat(parts, ref i, defaults.OrbitalsFlamesLength),
-                OrbitalsFlamesRadius = ReadFloat(parts, ref i, defaults.OrbitalsFlamesRadius),
-                OrbitalsFlamesCycles = ReadFloat(parts, ref i, defaults.OrbitalsFlamesCycles),
-
-                OrbitalsEmbersEnabled = ReadBool(parts, ref i, defaults.OrbitalsEmbersEnabled),
-                OrbitalsEmbersCount = ReadFloat(parts, ref i, defaults.OrbitalsEmbersCount),
-                OrbitalsEmbersEnergy = ReadFloat(parts, ref i, defaults.OrbitalsEmbersEnergy),
-                OrbitalsEmbersDrift = ReadFloat(parts, ref i, defaults.OrbitalsEmbersDrift),
-                OrbitalsEmbersHue = ReadFloat(parts, ref i, defaults.OrbitalsEmbersHue),
-                OrbitalsEmbersSpeed = ReadFloat(parts, ref i, defaults.OrbitalsEmbersSpeed),
-                OrbitalsEmbersSpacing = ReadFloat(parts, ref i, defaults.OrbitalsEmbersSpacing),
-                OrbitalsEmbersLength = ReadFloat(parts, ref i, defaults.OrbitalsEmbersLength),
-                OrbitalsEmbersRadius = ReadFloat(parts, ref i, defaults.OrbitalsEmbersRadius),
-                OrbitalsEmbersCycles = ReadFloat(parts, ref i, defaults.OrbitalsEmbersCycles),
-                OrbitalsEmbersLifetime = ReadFloat(parts, ref i, defaults.OrbitalsEmbersLifetime)
-            };
+                Plugin.Log?.LogWarning($"{Plugin.ModName}: Failed to load styles: {e}");
+            }
         }
 
-        private static string B(bool value)
+        private static void SaveStyleToDisk(string name, VfxState state)
         {
-            return value ? "true" : "false";
+            try
+            {
+                Directory.CreateDirectory(StylesDirectory);
+
+                VfxStyleSave save = VfxStateIO.ToStyleSave(name, state);
+                string json = JsonUtility.ToJson(save, true);
+
+                File.WriteAllText(GetStyleFilePath(name), json);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log?.LogWarning($"{Plugin.ModName}: Failed to save style '{name}': {e}");
+            }
         }
 
-        private static string F(float value)
+        private static string GetStyleFilePath(string name)
         {
-            return value.ToString(CultureInfo.InvariantCulture);
+            string safeName = MakeSafeFileName(name);
+            return Path.Combine(StylesDirectory, $"{safeName}.json");
         }
 
-        private static bool ReadBool(string[] parts, ref int index, bool fallback)
+        private static string MakeSafeFileName(string name)
         {
-            if (parts == null || index >= parts.Length)
-                return fallback;
+            foreach (char invalidChar in Path.GetInvalidFileNameChars())
+                name = name.Replace(invalidChar, '_');
 
-            string value = parts[index++];
-            return bool.TryParse(value, out bool parsed)
-                ? parsed
-                : fallback;
-        }
-
-        private static float ReadFloat(string[] parts, ref int index, float fallback)
-        {
-            if (parts == null || index >= parts.Length)
-                return fallback;
-
-            string value = parts[index++];
-
-            return float.TryParse(
-                    value,
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    out float parsed)
-                ? parsed
-                : fallback;
+            return string.IsNullOrWhiteSpace(name)
+                ? "Unnamed"
+                : name.Trim();
         }
     }
 }

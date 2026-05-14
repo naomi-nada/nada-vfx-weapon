@@ -6,6 +6,8 @@ using NADA.VFX.Runtime.Binding;
 using NADA.VFX.Runtime.Structure;
 using UnityEngine;
 
+// Offset and Rotation lives in NadaOrbitalsMotion
+
 namespace NADA.VFX.Modules.Effects
 {
     internal sealed class NadaOrbitalsEffect : MonoBehaviour, INadaItemDataReceiver
@@ -301,9 +303,7 @@ namespace NADA.VFX.Modules.Effects
                 int particleSystemId = particleSystem.GetInstanceID();
                 if (!_baseEmissionByParticleSystemId.TryGetValue(particleSystemId, out var emissionBaseline) ||
                     emissionBaseline == null)
-                {
                     continue;
-                }
 
                 try
                 {
@@ -374,9 +374,7 @@ namespace NADA.VFX.Modules.Effects
                 int particleSystemId = particleSystem.GetInstanceID();
                 if (!_baseEmissionByParticleSystemId.TryGetValue(particleSystemId, out var emissionBaseline) ||
                     emissionBaseline == null)
-                {
                     continue;
-                }
 
                 try
                 {
@@ -412,9 +410,7 @@ namespace NADA.VFX.Modules.Effects
                 if (!_baseStartLifetimeByParticleSystemId.TryGetValue(
                         particleSystemId,
                         out var baseLifetime))
-                {
                     continue;
-                }
 
                 try
                 {
@@ -959,9 +955,7 @@ namespace NADA.VFX.Modules.Effects
                 int rendererId = renderer.GetInstanceID();
                 if (!_baseMaterialByRendererId.TryGetValue(rendererId, out var materialBaseline) ||
                     materialBaseline == null)
-                {
                     continue;
-                }
 
                 try
                 {

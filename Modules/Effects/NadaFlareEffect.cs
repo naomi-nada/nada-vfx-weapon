@@ -3,6 +3,7 @@ using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
 using NADA.VFX.Core.Visuals;
 using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Runtime.Structure;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
@@ -19,7 +20,8 @@ namespace NADA.VFX.Modules.Effects
         private bool _hasBaseScale;
 
         private Vector3 _baseLocalPosition;
-        private bool _hasBaseLocalPosition;
+        private Quaternion _baseLocalRotation;
+        private bool _hasBasePlacement;
 
         private float _lastHue;
         private bool _hasLastHue;
@@ -89,7 +91,11 @@ namespace NADA.VFX.Modules.Effects
             ApplyEnabled(state.FlareEnabled);
             ApplyScale(state.FlareScale);
             ApplyHueShift(state.FlareHue);
-            ApplyPosition(state.FlarePosition);
+
+            ApplyPlacement(
+                state.FlareXOffset,
+                state.FlareYOffset,
+                state.FlareZOffset);
 
             RestartSystemsIfHueChanged(state.FlareHue);
         }
@@ -127,15 +133,21 @@ namespace NADA.VFX.Modules.Effects
                 _hasBaseScale = true;
             }
 
-            if (!_hasBaseLocalPosition)
-            {
-                _baseLocalPosition = transform.localPosition;
-                _hasBaseLocalPosition = true;
-            }
+            CacheBasePlacement();
 
             CacheParticleBaselines();
             CacheRendererBaselines();
             CacheLightBaselines();
+        }
+
+        private void CacheBasePlacement()
+        {
+            if (_hasBasePlacement)
+                return;
+
+            _baseLocalPosition = transform.localPosition;
+            _baseLocalRotation = transform.localRotation;
+            _hasBasePlacement = true;
         }
 
         private void CacheParticleBaselines()
@@ -326,18 +338,26 @@ namespace NADA.VFX.Modules.Effects
                 _baseScale * ClampScale(scale);
         }
 
-        private void ApplyPosition(float position)
+        private void ApplyPlacement(
+            float xOffset,
+            float yOffset,
+            float zOffset)
         {
-            if (!_hasBaseLocalPosition)
+            if (!_hasBasePlacement)
                 return;
 
-            float clampedPosition = Mathf.Clamp(
-                position,
-                PluginConfig.MinFlamePosition,
-                PluginConfig.MaxFlamePosition);
+            float clampedXOffset = ClampOffset(xOffset);
+            float clampedYOffset = ClampOffset(yOffset);
+            float clampedZOffset = ClampOffset(zOffset);
 
-            transform.localPosition =
-                _baseLocalPosition + new Vector3(0f, 0f, clampedPosition);
+            NadaEffectPlacement.ApplyLocalPlacement(
+                transform,
+                _baseLocalPosition,
+                _baseLocalRotation,
+                clampedXOffset,
+                clampedYOffset,
+                clampedZOffset,
+                0f);
         }
 
         private void ApplyHueShift(float sliderValue)
@@ -547,6 +567,8 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
+        // Helpers
+
         private static float ClampScale(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))
@@ -556,6 +578,17 @@ namespace NADA.VFX.Modules.Effects
                 value,
                 PluginConfig.MinScaleMult,
                 PluginConfig.MaxScaleMult);
+        }
+
+        private static float ClampOffset(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectOffset;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectOffset,
+                PluginConfig.MaxEffectOffset);
         }
     }
 }

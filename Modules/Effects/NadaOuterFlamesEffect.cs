@@ -3,6 +3,7 @@ using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
 using NADA.VFX.Core.Visuals;
 using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Runtime.Structure;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
@@ -19,6 +20,10 @@ namespace NADA.VFX.Modules.Effects
 
         private bool _componentCacheDirty = true;
         private bool _baselineCacheDirty = true;
+
+        private Vector3 _baseLocalPosition;
+        private Quaternion _baseLocalRotation;
+        private bool _hasBasePlacement;
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColor = new();
         private readonly Dictionary<int, bool> _baseColorOverLifetimeEnabled = new();
@@ -98,10 +103,18 @@ namespace NADA.VFX.Modules.Effects
             VfxState state = ResolveState();
 
             ApplyEnabled(state.OuterFlamesEnabled);
+            ApplyEnergy(state.OuterFlamesEnergy);
             ApplyHueShift(state.OuterFlamesHue);
             ApplyScale(state.OuterFlamesScale);
-            ApplyLength(state.OuterFlamesLength, state.OuterFlamesPosition);
-            ApplyEnergy(state.OuterFlamesEnergy);
+            ApplyLength(state.OuterFlamesLength);
+            
+            ApplyPlacement(
+                state.OuterFlamesXOffset,
+                state.OuterFlamesYOffset,
+                state.OuterFlamesZOffset,
+                state.OuterFlamesXRotation,
+                state.OuterFlamesYRotation,
+                state.OuterFlamesZRotation);
         }
 
         private VfxState ResolveState()
@@ -126,11 +139,22 @@ namespace NADA.VFX.Modules.Effects
 
         private void CacheBaselines()
         {
+            CacheBasePlacement();
             CacheParticleColorBaselines();
             CacheParticleScaleBaselines();
             CacheEmissionBaselines();
             CacheRendererBaselines();
             CacheLightBaselines();
+        }
+
+        private void CacheBasePlacement()
+        {
+            if (_hasBasePlacement)
+                return;
+
+            _baseLocalPosition = transform.localPosition;
+            _baseLocalRotation = transform.localRotation;
+            _hasBasePlacement = true;
         }
 
         private void CacheParticleColorBaselines()
@@ -473,7 +497,7 @@ namespace NADA.VFX.Modules.Effects
             catch { }
         }
 
-        private void ApplyLength(float length, float position)
+        private void ApplyLength(float length)
         {
             if (_systems == null)
                 return;
@@ -483,11 +507,6 @@ namespace NADA.VFX.Modules.Effects
                 PluginConfig.MinFlameLength,
                 PluginConfig.MaxFlameLength);
 
-            float clampedPosition = Mathf.Clamp(
-                position,
-                PluginConfig.MinFlamePosition,
-                PluginConfig.MaxFlamePosition);
-
             foreach (ParticleSystem particleSystem in _systems)
             {
                 if (particleSystem == null)
@@ -495,15 +514,13 @@ namespace NADA.VFX.Modules.Effects
 
                 ApplyParticleLength(
                     particleSystem,
-                    clampedLength,
-                    clampedPosition);
+                    clampedLength);
             }
         }
 
         private void ApplyParticleLength(
             ParticleSystem particleSystem,
-            float clampedLength,
-            float clampedPosition)
+            float clampedLength)
         {
             int particleSystemId = particleSystem.GetInstanceID();
 
@@ -523,13 +540,35 @@ namespace NADA.VFX.Modules.Effects
                 Vector3 nextPosition = basePosition;
                 nextPosition.z =
                     basePosition.z +
-                    ((baseScale.z - nextScale.z) * 0.5f) +
-                    clampedPosition;
+                    ((baseScale.z - nextScale.z) * 0.5f);
 
                 shape.scale = nextScale;
                 shape.position = nextPosition;
             }
             catch { }
+        }
+
+        private void ApplyPlacement(
+            float xOffset,
+            float yOffset,
+            float zOffset,
+            float xRotation,
+            float yRotation,
+            float zRotation)
+        {
+            if (!_hasBasePlacement)
+                return;
+
+            NadaEffectPlacement.ApplyLocalPlacement(
+                transform,
+                _baseLocalPosition,
+                _baseLocalRotation,
+                ClampOffset(xOffset),
+                ClampOffset(yOffset),
+                ClampOffset(zOffset),
+                ClampRotation(xRotation),
+                ClampRotation(yRotation),
+                ClampRotation(zRotation));
         }
 
         private void ApplyHueShift(float sliderValue)
@@ -758,6 +797,8 @@ namespace NADA.VFX.Modules.Effects
             catch { }
         }
 
+        // Helpers
+
         private static float ClampScale(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))
@@ -767,6 +808,28 @@ namespace NADA.VFX.Modules.Effects
                 value,
                 PluginConfig.MinScaleMult,
                 PluginConfig.MaxScaleMult);
+        }
+
+        private static float ClampOffset(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectOffset;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectOffset,
+                PluginConfig.MaxEffectOffset);
+        }
+        
+        private static float ClampRotation(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectRotation;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectRotation,
+                PluginConfig.MaxEffectRotation);
         }
 
         private static ParticleSystem.MinMaxCurve OverrideConstantBaseline(

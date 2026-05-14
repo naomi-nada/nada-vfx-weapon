@@ -3,6 +3,7 @@ using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
 using NADA.VFX.Core.Visuals;
 using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Runtime.Structure;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
@@ -19,6 +20,10 @@ namespace NADA.VFX.Modules.Effects
 
         private bool _componentCacheDirty = true;
 
+        private Vector3 _baseLocalPosition;
+        private Quaternion _baseLocalRotation;
+        private bool _hasBasePlacement;
+
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
@@ -28,6 +33,8 @@ namespace NADA.VFX.Modules.Effects
         {
             RebuildComponentCache();
             _componentCacheDirty = false;
+
+            CacheBasePlacement();
 
             InvokeRepeating(nameof(TickApply), 0f, 0.05f);
         }
@@ -50,6 +57,14 @@ namespace NADA.VFX.Modules.Effects
             ApplyEnabled(state.AuraEnabled);
             ApplyColor(state.AuraHue);
             ApplyScale(state.AuraScale);
+
+            ApplyPlacement(
+                state.AuraXOffset,
+                state.AuraYOffset,
+                state.AuraZOffset,
+                state.AuraXRotation,
+                state.AuraYRotation,
+                state.AuraZRotation);
         }
 
         private VfxState ResolveState()
@@ -61,6 +76,18 @@ namespace NADA.VFX.Modules.Effects
             }
 
             return VfxStateIO.FromConfig();
+        }
+
+        // Cache / baselines
+
+        private void CacheBasePlacement()
+        {
+            if (_hasBasePlacement)
+                return;
+
+            _baseLocalPosition = transform.localPosition;
+            _baseLocalRotation = transform.localRotation;
+            _hasBasePlacement = true;
         }
 
         private void RebuildComponentCache()
@@ -140,6 +167,29 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
+        private void ApplyPlacement(
+            float xOffset,
+            float yOffset,
+            float zOffset,
+            float xRotation,
+            float yRotation,
+            float zRotation)
+        {
+            if (!_hasBasePlacement)
+                return;
+
+            NadaEffectPlacement.ApplyLocalPlacement(
+                transform,
+                _baseLocalPosition,
+                _baseLocalRotation,
+                ClampOffset(xOffset),
+                ClampOffset(yOffset),
+                ClampOffset(zOffset),
+                ClampRotation(xRotation),
+                ClampRotation(yRotation),
+                ClampRotation(zRotation));
+        }
+
         private void ApplyScale(float scale)
         {
             float clampedScale = Mathf.Clamp(
@@ -177,6 +227,30 @@ namespace NADA.VFX.Modules.Effects
 
             if (shell.UsesReadableMesh)
                 shell.ApplyScale(clampedScale);
+        }
+
+        // Helpers
+
+        private static float ClampOffset(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectOffset;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectOffset,
+                PluginConfig.MaxEffectOffset);
+        }
+        
+        private static float ClampRotation(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectRotation;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectRotation,
+                PluginConfig.MaxEffectRotation);
         }
 
         private static Vector3 BuildBoundsAwareUnreadableScale(

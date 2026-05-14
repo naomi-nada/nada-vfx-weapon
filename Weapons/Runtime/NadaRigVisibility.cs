@@ -64,7 +64,9 @@ namespace NADA.VFX.Weapons.Runtime
 
         internal static void RefreshDroppedItemVisibility()
         {
-            var drops = Object.FindObjectsOfType<global::ItemDrop>(true);
+            var drops = Object.FindObjectsByType<global::ItemDrop>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
 
             foreach (var itemDrop in drops)
             {

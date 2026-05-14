@@ -3,6 +3,7 @@ using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
 using NADA.VFX.Core.Visuals;
 using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Runtime.Structure;
 using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
@@ -18,6 +19,10 @@ namespace NADA.VFX.Modules.Effects
 
         private bool _componentCacheDirty = true;
         private bool _baselineCacheDirty = true;
+
+        private Vector3 _baseLocalPosition;
+        private Quaternion _baseLocalRotation;
+        private bool _hasBasePlacement;
 
         private bool _hasDriftWorldPose;
         private Vector3 _driftWorldPosition;
@@ -86,9 +91,7 @@ namespace NADA.VFX.Modules.Effects
             ApplyEnabled(state.OrbitalsStrandsEnabled);
             ApplyEnergy(state.OrbitalsStrandsEnergy);
 
-            ApplyDrift(
-                state.OrbitalsStrandsDrift,
-                state.OrbitalsStrandsPosition);
+            ApplyDrift(state.OrbitalsStrandsDrift);
 
             ApplyScaleWhole(state.OrbitalsStrandsScaleWhole);
             ApplyScaleParts(state.OrbitalsStrandsScaleParts);
@@ -102,6 +105,14 @@ namespace NADA.VFX.Modules.Effects
             ApplyLength(state.OrbitalsStrandsLength);
             ApplyRadius(state.OrbitalsStrandsRadius);
             ApplyLifetime(state.OrbitalsStrandsLifetime);
+            
+            ApplyPlacement(
+                state.OrbitalsStrandsXOffset,
+                state.OrbitalsStrandsYOffset,
+                state.OrbitalsStrandsZOffset,
+                state.OrbitalsStrandsXRotation,
+                state.OrbitalsStrandsYRotation,
+                state.OrbitalsStrandsZRotation);
         }
 
         private VfxState ResolveState()
@@ -130,8 +141,19 @@ namespace NADA.VFX.Modules.Effects
 
         private void CacheBaselines()
         {
+            CacheBasePlacement();
             CacheParticleBaselines();
             CacheRendererBaselines();
+        }
+
+        private void CacheBasePlacement()
+        {
+            if (_hasBasePlacement)
+                return;
+
+            _baseLocalPosition = transform.localPosition;
+            _baseLocalRotation = transform.localRotation;
+            _hasBasePlacement = true;
         }
 
         private void CacheParticleBaselines()
@@ -306,15 +328,11 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        // Drift / transform
+        // Drift / placement
 
-        private void ApplyDrift(float drift, float position)
+        private void ApplyDrift(float drift)
         {
             float clampedDrift = Mathf.Clamp01(drift);
-
-            Vector3 desiredLocalPosition = ResolveDesiredLocalPosition(position);
-            Quaternion desiredLocalRotation = Quaternion.Euler(90f, 0f, 0f);
-
             bool lockedToWeapon = clampedDrift <= 0.001f;
 
             ApplySimulationSpace(
@@ -322,22 +340,21 @@ namespace NADA.VFX.Modules.Effects
                     ? ParticleSystemSimulationSpace.Local
                     : ParticleSystemSimulationSpace.World);
 
-            Transform parentTransform = transform.parent;
-
-            if (parentTransform == null || lockedToWeapon)
+            if (lockedToWeapon)
             {
-                transform.localPosition = desiredLocalPosition;
-                transform.localRotation = desiredLocalRotation;
-
                 _hasDriftWorldPose = false;
                 return;
             }
 
-            Vector3 targetWorldPosition =
-                parentTransform.TransformPoint(desiredLocalPosition);
+            Transform parentTransform = transform.parent;
+            if (parentTransform == null)
+            {
+                _hasDriftWorldPose = false;
+                return;
+            }
 
-            Quaternion targetWorldRotation =
-                parentTransform.rotation * desiredLocalRotation;
+            Vector3 targetWorldPosition = transform.position;
+            Quaternion targetWorldRotation = transform.rotation;
 
             if (!_hasDriftWorldPose)
             {
@@ -353,8 +370,7 @@ namespace NADA.VFX.Modules.Effects
                 0.15f,
                 driftT);
 
-            float t =
-                1f - Mathf.Exp(-followSpeed * Time.deltaTime);
+            float t = 1f - Mathf.Exp(-followSpeed * Time.deltaTime);
 
             _driftWorldPosition = Vector3.Lerp(
                 _driftWorldPosition,
@@ -369,17 +385,30 @@ namespace NADA.VFX.Modules.Effects
             transform.position = _driftWorldPosition;
             transform.rotation = _driftWorldRotation;
         }
-
-        private Vector3 ResolveDesiredLocalPosition(float position)
+        
+        private void ApplyPlacement(
+            float xOffset,
+            float yOffset,
+            float zOffset,
+            float xRotation,
+            float yRotation,
+            float zRotation)
         {
-            float clamped = Mathf.Clamp(
-                position,
-                PluginConfig.MinFlamePosition,
-                PluginConfig.MaxFlamePosition);
+            if (!_hasBasePlacement)
+                return;
 
-            return new Vector3(0f, 0f, clamped);
+            NadaEffectPlacement.ApplyLocalPlacement(
+                transform,
+                _baseLocalPosition,
+                _baseLocalRotation,
+                ClampOffset(xOffset),
+                ClampOffset(yOffset),
+                ClampOffset(zOffset),
+                ClampRotation(xRotation),
+                ClampRotation(yRotation),
+                ClampRotation(zRotation));
         }
-
+        
         private void ApplySimulationSpace(
             ParticleSystemSimulationSpace simulationSpace)
         {
@@ -716,6 +745,30 @@ namespace NADA.VFX.Modules.Effects
                 }
                 catch { }
             }
+        }
+
+        // Helpers
+
+        private static float ClampOffset(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectOffset;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectOffset,
+                PluginConfig.MaxEffectOffset);
+        }
+        
+        private static float ClampRotation(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultEffectRotation;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectRotation,
+                PluginConfig.MaxEffectRotation);
         }
 
         private static ParticleSystem.MinMaxCurve MultiplyCurve(

@@ -7,9 +7,9 @@ namespace NADA.VFX.Core.State
     {
         // Rig Position
         public float RigRotation;
-        public float RigSideRotation;
+        public float RigYRotation;
         public float RigLengthPosition;
-        public float RigSidePosition;
+        public float RigYPosition;
 
         // Inner Flames
         public bool InnerFlamesEnabled;
@@ -17,7 +17,12 @@ namespace NADA.VFX.Core.State
         public float InnerFlamesScale;
         public float InnerFlamesLength;
         public float InnerFlamesHue;
-        public float InnerFlamesPosition;
+        public float InnerFlamesXOffset;
+        public float InnerFlamesYOffset;
+        public float InnerFlamesZOffset;
+        public float InnerFlamesXRotation;
+        public float InnerFlamesYRotation;
+        public float InnerFlamesZRotation;
 
         // Outer Flames
         public bool OuterFlamesEnabled;
@@ -26,7 +31,12 @@ namespace NADA.VFX.Core.State
         public float OuterFlamesScale;
         public float OuterFlamesLength;
         public float OuterFlamesHue;
-        public float OuterFlamesPosition;
+        public float OuterFlamesXOffset;
+        public float OuterFlamesYOffset;
+        public float OuterFlamesZOffset;
+        public float OuterFlamesXRotation;
+        public float OuterFlamesYRotation;
+        public float OuterFlamesZRotation;
 
         // Sparks
         public bool SparksEnabled;
@@ -35,18 +45,31 @@ namespace NADA.VFX.Core.State
         public float SparksLength;
         public float SparksWidth;
         public float SparksHue;
-        public float SparksPosition;
+        public float SparksXOffset;
+        public float SparksYOffset;
+        public float SparksZOffset;
+        public float SparksXRotation;
+        public float SparksYRotation;
+        public float SparksZRotation;
 
         // Flare
         public bool FlareEnabled;
         public float FlareScale;
         public float FlareHue;
-        public float FlarePosition;
+        public float FlareXOffset;
+        public float FlareYOffset;
+        public float FlareZOffset;
 
         // Aura
         public bool AuraEnabled;
         public float AuraScale;
         public float AuraHue;
+        public float AuraXOffset;
+        public float AuraYOffset;
+        public float AuraZOffset;
+        public float AuraXRotation;
+        public float AuraYRotation;
+        public float AuraZRotation;
 
         // Orbitals - Orbs
         public bool OrbitalsOrbsEnabled;
@@ -59,6 +82,12 @@ namespace NADA.VFX.Core.State
         public float OrbitalsOrbsLength;
         public float OrbitalsOrbsRadius;
         public float OrbitalsOrbsCycles;
+        public float OrbitalsOrbsXOffset;
+        public float OrbitalsOrbsYOffset;
+        public float OrbitalsOrbsZOffset;
+        public float OrbitalsOrbsXRotation;
+        public float OrbitalsOrbsYRotation;
+        public float OrbitalsOrbsZRotation;
 
         // Orbitals - Strands
         public bool OrbitalsStrandsEnabled;
@@ -72,9 +101,14 @@ namespace NADA.VFX.Core.State
         public float OrbitalsStrandsSpeed;
         public float OrbitalsStrandsLength;
         public float OrbitalsStrandsRadius;
-        public float OrbitalsStrandsPosition;
         public float OrbitalsStrandsLifetime;
-        
+        public float OrbitalsStrandsXOffset;
+        public float OrbitalsStrandsYOffset;
+        public float OrbitalsStrandsZOffset;
+        public float OrbitalsStrandsXRotation;
+        public float OrbitalsStrandsYRotation;
+        public float OrbitalsStrandsZRotation;
+
         // Orbitals - Flames
         public bool OrbitalsFlamesEnabled;
         public float OrbitalsFlamesCount;
@@ -86,6 +120,12 @@ namespace NADA.VFX.Core.State
         public float OrbitalsFlamesLength;
         public float OrbitalsFlamesRadius;
         public float OrbitalsFlamesCycles;
+        public float OrbitalsFlamesXOffset;
+        public float OrbitalsFlamesYOffset;
+        public float OrbitalsFlamesZOffset;
+        public float OrbitalsFlamesXRotation;
+        public float OrbitalsFlamesYRotation;
+        public float OrbitalsFlamesZRotation;
 
         // Orbitals - Embers
         public bool OrbitalsEmbersEnabled;
@@ -99,5 +139,11 @@ namespace NADA.VFX.Core.State
         public float OrbitalsEmbersRadius;
         public float OrbitalsEmbersCycles;
         public float OrbitalsEmbersLifetime;
+        public float OrbitalsEmbersXOffset;
+        public float OrbitalsEmbersYOffset;
+        public float OrbitalsEmbersZOffset;
+        public float OrbitalsEmbersXRotation;
+        public float OrbitalsEmbersYRotation;
+        public float OrbitalsEmbersZRotation;
     }
 }
