@@ -19,7 +19,7 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.7.6";
+        public const string ModVersion = "0.7.7";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;

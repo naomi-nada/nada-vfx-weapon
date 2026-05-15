@@ -27,16 +27,16 @@ namespace NADA.VFX.Runtime.Structure
 
             rigRoot.localPosition =
                 basePosition + new Vector3(
-                    0f,
-                    state.RigLengthPosition,
-                    state.RigYPosition);
+                    state.RigXOffset,
+                    state.RigYOffset,
+                    state.RigZOffset);
 
             rigRoot.localRotation =
                 Quaternion.Euler(baseEuler) *
                 Quaternion.Euler(
+                    state.RigXRotation,
                     state.RigYRotation,
-                    state.RigRotation,
-                    0f);
+                    state.RigZRotation);
 
             rigRoot.localScale = baseScale;
         }

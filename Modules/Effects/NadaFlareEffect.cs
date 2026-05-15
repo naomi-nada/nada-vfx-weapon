@@ -350,7 +350,7 @@ namespace NADA.VFX.Modules.Effects
             float clampedYOffset = ClampOffset(yOffset);
             float clampedZOffset = ClampOffset(zOffset);
 
-            NadaEffectPlacement.ApplyLocalPlacement(
+            NadaEffectTransformApplier.ApplyLocalPlacement(
                 transform,
                 _baseLocalPosition,
                 _baseLocalRotation,

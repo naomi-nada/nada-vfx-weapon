@@ -11,7 +11,7 @@ namespace NADA.VFX.Modules.Effects
     internal sealed class NadaAuraEffect : MonoBehaviour, INadaItemDataReceiver
     {
         private static readonly Color BaseAuraColor =
-            new(0.925f, 0.157f, 0.953f, 0.03f);
+            new(0.925f, 0.157f, 0.953f, 0.02f);
 
         private global::ItemDrop.ItemData _itemData;
 
@@ -178,7 +178,7 @@ namespace NADA.VFX.Modules.Effects
             if (!_hasBasePlacement)
                 return;
 
-            NadaEffectPlacement.ApplyLocalPlacement(
+            NadaEffectTransformApplier.ApplyLocalPlacement(
                 transform,
                 _baseLocalPosition,
                 _baseLocalRotation,

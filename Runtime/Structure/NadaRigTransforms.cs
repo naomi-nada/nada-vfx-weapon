@@ -40,43 +40,6 @@ namespace NADA.VFX.Runtime.Structure
             Object.Destroy(child.gameObject);
         }
 
-        internal static void CopyMeshFilterIfMissing(Transform sourceTf, Transform targetTf)
-        {
-            if (sourceTf == null || targetTf == null) return;
-
-            var source = sourceTf.GetComponent<MeshFilter>();
-            if (source == null) return;
-
-            var target = targetTf.GetComponent<MeshFilter>();
-            if (target == null)
-                target = targetTf.gameObject.AddComponent<MeshFilter>();
-
-            target.sharedMesh = source.sharedMesh;
-        }
-
-        internal static void CopyMeshRendererIfMissing(Transform sourceTf, Transform targetTf)
-        {
-            if (sourceTf == null || targetTf == null) return;
-
-            var source = sourceTf.GetComponent<MeshRenderer>();
-            if (source == null) return;
-
-            var target = targetTf.GetComponent<MeshRenderer>();
-            if (target == null)
-                target = targetTf.gameObject.AddComponent<MeshRenderer>();
-
-            target.enabled = source.enabled;
-            target.sharedMaterials = source.sharedMaterials;
-            target.shadowCastingMode = source.shadowCastingMode;
-            target.receiveShadows = source.receiveShadows;
-            target.motionVectorGenerationMode = source.motionVectorGenerationMode;
-            target.lightProbeUsage = source.lightProbeUsage;
-            target.reflectionProbeUsage = source.reflectionProbeUsage;
-            target.allowOcclusionWhenDynamic = source.allowOcclusionWhenDynamic;
-            target.sortingLayerID = source.sortingLayerID;
-            target.sortingOrder = source.sortingOrder;
-        }
-
         internal static void DisableRootVisualContent(Transform root)
         {
             if (root == null) return;

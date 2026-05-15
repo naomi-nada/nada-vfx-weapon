@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace NADA.VFX.Runtime.Structure
 {
-    internal static class NadaEffectPlacement
+    internal static class NadaEffectTransformApplier
     {
         internal static void ApplyLocalPlacement(
             Transform target,

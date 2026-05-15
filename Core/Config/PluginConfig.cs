@@ -2,6 +2,14 @@ using BepInEx.Configuration;
 
 namespace NADA.VFX.Core.Config
 {
+    
+    // Innerflames - probably no Z rotation needed
+    // Outerflames - probably no Z rotation needed
+    // Orbitals Orbs - probably no Y rotation needed
+    // Orbitals Strands - probably no Y rotation needed
+    // Orbitals Flames - probably no Y rotation needed
+    // Orbitals Embers - probably no Y rotation needed
+    
     internal static class PluginConfig
     {
         internal static ConfigEntry<KeyboardShortcut> AttachHotkey;
@@ -10,20 +18,22 @@ namespace NADA.VFX.Core.Config
 
         internal static ConfigEntry<bool> CharacterSelectionVisibility;
         internal static ConfigEntry<bool> DroppedItemVisibility;
-
-        internal static ConfigEntry<string> StyleName;
+        
         internal static ConfigEntry<bool> SaveStyle;
+        internal static ConfigEntry<string> StyleName;
         internal static ConfigEntry<string> LoadStyle;
 
-        internal static ConfigEntry<float> RigRotation;
+        internal static ConfigEntry<float> RigXOffset;
+        internal static ConfigEntry<float> RigYOffset;
+        internal static ConfigEntry<float> RigZOffset;
+        internal static ConfigEntry<float> RigXRotation;
         internal static ConfigEntry<float> RigYRotation;
-        internal static ConfigEntry<float> RigLengthPosition;
-        internal static ConfigEntry<float> RigYPosition;
+        internal static ConfigEntry<float> RigZRotation;
 
         internal static ConfigEntry<bool> ControlsBottomSpacer;
         internal static ConfigEntry<bool> VisibilityBottomSpacer;
         internal static ConfigEntry<bool> StylesBottomSpacer;
-        internal static ConfigEntry<bool> PositionBottomSpacer;
+        internal static ConfigEntry<bool> RigTransformBottomSpacer;
         internal static ConfigEntry<bool> InnerFlamesBottomSpacer;
         internal static ConfigEntry<bool> OuterFlamesBottomSpacer;
         internal static ConfigEntry<bool> SparksBottomSpacer;
@@ -158,22 +168,6 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsEmbersXRotation = null;
         internal static ConfigEntry<float> OrbitalsEmbersYRotation = null;
         internal static ConfigEntry<float> OrbitalsEmbersZRotation = null;
-
-        internal const float MinRigRotation = -180f;
-        internal const float MaxRigRotation = 180f;
-        internal const float DefaultRigRotation = 0f;
-
-        internal const float MinRigYRotation = -180f;
-        internal const float MaxRigYRotation = 180f;
-        internal const float DefaultRigYRotation = 0f;
-
-        internal const float MinRigLengthPosition = -1.00f;
-        internal const float MaxRigLengthPosition = 1.00f;
-        internal const float DefaultRigLengthPosition = 0f;
-
-        internal const float MinRigYPosition = -1.00f;
-        internal const float MaxRigYPosition = 1.00f;
-        internal const float DefaultRigYPosition = 0f;
         
         internal const float MinEffectOffset = -2.0f;
         internal const float MaxEffectOffset = 2.0f;
@@ -250,7 +244,7 @@ namespace NADA.VFX.Core.Config
     const string hotkeysSection = "CONTROLS";
     const string visibilitySection = "VISIBILITY";
     const string stylesSection = "STYLES";
-    const string positionSection = "POSITIONING";
+    const string rigTransformSection = "RIG TRANSFORM";
     const string innerFlamesSection = "INNER FLAMES";
     const string outerFlamesSection = "OUTER FLAMES";
     const string sparksSection = "SPARKS";
@@ -428,64 +422,92 @@ namespace NADA.VFX.Core.Config
             hideDefaultButton: true)
     );
 
-    RigRotation = config.Bind(
-        positionSection,
-        "Rotation",
-        DefaultRigRotation,
+    RigXOffset = config.Bind(
+        rigTransformSection,
+        "X Offset",
+        DefaultEffectOffset,
         OrderedDescription(
-            "Rotate the whole NADA rig around the weapon.",
+            "Adjust the entire Rig's X axis offset.",
             205,
-            new AcceptableValueRange<float>(MinRigRotation, MaxRigRotation),
-            dispName: "X Tilt")
+            new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+            dispName: "X Offset")
     );
 
-    RigYRotation = config.Bind(
-        positionSection,
-        "Y Rotation",
-        DefaultRigYRotation,
+    RigYOffset = config.Bind(
+        rigTransformSection,
+        "Y Offset",
+        DefaultEffectOffset,
         OrderedDescription(
-            "Rotate the whole NADA rig left or right around the weapon.",
+            "Adjust the entire Rig's Y axis offset.",
             204,
-            new AcceptableValueRange<float>(MinRigYRotation, MaxRigYRotation),
-            dispName: "Y Tilt")
+            new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+            dispName: "Y Offset")
     );
 
-    RigLengthPosition = config.Bind(
-        positionSection,
-        "Length Position",
-        DefaultRigLengthPosition,
+    RigZOffset = config.Bind(
+        rigTransformSection,
+        "Z Offset",
+        DefaultEffectOffset,
         OrderedDescription(
-            "Slide the whole NADA rig up or down the weapon length.",
+            "Adjust the entire Rig's Z axis offset.",
             203,
-            new AcceptableValueRange<float>(MinRigLengthPosition, MaxRigLengthPosition),
-            dispName: "X Position")
+            new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+            dispName: "Z Offset")
     );
-
-    RigYPosition = config.Bind(
-        positionSection,
-        "Y Position",
-        DefaultRigYPosition,
+    
+    RigXRotation = config.Bind(
+        rigTransformSection,
+        "X Rotation",
+        DefaultEffectRotation,
         OrderedDescription(
-            "Slide the whole NADA rig left or right across the weapon.",
+            "Adjust the entire Rig's X axis rotation.",
             202,
-            new AcceptableValueRange<float>(MinRigYPosition, MaxRigYPosition),
-            dispName: "Y Position")
+            new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+            dispName: "X Rotation")
+    );
+    
+    RigYRotation = config.Bind(
+        rigTransformSection,
+        "Y Rotation",
+        DefaultEffectOffset,
+        OrderedDescription(
+            "Adjust the entire Rig's Y axis rotation.",
+            202,
+            new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+            dispName: "Y Rotation")
     );
 
-    RigYPosition.SettingChanged += (_, __) =>
+    RigZRotation = config.Bind(
+        rigTransformSection,
+        "Z Rotation",
+        DefaultEffectOffset,
+        OrderedDescription(
+            "Adjust the entire Rig's Z axis rotation.",
+            201,
+            new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+            dispName: "Z Rotation")
+    );
+    
+    RigXOffset.SettingChanged += (_, __) =>
         Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
 
-    RigLengthPosition.SettingChanged += (_, __) =>
+    RigYOffset.SettingChanged += (_, __) =>
+        Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
+
+    RigZOffset.SettingChanged += (_, __) =>
+        Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
+
+    RigXRotation.SettingChanged += (_, __) =>
         Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
 
     RigYRotation.SettingChanged += (_, __) =>
         Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
 
-    RigRotation.SettingChanged += (_, __) =>
+    RigZRotation.SettingChanged += (_, __) =>
         Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
 
-    PositionBottomSpacer = config.Bind(
-        positionSection,
+    RigTransformBottomSpacer = config.Bind(
+        rigTransformSection,
         "__Position Bottom Spacer",
         false,
         OrderedDescription(

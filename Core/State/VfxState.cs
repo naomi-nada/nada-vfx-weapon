@@ -6,10 +6,12 @@ namespace NADA.VFX.Core.State
     internal struct VfxState
     {
         // Rig Position
-        public float RigRotation;
+        public float RigXOffset;
+        public float RigYOffset;
+        public float RigZOffset;
+        public float RigXRotation;
         public float RigYRotation;
-        public float RigLengthPosition;
-        public float RigYPosition;
+        public float RigZRotation;
 
         // Inner Flames
         public bool InnerFlamesEnabled;

@@ -634,7 +634,7 @@ namespace NADA.VFX.Modules.Effects
             if (!_hasBasePlacement)
                 return;
 
-            NadaEffectPlacement.ApplyLocalPlacement(
+            NadaEffectTransformApplier.ApplyLocalPlacement(
                 transform,
                 _baseLocalPosition,
                 _baseLocalRotation,
