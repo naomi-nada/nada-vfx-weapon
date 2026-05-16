@@ -67,6 +67,8 @@ namespace NADA.VFX.Core.State
         internal const string AuraZRotation = "nada.vfx.aura.z_rotation";
 
         internal const string OrbitalsOrbsEnabled = "nada.vfx.orbitals.orbs.enabled";
+        internal const string OrbitalsOrbsSnakeEnabled = "nada.vfx.orbitals.orbs.snake.enabled";
+        internal const string OrbitalsOrbsGlueEnabled = "nada.vfx.orbitals.orbs.glue.enabled";
         internal const string OrbitalsOrbsCount = "nada.vfx.orbitals.orbs.count";
         internal const string OrbitalsOrbsDrift = "nada.vfx.orbitals.orbs.drift";
         internal const string OrbitalsOrbsScale = "nada.vfx.orbitals.orbs.scale";
@@ -112,6 +114,7 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsFlamesLength = "nada.vfx.orbitals.flames.length";
         internal const string OrbitalsFlamesRadius = "nada.vfx.orbitals.flames.radius";
         internal const string OrbitalsFlamesCycles = "nada.vfx.orbitals.flames.cycles";
+        internal const string OrbitalsFlamesLifetime = "nada.vfx.orbitals.flames.lifetime";
         internal const string OrbitalsFlamesXOffset = "nada.vfx.orbitals.flames.x_offset";
         internal const string OrbitalsFlamesYOffset = "nada.vfx.orbitals.flames.y_offset";
         internal const string OrbitalsFlamesZOffset = "nada.vfx.orbitals.flames.z_offset";

@@ -58,6 +58,15 @@ namespace NADA.VFX.Core.Config
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
         }
+        
+        internal static void DrawOrbsSpacingSlider(ConfigEntryBase entry)
+        {
+            bool snakeEnabled =
+                PluginConfig.OrbitalsOrbsSnake != null &&
+                PluginConfig.OrbitalsOrbsSnake.Value;
+
+            DrawFloatSlider(entry, snakeEnabled);
+        }
 
         internal static void DrawStrandsColorSlider(ConfigEntryBase entry)
         {
@@ -195,6 +204,32 @@ namespace NADA.VFX.Core.Config
             }
 
             GUILayout.EndVertical();
+        }
+        
+        internal static void DrawOrbitalsOrbsSyncButton(ConfigEntryBase entry)
+        {
+            GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
+
+            GUILayout.Space(264f);
+
+            if (GUILayout.Button("Sync Orbs", GUILayout.Width(230f)))
+            {
+                PluginConfig.SyncOrbitalsToOrbs();
+                entry.BoxedValue = false;
+            }
+
+            GUILayout.EndHorizontal();
+        }
+        
+        internal static void DrawGlueLockedFloatSlider(ConfigEntryBase entry)
+        {
+            bool disabled =
+                PluginConfig.OrbitalsOrbs != null &&
+                PluginConfig.OrbitalsOrbs.Value &&
+                PluginConfig.OrbitalsOrbsGlue != null &&
+                PluginConfig.OrbitalsOrbsGlue.Value;
+
+            DrawFloatSlider(entry, disabled);
         }
 
         internal static void DrawSectionSpacer(ConfigEntryBase entry)

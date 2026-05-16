@@ -47,6 +47,9 @@ namespace NADA.VFX.Modules.Motion
         private bool _hasArcLengthCache;
 
         // Motion state
+        private bool _lastGlueEnabled;
+        private bool _hasLastGlueEnabled;
+
         private Vector3 _baseHeadLocalPosition;
         private Vector3 _currentLocalOffset;
         private Quaternion _currentLocalRotationOffset = Quaternion.identity;
@@ -120,12 +123,21 @@ namespace NADA.VFX.Modules.Motion
 
         private void ApplyOrbitalsMotion(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
+            if (!_hasLastGlueEnabled || _lastGlueEnabled != glueEnabled)
+            {
+                ResetOrbitStartPoint();
+                _lastGlueEnabled = glueEnabled;
+                _hasLastGlueEnabled = true;
+            }
+
             int desiredFollowerCount = ResolveDesiredFollowerCount(state);
 
             float radiusMultiplier = ResolveRadiusMultiplier(state);
             float orbitLengthMultiplier = ResolveOrbitLengthMultiplier(state);
             float turnsPerOneWayPass = ResolveTurnsPerOneWayPass(state);
-            
+
             _currentLocalOffset = ResolveLocalOffset(state);
             _currentLocalRotationOffset = ResolveLocalRotationOffset(state);
 
@@ -138,7 +150,7 @@ namespace NADA.VFX.Modules.Motion
                 SmoothHistoryStepPerFollower(ResolveHistoryStepPerFollowerFloat(state));
 
             float orbitAdherence =
-                Mathf.Clamp01(ResolveOrbitAdherence());
+                Mathf.Clamp01(ResolveOrbitAdherence(state));
 
             ApplyHeadVisualEnabledState(true);
             ApplyFollowerVisualCount(desiredFollowerCount);
@@ -264,14 +276,7 @@ namespace NADA.VFX.Modules.Motion
                     followerVisualTransform.gameObject.SetActive(false);
             }
 
-            _currentCycleProgress01 = 0f;
-            _hasCurrentCycleProgress01 = false;
-
-            _currentHistoryStepPerFollower = 0f;
-            _hasCurrentHistoryStepPerFollower = false;
-
-            _parentWorldPositionHistorySamples.Clear();
-            _parentWorldRotationHistorySamples.Clear();
+            ResetOrbitStartPoint();
         }
 
         // Config-facing resolvers
@@ -298,6 +303,17 @@ namespace NADA.VFX.Modules.Motion
             };
         }
 
+        private bool ResolveGlueEnabled(VfxState state)
+        {
+            if (_orbitalsFamily == NadaOrbitalsFamily.Orbs)
+                return false;
+
+            return state.OrbitalsOrbsEnabled &&
+                   state.OrbitalsOrbsGlueEnabled &&
+                   (_orbitalsFamily == NadaOrbitalsFamily.Flames ||
+                    _orbitalsFamily == NadaOrbitalsFamily.Embers);
+        }
+
         private int ResolveDesiredFollowerCount(VfxState state)
         {
             float normalizedCount = _orbitalsFamily switch
@@ -321,22 +337,13 @@ namespace NADA.VFX.Modules.Motion
 
         private float ResolveHistoryStepPerFollowerFloat(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
             float spacingT = _orbitalsFamily switch
             {
-                NadaOrbitalsFamily.Orbs => Mathf.Clamp(
-                    state.OrbitalsOrbsSpacing,
-                    PluginConfig.MinOrbitalsSpacing,
-                    PluginConfig.MaxOrbitalsSpacing),
-
-                NadaOrbitalsFamily.Flames => Mathf.Clamp(
-                    state.OrbitalsFlamesSpacing,
-                    PluginConfig.MinOrbitalsSpacing,
-                    PluginConfig.MaxOrbitalsSpacing),
-
-                NadaOrbitalsFamily.Embers => Mathf.Clamp(
-                    state.OrbitalsEmbersSpacing,
-                    PluginConfig.MinOrbitalsSpacing,
-                    PluginConfig.MaxOrbitalsSpacing),
+                NadaOrbitalsFamily.Orbs => ResolveOrbsSpacingT(state),
+                NadaOrbitalsFamily.Flames => glueEnabled ? ResolveOrbsSpacingT(state) : ClampOrbitalsSpacing(state.OrbitalsFlamesSpacing),
+                NadaOrbitalsFamily.Embers => glueEnabled ? ResolveOrbsSpacingT(state) : ClampOrbitalsSpacing(state.OrbitalsEmbersSpacing),
                 _ => 0f
             };
 
@@ -346,13 +353,34 @@ namespace NADA.VFX.Modules.Motion
                 spacingT);
         }
 
+        private float ResolveOrbsSpacingT(VfxState state)
+        {
+            if (state.OrbitalsOrbsSnakeEnabled)
+                return 0.15f;
+
+            return ClampOrbitalsSpacing(state.OrbitalsOrbsSpacing);
+        }
+
+        private static float ClampOrbitalsSpacing(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultOrbitalsSpacing;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinOrbitalsSpacing,
+                PluginConfig.MaxOrbitalsSpacing);
+        }
+
         private float ResolveRadiusMultiplier(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
             float value = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsRadius,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesRadius,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersRadius,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsRadius : state.OrbitalsFlamesRadius,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsRadius : state.OrbitalsEmbersRadius,
                 _ => PluginConfig.DefaultOrbitalsRadiusMultiplier
             };
 
@@ -367,11 +395,13 @@ namespace NADA.VFX.Modules.Motion
 
         private float ResolveOrbitLengthMultiplier(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
             float value = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsLength,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesLength,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersLength,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsLength : state.OrbitalsFlamesLength,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsLength : state.OrbitalsEmbersLength,
                 _ => NadaOrbitalsPath.DefaultOrbitLengthMultiplier
             };
 
@@ -386,11 +416,13 @@ namespace NADA.VFX.Modules.Motion
 
         private float ResolveTurnsPerOneWayPass(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
             float value = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsCycles,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesCycles,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersCycles,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsCycles : state.OrbitalsFlamesCycles,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsCycles : state.OrbitalsEmbersCycles,
                 _ => NadaOrbitalsPath.DefaultTurnsPerOneWayPass
             };
 
@@ -405,11 +437,13 @@ namespace NADA.VFX.Modules.Motion
 
         private float ResolveCycleProgressPerSecond(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
             float value = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsSpeed,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesSpeed,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersSpeed,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsSpeed : state.OrbitalsFlamesSpeed,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsSpeed : state.OrbitalsEmbersSpeed,
                 _ => DefaultCycleProgressPerSecond
             };
 
@@ -422,13 +456,19 @@ namespace NADA.VFX.Modules.Motion
                 PluginConfig.MaxOrbitalsSpeed);
         }
 
-        private float ResolveOrbitAdherence()
+        private float ResolveOrbitAdherence(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
             return _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => NadaMotionTuningResolver.GetOrbsOrbitAdherence(_itemData),
-                NadaOrbitalsFamily.Flames => NadaMotionTuningResolver.GetFlamesOrbitAdherence(_itemData),
-                NadaOrbitalsFamily.Embers => NadaMotionTuningResolver.GetEmbersOrbitAdherence(_itemData),
+                NadaOrbitalsFamily.Flames => glueEnabled
+                    ? NadaMotionTuningResolver.GetOrbsOrbitAdherence(_itemData)
+                    : NadaMotionTuningResolver.GetFlamesOrbitAdherence(_itemData),
+                NadaOrbitalsFamily.Embers => glueEnabled
+                    ? NadaMotionTuningResolver.GetOrbsOrbitAdherence(_itemData)
+                    : NadaMotionTuningResolver.GetEmbersOrbitAdherence(_itemData),
                 _ => 1f
             };
         }
@@ -626,6 +666,18 @@ namespace NADA.VFX.Modules.Motion
             }
         }
 
+        internal void ResetOrbitStartPoint()
+        {
+            _currentCycleProgress01 = 0f;
+            _hasCurrentCycleProgress01 = false;
+
+            _currentHistoryStepPerFollower = 0f;
+            _hasCurrentHistoryStepPerFollower = false;
+
+            _parentWorldPositionHistorySamples.Clear();
+            _parentWorldRotationHistorySamples.Clear();
+        }
+
         private void RecordParentWorldHistory()
         {
             Transform parentTransform = transform.parent;
@@ -652,7 +704,7 @@ namespace NADA.VFX.Modules.Motion
                     _parentWorldRotationHistorySamples.Count - maxHistorySamples);
             }
         }
-        
+
         private Vector3 EvaluateHeadWorldPositionAtDistance(float distanceAlongCycle)
         {
             Vector3 localPosition = EvaluateHeadLocalPositionAtDistance(distanceAlongCycle);
@@ -738,30 +790,32 @@ namespace NADA.VFX.Modules.Motion
                 _parentWorldRotationHistorySamples[upperIndex],
                 interpolationT);
         }
-        
+
         private Vector3 ResolveLocalOffset(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
             float x = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsXOffset,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesXOffset,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersXOffset,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsXOffset : state.OrbitalsFlamesXOffset,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsXOffset : state.OrbitalsEmbersXOffset,
                 _ => PluginConfig.DefaultEffectOffset
             };
 
             float y = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsYOffset,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesYOffset,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersYOffset,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsYOffset : state.OrbitalsFlamesYOffset,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsYOffset : state.OrbitalsEmbersYOffset,
                 _ => PluginConfig.DefaultEffectOffset
             };
 
             float z = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsZOffset,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesZOffset,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersZOffset,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsZOffset : state.OrbitalsFlamesZOffset,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsZOffset : state.OrbitalsEmbersZOffset,
                 _ => PluginConfig.DefaultEffectOffset
             };
 
@@ -770,30 +824,32 @@ namespace NADA.VFX.Modules.Motion
                 ClampOffset(y),
                 ClampOffset(z));
         }
-        
+
         private Quaternion ResolveLocalRotationOffset(VfxState state)
         {
+            bool glueEnabled = ResolveGlueEnabled(state);
+
             float x = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsXRotation,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesXRotation,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersXRotation,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsXRotation : state.OrbitalsFlamesXRotation,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsXRotation : state.OrbitalsEmbersXRotation,
                 _ => PluginConfig.DefaultEffectRotation
             };
 
             float y = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsYRotation,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesYRotation,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersYRotation,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsYRotation : state.OrbitalsFlamesYRotation,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsYRotation : state.OrbitalsEmbersYRotation,
                 _ => PluginConfig.DefaultEffectRotation
             };
 
             float z = _orbitalsFamily switch
             {
                 NadaOrbitalsFamily.Orbs => state.OrbitalsOrbsZRotation,
-                NadaOrbitalsFamily.Flames => state.OrbitalsFlamesZRotation,
-                NadaOrbitalsFamily.Embers => state.OrbitalsEmbersZRotation,
+                NadaOrbitalsFamily.Flames => glueEnabled ? state.OrbitalsOrbsZRotation : state.OrbitalsFlamesZRotation,
+                NadaOrbitalsFamily.Embers => glueEnabled ? state.OrbitalsOrbsZRotation : state.OrbitalsEmbersZRotation,
                 _ => PluginConfig.DefaultEffectRotation
             };
 
@@ -802,7 +858,7 @@ namespace NADA.VFX.Modules.Motion
                 ClampRotation(y),
                 ClampRotation(z));
         }
-        
+
         private static float ClampOffset(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))
@@ -813,7 +869,7 @@ namespace NADA.VFX.Modules.Motion
                 PluginConfig.MinEffectOffset,
                 PluginConfig.MaxEffectOffset);
         }
-        
+
         private static float ClampRotation(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))

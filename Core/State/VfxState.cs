@@ -75,6 +75,8 @@ namespace NADA.VFX.Core.State
 
         // Orbitals - Orbs
         public bool OrbitalsOrbsEnabled;
+        public bool OrbitalsOrbsSnakeEnabled;
+        public bool OrbitalsOrbsGlueEnabled;
         public float OrbitalsOrbsCount;
         public float OrbitalsOrbsDrift;
         public float OrbitalsOrbsScale;
@@ -122,6 +124,7 @@ namespace NADA.VFX.Core.State
         public float OrbitalsFlamesLength;
         public float OrbitalsFlamesRadius;
         public float OrbitalsFlamesCycles;
+        public float OrbitalsFlamesLifetime;
         public float OrbitalsFlamesXOffset;
         public float OrbitalsFlamesYOffset;
         public float OrbitalsFlamesZOffset;

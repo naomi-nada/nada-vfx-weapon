@@ -30,6 +30,7 @@ namespace NADA.VFX.Modules.Effects
         private readonly List<Light> _orbsLights = new();
 
         private const float DefaultOrbBaselineScaleMultiplier = 1.5f;
+        private const float SnakeFollowerOrbScaleMultiplier = 0.66f;
 
         // Flames
         private Transform _flamesRootTransform;
@@ -43,7 +44,9 @@ namespace NADA.VFX.Modules.Effects
 
         private const float DefaultFlamesRateOverTime = 10f;
         private const float MaxFlamesRateOverTime = 100f;
-
+        
+        private const float DefaultFlamesLifetimeMultiplier = 1f;   
+        
         // Embers
         private Transform _embersRootTransform;
         private Transform _embersPoolRootTransform;
@@ -182,7 +185,9 @@ namespace NADA.VFX.Modules.Effects
                 _orbsParticleSystems,
                 state.OrbitalsOrbsEnabled);
 
-            ApplyOrbsScale(state.OrbitalsOrbsScale);
+            ApplyOrbsScale(
+                state.OrbitalsOrbsScale,
+                state.OrbitalsOrbsSnakeEnabled);
 
             ApplyHueShift(
                 _orbsParticleSystems,
@@ -222,10 +227,15 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        private void ApplyOrbsScale(float scale)
+        private void ApplyOrbsScale(float scale, bool Snake)
         {
             float clampedScale = ClampVisualScale(scale);
-            float scaleMultiplier = DefaultOrbBaselineScaleMultiplier * clampedScale;
+            float headScaleMultiplier =
+                DefaultOrbBaselineScaleMultiplier * clampedScale;
+
+            float followerScaleMultiplier =
+                headScaleMultiplier *
+                (Snake ? SnakeFollowerOrbScaleMultiplier : 1f);
 
             if (_orbsRootTransform != null)
                 _orbsRootTransform.localScale = Vector3.one;
@@ -233,7 +243,7 @@ namespace NADA.VFX.Modules.Effects
             if (_orbsVisualTransform != null && _hasOrbsVisualBaseLocalScale)
             {
                 _orbsVisualTransform.localScale =
-                    _orbsVisualBaseLocalScale * scaleMultiplier;
+                    _orbsVisualBaseLocalScale * headScaleMultiplier;
 
                 NadaRigTransforms.ForceUniformWorldScale(_orbsVisualTransform);
             }
@@ -250,7 +260,7 @@ namespace NADA.VFX.Modules.Effects
                 if (!_orbsPoolBaseLocalScaleByTransformId.TryGetValue(transformId, out var baseLocalScale))
                     continue;
 
-                pooledOrbTransform.localScale = baseLocalScale * scaleMultiplier;
+                pooledOrbTransform.localScale = baseLocalScale * followerScaleMultiplier;
                 NadaRigTransforms.ForceUniformWorldScale(pooledOrbTransform);
             }
         }
@@ -278,6 +288,10 @@ namespace NADA.VFX.Modules.Effects
             ApplyFlamesEnergy(
                 _flamesParticleSystems,
                 state.OrbitalsFlamesEnergy);
+            
+            ApplyFlamesLifetime(
+                _flamesParticleSystems,
+                state.OrbitalsFlamesLifetime);
 
             LogToggleStateIfChanged(
                 "Orbitals Flames",
@@ -389,7 +403,38 @@ namespace NADA.VFX.Modules.Effects
                 catch { }
             }
         }
+        
+        private void ApplyFlamesLifetime(List<ParticleSystem> particleSystems, float lifetime)
+        {
+            if (particleSystems == null)
+                return;
 
+            float clamped = Mathf.Clamp(
+                lifetime,
+                PluginConfig.MinLifetime,
+                PluginConfig.MaxLifetime);
+
+            foreach (var particleSystem in particleSystems)
+            {
+                if (particleSystem == null)
+                    continue;
+
+                int particleSystemId = particleSystem.GetInstanceID();
+
+                if (!_baseStartLifetimeByParticleSystemId.TryGetValue(
+                        particleSystemId,
+                        out var baseLifetime))
+                    continue;
+
+                try
+                {
+                    var main = particleSystem.main;
+                    main.startLifetime = MultiplyCurve(baseLifetime, clamped);
+                }
+                catch { }
+            }
+        }
+        
         private void ApplyEmbersLifetime(List<ParticleSystem> particleSystems, float lifetime)
         {
             if (particleSystems == null)

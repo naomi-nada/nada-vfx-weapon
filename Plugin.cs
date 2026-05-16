@@ -8,6 +8,7 @@ using HarmonyLib;
 using NADA.VFX.Core.Config;
 using NADA.VFX.Core.State;
 using NADA.VFX.Core.Visuals;
+using NADA.VFX.Modules.Motion;
 using NADA.VFX.Runtime.Structure;
 using NADA.VFX.Weapons.Runtime;
 using UnityEngine;
@@ -124,6 +125,17 @@ namespace NADA.VFX
         internal void RefreshExistingUnboundEquippedRigsOnly()
         {
             NadaEquippedRigActions.RefreshExistingUnboundEquippedRigsOnly();
+        }
+        
+        internal void ResetOrbitalsStartPoints()
+        {
+            foreach (NadaOrbitalsMotion motion in FindObjectsOfType<NadaOrbitalsMotion>(true))
+            {
+                if (motion == null)
+                    continue;
+
+                motion.ResetOrbitStartPoint();
+            }
         }
 
         internal void RefreshDroppedItemVisibility()
