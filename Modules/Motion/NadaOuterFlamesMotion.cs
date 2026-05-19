@@ -31,12 +31,17 @@ namespace NADA.VFX.Modules.Motion
 
         internal void SetItemData(global::ItemDrop.ItemData itemData)
         {
+            if (_itemData == itemData)
+                return;
+
             _itemData = itemData;
+            ResetVelocityTracking();
         }
 
         private void Awake()
         {
             RebuildParticleSystems();
+            ResetVelocityTracking();
         }
 
         private void LateUpdate()
@@ -112,6 +117,13 @@ namespace NADA.VFX.Modules.Motion
             }
 
             _initialized = _particles.Count > 0;
+        }
+        
+        private void ResetVelocityTracking()
+        {
+            _lastWorldPosition = transform.position;
+            _hasLastWorldPosition = true;
+            _smoothedVelocity = Vector3.zero;
         }
 
         private float ResolveDragStrength()

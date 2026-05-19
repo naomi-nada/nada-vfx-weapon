@@ -55,7 +55,7 @@ namespace NADA.VFX.Modules.Effects
             VfxState state = ResolveState();
 
             ApplyEnabled(state.AuraEnabled);
-            ApplyColor(state.AuraHue);
+            ApplyColor(state.AuraHue, state.AuraLuminance);
             ApplyScale(state.AuraScale);
 
             ApplyPlacement(
@@ -77,8 +77,6 @@ namespace NADA.VFX.Modules.Effects
 
             return VfxStateIO.FromConfig();
         }
-
-        // Cache / baselines
 
         private void CacheBasePlacement()
         {
@@ -125,8 +123,6 @@ namespace NADA.VFX.Modules.Effects
             return transform;
         }
 
-        // Config-facing apply path
-
         private void ApplyEnabled(bool enabled)
         {
             foreach (Renderer renderer in _auraRenderers)
@@ -138,12 +134,19 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        private void ApplyColor(float hue)
+        private void ApplyColor(float hue, float luminance)
         {
             float targetHue = NadaHueShiftUtility.SliderValueToTargetHue(hue);
 
+            float clampedLuminance = Mathf.Clamp(
+                luminance,
+                PluginConfig.MinLuminance,
+                PluginConfig.MaxLuminance);
+
             Color tintedColor =
-                NadaHueShiftUtility.RetintColorToHue(BaseAuraColor, targetHue);
+                NadaLuminanceUtility.ApplyToColor(
+                    NadaHueShiftUtility.RetintColorToHue(BaseAuraColor, targetHue),
+                    clampedLuminance);
 
             foreach (Renderer renderer in _auraRenderers)
             {
@@ -159,10 +162,14 @@ namespace NADA.VFX.Modules.Effects
                     if (material == null)
                         continue;
 
-                    if (!material.HasProperty("_TintColor"))
-                        continue;
+                    if (material.HasProperty("_TintColor"))
+                        material.SetColor("_TintColor", tintedColor);
 
-                    material.SetColor("_TintColor", tintedColor);
+                    if (material.HasProperty("_EmissionColor"))
+                    {
+                        material.EnableKeyword("_EMISSION");
+                        material.SetColor("_EmissionColor", tintedColor * clampedLuminance);
+                    }
                 }
             }
         }
@@ -228,8 +235,6 @@ namespace NADA.VFX.Modules.Effects
             if (shell.UsesReadableMesh)
                 shell.ApplyScale(clampedScale);
         }
-
-        // Helpers
 
         private static float ClampOffset(float value)
         {

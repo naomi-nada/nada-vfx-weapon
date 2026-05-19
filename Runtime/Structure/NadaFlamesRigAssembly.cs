@@ -23,6 +23,8 @@ namespace NADA.VFX.Runtime.Structure
             if (localEffectsRootTransform == null)
                 return null;
 
+            bool createdOuterFlames = false;
+
             Transform outerFlamesTransform =
                 NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.OuterFlamesName);
 
@@ -34,9 +36,12 @@ namespace NADA.VFX.Runtime.Structure
                 outerFlamesObject.name = Plugin.OuterFlamesName;
                 outerFlamesObject.SetActive(true);
                 outerFlamesTransform = outerFlamesObject.transform;
+
+                createdOuterFlames = true;
             }
 
-            NadaRigTransforms.ResetLocalTransform(outerFlamesTransform);
+            if (createdOuterFlames)
+                NadaRigTransforms.ResetLocalTransform(outerFlamesTransform);
 
             SplitFlameChildrenIntoEffects(localEffectsRootTransform, outerFlamesTransform);
 

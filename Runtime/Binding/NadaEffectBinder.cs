@@ -53,11 +53,11 @@ namespace NADA.VFX.Runtime.Binding
             orbitalsEffect.SetLocalOrbsRootTransform(localOrbsRootTransform);
         }
         
-        internal static void BindOrbitalsStrandsEffect(
+        internal static void BindOrganicsStrandsEffect(
             Transform strandsTransform,
             global::ItemDrop.ItemData itemData)
         {
-            BindItemDataEffect<NadaOrbitalsStrandsEffect>(strandsTransform, itemData);
+            BindItemDataEffect<NadaOrganicsStrandsEffect>(strandsTransform, itemData);
         }
 
         private static void BindItemDataEffect<TEffect>(

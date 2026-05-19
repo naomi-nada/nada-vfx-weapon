@@ -24,7 +24,8 @@ namespace NADA.VFX.Modules.Effects
         private bool _hasBasePlacement;
 
         private float _lastHue;
-        private bool _hasLastHue;
+        private float _lastLuminance;
+        private bool _hasLastColor;
 
         private bool _componentCacheDirty = true;
         private bool _baselineCacheDirty = true;
@@ -90,14 +91,16 @@ namespace NADA.VFX.Modules.Effects
 
             ApplyEnabled(state.FlareEnabled);
             ApplyScale(state.FlareScale);
-            ApplyHueShift(state.FlareHue);
+            ApplyHueShift(state.FlareHue, state.FlareLuminance);
 
             ApplyPlacement(
                 state.FlareXOffset,
                 state.FlareYOffset,
                 state.FlareZOffset);
 
-            RestartSystemsIfHueChanged(state.FlareHue);
+            RestartSystemsIfColorChanged(
+                state.FlareHue,
+                state.FlareLuminance);
         }
 
         private VfxState ResolveState()
@@ -346,31 +349,35 @@ namespace NADA.VFX.Modules.Effects
             if (!_hasBasePlacement)
                 return;
 
-            float clampedXOffset = ClampOffset(xOffset);
-            float clampedYOffset = ClampOffset(yOffset);
-            float clampedZOffset = ClampOffset(zOffset);
-
             NadaEffectTransformApplier.ApplyLocalPlacement(
                 transform,
                 _baseLocalPosition,
                 _baseLocalRotation,
-                clampedXOffset,
-                clampedYOffset,
-                clampedZOffset,
+                ClampOffset(xOffset),
+                ClampOffset(yOffset),
+                ClampOffset(zOffset),
                 0f);
         }
 
-        private void ApplyHueShift(float sliderValue)
+        private void ApplyHueShift(float sliderValue, float luminanceMultiplier)
         {
             float targetHue =
                 NadaHueShiftUtility.SliderValueToTargetHue(sliderValue);
 
-            ApplyParticleHueShift(targetHue);
-            ApplyRendererHueShift(targetHue);
-            ApplyLightHueShift(targetHue);
+            float particleLuminance =
+                NadaLuminanceUtility.RemapParticleLuminance(luminanceMultiplier);
+
+            float rendererEmissionMultiplier = Mathf.Clamp(
+                luminanceMultiplier,
+                PluginConfig.MinLuminance,
+                PluginConfig.MaxLuminance);
+
+            ApplyParticleHueShift(targetHue, particleLuminance);
+            ApplyRendererHueShift(targetHue, rendererEmissionMultiplier);
+            ApplyLightHueShift(targetHue, rendererEmissionMultiplier);
         }
 
-        private void ApplyParticleHueShift(float targetHue)
+        private void ApplyParticleHueShift(float targetHue, float particleLuminance)
         {
             if (_systems == null)
                 return;
@@ -387,8 +394,11 @@ namespace NADA.VFX.Modules.Effects
                     if (_baseMainStartColor.TryGetValue(particleSystemId, out var baseStartColor))
                     {
                         var main = particleSystem.main;
+
                         main.startColor =
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(baseStartColor, targetHue);
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(baseStartColor, targetHue),
+                                particleLuminance);
                     }
                 }
                 catch { }
@@ -409,7 +419,9 @@ namespace NADA.VFX.Modules.Effects
                             out var baseColorOverLifetime))
                     {
                         colorOverLifetime.color =
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(baseColorOverLifetime, targetHue);
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(baseColorOverLifetime, targetHue),
+                                particleLuminance);
                     }
                 }
                 catch { }
@@ -435,21 +447,25 @@ namespace NADA.VFX.Modules.Effects
                     {
                         customData.SetColor(
                             ParticleSystemCustomData.Custom1,
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(custom1Color, targetHue));
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(custom1Color, targetHue),
+                                particleLuminance));
                     }
 
                     if (_baseCustom2Color.TryGetValue(particleSystemId, out var custom2Color))
                     {
                         customData.SetColor(
                             ParticleSystemCustomData.Custom2,
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(custom2Color, targetHue));
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(custom2Color, targetHue),
+                                particleLuminance));
                     }
                 }
                 catch { }
             }
         }
 
-        private void ApplyRendererHueShift(float targetHue)
+        private void ApplyRendererHueShift(float targetHue, float rendererEmissionMultiplier)
         {
             if (_renderers == null)
                 return;
@@ -500,16 +516,20 @@ namespace NADA.VFX.Modules.Effects
 
                     if (materialBaseline.EmissionColor.HasValue && material.HasProperty("_EmissionColor"))
                     {
+                        Color retintedEmission =
+                            NadaHueShiftUtility.RetintColorToHue(materialBaseline.EmissionColor.Value, targetHue);
+
+                        material.EnableKeyword("_EMISSION");
                         material.SetColor(
                             "_EmissionColor",
-                            NadaHueShiftUtility.RetintColorToHue(materialBaseline.EmissionColor.Value, targetHue));
+                            retintedEmission * rendererEmissionMultiplier);
                     }
                 }
                 catch { }
             }
         }
 
-        private void ApplyLightHueShift(float targetHue)
+        private void ApplyLightHueShift(float targetHue, float luminanceMultiplier)
         {
             if (_lights == null)
                 return;
@@ -526,26 +546,30 @@ namespace NADA.VFX.Modules.Effects
                     try
                     {
                         light.color =
-                            NadaHueShiftUtility.RetintColorToHue(baseColor, targetHue);
+                            NadaLuminanceUtility.ApplyToColor(
+                                NadaHueShiftUtility.RetintColorToHue(baseColor, targetHue),
+                                luminanceMultiplier);
                     }
                     catch { }
                 }
             }
         }
 
-        private void RestartSystemsIfHueChanged(float hue)
+        private void RestartSystemsIfColorChanged(float hue, float luminance)
         {
-            bool hueChanged =
-                !_hasLastHue ||
-                Mathf.Abs(hue - _lastHue) > 0.0001f;
+            bool colorChanged =
+                !_hasLastColor ||
+                Mathf.Abs(hue - _lastHue) > 0.0001f ||
+                Mathf.Abs(luminance - _lastLuminance) > 0.0001f;
 
-            if (!hueChanged)
+            if (!colorChanged)
                 return;
 
             RestartSystems();
 
             _lastHue = hue;
-            _hasLastHue = true;
+            _lastLuminance = luminance;
+            _hasLastColor = true;
         }
 
         private void RestartSystems()

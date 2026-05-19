@@ -4,15 +4,15 @@ using System.Collections.Generic;
 namespace NADA.VFX.Core.State
 {
     [Serializable]
-    internal sealed class VfxStyleSave
+    public sealed class VfxStyleSave
     {
         public int Version = 1;
         public string Name = "Default";
-        public List<VfxStyleEntry> Entries = new();
+        public List<VfxStyleEntry> Entries = new List<VfxStyleEntry>();
     }
 
     [Serializable]
-    internal sealed class VfxStyleEntry
+    public sealed class VfxStyleEntry
     {
         public string Key;
         public string Value;

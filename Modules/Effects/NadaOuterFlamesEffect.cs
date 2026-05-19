@@ -104,10 +104,11 @@ namespace NADA.VFX.Modules.Effects
 
             ApplyEnabled(state.OuterFlamesEnabled);
             ApplyEnergy(state.OuterFlamesEnergy);
-            ApplyHueShift(state.OuterFlamesHue);
+            ApplyHueShift(state.OuterFlamesHue, state.OuterFlamesLuminance);
             ApplyScale(state.OuterFlamesScale);
             ApplyLength(state.OuterFlamesLength);
-            
+            ApplyLifetime(state.OuterFlamesLifetime);
+
             ApplyPlacement(
                 state.OuterFlamesXOffset,
                 state.OuterFlamesYOffset,
@@ -127,8 +128,6 @@ namespace NADA.VFX.Modules.Effects
 
             return VfxStateIO.FromConfig();
         }
-
-        // Cache / baselines
 
         private void RebuildComponentCache()
         {
@@ -368,8 +367,6 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        // Config-facing apply path
-
         private void ApplyEnabled(bool enabled)
         {
             ApplyParticleSystemEnabledState(enabled);
@@ -462,9 +459,6 @@ namespace NADA.VFX.Modules.Effects
                 if (_baseStartSize.TryGetValue(particleSystemId, out var baseStartSize))
                     main.startSize = ScaleMinMaxCurve(baseStartSize, scaleMultiplier);
 
-                if (_baseStartLifetime.TryGetValue(particleSystemId, out var baseStartLifetime))
-                    main.startLifetime = ScaleMinMaxCurve(baseStartLifetime, scaleMultiplier);
-
                 if (_baseSimulationSpeed.TryGetValue(particleSystemId, out float baseSimulationSpeed))
                 {
                     float simulationSpeedMultiplier =
@@ -548,6 +542,37 @@ namespace NADA.VFX.Modules.Effects
             catch { }
         }
 
+        private void ApplyLifetime(float lifetime)
+        {
+            if (_systems == null)
+                return;
+
+            float clampedLifetime = Mathf.Clamp(
+                lifetime,
+                PluginConfig.MinLifetime,
+                PluginConfig.MaxLifetime);
+
+            foreach (ParticleSystem particleSystem in _systems)
+            {
+                if (particleSystem == null)
+                    continue;
+
+                int particleSystemId = particleSystem.GetInstanceID();
+
+                if (!_baseStartLifetime.TryGetValue(
+                        particleSystemId,
+                        out var baseLifetime))
+                    continue;
+
+                try
+                {
+                    var main = particleSystem.main;
+                    main.startLifetime = ScaleMinMaxCurve(baseLifetime, clampedLifetime);
+                }
+                catch { }
+            }
+        }
+
         private void ApplyPlacement(
             float xOffset,
             float yOffset,
@@ -571,20 +596,28 @@ namespace NADA.VFX.Modules.Effects
                 ClampRotation(zRotation));
         }
 
-        private void ApplyHueShift(float sliderValue)
+        private void ApplyHueShift(float sliderValue, float luminanceMultiplier)
         {
             float targetHue =
                 NadaHueShiftUtility.SliderValueToTargetHue(sliderValue);
 
-            ApplyParticleHueShift(targetHue);
-            ApplyRendererHueShift(targetHue);
-            ApplyLightHueShift(targetHue);
+            float rendererLuminanceMultiplier = Mathf.Clamp(
+                luminanceMultiplier,
+                PluginConfig.MinLuminance,
+                PluginConfig.MaxLuminance);
+
+            ApplyParticleHueShift(targetHue, rendererLuminanceMultiplier);
+            ApplyRendererHueShift(targetHue, rendererLuminanceMultiplier);
+            ApplyLightHueShift(targetHue, rendererLuminanceMultiplier);
         }
 
-        private void ApplyParticleHueShift(float targetHue)
+        private void ApplyParticleHueShift(float targetHue, float luminanceMultiplier)
         {
             if (_systems == null)
                 return;
+
+            float particleLuminance =
+                NadaLuminanceUtility.RemapParticleLuminance(luminanceMultiplier);
 
             foreach (ParticleSystem particleSystem in _systems)
             {
@@ -598,8 +631,11 @@ namespace NADA.VFX.Modules.Effects
                     if (_baseMainStartColor.TryGetValue(particleSystemId, out var baseStartColor))
                     {
                         var main = particleSystem.main;
+
                         main.startColor =
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(baseStartColor, targetHue);
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(baseStartColor, targetHue),
+                                particleLuminance);
                     }
                 }
                 catch { }
@@ -620,7 +656,9 @@ namespace NADA.VFX.Modules.Effects
                             out var baseColorOverLifetime))
                     {
                         colorOverLifetime.color =
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(baseColorOverLifetime, targetHue);
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(baseColorOverLifetime, targetHue),
+                                particleLuminance);
                     }
                 }
                 catch { }
@@ -646,21 +684,25 @@ namespace NADA.VFX.Modules.Effects
                     {
                         customData.SetColor(
                             ParticleSystemCustomData.Custom1,
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(custom1Color, targetHue));
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(custom1Color, targetHue),
+                                particleLuminance));
                     }
 
                     if (_baseCustom2Color.TryGetValue(particleSystemId, out var custom2Color))
                     {
                         customData.SetColor(
                             ParticleSystemCustomData.Custom2,
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(custom2Color, targetHue));
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(custom2Color, targetHue),
+                                particleLuminance));
                     }
                 }
                 catch { }
             }
         }
 
-        private void ApplyRendererHueShift(float targetHue)
+        private void ApplyRendererHueShift(float targetHue, float luminanceMultiplier)
         {
             if (_renderers == null)
                 return;
@@ -687,7 +729,11 @@ namespace NADA.VFX.Modules.Effects
                     if (materialBaseline.Color.HasValue)
                     {
                         Color color =
-                            NadaHueShiftUtility.RetintColorToHue(materialBaseline.Color.Value, targetHue);
+                            ScaleColorRgb(
+                                NadaHueShiftUtility.RetintColorToHue(
+                                    materialBaseline.Color.Value,
+                                    targetHue),
+                                luminanceMultiplier);
 
                         if (material.HasProperty("_Color"))
                             material.SetColor("_Color", color);
@@ -699,28 +745,40 @@ namespace NADA.VFX.Modules.Effects
                     {
                         material.SetColor(
                             "_BaseColor",
-                            NadaHueShiftUtility.RetintColorToHue(materialBaseline.BaseColor.Value, targetHue));
+                            ScaleColorRgb(
+                                NadaHueShiftUtility.RetintColorToHue(
+                                    materialBaseline.BaseColor.Value,
+                                    targetHue),
+                                luminanceMultiplier));
                     }
 
                     if (materialBaseline.TintColor.HasValue && material.HasProperty("_TintColor"))
                     {
                         material.SetColor(
                             "_TintColor",
-                            NadaHueShiftUtility.RetintColorToHue(materialBaseline.TintColor.Value, targetHue));
+                            ScaleColorRgb(
+                                NadaHueShiftUtility.RetintColorToHue(
+                                    materialBaseline.TintColor.Value,
+                                    targetHue),
+                                luminanceMultiplier));
                     }
 
                     if (materialBaseline.EmissionColor.HasValue && material.HasProperty("_EmissionColor"))
                     {
                         material.SetColor(
                             "_EmissionColor",
-                            NadaHueShiftUtility.RetintColorToHue(materialBaseline.EmissionColor.Value, targetHue));
+                            ScaleColorRgb(
+                                NadaHueShiftUtility.RetintColorToHue(
+                                    materialBaseline.EmissionColor.Value,
+                                    targetHue),
+                                luminanceMultiplier));
                     }
                 }
                 catch { }
             }
         }
 
-        private void ApplyLightHueShift(float targetHue)
+        private void ApplyLightHueShift(float targetHue, float luminanceMultiplier)
         {
             if (_lights == null)
                 return;
@@ -737,7 +795,9 @@ namespace NADA.VFX.Modules.Effects
                     try
                     {
                         light.color =
-                            NadaHueShiftUtility.RetintColorToHue(baseColor, targetHue);
+                            NadaLuminanceUtility.ApplyToColor(
+                                NadaHueShiftUtility.RetintColorToHue(baseColor, targetHue),
+                                luminanceMultiplier);
                     }
                     catch { }
                 }
@@ -797,7 +857,13 @@ namespace NADA.VFX.Modules.Effects
             catch { }
         }
 
-        // Helpers
+        private static Color ScaleColorRgb(Color color, float multiplier)
+        {
+            color.r *= multiplier;
+            color.g *= multiplier;
+            color.b *= multiplier;
+            return color;
+        }
 
         private static float ClampScale(float value)
         {
@@ -820,7 +886,7 @@ namespace NADA.VFX.Modules.Effects
                 PluginConfig.MinEffectOffset,
                 PluginConfig.MaxEffectOffset);
         }
-        
+
         private static float ClampRotation(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))

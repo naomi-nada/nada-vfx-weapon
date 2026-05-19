@@ -24,7 +24,7 @@ namespace NADA.VFX.Runtime.Structure
                 return null;
 
             Transform strandsTransform =
-                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.OrbitalsStrandsName);
+                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.OrganicsStrandsName);
 
             if (strandsTransform != null)
                 return strandsTransform;
@@ -32,7 +32,7 @@ namespace NADA.VFX.Runtime.Structure
             GameObject strandsObject =
                 Object.Instantiate(NadaRigCache.StrandsTemplateInactive, localEffectsRootTransform, false);
 
-            strandsObject.name = Plugin.OrbitalsStrandsName;
+            strandsObject.name = Plugin.OrganicsStrandsName;
             strandsObject.SetActive(true);
 
             NadaRigTransforms.ResetLocalTransform(strandsObject.transform);

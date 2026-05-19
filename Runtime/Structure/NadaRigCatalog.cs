@@ -20,7 +20,7 @@ namespace NADA.VFX.Runtime.Structure
         public Transform OrbitalsRigRootTransform { get; private set; }
 
         public Transform OrbitalsOrbsRootTransform { get; private set; }
-        public Transform OrbitalsStrandsTransform { get; private set; }
+        public Transform OrganicsStrandsTransform { get; private set; }
         public Transform OrbitalsFlamesRootTransform { get; private set; }
         public Transform OrbitalsEmbersRootTransform { get; private set; }
         
@@ -69,8 +69,8 @@ namespace NADA.VFX.Runtime.Structure
                 catalog.OrbitalsOrbsRootTransform =
                     NadaRigPaths.FindLocalOrbsRoot(localWeaponRootTransform);
                 
-                catalog.OrbitalsStrandsTransform =
-                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.OrbitalsStrandsName);
+                catalog.OrganicsStrandsTransform =
+                    NadaRigPaths.FindDirectChild(catalog.LocalEffectsRootTransform, Plugin.OrganicsStrandsName);
 
                 if (catalog.OrbitalsRootTransform != null)
                 {

@@ -1,5 +1,6 @@
 // Made by Naomi Nada B.F.
 // ^-^
+using System;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
@@ -20,7 +21,7 @@ namespace NADA.VFX
     {
         public const string ModGuid = "naomi.nada.vfx";
         public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.7.7";
+        public const string ModVersion = "0.8.1";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -63,8 +64,6 @@ namespace NADA.VFX
         internal const string OrbitalsOrbsPoolName = "Orbs Pool";
         internal const int MaxOrbitalsOrbsVisuals = 40;
 
-        internal const string OrbitalsStrandsName = "Strands";
-
         internal const string OrbitalsFlamesName = "Flames";
         internal const string OrbitalsFlamesMotionRootName = "Flames Motion Root";
         internal const string OrbitalsFlamesPoolName = "Flames Pool";
@@ -74,6 +73,9 @@ namespace NADA.VFX
         internal const string OrbitalsEmbersMotionRootName = "Embers Motion Root";
         internal const string OrbitalsEmbersPoolName = "Embers Pool";
         internal const int MaxOrbitalsEmberVisuals = 40;
+        
+        // Organics
+        internal const string OrganicsStrandsName = "Strands";
 
         // Reference rig transform
         internal static readonly Vector3 RigLocalPosition = new Vector3(0.0f, 1.1f, 0.0f);
@@ -86,12 +88,6 @@ namespace NADA.VFX
             Log = Logger;
 
             PluginConfig.Bind(Config);
-
-            DebugLoggingEnabled = Config.Bind(
-                "Debug",
-                "Enable Debug Logging",
-                false,
-                "Enables verbose NADA VFX structure/discovery logs.");
 
             Log.LogInfo($"{ModName} loaded! Version {ModVersion}");
 
@@ -167,6 +163,10 @@ namespace NADA.VFX
 
         internal void LoadStyleIntoManager(string styleName)
         {
+            styleName = string.IsNullOrWhiteSpace(styleName)
+                ? "Default"
+                : styleName.Trim();
+
             if (!VfxStyleStore.TryGet(styleName, out VfxState state))
             {
                 Log.LogInfo($"{ModName}: [Style] could not find style '{styleName}'.");
@@ -174,6 +174,16 @@ namespace NADA.VFX
             }
 
             VfxStateIO.ApplyToConfig(state);
+
+            if (PluginConfig.LoadStyle != null &&
+                !string.Equals(
+                    PluginConfig.LoadStyle.Value,
+                    styleName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                PluginConfig.LoadStyle.Value = styleName;
+            }
+
             Config.Save();
 
             RefreshExistingEquippedRigsOnly();

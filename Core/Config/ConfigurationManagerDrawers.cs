@@ -58,7 +58,7 @@ namespace NADA.VFX.Core.Config
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
         }
-        
+
         internal static void DrawOrbsSpacingSlider(ConfigEntryBase entry)
         {
             bool snakeEnabled =
@@ -71,8 +71,8 @@ namespace NADA.VFX.Core.Config
         internal static void DrawStrandsColorSlider(ConfigEntryBase entry)
         {
             bool disabled =
-                PluginConfig.OrbitalsStrandsSpectrum != null &&
-                PluginConfig.OrbitalsStrandsSpectrum.Value;
+                PluginConfig.OrganicsStrandsSpectrum != null &&
+                PluginConfig.OrganicsStrandsSpectrum.Value;
 
             DrawFloatSlider(entry, disabled);
         }
@@ -80,8 +80,8 @@ namespace NADA.VFX.Core.Config
         internal static void DrawStrandsSpectrumSpeedSlider(ConfigEntryBase entry)
         {
             bool disabled =
-                PluginConfig.OrbitalsStrandsSpectrum == null ||
-                !PluginConfig.OrbitalsStrandsSpectrum.Value;
+                PluginConfig.OrganicsStrandsSpectrum == null ||
+                !PluginConfig.OrganicsStrandsSpectrum.Value;
 
             DrawFloatSlider(entry, disabled);
         }
@@ -159,6 +159,7 @@ namespace NADA.VFX.Core.Config
             if (GUILayout.Button("Save", GUILayout.Width(46f)))
             {
                 Plugin.Instance.SaveCurrentStyleFromManager(currentName);
+                VfxStyleStore.ReloadFromDisk();
                 entry.BoxedValue = false;
             }
 
@@ -170,6 +171,8 @@ namespace NADA.VFX.Core.Config
         internal static void DrawLoadStyleDropdown(ConfigEntryBase entry)
         {
             string current = entry.BoxedValue as string ?? "Default";
+            if (string.IsNullOrWhiteSpace(current))
+                current = "Default";
 
             GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
 
@@ -177,16 +180,39 @@ namespace NADA.VFX.Core.Config
 
             if (GUILayout.Button(current, GUILayout.ExpandWidth(true)))
             {
-                Plugin.Instance.LoadStyleIntoManager(current);
                 _loadStyleDropdownOpen = !_loadStyleDropdownOpen;
             }
 
             if (GUILayout.Button("Reset", GUILayout.Width(StyleButtonWidth)))
             {
-                entry.BoxedValue = "Default";
-                Plugin.Instance.LoadStyleIntoManager("Default");
+                if (!string.Equals(current, "Default", StringComparison.OrdinalIgnoreCase))
+                {
+                    entry.BoxedValue = "Default";
+                    Plugin.Instance.LoadStyleIntoManager("Default");
+                }
+
                 _loadStyleDropdownOpen = false;
             }
+
+            bool oldEnabled = GUI.enabled;
+            bool canDelete =
+                !string.Equals(current, "Default", StringComparison.OrdinalIgnoreCase);
+
+            GUI.enabled = oldEnabled && canDelete;
+
+            if (GUILayout.Button("Delete", GUILayout.Width(StyleButtonWidth)))
+            {
+                if (VfxStyleStore.Delete(current))
+                {
+                    entry.BoxedValue = "Default";
+                    Plugin.Instance.LoadStyleIntoManager("Default");
+                    VfxStyleStore.ReloadFromDisk();
+                }
+
+                _loadStyleDropdownOpen = false;
+            }
+
+            GUI.enabled = oldEnabled;
 
             GUILayout.EndHorizontal();
 
@@ -194,6 +220,15 @@ namespace NADA.VFX.Core.Config
             {
                 foreach (string styleName in VfxStyleStore.GetStyleNames())
                 {
+                    bool isCurrent =
+                        string.Equals(styleName, current, StringComparison.OrdinalIgnoreCase);
+
+                    bool isDefault =
+                        string.Equals(styleName, "Default", StringComparison.OrdinalIgnoreCase);
+
+                    if (isCurrent && !isDefault)
+                        continue;
+
                     if (GUILayout.Button(styleName, GUILayout.ExpandWidth(true)))
                     {
                         entry.BoxedValue = styleName;
@@ -205,7 +240,7 @@ namespace NADA.VFX.Core.Config
 
             GUILayout.EndVertical();
         }
-        
+
         internal static void DrawOrbitalsOrbsSyncButton(ConfigEntryBase entry)
         {
             GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
@@ -220,7 +255,7 @@ namespace NADA.VFX.Core.Config
 
             GUILayout.EndHorizontal();
         }
-        
+
         internal static void DrawGlueLockedFloatSlider(ConfigEntryBase entry)
         {
             bool disabled =

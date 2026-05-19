@@ -97,9 +97,13 @@ namespace NADA.VFX.Modules.Effects
             ApplyScaleParts(state.OrganicsStrandsScaleParts);
 
             if (state.OrganicsStrandsSpectrumEnabled)
-                ApplySpectrum(state.OrganicsStrandsSpectrumSpeed);
+                ApplySpectrum(
+                    state.OrganicsStrandsSpectrumSpeed,
+                    state.OrganicsStrandsLuminance);
             else
-                ApplyHue(state.OrganicsStrandsHue);
+                ApplyHue(
+                    state.OrganicsStrandsHue,
+                    state.OrganicsStrandsLuminance);
 
             ApplySpeed(state.OrganicsStrandsSpeed);
             ApplyLength(state.OrganicsStrandsLength);
@@ -438,15 +442,15 @@ namespace NADA.VFX.Modules.Effects
 
         // Color / spectrum
 
-        private void ApplyHue(float hue)
+        private void ApplyHue(float hue, float luminance)
         {
             float targetHue =
                 NadaHueShiftUtility.SliderValueToTargetHue(hue);
 
-            ApplyHueFromNormalizedHue(targetHue);
+            ApplyHueFromNormalizedHue(targetHue, luminance);
         }
 
-        private void ApplySpectrum(float speed)
+        private void ApplySpectrum(float speed, float luminance)
         {
             float clampedSpeed = Mathf.Clamp(
                 speed,
@@ -456,16 +460,28 @@ namespace NADA.VFX.Modules.Effects
             float hue =
                 Mathf.Repeat(Time.time * clampedSpeed, 1f);
 
-            ApplyHueFromNormalizedHue(hue);
+            ApplyHueFromNormalizedHue(hue, luminance);
         }
 
-        private void ApplyHueFromNormalizedHue(float targetHue)
+        private void ApplyHueFromNormalizedHue(
+            float targetHue,
+            float luminance)
         {
-            ApplyParticleHue(targetHue);
-            ApplyRendererHue(targetHue);
+            float particleLuminance =
+                NadaLuminanceUtility.RemapParticleLuminance(luminance);
+
+            float rendererEmissionMultiplier = Mathf.Clamp(
+                luminance,
+                PluginConfig.MinLuminance,
+                PluginConfig.MaxLuminance);
+
+            ApplyParticleHue(targetHue, particleLuminance);
+            ApplyRendererHue(targetHue, rendererEmissionMultiplier);
         }
 
-        private void ApplyParticleHue(float targetHue)
+        private void ApplyParticleHue(
+            float targetHue,
+            float particleLuminance)
         {
             if (_systems == null)
                 return;
@@ -484,9 +500,11 @@ namespace NADA.VFX.Modules.Effects
                         var mainModule = system.main;
 
                         mainModule.startColor =
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(
-                                baseStartColor,
-                                targetHue);
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(
+                                    baseStartColor,
+                                    targetHue),
+                                particleLuminance);
                     }
                 }
                 catch { }
@@ -501,16 +519,20 @@ namespace NADA.VFX.Modules.Effects
                             colorOverLifetime.enabled = wasEnabled;
 
                         colorOverLifetime.color =
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(
-                                baseColor,
-                                targetHue);
+                            NadaLuminanceUtility.ApplyToGradient(
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(
+                                    baseColor,
+                                    targetHue),
+                                particleLuminance);
                     }
                 }
                 catch { }
             }
         }
 
-        private void ApplyRendererHue(float targetHue)
+        private void ApplyRendererHue(
+            float targetHue,
+            float rendererEmissionMultiplier)
         {
             if (_renderers == null)
                 return;
@@ -541,9 +563,11 @@ namespace NADA.VFX.Modules.Effects
                     {
                         material.SetColor(
                             "_Color",
-                            NadaHueShiftUtility.RetintColorToHue(
-                                baseline.Color.Value,
-                                targetHue));
+                            NadaLuminanceUtility.ApplyToColor(
+                                NadaHueShiftUtility.RetintColorToHue(
+                                    baseline.Color.Value,
+                                    targetHue),
+                                rendererEmissionMultiplier));
                     }
 
                     if (baseline.TintColor.HasValue &&
@@ -551,19 +575,23 @@ namespace NADA.VFX.Modules.Effects
                     {
                         material.SetColor(
                             "_TintColor",
-                            NadaHueShiftUtility.RetintColorToHue(
-                                baseline.TintColor.Value,
-                                targetHue));
+                            NadaLuminanceUtility.ApplyToColor(
+                                NadaHueShiftUtility.RetintColorToHue(
+                                    baseline.TintColor.Value,
+                                    targetHue),
+                                rendererEmissionMultiplier));
                     }
 
                     if (baseline.EmissionColor.HasValue &&
                         material.HasProperty("_EmissionColor"))
                     {
+                        material.EnableKeyword("_EMISSION");
+
                         material.SetColor(
                             "_EmissionColor",
                             NadaHueShiftUtility.RetintColorToHue(
                                 baseline.EmissionColor.Value,
-                                targetHue));
+                                targetHue) * rendererEmissionMultiplier);
                     }
                 }
                 catch { }

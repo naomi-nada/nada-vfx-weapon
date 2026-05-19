@@ -22,6 +22,7 @@ namespace NADA.VFX.Modules.Motion
         private const int MinHistoryStepPerFollower = 1;
         private const int MaxHistoryStepPerFollower = 36;
         private const float HardLockAdherenceThreshold = 0.999f;
+        private const float SnakeSpacingMultiplier = 0.3f;
 
         // Ownership / state
         private NadaOrbitalsFamily _orbitalsFamily = NadaOrbitalsFamily.Orbs;
@@ -49,6 +50,7 @@ namespace NADA.VFX.Modules.Motion
         // Motion state
         private bool _lastGlueEnabled;
         private bool _hasLastGlueEnabled;
+        private NadaOrbitalsMotion _glueSourceMotion;
 
         private Vector3 _baseHeadLocalPosition;
         private Vector3 _currentLocalOffset;
@@ -119,11 +121,13 @@ namespace NADA.VFX.Modules.Motion
             ApplyOrbitalsMotion(state);
         }
 
-        // Main motion flow
-
         private void ApplyOrbitalsMotion(VfxState state)
         {
             bool glueEnabled = ResolveGlueEnabled(state);
+
+            bool snakeSpacingEnabled =
+                state.OrbitalsOrbsSnakeEnabled &&
+                (_orbitalsFamily == NadaOrbitalsFamily.Orbs || glueEnabled);
 
             if (!_hasLastGlueEnabled || _lastGlueEnabled != glueEnabled)
             {
@@ -154,8 +158,18 @@ namespace NADA.VFX.Modules.Motion
 
             ApplyHeadVisualEnabledState(true);
             ApplyFollowerVisualCount(desiredFollowerCount);
-
+            
             AdvanceCycleProgress(ResolveCycleProgressPerSecond(state));
+
+            if (glueEnabled)
+            {
+                NadaOrbitalsMotion glueSourceMotion = ResolveGlueSourceMotion();
+                if (glueSourceMotion != null && glueSourceMotion._hasCurrentCycleProgress01)
+                {
+                    _currentCycleProgress01 = glueSourceMotion._currentCycleProgress01;
+                    _hasCurrentCycleProgress01 = true;
+                }
+            }
 
             float currentDistanceAlongCycle =
                 _cachedCycleLength > 0f
@@ -177,7 +191,8 @@ namespace NADA.VFX.Modules.Motion
                 desiredFollowerCount,
                 historyStepPerFollower,
                 currentDistanceAlongCycle,
-                orbitAdherence);
+                orbitAdherence,
+                snakeSpacingEnabled);
         }
 
         private void AdvanceCycleProgress(float cycleProgressPerSecond)
@@ -213,8 +228,6 @@ namespace NADA.VFX.Modules.Motion
 
             return _currentHistoryStepPerFollower;
         }
-
-        // Visual chain
 
         private void ResolveVisualChain()
         {
@@ -278,8 +291,6 @@ namespace NADA.VFX.Modules.Motion
 
             ResetOrbitStartPoint();
         }
-
-        // Config-facing resolvers
 
         private VfxState ResolveState()
         {
@@ -355,9 +366,6 @@ namespace NADA.VFX.Modules.Motion
 
         private float ResolveOrbsSpacingT(VfxState state)
         {
-            if (state.OrbitalsOrbsSnakeEnabled)
-                return 0.15f;
-
             return ClampOrbitalsSpacing(state.OrbitalsOrbsSpacing);
         }
 
@@ -473,8 +481,6 @@ namespace NADA.VFX.Modules.Motion
             };
         }
 
-        // Path cache / evaluation
-
         private void EnsureArcLengthCache(
             float radiusMultiplier,
             float orbitLengthMultiplier,
@@ -546,7 +552,8 @@ namespace NADA.VFX.Modules.Motion
 
         private float EvaluateFollowerDistanceOffset(
             int followerIndex,
-            float historyStepPerFollower)
+            float historyStepPerFollower,
+            bool snakeSpacingEnabled)
         {
             float spacingT = Mathf.InverseLerp(
                 MinHistoryStepPerFollower,
@@ -561,21 +568,26 @@ namespace NADA.VFX.Modules.Motion
                 maxDistancePerFollower,
                 spacingT);
 
+            if (snakeSpacingEnabled)
+                distancePerFollower *= SnakeSpacingMultiplier;
+
             return followerIndex * distancePerFollower;
         }
 
         private Vector3 EvaluateLockedFollowerWorldPosition(
             int followerIndex,
             float historyStepPerFollower,
-            float currentDistanceAlongCycle)
+            float currentDistanceAlongCycle,
+            bool snakeSpacingEnabled)
         {
             float distanceOffset =
-                EvaluateFollowerDistanceOffset(followerIndex, historyStepPerFollower);
+                EvaluateFollowerDistanceOffset(
+                    followerIndex,
+                    historyStepPerFollower,
+                    snakeSpacingEnabled);
 
             return EvaluateHeadWorldPositionAtDistance(currentDistanceAlongCycle - distanceOffset);
         }
-
-        // World placement / drift
 
         private void ApplyHeadVisualPosition(
             float currentDistanceAlongCycle,
@@ -612,7 +624,8 @@ namespace NADA.VFX.Modules.Motion
             int desiredFollowerCount,
             float historyStepPerFollower,
             float currentDistanceAlongCycle,
-            float orbitAdherence)
+            float orbitAdherence,
+            bool snakeSpacingEnabled)
         {
             desiredFollowerCount = Mathf.Clamp(
                 desiredFollowerCount,
@@ -635,7 +648,8 @@ namespace NADA.VFX.Modules.Motion
                     EvaluateLockedFollowerWorldPosition(
                         followerIndex,
                         historyStepPerFollower,
-                        currentDistanceAlongCycle);
+                        currentDistanceAlongCycle,
+                        snakeSpacingEnabled);
 
                 if (orbitAdherence >= HardLockAdherenceThreshold)
                 {
@@ -647,7 +661,10 @@ namespace NADA.VFX.Modules.Motion
                 float historySampleIndex = followerIndex * historyStepPerFollower;
 
                 float followerDistanceOffset =
-                    EvaluateFollowerDistanceOffset(followerIndex, historyStepPerFollower);
+                    EvaluateFollowerDistanceOffset(
+                        followerIndex,
+                        historyStepPerFollower,
+                        snakeSpacingEnabled);
 
                 float followerDistanceAlongCycle =
                     currentDistanceAlongCycle - followerDistanceOffset;
@@ -789,6 +806,29 @@ namespace NADA.VFX.Modules.Motion
                 _parentWorldRotationHistorySamples[lowerIndex],
                 _parentWorldRotationHistorySamples[upperIndex],
                 interpolationT);
+        }
+        
+        private NadaOrbitalsMotion ResolveGlueSourceMotion()
+        {
+            if (_glueSourceMotion != null)
+                return _glueSourceMotion;
+
+            Transform root = transform.parent;
+            if (root == null)
+                return null;
+
+            foreach (var motion in root.GetComponentsInChildren<NadaOrbitalsMotion>(true))
+            {
+                if (motion != null &&
+                    motion != this &&
+                    motion._orbitalsFamily == NadaOrbitalsFamily.Orbs)
+                {
+                    _glueSourceMotion = motion;
+                    return _glueSourceMotion;
+                }
+            }
+
+            return null;
         }
 
         private Vector3 ResolveLocalOffset(VfxState state)

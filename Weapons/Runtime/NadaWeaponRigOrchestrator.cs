@@ -145,8 +145,8 @@ namespace NADA.VFX.Weapons.Runtime
                 catalog.OrbitalsOrbsRootTransform,
                 itemData);
 
-            NadaEffectBinder.BindOrbitalsStrandsEffect(
-                catalog.OrbitalsStrandsTransform,
+            NadaEffectBinder.BindOrganicsStrandsEffect(
+                catalog.OrganicsStrandsTransform,
                 itemData);
 
             if (catalog.OrbitalsOrbsRootTransform != null)
