@@ -1,11 +1,9 @@
 using UnityEngine;
 
 namespace NADA.VFX.Runtime.Structure
-
 {
     public class NadaSparksRigAssembly
     {
-    
         internal static Transform EnsureLocalSparksBranch(
             Transform localWeaponRootTransform,
             string ownerNameForLogs)
@@ -25,6 +23,8 @@ namespace NADA.VFX.Runtime.Structure
             if (localEffectsRootTransform == null)
                 return null;
 
+            bool createdSparksRoot = false;
+
             Transform sparksRootTransform =
                 NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.SparksName);
 
@@ -32,6 +32,8 @@ namespace NADA.VFX.Runtime.Structure
             {
                 sparksRootTransform =
                     NadaRigTransforms.EnsureChild(localEffectsRootTransform, Plugin.SparksName);
+
+                createdSparksRoot = true;
 
                 for (int i = 0; i < 8; i++)
                 {
@@ -45,19 +47,23 @@ namespace NADA.VFX.Runtime.Structure
                     sparkObject.SetActive(true);
 
                     sparkObject.transform.localPosition = Vector3.zero;
+                    sparkObject.transform.localRotation = Quaternion.identity;
                     sparkObject.transform.localScale = Vector3.one;
                 }
             }
 
-            sparksRootTransform.localPosition = Vector3.zero;
-            sparksRootTransform.localRotation = Quaternion.identity;
-            sparksRootTransform.localScale = Vector3.one;
+            if (createdSparksRoot)
+            {
+                sparksRootTransform.localPosition = Vector3.zero;
+                sparksRootTransform.localRotation = Quaternion.identity;
+                sparksRootTransform.localScale = Vector3.one;
+            }
 
             NadaRigTransforms.NormalizeParticleSpacesUnder(
                 sparksRootTransform,
                 ParticleSystemSimulationSpace.Local);
 
             return sparksRootTransform;
-        }    
+        }
     }
 }

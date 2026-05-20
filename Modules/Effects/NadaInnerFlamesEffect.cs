@@ -74,7 +74,7 @@ namespace NADA.VFX.Modules.Effects
 
             _componentCacheDirty = false;
             _baselineCacheDirty = false;
-            
+
             InvokeRepeating(nameof(TickApply), 0f, 0.05f);
         }
 
@@ -544,7 +544,7 @@ namespace NADA.VFX.Modules.Effects
             if (_systems == null)
                 return;
 
-            float clampedLifetime = Mathf.Clamp(
+            float lifetimeMultiplier = Mathf.Clamp(
                 lifetime,
                 PluginConfig.MinLifetime,
                 PluginConfig.MaxLifetime);
@@ -564,7 +564,7 @@ namespace NADA.VFX.Modules.Effects
                 try
                 {
                     var main = particleSystem.main;
-                    main.startLifetime = ScaleMinMaxCurve(baseLifetime, clampedLifetime);
+                    main.startLifetime = MultiplyCurve(baseLifetime, lifetimeMultiplier);
                 }
                 catch { }
             }
@@ -886,6 +886,20 @@ namespace NADA.VFX.Modules.Effects
                 value,
                 PluginConfig.MinEffectRotation,
                 PluginConfig.MaxEffectRotation);
+        }
+
+        private static ParticleSystem.MinMaxCurve MultiplyCurve(
+            ParticleSystem.MinMaxCurve source,
+            float multiplier)
+        {
+            ParticleSystem.MinMaxCurve result = source;
+
+            result.constant *= multiplier;
+            result.constantMin *= multiplier;
+            result.constantMax *= multiplier;
+            result.curveMultiplier *= multiplier;
+
+            return result;
         }
 
         private static ParticleSystem.MinMaxCurve ScaleMinMaxCurve(
