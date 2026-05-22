@@ -12,12 +12,16 @@ namespace NADA.VFX.Core.State
         internal const string RigZRotation = "nada.vfx.rig.z_rotation";
 
         internal const string InnerFlamesEnabled = "nada.vfx.innerflames.enabled";
+        internal const string InnerFlamesWorldEnabled = "nada.vfx.innerflames.world.enabled";
+        internal const string InnerFlamesBlackEnabled = "nada.vfx.innerflames.black.enabled";
+        internal const string InnerFlamesWhiteEnabled = "nada.vfx.innerflames.white.enabled";
         internal const string InnerFlamesEnergy = "nada.vfx.innerflames.energy";
         internal const string InnerFlamesScale = "nada.vfx.innerflames.scale";
         internal const string InnerFlamesLuminance = "nada.vfx.innerflames.luminance";
         internal const string InnerFlamesHue = "nada.vfx.innerflames.hue";
         internal const string InnerFlamesLifetime = "nada.vfx.innerflames.lifetime";
         internal const string InnerFlamesLength = "nada.vfx.innerflames.length";
+        internal const string InnerFlamesWidth = "nada.vfx.innerflames.width";
         internal const string InnerFlamesXOffset = "nada.vfx.innerflames.x_offset";
         internal const string InnerFlamesYOffset = "nada.vfx.innerflames.y_offset";
         internal const string InnerFlamesZOffset = "nada.vfx.innerflames.z_offset";
@@ -26,6 +30,9 @@ namespace NADA.VFX.Core.State
         internal const string InnerFlamesZRotation = "nada.vfx.innerflames.z_rotation";
 
         internal const string OuterFlamesEnabled = "nada.vfx.outerflames.enabled";
+        internal const string OuterFlamesWorldEnabled = "nada.vfx.outerflames.world.enabled";
+        internal const string OuterFlamesBlackEnabled = "nada.vfx.outerflames.black.enabled";
+        internal const string OuterFlamesWhiteEnabled = "nada.vfx.outerflames.white.enabled";
         internal const string OuterFlamesDragEnabled = "nada.vfx.outerflames.drag.enabled";
         internal const string OuterFlamesEnergy = "nada.vfx.outerflames.energy";
         internal const string OuterFlamesScale = "nada.vfx.outerflames.scale";
@@ -33,6 +40,7 @@ namespace NADA.VFX.Core.State
         internal const string OuterFlamesHue = "nada.vfx.outerflames.hue";
         internal const string OuterFlamesLifetime = "nada.vfx.outerflames.lifetime";
         internal const string OuterFlamesLength = "nada.vfx.outerflames.length";
+        internal const string OuterFlamesWidth = "nada.vfx.outerflames.width";
         internal const string OuterFlamesXOffset = "nada.vfx.outerflames.x_offset";
         internal const string OuterFlamesYOffset = "nada.vfx.outerflames.y_offset";
         internal const string OuterFlamesZOffset = "nada.vfx.outerflames.z_offset";
@@ -40,13 +48,33 @@ namespace NADA.VFX.Core.State
         internal const string OuterFlamesYRotation = "nada.vfx.outerflames.y_rotation";
         internal const string OuterFlamesZRotation = "nada.vfx.outerflames.z_rotation";
 
-        internal const string SparksEnabled = "nada_vfx_sparks_enabled";
-        internal const string SparksEnergy = "nada_vfx_sparks_energy";
-        internal const string SparksScale = "nada_vfx_sparks_scale";
-        internal const string SparksLuminance = "nada_vfx_sparks_luminance";
+        internal const string StrandsEnabled = "nada.vfx.strands.enabled";
+        internal const string StrandsSpectrumEnabled = "nada.vfx.strands.spectrum.enabled";
+        internal const string StrandsEnergy = "nada.vfx.strands.energy";
+        internal const string StrandsScaleWhole = "nada.vfx.strands.scalewhole";
+        internal const string StrandsScaleParts = "nada.vfx.strands.scaleparts";
+        internal const string StrandsLuminance = "nada.vfx.strands.luminance";
+        internal const string StrandsHue = "nada.vfx.strands.hue";
+        internal const string StrandsLifetime = "nada.vfx.strands.lifetime";
+        internal const string StrandsLength = "nada.vfx.strands.length";
+        internal const string StrandsSpectrumSpeed = "nada.vfx.strands.spectrum.speed";
+        internal const string StrandsSpeed = "nada.vfx.strands.speed";
+        internal const string StrandsRadius = "nada.vfx.strands.radius";
+        internal const string StrandsXOffset = "nada.vfx.strands.x_offset";
+        internal const string StrandsYOffset = "nada.vfx.strands.y_offset";
+        internal const string StrandsZOffset = "nada.vfx.strands.z_offset";
+        internal const string StrandsXRotation = "nada.vfx.strands.x_rotation";
+        internal const string StrandsYRotation = "nada.vfx.strands.y_rotation";
+        internal const string StrandsZRotation = "nada.vfx.strands.z_rotation";
+        internal const string StrandsDrift = "nada.vfx.strands.drift";
+
+        internal const string SparksEnabled = "nada.vfx.sparks.enabled";
+        internal const string SparksEnergy = "nada.vfx.sparks.energy";
+        internal const string SparksScale = "nada.vfx.sparks.scale";
+        internal const string SparksLuminance = "nada.vfx.sparks.luminance";
         internal const string SparksHue = "nada.vfx.sparks.hue";
-        internal const string SparksLifeTime = "nada.vfx.sparks.lifetime";
-        internal const string SparksLength = "nada_vfx_sparks_length";
+        internal const string SparksLifetime = "nada.vfx.sparks.lifetime";
+        internal const string SparksLength = "nada.vfx.sparks.length";
         internal const string SparksWidth = "nada.vfx.sparks.width";
         internal const string SparksXOffset = "nada.vfx.sparks.x_offset";
         internal const string SparksYOffset = "nada.vfx.sparks.y_offset";
@@ -93,7 +121,29 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsOrbsYRotation = "nada.vfx.orbitals.orbs.y_rotation";
         internal const string OrbitalsOrbsZRotation = "nada.vfx.orbitals.orbs.z_rotation";
         internal const string OrbitalsOrbsDrift = "nada.vfx.orbitals.orbs.drift";
-        
+
+        internal const string OrbitalsCoresEnabled = "nada.vfx.orbitals.cores.enabled";
+        internal const string OrbitalsCoresSnakeEnabled = "nada.vfx.orbitals.cores.snake.enabled";
+        internal const string OrbitalsCoresGlueEnabled = "nada.vfx.orbitals.cores.glue.enabled";
+        internal const string OrbitalsCoresSpinEnabled = "nada.vfx.orbitals.cores.spin.enabled";
+        internal const string OrbitalsCoresCount = "nada.vfx.orbitals.cores.count";
+        internal const string OrbitalsCoresScale = "nada.vfx.orbitals.cores.scale";
+        internal const string OrbitalsCoresLuminance = "nada.vfx.orbitals.cores.luminance";
+        internal const string OrbitalsCoresHue = "nada.vfx.orbitals.cores.hue";
+        internal const string OrbitalsCoresSpinSpeed = "nada.vfx.orbitals.cores.spin.speed";
+        internal const string OrbitalsCoresSpeed = "nada.vfx.orbitals.cores.speed";
+        internal const string OrbitalsCoresSpacing = "nada.vfx.orbitals.cores.spacing";
+        internal const string OrbitalsCoresLength = "nada.vfx.orbitals.cores.length";
+        internal const string OrbitalsCoresRadius = "nada.vfx.orbitals.cores.radius";
+        internal const string OrbitalsCoresCycles = "nada.vfx.orbitals.cores.cycles";
+        internal const string OrbitalsCoresXOffset = "nada.vfx.orbitals.cores.x_offset";
+        internal const string OrbitalsCoresYOffset = "nada.vfx.orbitals.cores.y_offset";
+        internal const string OrbitalsCoresZOffset = "nada.vfx.orbitals.cores.z_offset";
+        internal const string OrbitalsCoresXRotation = "nada.vfx.orbitals.cores.x_rotation";
+        internal const string OrbitalsCoresYRotation = "nada.vfx.orbitals.cores.y_rotation";
+        internal const string OrbitalsCoresZRotation = "nada.vfx.orbitals.cores.z_rotation";
+        internal const string OrbitalsCoresDrift = "nada.vfx.orbitals.cores.drift";
+
         internal const string OrbitalsFlamesEnabled = "nada.vfx.orbitals.flames.enabled";
         internal const string OrbitalsFlamesCount = "nada.vfx.orbitals.flames.count";
         internal const string OrbitalsFlamesEnergy = "nada.vfx.orbitals.flames.energy";
@@ -133,25 +183,5 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsEmbersYRotation = "nada.vfx.orbitals.embers.y_rotation";
         internal const string OrbitalsEmbersZRotation = "nada.vfx.orbitals.embers.z_rotation";
         internal const string OrbitalsEmbersDrift = "nada.vfx.orbitals.embers.drift";
-        
-        internal const string OrganicsStrandsEnabled = "nada.vfx.organics.strands.enabled";
-        internal const string OrganicsStrandsSpectrumEnabled = "nada.vfx.organics.strands.spectrum.enabled";
-        internal const string OrganicsStrandsEnergy = "nada.vfx.organics.strands.energy";
-        internal const string OrganicsStrandsScaleWhole = "nada.vfx.organics.strands.scalewhole";
-        internal const string OrganicsStrandsScaleParts = "nada.vfx.organics.strands.scaleparts";
-        internal const string OrganicsStrandsLuminance = "nada.vfx.organics.strands.luminance";
-        internal const string OrganicsStrandsHue = "nada.vfx.organics.strands.hue";
-        internal const string OrganicsStrandsLifetime = "nada.vfx.organics.strands.lifetime";
-        internal const string OrganicsStrandsLength = "nada.vfx.organics.strands.length";
-        internal const string OrganicsStrandsSpectrumSpeed = "nada.vfx.organics.strands.spectrum.speed";
-        internal const string OrganicsStrandsSpeed = "nada.vfx.organics.strands.speed";
-        internal const string OrganicsStrandsRadius = "nada.vfx.organics.strands.radius";
-        internal const string OrganicsStrandsXOffset = "nada.vfx.organics.strands.x_offset";
-        internal const string OrganicsStrandsYOffset = "nada.vfx.organics.strands.y_offset";
-        internal const string OrganicsStrandsZOffset = "nada.vfx.organics.strands.z_offset";
-        internal const string OrganicsStrandsXRotation = "nada.vfx.organics.strands.x_rotation";
-        internal const string OrganicsStrandsYRotation = "nada.vfx.organics.strands.y_rotation";
-        internal const string OrganicsStrandsZRotation = "nada.vfx.organics.strands.z_rotation";
-        internal const string OrganicsStrandsDrift = "nada.vfx.organics.strands.drift";
     }
 }

@@ -17,7 +17,6 @@ namespace NADA.VFX.Weapons.Runtime
             global::ItemDrop.ItemData itemData = context.ItemData;
             Transform weaponVisualRootTransform = context.WeaponVisualRoot;
 
-            // Validate runtime readiness / ownership.
             if (!NadaRigCache.CacheReady)
             {
                 Plugin.Log.LogInfo(
@@ -60,7 +59,6 @@ namespace NADA.VFX.Weapons.Runtime
                 return;
             }
 
-            // Apply one-off compatibility fixes before building the rig.
             if (weaponVisualRootTransform.name.StartsWith("Sword15_Lava", System.StringComparison.Ordinal))
             {
                 NadaRigMaintenance.DisableBrokenFlameRenderer(
@@ -68,7 +66,6 @@ namespace NADA.VFX.Weapons.Runtime
                     rootObject.name);
             }
 
-            // 3. Ensure root structure.
             NadaWeaponRigAlignment alignment =
                 NadaWeaponRigAlignmentResolver.Resolve(itemData, weaponVisualRootTransform);
 
@@ -87,7 +84,6 @@ namespace NADA.VFX.Weapons.Runtime
             if (localEffectsRootTransform == null)
                 return;
 
-            // Ensure effect structure.
             NadaOrbitalsRigAssembly.EnsureCompleteOrbitalsRig(
                 localWeaponRootTransform,
                 itemData,
@@ -110,12 +106,10 @@ namespace NADA.VFX.Weapons.Runtime
                 weaponVisualRootTransform,
                 rootObject.name);
 
-            // Resolve authoritative structure references.
             NadaRigCatalog catalog = NadaRigCatalog.Build(localWeaponRootTransform);
             if (catalog == null)
                 return;
 
-            // Bind behavior modules.
             NadaEffectBinder.BindInnerFlamesEffect(
                 catalog.InnerFlamesTransform,
                 itemData);
@@ -145,8 +139,8 @@ namespace NADA.VFX.Weapons.Runtime
                 catalog.OrbitalsOrbsRootTransform,
                 itemData);
 
-            NadaEffectBinder.BindOrganicsStrandsEffect(
-                catalog.OrganicsStrandsTransform,
+            NadaEffectBinder.BindStrandsEffect(
+                catalog.StrandsTransform,
                 itemData);
 
             if (catalog.OrbitalsOrbsRootTransform != null)
@@ -156,7 +150,6 @@ namespace NADA.VFX.Weapons.Runtime
                     itemData);
             }
 
-            // Apply current state / motion follow / maintenance.
             NadaRigTransformApplier.Apply(
                 localWeaponRootTransform,
                 context.State);

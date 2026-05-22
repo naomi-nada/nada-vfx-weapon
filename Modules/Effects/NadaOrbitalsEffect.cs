@@ -32,6 +32,22 @@ namespace NADA.VFX.Modules.Effects
         private const float DefaultOrbBaselineScaleMultiplier = 1.5f;
         private const float SnakeFollowerOrbScaleMultiplier = 0.66f;
 
+        // Cores
+        private Transform _coresRootTransform;
+        private Transform _coresPoolRootTransform;
+        private bool _lastCoresEnabled;
+        private bool _hasLastCoresEnabled;
+
+        private readonly List<Transform> _coresVisualTransforms = new();
+        private readonly Dictionary<int, Vector3> _coresBaseLocalScaleByTransformId = new();
+
+        private readonly List<ParticleSystem> _coresParticleSystems = new();
+        private readonly List<Renderer> _coresRenderers = new();
+        private readonly List<Light> _coresLights = new();
+
+        private const float DefaultCoreBaselineScaleMultiplier = 0.1f;
+        private const float CoreLuminanceBoost = 2.5f;
+
         // Flames
         private Transform _flamesRootTransform;
         private Transform _flamesPoolRootTransform;
@@ -150,6 +166,7 @@ namespace NADA.VFX.Modules.Effects
             VfxState state = ResolveState();
 
             ApplyOrbs(state);
+            ApplyCores(state);
             ApplyFlames(state);
             ApplyEmbers(state);
         }
@@ -268,6 +285,108 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
+        // Cores
+
+        private void ApplyCoresScale(float scale, bool snake)
+        {
+            float clampedScale = ClampVisualScale(scale);
+
+            float baseScaleMultiplier =
+                DefaultCoreBaselineScaleMultiplier * clampedScale;
+
+            float headScaleMultiplier =
+                baseScaleMultiplier * (snake ? 1.5f : 1f);
+
+            float followerScaleMultiplier =
+                baseScaleMultiplier;
+
+            if (_coresRootTransform != null &&
+                _coresBaseLocalScaleByTransformId.TryGetValue(
+                    _coresRootTransform.GetInstanceID(),
+                    out Vector3 rootBaseScale))
+            {
+                _coresRootTransform.localScale = rootBaseScale * headScaleMultiplier;
+                NadaRigTransforms.ForceUniformWorldScale(_coresRootTransform);
+            }
+
+            if (_coresPoolRootTransform == null)
+                return;
+
+            foreach (Transform pooledCoreTransform in _coresPoolRootTransform)
+            {
+                if (pooledCoreTransform == null)
+                    continue;
+
+                int transformId = pooledCoreTransform.GetInstanceID();
+                if (!_coresBaseLocalScaleByTransformId.TryGetValue(transformId, out Vector3 baseLocalScale))
+                    continue;
+
+                pooledCoreTransform.localScale = baseLocalScale * followerScaleMultiplier;
+                NadaRigTransforms.ForceUniformWorldScale(pooledCoreTransform);
+            }
+        }
+        
+        private void ApplyCores(VfxState state)
+        {
+            SetRootActive(_coresRootTransform, state.OrbitalsCoresEnabled);
+            SetRootActive(_coresPoolRootTransform, state.OrbitalsCoresEnabled);
+
+            ApplyGroupEnabledState(
+                _coresParticleSystems,
+                _coresRenderers,
+                _coresLights,
+                state.OrbitalsCoresEnabled);
+
+            EnsureParticleSystemsPlayingIfEnabled(
+                _coresParticleSystems,
+                state.OrbitalsCoresEnabled);
+
+            ApplyCoresScale(
+                state.OrbitalsCoresScale,
+                state.OrbitalsCoresSnakeEnabled);
+
+            ApplyHueShift(
+                _coresParticleSystems,
+                _coresRenderers,
+                _coresLights,
+                state.OrbitalsCoresHue,
+                RemapCoreLuminance(state.OrbitalsCoresLuminance));
+
+            LogToggleStateIfChanged(
+                "Orbitals Cores",
+                state.OrbitalsCoresEnabled,
+                ref _lastCoresEnabled,
+                ref _hasLastCoresEnabled);
+        }
+
+        private void CacheCoresBaselineScale()
+        {
+            AddCoreVisualTransform(_coresRootTransform);
+
+            if (_coresPoolRootTransform == null)
+                return;
+
+            foreach (Transform pooledCoreTransform in _coresPoolRootTransform)
+                AddCoreVisualTransform(pooledCoreTransform);
+        }
+
+        private void AddCoreVisualTransform(Transform coreTransform)
+        {
+            if (coreTransform == null)
+                return;
+
+            if (!_coresVisualTransforms.Contains(coreTransform))
+                _coresVisualTransforms.Add(coreTransform);
+
+            int transformId = coreTransform.GetInstanceID();
+            if (_coresBaseLocalScaleByTransformId.ContainsKey(transformId))
+                return;
+
+            _coresBaseLocalScaleByTransformId[transformId] =
+                NormalizeUniformScale(coreTransform.localScale);
+        }
+        
+
         // Flames
 
         private void ApplyFlames(VfxState state)
@@ -364,10 +483,7 @@ namespace NADA.VFX.Modules.Effects
                     var main = particleSystem.main;
 
                     if (_baseStartSizeByParticleSystemId.TryGetValue(particleSystemId, out var baseStartSize))
-                    {
-                        main.startSize =
-                            ScaleMinMaxCurve(baseStartSize, scaleMultiplier);
-                    }
+                        main.startSize = ScaleMinMaxCurve(baseStartSize, scaleMultiplier);
 
                     if (_baseSimulationSpeedByParticleSystemId.TryGetValue(
                             particleSystemId,
@@ -410,7 +526,7 @@ namespace NADA.VFX.Modules.Effects
         {
             if (particleSystems == null)
                 return;
-            
+
             float clampedLifetime = Mathf.Clamp(
                 lifetime,
                 PluginConfig.MinLifetime,
@@ -439,6 +555,7 @@ namespace NADA.VFX.Modules.Effects
                 catch { }
             }
         }
+
         // Embers
 
         private void ApplyEmbers(VfxState state)
@@ -552,6 +669,9 @@ namespace NADA.VFX.Modules.Effects
             _orbsVisualTransform =
                 NadaRigPaths.FindDirectChild(_orbsRootTransform, "Orb_00");
 
+            _coresRootTransform =
+                NadaRigPaths.FindDirectChild(transform, Plugin.OrbitalsCoresName);
+
             _flamesRootTransform =
                 NadaRigPaths.FindDirectChild(transform, Plugin.OrbitalsFlamesName);
 
@@ -571,6 +691,18 @@ namespace NADA.VFX.Modules.Effects
                 _orbsParticleSystems,
                 _orbsRenderers,
                 _orbsLights);
+
+            AppendUniqueGroupComponents(
+                _coresRootTransform,
+                _coresParticleSystems,
+                _coresRenderers,
+                _coresLights);
+
+            AppendUniqueGroupComponents(
+                _coresPoolRootTransform,
+                _coresParticleSystems,
+                _coresRenderers,
+                _coresLights);
 
             AppendUniqueGroupComponents(
                 _flamesRootTransform,
@@ -603,6 +735,11 @@ namespace NADA.VFX.Modules.Effects
             _orbsRenderers.Clear();
             _orbsLights.Clear();
 
+            _coresVisualTransforms.Clear();
+            _coresParticleSystems.Clear();
+            _coresRenderers.Clear();
+            _coresLights.Clear();
+
             _flamesParticleSystems.Clear();
             _flamesRenderers.Clear();
             _flamesLights.Clear();
@@ -615,6 +752,7 @@ namespace NADA.VFX.Modules.Effects
         private void ResolvePoolRoots()
         {
             _orbsPoolRootTransform = null;
+            _coresPoolRootTransform = null;
             _flamesPoolRootTransform = null;
             _embersPoolRootTransform = null;
 
@@ -629,6 +767,9 @@ namespace NADA.VFX.Modules.Effects
 
             _orbsPoolRootTransform =
                 NadaRigPaths.FindDirectChild(orbitalsPoolsRootTransform, Plugin.OrbitalsOrbsPoolName);
+
+            _coresPoolRootTransform =
+                NadaRigPaths.FindDirectChild(orbitalsPoolsRootTransform, Plugin.OrbitalsCoresPoolName);
 
             _flamesPoolRootTransform =
                 NadaRigPaths.FindDirectChild(orbitalsPoolsRootTransform, Plugin.OrbitalsFlamesPoolName);
@@ -700,6 +841,7 @@ namespace NADA.VFX.Modules.Effects
         private void CacheModifierBaselines()
         {
             CacheOrbsBaselines();
+            CacheCoresBaselines();
             CacheFlamesBaselines();
             CacheEmbersBaselines();
         }
@@ -710,6 +852,15 @@ namespace NADA.VFX.Modules.Effects
             CacheRendererBaselines(_orbsRenderers);
             CacheLightBaselines(_orbsLights);
             CacheOrbsBaselineScale();
+        }
+
+        private void CacheCoresBaselines()
+        {
+            CacheParticleBaselines(_coresParticleSystems);
+            CacheEmissionBaselines(_coresParticleSystems);
+            CacheRendererBaselines(_coresRenderers);
+            CacheLightBaselines(_coresLights);
+            CacheCoresBaselineScale();
         }
 
         private void CacheFlamesBaselines()
@@ -917,6 +1068,15 @@ namespace NADA.VFX.Modules.Effects
         }
 
         // Shared apply helpers
+
+        private static void SetRootActive(Transform rootTransform, bool enabled)
+        {
+            if (rootTransform == null)
+                return;
+
+            if (rootTransform.gameObject.activeSelf != enabled)
+                rootTransform.gameObject.SetActive(enabled);
+        }
 
         private static void ApplyGroupEnabledState(
             List<ParticleSystem> particleSystems,
@@ -1199,6 +1359,19 @@ namespace NADA.VFX.Modules.Effects
                     catch { }
                 }
             }
+        }
+
+        private static float RemapCoreLuminance(float luminance)
+        {
+            if (float.IsNaN(luminance) || float.IsInfinity(luminance))
+                return PluginConfig.DefaultLuminance;
+
+            luminance = Mathf.Clamp(
+                luminance,
+                PluginConfig.MinLuminance,
+                PluginConfig.MaxLuminance);
+
+            return luminance * CoreLuminanceBoost;
         }
 
         private static ParticleSystem.MinMaxCurve OverrideConstantBaseline(

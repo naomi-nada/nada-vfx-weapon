@@ -18,20 +18,27 @@ namespace NADA.VFX.Core.State
                 RigZRotation = PluginConfig.RigZRotation.Value,
 
                 InnerFlamesEnabled = PluginConfig.InnerFlames.Value,
+                InnerFlamesWorldEnabled = PluginConfig.InnerFlamesWorld.Value,
+                InnerFlamesBlackEnabled = PluginConfig.InnerFlamesBlack.Value,
+                InnerFlamesWhiteEnabled = PluginConfig.InnerFlamesWhite.Value,
                 InnerFlamesEnergy = PluginConfig.InnerFlamesEnergy.Value,
                 InnerFlamesScale = PluginConfig.InnerFlamesScale.Value,
                 InnerFlamesLuminance = PluginConfig.InnerFlamesLuminance.Value,
                 InnerFlamesHue = PluginConfig.InnerFlamesHue.Value,
-                InnerFlamesLifetime =  PluginConfig.InnerFlamesLifetime.Value,
+                InnerFlamesLifetime = PluginConfig.InnerFlamesLifetime.Value,
                 InnerFlamesLength = PluginConfig.InnerFlamesLength.Value,
-                InnerFlamesXOffset =  PluginConfig.InnerFlamesXOffset.Value,
+                InnerFlamesWidth = PluginConfig.InnerFlamesWidth.Value,
+                InnerFlamesXOffset = PluginConfig.InnerFlamesXOffset.Value,
                 InnerFlamesYOffset = PluginConfig.InnerFlamesYOffset.Value,
                 InnerFlamesZOffset = PluginConfig.InnerFlamesZOffset.Value,
                 InnerFlamesXRotation = PluginConfig.InnerFlamesXRotation.Value,
                 InnerFlamesYRotation = PluginConfig.InnerFlamesYRotation.Value,
                 InnerFlamesZRotation = PluginConfig.InnerFlamesZRotation.Value,
-                
+
                 OuterFlamesEnabled = PluginConfig.OuterFlames.Value,
+                OuterFlamesWorldEnabled = PluginConfig.OuterFlamesWorld.Value,
+                OuterFlamesBlackEnabled = PluginConfig.OuterFlamesBlack.Value,
+                OuterFlamesWhiteEnabled = PluginConfig.OuterFlamesWhite.Value,
                 OuterFlamesDragEnabled = PluginConfig.OuterFlamesDragEnabled.Value,
                 OuterFlamesEnergy = PluginConfig.OuterFlamesEnergy.Value,
                 OuterFlamesScale = PluginConfig.OuterFlamesScale.Value,
@@ -39,6 +46,7 @@ namespace NADA.VFX.Core.State
                 OuterFlamesHue = PluginConfig.OuterFlamesHue.Value,
                 OuterFlamesLifetime = PluginConfig.OuterFlamesLifetime.Value,
                 OuterFlamesLength = PluginConfig.OuterFlamesLength.Value,
+                OuterFlamesWidth = PluginConfig.OuterFlamesWidth.Value,
                 OuterFlamesXOffset = PluginConfig.OuterFlamesXOffset.Value,
                 OuterFlamesYOffset = PluginConfig.OuterFlamesYOffset.Value,
                 OuterFlamesZOffset = PluginConfig.OuterFlamesZOffset.Value,
@@ -46,11 +54,32 @@ namespace NADA.VFX.Core.State
                 OuterFlamesYRotation = PluginConfig.OuterFlamesYRotation.Value,
                 OuterFlamesZRotation = PluginConfig.OuterFlamesZRotation.Value,
 
+                StrandsEnabled = PluginConfig.Strands.Value,
+                StrandsSpectrumEnabled = PluginConfig.StrandsSpectrum.Value,
+                StrandsEnergy = PluginConfig.StrandsEnergy.Value,
+                StrandsScaleWhole = PluginConfig.StrandsScaleWhole.Value,
+                StrandsScaleParts = PluginConfig.StrandsScaleParts.Value,
+                StrandsLuminance = PluginConfig.StrandsLuminance.Value,
+                StrandsHue = PluginConfig.StrandsHue.Value,
+                StrandsLifetime = PluginConfig.StrandsLifetime.Value,
+                StrandsLength = PluginConfig.StrandsLength.Value,
+                StrandsSpectrumSpeed = PluginConfig.StrandsSpectrumSpeed.Value,
+                StrandsSpeed = PluginConfig.StrandsSpeed.Value,
+                StrandsRadius = PluginConfig.StrandsRadius.Value,
+                StrandsXOffset = PluginConfig.StrandsXOffset.Value,
+                StrandsYOffset = PluginConfig.StrandsYOffset.Value,
+                StrandsZOffset = PluginConfig.StrandsZOffset.Value,
+                StrandsXRotation = PluginConfig.StrandsXRotation.Value,
+                StrandsYRotation = PluginConfig.StrandsYRotation.Value,
+                StrandsZRotation = PluginConfig.StrandsZRotation.Value,
+                StrandsDrift = PluginConfig.StrandsDrift.Value,
+
                 SparksEnabled = PluginConfig.Sparks.Value,
                 SparksEnergy = PluginConfig.SparksEnergy.Value,
                 SparksScale = PluginConfig.SparksScale.Value,
                 SparksLuminance = PluginConfig.SparksLuminance.Value,
                 SparksHue = PluginConfig.SparksHue.Value,
+                SparksLifetime = PluginConfig.DefaultLifetime,
                 SparksLength = PluginConfig.SparksLength.Value,
                 SparksWidth = PluginConfig.SparksWidth.Value,
                 SparksXOffset = PluginConfig.SparksXOffset.Value,
@@ -81,23 +110,45 @@ namespace NADA.VFX.Core.State
 
                 OrbitalsOrbsEnabled = PluginConfig.OrbitalsOrbs.Value,
                 OrbitalsOrbsSnakeEnabled = PluginConfig.OrbitalsOrbsSnake.Value,
-                OrbitalsOrbsGlueEnabled =  PluginConfig.OrbitalsOrbsGlue.Value,
+                OrbitalsOrbsGlueEnabled = PluginConfig.OrbitalsOrbsGlue.Value,
                 OrbitalsOrbsCount = PluginConfig.OrbitalsOrbsCount.Value,
                 OrbitalsOrbsDrift = PluginConfig.OrbitalsOrbsDrift.Value,
                 OrbitalsOrbsScale = PluginConfig.OrbitalsOrbsScale.Value,
-                OrbitalsOrbsLuminance =  PluginConfig.OrbitalsOrbsLuminance.Value,
+                OrbitalsOrbsLuminance = PluginConfig.OrbitalsOrbsLuminance.Value,
                 OrbitalsOrbsHue = PluginConfig.OrbitalsOrbsHue.Value,
                 OrbitalsOrbsLength = PluginConfig.OrbitalsOrbsLength.Value,
                 OrbitalsOrbsSpeed = PluginConfig.OrbitalsOrbsSpeed.Value,
                 OrbitalsOrbsSpacing = PluginConfig.OrbitalsOrbsSpacing.Value,
                 OrbitalsOrbsRadius = PluginConfig.OrbitalsOrbsRadius.Value,
                 OrbitalsOrbsCycles = PluginConfig.OrbitalsOrbsCycles.Value,
-                OrbitalsOrbsXOffset =  PluginConfig.OrbitalsOrbsXOffset.Value,
+                OrbitalsOrbsXOffset = PluginConfig.OrbitalsOrbsXOffset.Value,
                 OrbitalsOrbsYOffset = PluginConfig.OrbitalsOrbsYOffset.Value,
                 OrbitalsOrbsZOffset = PluginConfig.OrbitalsOrbsZOffset.Value,
                 OrbitalsOrbsXRotation = PluginConfig.OrbitalsOrbsXRotation.Value,
                 OrbitalsOrbsYRotation = PluginConfig.OrbitalsOrbsYRotation.Value,
                 OrbitalsOrbsZRotation = PluginConfig.OrbitalsOrbsZRotation.Value,
+
+                OrbitalsCoresEnabled = PluginConfig.OrbitalsCores.Value,
+                OrbitalsCoresSnakeEnabled = PluginConfig.OrbitalsCoresSnake.Value,
+                OrbitalsCoresGlueEnabled = PluginConfig.OrbitalsCoresGlue.Value,
+                OrbitalsCoresSpinEnabled = PluginConfig.OrbitalsCoresSpin.Value,
+                OrbitalsCoresCount = PluginConfig.OrbitalsCoresCount.Value,
+                OrbitalsCoresScale = PluginConfig.OrbitalsCoresScale.Value,
+                OrbitalsCoresLuminance = PluginConfig.OrbitalsCoresLuminance.Value,
+                OrbitalsCoresHue = PluginConfig.OrbitalsCoresHue.Value,
+                OrbitalsCoresSpinSpeed = PluginConfig.OrbitalsCoresSpinSpeed.Value,
+                OrbitalsCoresLength = PluginConfig.OrbitalsCoresLength.Value,
+                OrbitalsCoresSpeed = PluginConfig.OrbitalsCoresSpeed.Value,
+                OrbitalsCoresSpacing = PluginConfig.OrbitalsCoresSpacing.Value,
+                OrbitalsCoresRadius = PluginConfig.OrbitalsCoresRadius.Value,
+                OrbitalsCoresCycles = PluginConfig.OrbitalsCoresCycles.Value,
+                OrbitalsCoresXOffset = PluginConfig.OrbitalsCoresXOffset.Value,
+                OrbitalsCoresYOffset = PluginConfig.OrbitalsCoresYOffset.Value,
+                OrbitalsCoresZOffset = PluginConfig.OrbitalsCoresZOffset.Value,
+                OrbitalsCoresXRotation = PluginConfig.OrbitalsCoresXRotation.Value,
+                OrbitalsCoresYRotation = PluginConfig.OrbitalsCoresYRotation.Value,
+                OrbitalsCoresZRotation = PluginConfig.OrbitalsCoresZRotation.Value,
+                OrbitalsCoresDrift = PluginConfig.OrbitalsCoresDrift.Value,
 
                 OrbitalsFlamesEnabled = PluginConfig.OrbitalsFlames.Value,
                 OrbitalsFlamesCount = PluginConfig.OrbitalsFlamesCount.Value,
@@ -132,32 +183,12 @@ namespace NADA.VFX.Core.State
                 OrbitalsEmbersRadius = PluginConfig.OrbitalsEmbersRadius.Value,
                 OrbitalsEmbersCycles = PluginConfig.OrbitalsEmbersCycles.Value,
                 OrbitalsEmbersXOffset = PluginConfig.OrbitalsEmbersXOffset.Value,
-                OrbitalsEmbersYOffset =  PluginConfig.OrbitalsEmbersYOffset.Value,
-                OrbitalsEmbersZOffset =  PluginConfig.OrbitalsEmbersZOffset.Value,
+                OrbitalsEmbersYOffset = PluginConfig.OrbitalsEmbersYOffset.Value,
+                OrbitalsEmbersZOffset = PluginConfig.OrbitalsEmbersZOffset.Value,
                 OrbitalsEmbersXRotation = PluginConfig.OrbitalsEmbersXRotation.Value,
                 OrbitalsEmbersYRotation = PluginConfig.OrbitalsEmbersYRotation.Value,
                 OrbitalsEmbersZRotation = PluginConfig.OrbitalsEmbersZRotation.Value,
-                OrbitalsEmbersDrift = PluginConfig.OrbitalsEmbersDrift.Value,
-                
-                OrganicsStrandsEnabled = PluginConfig.OrganicsStrands.Value,
-                OrganicsStrandsSpectrumEnabled = PluginConfig.OrganicsStrandsSpectrum.Value,
-                OrganicsStrandsEnergy = PluginConfig.OrganicsStrandsEnergy.Value,
-                OrganicsStrandsScaleWhole = PluginConfig.OrganicsStrandsScaleWhole.Value,
-                OrganicsStrandsScaleParts = PluginConfig.OrganicsStrandsScaleParts.Value,
-                OrganicsStrandsLuminance = PluginConfig.OrganicsStrandsLuminance.Value,
-                OrganicsStrandsHue = PluginConfig.OrganicsStrandsHue.Value,
-                OrganicsStrandsLifetime = PluginConfig.OrganicsStrandsLifetime.Value,
-                OrganicsStrandsLength = PluginConfig.OrganicsStrandsLength.Value,
-                OrganicsStrandsSpectrumSpeed = PluginConfig.OrganicsStrandsSpectrumSpeed.Value,
-                OrganicsStrandsSpeed = PluginConfig.OrganicsStrandsSpeed.Value,
-                OrganicsStrandsRadius = PluginConfig.OrganicsStrandsRadius.Value,
-                OrganicsStrandsXOffset = PluginConfig.OrganicsStrandsXOffset.Value,
-                OrganicsStrandsYOffset = PluginConfig.OrganicsStrandsYOffset.Value,
-                OrganicsStrandsZOffset = PluginConfig.OrganicsStrandsZOffset.Value,
-                OrganicsStrandsXRotation = PluginConfig.OrganicsStrandsXRotation.Value,
-                OrganicsStrandsYRotation = PluginConfig.OrganicsStrandsYRotation.Value,
-                OrganicsStrandsZRotation = PluginConfig.OrganicsStrandsZRotation.Value,
-                OrganicsStrandsDrift = PluginConfig.OrganicsStrandsDrift.Value
+                OrbitalsEmbersDrift = PluginConfig.OrbitalsEmbersDrift.Value
             };
         }
 
@@ -181,12 +212,15 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.RigZRotation, state.RigZRotation);
 
             WriteBool(customData, VfxStateKeys.InnerFlamesEnabled, state.InnerFlamesEnabled);
-            WriteFloat(customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
+            WriteBool(customData, VfxStateKeys.InnerFlamesWorldEnabled, state.InnerFlamesWorldEnabled);
+            WriteBool(customData, VfxStateKeys.InnerFlamesBlackEnabled, state.InnerFlamesBlackEnabled);
+            WriteBool(customData, VfxStateKeys.InnerFlamesWhiteEnabled, state.InnerFlamesWhiteEnabled);
             WriteFloat(customData, VfxStateKeys.InnerFlamesScale, state.InnerFlamesScale);
-            WriteFloat(customData,  VfxStateKeys.InnerFlamesLuminance, state.InnerFlamesLuminance);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesLuminance, state.InnerFlamesLuminance);
             WriteFloat(customData, VfxStateKeys.InnerFlamesHue, state.InnerFlamesHue);
             WriteFloat(customData, VfxStateKeys.InnerFlamesLifetime, state.InnerFlamesLifetime);
             WriteFloat(customData, VfxStateKeys.InnerFlamesLength, state.InnerFlamesLength);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesWidth, state.InnerFlamesWidth);
             WriteFloat(customData, VfxStateKeys.InnerFlamesXOffset, state.InnerFlamesXOffset);
             WriteFloat(customData, VfxStateKeys.InnerFlamesYOffset, state.InnerFlamesYOffset);
             WriteFloat(customData, VfxStateKeys.InnerFlamesZOffset, state.InnerFlamesZOffset);
@@ -195,6 +229,9 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.InnerFlamesZRotation, state.InnerFlamesZRotation);
 
             WriteBool(customData, VfxStateKeys.OuterFlamesEnabled, state.OuterFlamesEnabled);
+            WriteBool(customData, VfxStateKeys.OuterFlamesWorldEnabled, state.OuterFlamesWorldEnabled);
+            WriteBool(customData, VfxStateKeys.OuterFlamesBlackEnabled, state.OuterFlamesBlackEnabled);
+            WriteBool(customData, VfxStateKeys.OuterFlamesWhiteEnabled, state.OuterFlamesWhiteEnabled);
             WriteBool(customData, VfxStateKeys.OuterFlamesDragEnabled, state.OuterFlamesDragEnabled);
             WriteFloat(customData, VfxStateKeys.OuterFlamesEnergy, state.OuterFlamesEnergy);
             WriteFloat(customData, VfxStateKeys.OuterFlamesScale, state.OuterFlamesScale);
@@ -202,6 +239,7 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
             WriteFloat(customData, VfxStateKeys.OuterFlamesLifetime, state.OuterFlamesLifetime);
             WriteFloat(customData, VfxStateKeys.OuterFlamesLength, state.OuterFlamesLength);
+            WriteFloat(customData, VfxStateKeys.OuterFlamesWidth, state.OuterFlamesWidth);
             WriteFloat(customData, VfxStateKeys.OuterFlamesXOffset, state.OuterFlamesXOffset);
             WriteFloat(customData, VfxStateKeys.OuterFlamesYOffset, state.OuterFlamesYOffset);
             WriteFloat(customData, VfxStateKeys.OuterFlamesZOffset, state.OuterFlamesZOffset);
@@ -209,11 +247,32 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OuterFlamesYRotation, state.OuterFlamesYRotation);
             WriteFloat(customData, VfxStateKeys.OuterFlamesZRotation, state.OuterFlamesZRotation);
 
+            WriteBool(customData, VfxStateKeys.StrandsEnabled, state.StrandsEnabled);
+            WriteBool(customData, VfxStateKeys.StrandsSpectrumEnabled, state.StrandsSpectrumEnabled);
+            WriteFloat(customData, VfxStateKeys.StrandsEnergy, state.StrandsEnergy);
+            WriteFloat(customData, VfxStateKeys.StrandsScaleWhole, state.StrandsScaleWhole);
+            WriteFloat(customData, VfxStateKeys.StrandsScaleParts, state.StrandsScaleParts);
+            WriteFloat(customData, VfxStateKeys.StrandsLuminance, state.StrandsLuminance);
+            WriteFloat(customData, VfxStateKeys.StrandsHue, state.StrandsHue);
+            WriteFloat(customData, VfxStateKeys.StrandsLifetime, state.StrandsLifetime);
+            WriteFloat(customData, VfxStateKeys.StrandsLength, state.StrandsLength);
+            WriteFloat(customData, VfxStateKeys.StrandsSpectrumSpeed, state.StrandsSpectrumSpeed);
+            WriteFloat(customData, VfxStateKeys.StrandsSpeed, state.StrandsSpeed);
+            WriteFloat(customData, VfxStateKeys.StrandsRadius, state.StrandsRadius);
+            WriteFloat(customData, VfxStateKeys.StrandsXOffset, state.StrandsXOffset);
+            WriteFloat(customData, VfxStateKeys.StrandsYOffset, state.StrandsYOffset);
+            WriteFloat(customData, VfxStateKeys.StrandsZOffset, state.StrandsZOffset);
+            WriteFloat(customData, VfxStateKeys.StrandsXRotation, state.StrandsXRotation);
+            WriteFloat(customData, VfxStateKeys.StrandsYRotation, state.StrandsYRotation);
+            WriteFloat(customData, VfxStateKeys.StrandsZRotation, state.StrandsZRotation);
+            WriteFloat(customData, VfxStateKeys.StrandsDrift, state.StrandsDrift);
+
             WriteBool(customData, VfxStateKeys.SparksEnabled, state.SparksEnabled);
             WriteFloat(customData, VfxStateKeys.SparksEnergy, state.SparksEnergy);
             WriteFloat(customData, VfxStateKeys.SparksScale, state.SparksScale);
             WriteFloat(customData, VfxStateKeys.SparksLuminance, state.SparksLuminance);
             WriteFloat(customData, VfxStateKeys.SparksHue, state.SparksHue);
+            WriteFloat(customData, VfxStateKeys.SparksLifetime, state.SparksLifetime);
             WriteFloat(customData, VfxStateKeys.SparksLength, state.SparksLength);
             WriteFloat(customData, VfxStateKeys.SparksWidth, state.SparksWidth);
             WriteFloat(customData, VfxStateKeys.SparksXOffset, state.SparksXOffset);
@@ -222,7 +281,7 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.SparksXRotation, state.SparksXRotation);
             WriteFloat(customData, VfxStateKeys.SparksYRotation, state.SparksYRotation);
             WriteFloat(customData, VfxStateKeys.SparksZRotation, state.SparksZRotation);
-            
+
             WriteBool(customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
             WriteFloat(customData, VfxStateKeys.FlareScale, state.FlareScale);
             WriteFloat(customData, VfxStateKeys.FlareLuminance, state.FlareLuminance);
@@ -261,6 +320,28 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OrbitalsOrbsYRotation, state.OrbitalsOrbsYRotation);
             WriteFloat(customData, VfxStateKeys.OrbitalsOrbsZRotation, state.OrbitalsOrbsZRotation);
             WriteFloat(customData, VfxStateKeys.OrbitalsOrbsDrift, state.OrbitalsOrbsDrift);
+
+            WriteBool(customData, VfxStateKeys.OrbitalsCoresEnabled, state.OrbitalsCoresEnabled);
+            WriteBool(customData, VfxStateKeys.OrbitalsCoresSnakeEnabled, state.OrbitalsCoresSnakeEnabled);
+            WriteBool(customData, VfxStateKeys.OrbitalsCoresGlueEnabled, state.OrbitalsCoresGlueEnabled);
+            WriteBool(customData, VfxStateKeys.OrbitalsCoresSpinEnabled, state.OrbitalsCoresSpinEnabled);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresCount, state.OrbitalsCoresCount);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresScale, state.OrbitalsCoresScale);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresLuminance, state.OrbitalsCoresLuminance);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresHue, state.OrbitalsCoresHue);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresSpinSpeed, state.OrbitalsCoresSpinSpeed);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresSpeed, state.OrbitalsCoresSpeed);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresSpacing, state.OrbitalsCoresSpacing);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresLength, state.OrbitalsCoresLength);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresRadius, state.OrbitalsCoresRadius);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresCycles, state.OrbitalsCoresCycles);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresXOffset, state.OrbitalsCoresXOffset);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresYOffset, state.OrbitalsCoresYOffset);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresZOffset, state.OrbitalsCoresZOffset);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresXRotation, state.OrbitalsCoresXRotation);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresYRotation, state.OrbitalsCoresYRotation);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresZRotation, state.OrbitalsCoresZRotation);
+            WriteFloat(customData, VfxStateKeys.OrbitalsCoresDrift, state.OrbitalsCoresDrift);
 
             WriteBool(customData, VfxStateKeys.OrbitalsFlamesEnabled, state.OrbitalsFlamesEnabled);
             WriteFloat(customData, VfxStateKeys.OrbitalsFlamesCount, state.OrbitalsFlamesCount);
@@ -301,26 +382,6 @@ namespace NADA.VFX.Core.State
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersYRotation, state.OrbitalsEmbersYRotation);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersZRotation, state.OrbitalsEmbersZRotation);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersDrift, state.OrbitalsEmbersDrift);
-            
-            WriteBool(customData, VfxStateKeys.OrganicsStrandsEnabled, state.OrganicsStrandsEnabled);
-            WriteBool(customData, VfxStateKeys.OrganicsStrandsSpectrumEnabled, state.OrganicsStrandsSpectrumEnabled);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsEnergy, state.OrganicsStrandsEnergy);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsScaleWhole, state.OrganicsStrandsScaleWhole);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsScaleParts, state.OrganicsStrandsScaleParts);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsLuminance, state.OrganicsStrandsLuminance);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsHue, state.OrganicsStrandsHue);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsLifetime, state.OrganicsStrandsLifetime);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsLength, state.OrganicsStrandsLength);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsSpectrumSpeed, state.OrganicsStrandsSpectrumSpeed);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsSpeed, state.OrganicsStrandsSpeed);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsRadius, state.OrganicsStrandsRadius);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsXOffset, state.OrganicsStrandsXOffset);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsYOffset, state.OrganicsStrandsYOffset);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsZOffset, state.OrganicsStrandsZOffset);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsXRotation, state.OrganicsStrandsXRotation);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsYRotation, state.OrganicsStrandsYRotation);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsZRotation, state.OrganicsStrandsZRotation);
-            WriteFloat(customData, VfxStateKeys.OrganicsStrandsDrift, state.OrganicsStrandsDrift);
         }
 
         internal static bool TryRead(global::ItemDrop.ItemData item, out VfxState state)
@@ -341,20 +402,27 @@ namespace NADA.VFX.Core.State
             state.RigZRotation = ReadFloat(customData, VfxStateKeys.RigZRotation, PluginConfig.RigZRotation.Value);
 
             state.InnerFlamesEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
+            state.InnerFlamesWorldEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesWorldEnabled, PluginConfig.InnerFlamesWorld.Value);
+            state.InnerFlamesBlackEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesBlackEnabled, PluginConfig.InnerFlamesBlack.Value);
+            state.InnerFlamesWhiteEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesWhiteEnabled, PluginConfig.InnerFlamesWhite.Value);
             state.InnerFlamesEnergy = ReadFloat(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
             state.InnerFlamesScale = ReadFloat(customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
             state.InnerFlamesLuminance = ReadFloat(customData, VfxStateKeys.InnerFlamesLuminance, PluginConfig.InnerFlamesLuminance.Value);
             state.InnerFlamesHue = ReadFloat(customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
             state.InnerFlamesLifetime = ReadFloat(customData, VfxStateKeys.InnerFlamesLifetime, PluginConfig.InnerFlamesLifetime.Value);
             state.InnerFlamesLength = ReadFloat(customData, VfxStateKeys.InnerFlamesLength, PluginConfig.InnerFlamesLength.Value);
+            state.InnerFlamesWidth = ReadFloat(customData, VfxStateKeys.InnerFlamesWidth, PluginConfig.InnerFlamesWidth.Value);
             state.InnerFlamesXOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesXOffset, PluginConfig.InnerFlamesXOffset.Value);
             state.InnerFlamesYOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesYOffset, PluginConfig.InnerFlamesYOffset.Value);
             state.InnerFlamesZOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesZOffset, PluginConfig.InnerFlamesZOffset.Value);
             state.InnerFlamesXRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesXRotation, PluginConfig.InnerFlamesXRotation.Value);
             state.InnerFlamesYRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesYRotation, PluginConfig.InnerFlamesYRotation.Value);
             state.InnerFlamesZRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesZRotation, PluginConfig.InnerFlamesZRotation.Value);
-            
+
             state.OuterFlamesEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
+            state.OuterFlamesWorldEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesWorldEnabled, PluginConfig.OuterFlamesWorld.Value);
+            state.OuterFlamesBlackEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesBlackEnabled, PluginConfig.OuterFlamesBlack.Value);
+            state.OuterFlamesWhiteEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesWhiteEnabled, PluginConfig.OuterFlamesWhite.Value);
             state.OuterFlamesDragEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesDragEnabled, PluginConfig.OuterFlamesDragEnabled.Value);
             state.OuterFlamesEnergy = ReadFloat(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
             state.OuterFlamesScale = ReadFloat(customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
@@ -362,6 +430,7 @@ namespace NADA.VFX.Core.State
             state.OuterFlamesHue = ReadFloat(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
             state.OuterFlamesLifetime = ReadFloat(customData, VfxStateKeys.OuterFlamesLifetime, PluginConfig.OuterFlamesLifetime.Value);
             state.OuterFlamesLength = ReadFloat(customData, VfxStateKeys.OuterFlamesLength, PluginConfig.OuterFlamesLength.Value);
+            state.OuterFlamesWidth = ReadFloat(customData, VfxStateKeys.OuterFlamesWidth, PluginConfig.OuterFlamesWidth.Value);
             state.OuterFlamesXOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesXOffset, PluginConfig.OuterFlamesXOffset.Value);
             state.OuterFlamesYOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesYOffset, PluginConfig.OuterFlamesYOffset.Value);
             state.OuterFlamesZOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesZOffset, PluginConfig.OuterFlamesZOffset.Value);
@@ -369,11 +438,32 @@ namespace NADA.VFX.Core.State
             state.OuterFlamesYRotation = ReadFloat(customData, VfxStateKeys.OuterFlamesYRotation, PluginConfig.OuterFlamesYRotation.Value);
             state.OuterFlamesZRotation = ReadFloat(customData, VfxStateKeys.OuterFlamesZRotation, PluginConfig.OuterFlamesZRotation.Value);
 
+            state.StrandsEnabled = ReadBool(customData, VfxStateKeys.StrandsEnabled, PluginConfig.Strands.Value);
+            state.StrandsSpectrumEnabled = ReadBool(customData, VfxStateKeys.StrandsSpectrumEnabled, PluginConfig.StrandsSpectrum.Value);
+            state.StrandsEnergy = ReadFloat(customData, VfxStateKeys.StrandsEnergy, PluginConfig.StrandsEnergy.Value);
+            state.StrandsScaleWhole = ReadFloat(customData, VfxStateKeys.StrandsScaleWhole, PluginConfig.StrandsScaleWhole.Value);
+            state.StrandsScaleParts = ReadFloat(customData, VfxStateKeys.StrandsScaleParts, PluginConfig.StrandsScaleParts.Value);
+            state.StrandsLuminance = ReadFloat(customData, VfxStateKeys.StrandsLuminance, PluginConfig.StrandsLuminance.Value);
+            state.StrandsHue = ReadFloat(customData, VfxStateKeys.StrandsHue, PluginConfig.StrandsHue.Value);
+            state.StrandsLifetime = ReadFloat(customData, VfxStateKeys.StrandsLifetime, PluginConfig.StrandsLifetime.Value);
+            state.StrandsLength = ReadFloat(customData, VfxStateKeys.StrandsLength, PluginConfig.StrandsLength.Value);
+            state.StrandsSpectrumSpeed = ReadFloat(customData, VfxStateKeys.StrandsSpectrumSpeed, PluginConfig.StrandsSpectrumSpeed.Value);
+            state.StrandsSpeed = ReadFloat(customData, VfxStateKeys.StrandsSpeed, PluginConfig.StrandsSpeed.Value);
+            state.StrandsRadius = ReadFloat(customData, VfxStateKeys.StrandsRadius, PluginConfig.StrandsRadius.Value);
+            state.StrandsXOffset = ReadFloat(customData, VfxStateKeys.StrandsXOffset, PluginConfig.StrandsXOffset.Value);
+            state.StrandsYOffset = ReadFloat(customData, VfxStateKeys.StrandsYOffset, PluginConfig.StrandsYOffset.Value);
+            state.StrandsZOffset = ReadFloat(customData, VfxStateKeys.StrandsZOffset, PluginConfig.StrandsZOffset.Value);
+            state.StrandsXRotation = ReadFloat(customData, VfxStateKeys.StrandsXRotation, PluginConfig.StrandsXRotation.Value);
+            state.StrandsYRotation = ReadFloat(customData, VfxStateKeys.StrandsYRotation, PluginConfig.StrandsYRotation.Value);
+            state.StrandsZRotation = ReadFloat(customData, VfxStateKeys.StrandsZRotation, PluginConfig.StrandsZRotation.Value);
+            state.StrandsDrift = ReadFloat(customData, VfxStateKeys.StrandsDrift, PluginConfig.StrandsDrift.Value);
+
             state.SparksEnabled = ReadBool(customData, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
             state.SparksEnergy = ReadFloat(customData, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
             state.SparksScale = ReadFloat(customData, VfxStateKeys.SparksScale, PluginConfig.SparksScale.Value);
             state.SparksLuminance = ReadFloat(customData, VfxStateKeys.SparksLuminance, PluginConfig.SparksLuminance.Value);
             state.SparksHue = ReadFloat(customData, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
+            state.SparksLifetime = ReadFloat(customData, VfxStateKeys.SparksLifetime, PluginConfig.DefaultLifetime);
             state.SparksLength = ReadFloat(customData, VfxStateKeys.SparksLength, PluginConfig.SparksLength.Value);
             state.SparksWidth = ReadFloat(customData, VfxStateKeys.SparksWidth, PluginConfig.SparksWidth.Value);
             state.SparksXOffset = ReadFloat(customData, VfxStateKeys.SparksXOffset, PluginConfig.SparksXOffset.Value);
@@ -382,7 +472,7 @@ namespace NADA.VFX.Core.State
             state.SparksXRotation = ReadFloat(customData, VfxStateKeys.SparksXRotation, PluginConfig.SparksXRotation.Value);
             state.SparksYRotation = ReadFloat(customData, VfxStateKeys.SparksYRotation, PluginConfig.SparksYRotation.Value);
             state.SparksZRotation = ReadFloat(customData, VfxStateKeys.SparksZRotation, PluginConfig.SparksZRotation.Value);
-            
+
             state.FlareEnabled = ReadBool(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
             state.FlareScale = ReadFloat(customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
             state.FlareLuminance = ReadFloat(customData, VfxStateKeys.FlareLuminance, PluginConfig.FlareLuminance.Value);
@@ -407,7 +497,7 @@ namespace NADA.VFX.Core.State
             state.OrbitalsOrbsGlueEnabled = ReadBool(customData, VfxStateKeys.OrbitalsOrbsGlueEnabled, PluginConfig.OrbitalsOrbsGlue.Value);
             state.OrbitalsOrbsCount = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
             state.OrbitalsOrbsScale = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsScale, PluginConfig.OrbitalsOrbsScale.Value);
-            state.OrbitalsOrbsLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsLuminance,  PluginConfig.OrbitalsOrbsLuminance.Value);
+            state.OrbitalsOrbsLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsLuminance, PluginConfig.OrbitalsOrbsLuminance.Value);
             state.OrbitalsOrbsHue = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsHue, PluginConfig.OrbitalsOrbsHue.Value);
             state.OrbitalsOrbsLength = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsLength, PluginConfig.OrbitalsOrbsLength.Value);
             state.OrbitalsOrbsSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsSpeed, PluginConfig.OrbitalsOrbsSpeed.Value);
@@ -421,6 +511,28 @@ namespace NADA.VFX.Core.State
             state.OrbitalsOrbsYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsYRotation, PluginConfig.OrbitalsOrbsYRotation.Value);
             state.OrbitalsOrbsZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsZRotation, PluginConfig.OrbitalsOrbsZRotation.Value);
             state.OrbitalsOrbsDrift = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsDrift, PluginConfig.OrbitalsOrbsDrift.Value);
+
+            state.OrbitalsCoresEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresEnabled, PluginConfig.OrbitalsCores.Value);
+            state.OrbitalsCoresSnakeEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSnakeEnabled, PluginConfig.OrbitalsCores.Value);
+            state.OrbitalsCoresGlueEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresGlueEnabled, PluginConfig.OrbitalsCores.Value);
+            state.OrbitalsCoresSpinEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSpinEnabled, PluginConfig.OrbitalsCoresSpin.Value);
+            state.OrbitalsCoresCount = ReadFloat(customData, VfxStateKeys.OrbitalsCoresCount, PluginConfig.OrbitalsCoresCount.Value);
+            state.OrbitalsCoresScale = ReadFloat(customData, VfxStateKeys.OrbitalsCoresScale, PluginConfig.OrbitalsCoresScale.Value);
+            state.OrbitalsCoresLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsCoresLuminance, PluginConfig.OrbitalsCoresLuminance.Value);
+            state.OrbitalsCoresHue = ReadFloat(customData, VfxStateKeys.OrbitalsCoresHue, PluginConfig.OrbitalsCoresHue.Value);
+            state.OrbitalsCoresSpinSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpinSpeed, PluginConfig.OrbitalsCoresSpinSpeed.Value);
+            state.OrbitalsCoresLength = ReadFloat(customData, VfxStateKeys.OrbitalsCoresLength, PluginConfig.OrbitalsCoresLength.Value);
+            state.OrbitalsCoresSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpeed, PluginConfig.OrbitalsCoresSpeed.Value);
+            state.OrbitalsCoresSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpacing, PluginConfig.OrbitalsCoresSpacing.Value);
+            state.OrbitalsCoresRadius = ReadFloat(customData, VfxStateKeys.OrbitalsCoresRadius, PluginConfig.OrbitalsCoresRadius.Value);
+            state.OrbitalsCoresCycles = ReadFloat(customData, VfxStateKeys.OrbitalsCoresCycles, PluginConfig.OrbitalsCoresCycles.Value);
+            state.OrbitalsCoresXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresXOffset, PluginConfig.OrbitalsCoresXOffset.Value);
+            state.OrbitalsCoresYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresYOffset, PluginConfig.OrbitalsCoresYOffset.Value);
+            state.OrbitalsCoresZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresZOffset, PluginConfig.OrbitalsCoresZOffset.Value);
+            state.OrbitalsCoresXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresXRotation, PluginConfig.OrbitalsCoresXRotation.Value);
+            state.OrbitalsCoresYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresYRotation, PluginConfig.OrbitalsCoresYRotation.Value);
+            state.OrbitalsCoresZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresZRotation, PluginConfig.OrbitalsCoresZRotation.Value);
+            state.OrbitalsCoresDrift = ReadFloat(customData, VfxStateKeys.OrbitalsCoresDrift, PluginConfig.OrbitalsCoresDrift.Value);
 
             state.OrbitalsFlamesEnabled = ReadBool(customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
             state.OrbitalsFlamesCount = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
@@ -461,27 +573,7 @@ namespace NADA.VFX.Core.State
             state.OrbitalsEmbersYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersYRotation, PluginConfig.OrbitalsEmbersYRotation.Value);
             state.OrbitalsEmbersZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersZRotation, PluginConfig.OrbitalsEmbersZRotation.Value);
             state.OrbitalsEmbersDrift = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersDrift, PluginConfig.OrbitalsEmbersDrift.Value);
-            
-            state.OrganicsStrandsEnabled = ReadBool(customData, VfxStateKeys.OrganicsStrandsEnabled, PluginConfig.OrganicsStrands.Value);
-            state.OrganicsStrandsSpectrumEnabled = ReadBool(customData, VfxStateKeys.OrganicsStrandsSpectrumEnabled, PluginConfig.OrganicsStrandsSpectrum.Value);
-            state.OrganicsStrandsEnergy = ReadFloat(customData, VfxStateKeys.OrganicsStrandsEnergy, PluginConfig.OrganicsStrandsEnergy.Value);
-            state.OrganicsStrandsScaleWhole = ReadFloat(customData, VfxStateKeys.OrganicsStrandsScaleWhole, PluginConfig.OrganicsStrandsScaleWhole.Value);
-            state.OrganicsStrandsScaleParts = ReadFloat(customData, VfxStateKeys.OrganicsStrandsScaleParts, PluginConfig.OrganicsStrandsScaleParts.Value); 
-            state.OrganicsStrandsLuminance = ReadFloat(customData, VfxStateKeys.OrganicsStrandsLuminance, PluginConfig.OrganicsStrandsLuminance.Value);
-            state.OrganicsStrandsHue = ReadFloat(customData, VfxStateKeys.OrganicsStrandsHue, PluginConfig.OrganicsStrandsHue.Value);
-            state.OrganicsStrandsLifetime = ReadFloat(customData, VfxStateKeys.OrganicsStrandsLifetime, PluginConfig.OrganicsStrandsLifetime.Value);
-            state.OrganicsStrandsLength = ReadFloat(customData, VfxStateKeys.OrganicsStrandsLength, PluginConfig.OrganicsStrandsLength.Value);
-            state.OrganicsStrandsSpectrumSpeed = ReadFloat(customData, VfxStateKeys.OrganicsStrandsSpectrumSpeed, PluginConfig.OrganicsStrandsSpectrumSpeed.Value);
-            state.OrganicsStrandsSpeed = ReadFloat(customData, VfxStateKeys.OrganicsStrandsSpeed, PluginConfig.OrganicsStrandsSpeed.Value);
-            state.OrganicsStrandsRadius = ReadFloat(customData, VfxStateKeys.OrganicsStrandsRadius, PluginConfig.OrganicsStrandsRadius.Value);
-            state.OrganicsStrandsXOffset = ReadFloat(customData, VfxStateKeys.OrganicsStrandsXOffset,  PluginConfig.OrganicsStrandsXOffset.Value);
-            state.OrganicsStrandsYOffset = ReadFloat(customData, VfxStateKeys.OrganicsStrandsYOffset,  PluginConfig.OrganicsStrandsYOffset.Value);
-            state.OrganicsStrandsZOffset = ReadFloat(customData, VfxStateKeys.OrganicsStrandsZOffset,  PluginConfig.OrganicsStrandsZOffset.Value);
-            state.OrganicsStrandsXRotation = ReadFloat(customData, VfxStateKeys.OrganicsStrandsXRotation, PluginConfig.OrganicsStrandsXRotation.Value);
-            state.OrganicsStrandsYRotation = ReadFloat(customData, VfxStateKeys.OrganicsStrandsYRotation, PluginConfig.OrganicsStrandsYRotation.Value);
-            state.OrganicsStrandsZRotation = ReadFloat(customData, VfxStateKeys.OrganicsStrandsZRotation, PluginConfig.OrganicsStrandsZRotation.Value);
-            state.OrganicsStrandsDrift = ReadFloat(customData, VfxStateKeys.OrganicsStrandsDrift, PluginConfig.OrganicsStrandsDrift.Value);
-            
+
             return true;
         }
 
@@ -506,12 +598,16 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.RigZRotation, PluginConfig.RigZRotation.Value);
 
             BackfillMissing(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesWorldEnabled, PluginConfig.InnerFlamesWorld.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesBlackEnabled, PluginConfig.InnerFlamesBlack.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesWhiteEnabled, PluginConfig.InnerFlamesWhite.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesLuminance, PluginConfig.InnerFlamesLuminance.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesLifetime, PluginConfig.InnerFlamesLifetime.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesLength, PluginConfig.InnerFlamesLength.Value);
+            BackfillMissing(customData, VfxStateKeys.InnerFlamesWidth, PluginConfig.InnerFlamesWidth.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesXOffset, PluginConfig.InnerFlamesXOffset.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesYOffset, PluginConfig.InnerFlamesYOffset.Value);
             BackfillMissing(customData, VfxStateKeys.InnerFlamesZOffset, PluginConfig.InnerFlamesZOffset.Value);
@@ -520,6 +616,9 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.InnerFlamesZRotation, PluginConfig.InnerFlamesZRotation.Value);
 
             BackfillMissing(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesWorldEnabled, PluginConfig.OuterFlamesWorld.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesBlackEnabled, PluginConfig.OuterFlamesBlack.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesWhiteEnabled, PluginConfig.OuterFlamesWhite.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesDragEnabled, PluginConfig.OuterFlamesDragEnabled.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
@@ -527,6 +626,7 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesLifetime, PluginConfig.OuterFlamesLifetime.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesLength, PluginConfig.OuterFlamesLength.Value);
+            BackfillMissing(customData, VfxStateKeys.OuterFlamesWidth, PluginConfig.OuterFlamesWidth.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesXOffset, PluginConfig.OuterFlamesXOffset.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesYOffset, PluginConfig.OuterFlamesYOffset.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesZOffset, PluginConfig.OuterFlamesZOffset.Value);
@@ -534,11 +634,32 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OuterFlamesYRotation, PluginConfig.OuterFlamesYRotation.Value);
             BackfillMissing(customData, VfxStateKeys.OuterFlamesZRotation, PluginConfig.OuterFlamesZRotation.Value);
 
+            BackfillMissing(customData, VfxStateKeys.StrandsEnabled, PluginConfig.Strands.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsSpectrumEnabled, PluginConfig.StrandsSpectrum.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsEnergy, PluginConfig.StrandsEnergy.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsScaleWhole, PluginConfig.StrandsScaleWhole.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsScaleParts, PluginConfig.StrandsScaleParts.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsLuminance, PluginConfig.StrandsLuminance.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsHue, PluginConfig.StrandsHue.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsLifetime, PluginConfig.StrandsLifetime.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsLength, PluginConfig.StrandsLength.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsSpectrumSpeed, PluginConfig.StrandsSpectrumSpeed.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsSpeed, PluginConfig.StrandsSpeed.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsRadius, PluginConfig.StrandsRadius.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsXOffset, PluginConfig.StrandsXOffset.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsYOffset, PluginConfig.StrandsYOffset.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsZOffset, PluginConfig.StrandsZOffset.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsXRotation, PluginConfig.StrandsXRotation.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsYRotation, PluginConfig.StrandsYRotation.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsZRotation, PluginConfig.StrandsZRotation.Value);
+            BackfillMissing(customData, VfxStateKeys.StrandsDrift, PluginConfig.StrandsDrift.Value);
+
             BackfillMissing(customData, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
             BackfillMissing(customData, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
             BackfillMissing(customData, VfxStateKeys.SparksScale, PluginConfig.SparksScale.Value);
             BackfillMissing(customData, VfxStateKeys.SparksLuminance, PluginConfig.SparksLuminance.Value);
             BackfillMissing(customData, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
+            BackfillMissing(customData, VfxStateKeys.SparksLifetime, PluginConfig.DefaultLifetime);
             BackfillMissing(customData, VfxStateKeys.SparksLength, PluginConfig.SparksLength.Value);
             BackfillMissing(customData, VfxStateKeys.SparksWidth, PluginConfig.SparksWidth.Value);
             BackfillMissing(customData, VfxStateKeys.SparksXOffset, PluginConfig.SparksXOffset.Value);
@@ -587,6 +708,28 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsZRotation, PluginConfig.OrbitalsOrbsZRotation.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsOrbsDrift, PluginConfig.OrbitalsOrbsDrift.Value);
 
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresEnabled, PluginConfig.OrbitalsCores.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresSnakeEnabled, PluginConfig.OrbitalsCoresSnake.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresGlueEnabled, PluginConfig.OrbitalsCoresGlue.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresSpinEnabled, PluginConfig.OrbitalsCoresSpin.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresCount, PluginConfig.OrbitalsCoresCount.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresScale, PluginConfig.OrbitalsCoresScale.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresLuminance, PluginConfig.OrbitalsCoresLuminance.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresHue, PluginConfig.OrbitalsCoresHue.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresSpinSpeed, PluginConfig.OrbitalsCoresSpinSpeed.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresLength, PluginConfig.OrbitalsCoresLength.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresSpeed, PluginConfig.OrbitalsCoresSpeed.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresSpacing, PluginConfig.OrbitalsCoresSpacing.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresRadius, PluginConfig.OrbitalsCoresRadius.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresCycles, PluginConfig.OrbitalsCoresCycles.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresXOffset, PluginConfig.OrbitalsCoresXOffset.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresYOffset, PluginConfig.OrbitalsCoresYOffset.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresZOffset, PluginConfig.OrbitalsCoresZOffset.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresXRotation, PluginConfig.OrbitalsCoresXRotation.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresYRotation, PluginConfig.OrbitalsCoresYRotation.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresZRotation, PluginConfig.OrbitalsCoresZRotation.Value);
+            BackfillMissing(customData, VfxStateKeys.OrbitalsCoresDrift, PluginConfig.OrbitalsCoresDrift.Value);
+
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
@@ -626,33 +769,13 @@ namespace NADA.VFX.Core.State
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersYRotation, PluginConfig.OrbitalsEmbersYRotation.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersZRotation, PluginConfig.OrbitalsEmbersZRotation.Value);
             BackfillMissing(customData, VfxStateKeys.OrbitalsEmbersDrift, PluginConfig.OrbitalsEmbersDrift.Value);
-            
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsEnabled, PluginConfig.OrganicsStrands.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsSpectrumEnabled, PluginConfig.OrganicsStrandsSpectrum.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsEnergy, PluginConfig.OrganicsStrandsEnergy.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsScaleWhole, PluginConfig.OrganicsStrandsScaleWhole.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsScaleParts, PluginConfig.OrganicsStrandsScaleParts.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsLuminance, PluginConfig.OrganicsStrandsLuminance.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsHue, PluginConfig.OrganicsStrandsHue.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsLifetime, PluginConfig.OrganicsStrandsLifetime.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsLength, PluginConfig.OrganicsStrandsLength.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsSpectrumSpeed, PluginConfig.OrganicsStrandsSpectrumSpeed.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsSpeed, PluginConfig.OrganicsStrandsSpeed.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsRadius, PluginConfig.OrganicsStrandsRadius.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsXOffset, PluginConfig.OrganicsStrandsXOffset.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsYOffset, PluginConfig.OrganicsStrandsYOffset.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsZOffset, PluginConfig.OrganicsStrandsZOffset.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsXRotation, PluginConfig.OrganicsStrandsXRotation.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsYRotation, PluginConfig.OrganicsStrandsYRotation.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsZRotation, PluginConfig.OrganicsStrandsZRotation.Value);
-            BackfillMissing(customData, VfxStateKeys.OrganicsStrandsDrift, PluginConfig.OrganicsStrandsDrift.Value);
         }
 
         internal static void Clear(global::ItemDrop.ItemData item)
         {
             if (item?.m_customData == null)
                 return;
-            
+
             item.m_customData.Remove(VfxStateKeys.Bound);
 
             item.m_customData.Remove(VfxStateKeys.RigXOffset);
@@ -663,12 +786,16 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.RigZRotation);
 
             item.m_customData.Remove(VfxStateKeys.InnerFlamesEnabled);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesWorldEnabled);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesBlackEnabled);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesWhiteEnabled);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesEnergy);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesScale);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesLuminance);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesHue);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesLifetime);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesLength);
+            item.m_customData.Remove(VfxStateKeys.InnerFlamesWidth);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesXOffset);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesYOffset);
             item.m_customData.Remove(VfxStateKeys.InnerFlamesZOffset);
@@ -677,6 +804,9 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.InnerFlamesZRotation);
 
             item.m_customData.Remove(VfxStateKeys.OuterFlamesEnabled);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesWorldEnabled);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesBlackEnabled);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesWhiteEnabled);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesDragEnabled);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesEnergy);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesScale);
@@ -684,6 +814,7 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OuterFlamesHue);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesLifetime);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesLength);
+            item.m_customData.Remove(VfxStateKeys.OuterFlamesWidth);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesXOffset);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesYOffset);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesZOffset);
@@ -691,11 +822,32 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OuterFlamesYRotation);
             item.m_customData.Remove(VfxStateKeys.OuterFlamesZRotation);
 
+            item.m_customData.Remove(VfxStateKeys.StrandsEnabled);
+            item.m_customData.Remove(VfxStateKeys.StrandsSpectrumEnabled);
+            item.m_customData.Remove(VfxStateKeys.StrandsEnergy);
+            item.m_customData.Remove(VfxStateKeys.StrandsScaleWhole);
+            item.m_customData.Remove(VfxStateKeys.StrandsScaleParts);
+            item.m_customData.Remove(VfxStateKeys.StrandsLuminance);
+            item.m_customData.Remove(VfxStateKeys.StrandsHue);
+            item.m_customData.Remove(VfxStateKeys.StrandsLifetime);
+            item.m_customData.Remove(VfxStateKeys.StrandsLength);
+            item.m_customData.Remove(VfxStateKeys.StrandsSpectrumSpeed);
+            item.m_customData.Remove(VfxStateKeys.StrandsSpeed);
+            item.m_customData.Remove(VfxStateKeys.StrandsRadius);
+            item.m_customData.Remove(VfxStateKeys.StrandsXOffset);
+            item.m_customData.Remove(VfxStateKeys.StrandsYOffset);
+            item.m_customData.Remove(VfxStateKeys.StrandsZOffset);
+            item.m_customData.Remove(VfxStateKeys.StrandsXRotation);
+            item.m_customData.Remove(VfxStateKeys.StrandsYRotation);
+            item.m_customData.Remove(VfxStateKeys.StrandsZRotation);
+            item.m_customData.Remove(VfxStateKeys.StrandsDrift);
+
             item.m_customData.Remove(VfxStateKeys.SparksEnabled);
             item.m_customData.Remove(VfxStateKeys.SparksEnergy);
             item.m_customData.Remove(VfxStateKeys.SparksScale);
             item.m_customData.Remove(VfxStateKeys.SparksLuminance);
             item.m_customData.Remove(VfxStateKeys.SparksHue);
+            item.m_customData.Remove(VfxStateKeys.SparksLifetime);
             item.m_customData.Remove(VfxStateKeys.SparksLength);
             item.m_customData.Remove(VfxStateKeys.SparksWidth);
             item.m_customData.Remove(VfxStateKeys.SparksXOffset);
@@ -744,6 +896,28 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsZRotation);
             item.m_customData.Remove(VfxStateKeys.OrbitalsOrbsDrift);
 
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresEnabled);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresSnakeEnabled);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresGlueEnabled);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresSpinEnabled);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresCount);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresScale);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresLuminance);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresHue);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresSpinSpeed);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresLength);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresSpeed);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresSpacing);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresRadius);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresCycles);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresXOffset);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresYOffset);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresZOffset);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresXRotation);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresYRotation);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresZRotation);
+            item.m_customData.Remove(VfxStateKeys.OrbitalsCoresDrift);
+
             item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesEnabled);
             item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesCount);
             item.m_customData.Remove(VfxStateKeys.OrbitalsFlamesEnergy);
@@ -783,26 +957,6 @@ namespace NADA.VFX.Core.State
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersYRotation);
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersZRotation);
             item.m_customData.Remove(VfxStateKeys.OrbitalsEmbersDrift);
-            
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsEnabled);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsSpectrumEnabled);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsEnergy);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsScaleWhole);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsScaleParts);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsLuminance);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsHue);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsLifetime);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsSpectrumSpeed);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsSpeed);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsLength);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsRadius);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsXOffset);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsYOffset);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsZOffset);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsXRotation);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsYRotation);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsZRotation);
-            item.m_customData.Remove(VfxStateKeys.OrganicsStrandsDrift);
         }
 
         internal static VfxState FromDefaults()
@@ -817,12 +971,16 @@ namespace NADA.VFX.Core.State
                 RigZRotation = PluginConfig.DefaultEffectRotation,
 
                 InnerFlamesEnabled = true,
+                InnerFlamesWorldEnabled = false,
+                InnerFlamesBlackEnabled = false,
+                InnerFlamesWhiteEnabled = false,
                 InnerFlamesEnergy = PluginConfig.DefaultEnergy,
                 InnerFlamesScale = 1f,
-                InnerFlamesLuminance =  PluginConfig.DefaultLuminance,
+                InnerFlamesLuminance = PluginConfig.DefaultLuminance,
                 InnerFlamesHue = PluginConfig.DefaultHue,
-                InnerFlamesLifetime =  PluginConfig.DefaultLifetime,
+                InnerFlamesLifetime = PluginConfig.DefaultLifetime,
                 InnerFlamesLength = PluginConfig.DefaultFlameLength,
+                InnerFlamesWidth = PluginConfig.DefaultFlameWidth,
                 InnerFlamesXOffset = PluginConfig.DefaultEffectOffset,
                 InnerFlamesYOffset = PluginConfig.DefaultEffectOffset,
                 InnerFlamesZOffset = PluginConfig.DefaultEffectOffset,
@@ -831,13 +989,17 @@ namespace NADA.VFX.Core.State
                 InnerFlamesZRotation = PluginConfig.DefaultEffectRotation,
 
                 OuterFlamesEnabled = true,
+                OuterFlamesWorldEnabled = false,
+                OuterFlamesBlackEnabled = false,
+                OuterFlamesWhiteEnabled = false,
                 OuterFlamesDragEnabled = false,
                 OuterFlamesEnergy = PluginConfig.DefaultEnergy,
                 OuterFlamesScale = 1f,
-                OuterFlamesLuminance =  PluginConfig.DefaultLuminance,
+                OuterFlamesLuminance = PluginConfig.DefaultLuminance,
                 OuterFlamesHue = PluginConfig.DefaultHue,
                 OuterFlamesLifetime = PluginConfig.DefaultLifetime,
                 OuterFlamesLength = PluginConfig.DefaultFlameLength,
+                OuterFlamesWidth = PluginConfig.DefaultFlameWidth,
                 OuterFlamesXOffset = PluginConfig.DefaultEffectOffset,
                 OuterFlamesYOffset = PluginConfig.DefaultEffectOffset,
                 OuterFlamesZOffset = PluginConfig.DefaultEffectOffset,
@@ -845,11 +1007,32 @@ namespace NADA.VFX.Core.State
                 OuterFlamesYRotation = PluginConfig.DefaultEffectRotation,
                 OuterFlamesZRotation = PluginConfig.DefaultEffectRotation,
 
+                StrandsEnabled = true,
+                StrandsSpectrumEnabled = false,
+                StrandsEnergy = PluginConfig.DefaultEnergy,
+                StrandsScaleWhole = 0.50f,
+                StrandsScaleParts = 1f,
+                StrandsLuminance = PluginConfig.DefaultLuminance,
+                StrandsHue = PluginConfig.DefaultHue,
+                StrandsLifetime = PluginConfig.DefaultLifetime,
+                StrandsLength = PluginConfig.DefaultOrbitalsLength,
+                StrandsSpectrumSpeed = PluginConfig.DefaultSpectrumSpeed,
+                StrandsSpeed = PluginConfig.DefaultOrbitalsSpeed,
+                StrandsRadius = PluginConfig.DefaultOrbitalsRadiusMultiplier,
+                StrandsXOffset = PluginConfig.DefaultEffectOffset,
+                StrandsYOffset = PluginConfig.DefaultEffectOffset,
+                StrandsZOffset = PluginConfig.DefaultEffectOffset,
+                StrandsXRotation = PluginConfig.DefaultEffectRotation,
+                StrandsYRotation = PluginConfig.DefaultEffectRotation,
+                StrandsZRotation = PluginConfig.DefaultEffectRotation,
+                StrandsDrift = PluginConfig.DefaultDrift,
+
                 SparksEnabled = true,
                 SparksEnergy = PluginConfig.DefaultEnergy,
                 SparksScale = 1f,
-                SparksLuminance =   PluginConfig.DefaultLuminance,
+                SparksLuminance = PluginConfig.DefaultLuminance,
                 SparksHue = PluginConfig.DefaultHue,
+                SparksLifetime = PluginConfig.DefaultLifetime,
                 SparksLength = PluginConfig.DefaultFlameLength,
                 SparksWidth = PluginConfig.DefaultSparksWidth,
                 SparksXOffset = PluginConfig.DefaultEffectOffset,
@@ -858,10 +1041,10 @@ namespace NADA.VFX.Core.State
                 SparksXRotation = PluginConfig.DefaultEffectRotation,
                 SparksYRotation = PluginConfig.DefaultEffectRotation,
                 SparksZRotation = PluginConfig.DefaultEffectRotation,
-                
+
                 FlareEnabled = true,
                 FlareScale = 1f,
-                FlareLuminance =  PluginConfig.DefaultLuminance,
+                FlareLuminance = PluginConfig.DefaultLuminance,
                 FlareHue = PluginConfig.DefaultHue,
                 FlareXOffset = PluginConfig.DefaultEffectOffset,
                 FlareYOffset = PluginConfig.DefaultEffectOffset,
@@ -869,7 +1052,7 @@ namespace NADA.VFX.Core.State
 
                 AuraEnabled = true,
                 AuraScale = PluginConfig.DefaultAuraScale,
-                AuraLuminance =  PluginConfig.DefaultLuminance,
+                AuraLuminance = PluginConfig.DefaultLuminance,
                 AuraHue = PluginConfig.DefaultHue,
                 AuraXOffset = PluginConfig.DefaultEffectOffset,
                 AuraYOffset = PluginConfig.DefaultEffectOffset,
@@ -898,13 +1081,35 @@ namespace NADA.VFX.Core.State
                 OrbitalsOrbsZRotation = PluginConfig.DefaultEffectRotation,
                 OrbitalsOrbsDrift = PluginConfig.DefaultDrift,
 
+                OrbitalsCoresEnabled = true,
+                OrbitalsCoresSnakeEnabled =  false,
+                OrbitalsCoresGlueEnabled = false,
+                OrbitalsCoresSpinEnabled = true,
+                OrbitalsCoresCount = PluginConfig.DefaultCountNormalized,
+                OrbitalsCoresScale = 1f,
+                OrbitalsCoresLuminance = PluginConfig.DefaultLuminance,
+                OrbitalsCoresHue = PluginConfig.DefaultHue,
+                OrbitalsCoresSpinSpeed = PluginConfig.DefaultCoreSpinSpeed,
+                OrbitalsCoresLength = PluginConfig.DefaultOrbitalsLength,
+                OrbitalsCoresSpeed = PluginConfig.DefaultOrbitalsSpeed,
+                OrbitalsCoresSpacing = PluginConfig.DefaultOrbitalsSpacing,
+                OrbitalsCoresRadius = PluginConfig.DefaultOrbitalsRadiusMultiplier,
+                OrbitalsCoresCycles = PluginConfig.DefaultOrbitalsCycles,
+                OrbitalsCoresXOffset = PluginConfig.DefaultEffectOffset,
+                OrbitalsCoresYOffset = PluginConfig.DefaultEffectOffset,
+                OrbitalsCoresZOffset = PluginConfig.DefaultEffectOffset,
+                OrbitalsCoresXRotation = PluginConfig.DefaultEffectRotation,
+                OrbitalsCoresYRotation = PluginConfig.DefaultEffectRotation,
+                OrbitalsCoresZRotation = PluginConfig.DefaultEffectRotation,
+                OrbitalsCoresDrift = PluginConfig.DefaultDrift,
+
                 OrbitalsFlamesEnabled = true,
                 OrbitalsFlamesCount = PluginConfig.DefaultCountNormalized,
                 OrbitalsFlamesEnergy = PluginConfig.DefaultEnergy,
                 OrbitalsFlamesScale = 1f,
                 OrbitalsFlamesLuminance = PluginConfig.DefaultLuminance,
                 OrbitalsFlamesHue = PluginConfig.DefaultHue,
-                OrbitalsFlamesLifetime =  PluginConfig.DefaultLifetime,
+                OrbitalsFlamesLifetime = PluginConfig.DefaultLifetime,
                 OrbitalsFlamesLength = PluginConfig.DefaultOrbitalsLength,
                 OrbitalsFlamesSpeed = PluginConfig.DefaultOrbitalsSpeed,
                 OrbitalsFlamesSpacing = PluginConfig.DefaultOrbitalsSpacing,
@@ -917,7 +1122,7 @@ namespace NADA.VFX.Core.State
                 OrbitalsFlamesYRotation = PluginConfig.DefaultEffectRotation,
                 OrbitalsFlamesZRotation = PluginConfig.DefaultEffectRotation,
                 OrbitalsFlamesDrift = PluginConfig.DefaultDrift,
-                
+
                 OrbitalsEmbersEnabled = true,
                 OrbitalsEmbersCount = PluginConfig.DefaultCountNormalized,
                 OrbitalsEmbersEnergy = PluginConfig.DefaultEnergy,
@@ -936,27 +1141,7 @@ namespace NADA.VFX.Core.State
                 OrbitalsEmbersXRotation = PluginConfig.DefaultEffectRotation,
                 OrbitalsEmbersYRotation = PluginConfig.DefaultEffectRotation,
                 OrbitalsEmbersZRotation = PluginConfig.DefaultEffectRotation,
-                OrbitalsEmbersDrift = PluginConfig.DefaultDrift,
-                
-                OrganicsStrandsEnabled = true,
-                OrganicsStrandsSpectrumEnabled = false,
-                OrganicsStrandsEnergy = PluginConfig.DefaultEnergy,
-                OrganicsStrandsScaleWhole = 0.50f,
-                OrganicsStrandsScaleParts = 1f,
-                OrganicsStrandsLuminance = PluginConfig.DefaultLuminance,
-                OrganicsStrandsHue = PluginConfig.DefaultHue,
-                OrganicsStrandsLifetime = PluginConfig.DefaultLifetime,
-                OrganicsStrandsLength = PluginConfig.DefaultOrbitalsLength,
-                OrganicsStrandsSpectrumSpeed = PluginConfig.DefaultSpectrumSpeed,
-                OrganicsStrandsSpeed = PluginConfig.DefaultOrbitalsSpeed,
-                OrganicsStrandsRadius = PluginConfig.DefaultOrbitalsRadiusMultiplier,
-                OrganicsStrandsXOffset = PluginConfig.DefaultEffectOffset,
-                OrganicsStrandsYOffset = PluginConfig.DefaultEffectOffset,
-                OrganicsStrandsZOffset = PluginConfig.DefaultEffectOffset,
-                OrganicsStrandsXRotation = PluginConfig.DefaultEffectRotation,
-                OrganicsStrandsYRotation = PluginConfig.DefaultEffectRotation,
-                OrganicsStrandsZRotation = PluginConfig.DefaultEffectRotation,
-                OrganicsStrandsDrift = PluginConfig.DefaultDrift,
+                OrbitalsEmbersDrift = PluginConfig.DefaultDrift
             };
         }
 
@@ -970,12 +1155,16 @@ namespace NADA.VFX.Core.State
             PluginConfig.RigZRotation.Value = state.RigZRotation;
 
             PluginConfig.InnerFlames.Value = state.InnerFlamesEnabled;
+            PluginConfig.InnerFlamesWorld.Value = state.InnerFlamesWorldEnabled;
+            PluginConfig.InnerFlamesBlack.Value = state.InnerFlamesBlackEnabled;
+            PluginConfig.InnerFlamesWhite.Value = state.InnerFlamesWhiteEnabled;
             PluginConfig.InnerFlamesEnergy.Value = state.InnerFlamesEnergy;
             PluginConfig.InnerFlamesScale.Value = state.InnerFlamesScale;
             PluginConfig.InnerFlamesLuminance.Value = state.InnerFlamesLuminance;
             PluginConfig.InnerFlamesHue.Value = state.InnerFlamesHue;
             PluginConfig.InnerFlamesLifetime.Value = state.InnerFlamesLifetime;
             PluginConfig.InnerFlamesLength.Value = state.InnerFlamesLength;
+            PluginConfig.InnerFlamesWidth.Value = state.InnerFlamesWidth;
             PluginConfig.InnerFlamesXOffset.Value = state.InnerFlamesXOffset;
             PluginConfig.InnerFlamesYOffset.Value = state.InnerFlamesYOffset;
             PluginConfig.InnerFlamesZOffset.Value = state.InnerFlamesZOffset;
@@ -984,6 +1173,9 @@ namespace NADA.VFX.Core.State
             PluginConfig.InnerFlamesZRotation.Value = state.InnerFlamesZRotation;
 
             PluginConfig.OuterFlames.Value = state.OuterFlamesEnabled;
+            PluginConfig.OuterFlamesWorld.Value = state.OuterFlamesWorldEnabled;
+            PluginConfig.OuterFlamesBlack.Value = state.OuterFlamesBlackEnabled;
+            PluginConfig.OuterFlamesWhite.Value = state.OuterFlamesWhiteEnabled;
             PluginConfig.OuterFlamesDragEnabled.Value = state.OuterFlamesDragEnabled;
             PluginConfig.OuterFlamesEnergy.Value = state.OuterFlamesEnergy;
             PluginConfig.OuterFlamesScale.Value = state.OuterFlamesScale;
@@ -991,12 +1183,33 @@ namespace NADA.VFX.Core.State
             PluginConfig.OuterFlamesHue.Value = state.OuterFlamesHue;
             PluginConfig.OuterFlamesLifetime.Value = state.OuterFlamesLifetime;
             PluginConfig.OuterFlamesLength.Value = state.OuterFlamesLength;
+            PluginConfig.OuterFlamesWidth.Value = state.OuterFlamesWidth;
             PluginConfig.OuterFlamesXOffset.Value = state.OuterFlamesXOffset;
             PluginConfig.OuterFlamesYOffset.Value = state.OuterFlamesYOffset;
             PluginConfig.OuterFlamesZOffset.Value = state.OuterFlamesZOffset;
             PluginConfig.OuterFlamesXRotation.Value = state.OuterFlamesXRotation;
             PluginConfig.OuterFlamesYRotation.Value = state.OuterFlamesYRotation;
             PluginConfig.OuterFlamesZRotation.Value = state.OuterFlamesZRotation;
+
+            PluginConfig.Strands.Value = state.StrandsEnabled;
+            PluginConfig.StrandsSpectrum.Value = state.StrandsSpectrumEnabled;
+            PluginConfig.StrandsEnergy.Value = state.StrandsEnergy;
+            PluginConfig.StrandsScaleWhole.Value = state.StrandsScaleWhole;
+            PluginConfig.StrandsScaleParts.Value = state.StrandsScaleParts;
+            PluginConfig.StrandsLuminance.Value = state.StrandsLuminance;
+            PluginConfig.StrandsHue.Value = state.StrandsHue;
+            PluginConfig.StrandsLifetime.Value = state.StrandsLifetime;
+            PluginConfig.StrandsLength.Value = state.StrandsLength;
+            PluginConfig.StrandsSpectrumSpeed.Value = state.StrandsSpectrumSpeed;
+            PluginConfig.StrandsSpeed.Value = state.StrandsSpeed;
+            PluginConfig.StrandsRadius.Value = state.StrandsRadius;
+            PluginConfig.StrandsXOffset.Value = state.StrandsXOffset;
+            PluginConfig.StrandsYOffset.Value = state.StrandsYOffset;
+            PluginConfig.StrandsZOffset.Value = state.StrandsZOffset;
+            PluginConfig.StrandsXRotation.Value = state.StrandsXRotation;
+            PluginConfig.StrandsYRotation.Value = state.StrandsYRotation;
+            PluginConfig.StrandsZRotation.Value = state.StrandsZRotation;
+            PluginConfig.StrandsDrift.Value = state.StrandsDrift;
 
             PluginConfig.Sparks.Value = state.SparksEnabled;
             PluginConfig.SparksEnergy.Value = state.SparksEnergy;
@@ -1051,6 +1264,28 @@ namespace NADA.VFX.Core.State
             PluginConfig.OrbitalsOrbsZRotation.Value = state.OrbitalsOrbsZRotation;
             PluginConfig.OrbitalsOrbsDrift.Value = state.OrbitalsOrbsDrift;
 
+            PluginConfig.OrbitalsCores.Value = state.OrbitalsCoresEnabled;
+            PluginConfig.OrbitalsCoresSnake.Value = state.OrbitalsCoresSnakeEnabled;
+            PluginConfig.OrbitalsCoresGlue.Value = state.OrbitalsCoresGlueEnabled;
+            PluginConfig.OrbitalsCoresSpin.Value = state.OrbitalsCoresSpinEnabled;
+            PluginConfig.OrbitalsCoresCount.Value = state.OrbitalsCoresCount;
+            PluginConfig.OrbitalsCoresScale.Value = state.OrbitalsCoresScale;
+            PluginConfig.OrbitalsCoresLuminance.Value = state.OrbitalsCoresLuminance;
+            PluginConfig.OrbitalsCoresHue.Value = state.OrbitalsCoresHue;
+            PluginConfig.OrbitalsCoresSpinSpeed.Value = state.OrbitalsCoresSpinSpeed;
+            PluginConfig.OrbitalsCoresLength.Value = state.OrbitalsCoresLength;
+            PluginConfig.OrbitalsCoresSpeed.Value = state.OrbitalsCoresSpeed;
+            PluginConfig.OrbitalsCoresSpacing.Value = state.OrbitalsCoresSpacing;
+            PluginConfig.OrbitalsCoresRadius.Value = state.OrbitalsCoresRadius;
+            PluginConfig.OrbitalsCoresCycles.Value = state.OrbitalsCoresCycles;
+            PluginConfig.OrbitalsCoresXOffset.Value = state.OrbitalsCoresXOffset;
+            PluginConfig.OrbitalsCoresYOffset.Value = state.OrbitalsCoresYOffset;
+            PluginConfig.OrbitalsCoresZOffset.Value = state.OrbitalsCoresZOffset;
+            PluginConfig.OrbitalsCoresXRotation.Value = state.OrbitalsCoresXRotation;
+            PluginConfig.OrbitalsCoresYRotation.Value = state.OrbitalsCoresYRotation;
+            PluginConfig.OrbitalsCoresZRotation.Value = state.OrbitalsCoresZRotation;
+            PluginConfig.OrbitalsCoresDrift.Value = state.OrbitalsCoresDrift;
+
             PluginConfig.OrbitalsFlames.Value = state.OrbitalsFlamesEnabled;
             PluginConfig.OrbitalsFlamesCount.Value = state.OrbitalsFlamesCount;
             PluginConfig.OrbitalsFlamesEnergy.Value = state.OrbitalsFlamesEnergy;
@@ -1090,26 +1325,6 @@ namespace NADA.VFX.Core.State
             PluginConfig.OrbitalsEmbersYRotation.Value = state.OrbitalsEmbersYRotation;
             PluginConfig.OrbitalsEmbersZRotation.Value = state.OrbitalsEmbersZRotation;
             PluginConfig.OrbitalsEmbersDrift.Value = state.OrbitalsEmbersDrift;
-            
-            PluginConfig.OrganicsStrands.Value = state.OrganicsStrandsEnabled;
-            PluginConfig.OrganicsStrandsSpectrum.Value = state.OrganicsStrandsSpectrumEnabled;
-            PluginConfig.OrganicsStrandsEnergy.Value = state.OrganicsStrandsEnergy;
-            PluginConfig.OrganicsStrandsScaleWhole.Value = state.OrganicsStrandsScaleWhole;
-            PluginConfig.OrganicsStrandsScaleParts.Value = state.OrganicsStrandsScaleParts;
-            PluginConfig.OrganicsStrandsLuminance.Value = state.OrganicsStrandsLuminance;
-            PluginConfig.OrganicsStrandsHue.Value = state.OrganicsStrandsHue;
-            PluginConfig.OrganicsStrandsLifetime.Value = state.OrganicsStrandsLifetime;
-            PluginConfig.OrganicsStrandsLength.Value = state.OrganicsStrandsLength;
-            PluginConfig.OrganicsStrandsSpectrumSpeed.Value = state.OrganicsStrandsSpectrumSpeed;
-            PluginConfig.OrganicsStrandsSpeed.Value = state.OrganicsStrandsSpeed;
-            PluginConfig.OrganicsStrandsRadius.Value = state.OrganicsStrandsRadius;
-            PluginConfig.OrganicsStrandsXOffset.Value = state.OrganicsStrandsXOffset;
-            PluginConfig.OrganicsStrandsYOffset.Value = state.OrganicsStrandsYOffset;
-            PluginConfig.OrganicsStrandsZOffset.Value = state.OrganicsStrandsZOffset;
-            PluginConfig.OrganicsStrandsXRotation.Value = state.OrganicsStrandsXRotation;
-            PluginConfig.OrganicsStrandsYRotation.Value = state.OrganicsStrandsYRotation;
-            PluginConfig.OrganicsStrandsZRotation.Value = state.OrganicsStrandsZRotation;
-            PluginConfig.OrganicsStrandsDrift.Value = state.OrganicsStrandsDrift;
         }
 
         private static float ReadFloat(Dictionary<string, string> customData, string key, float fallback)
@@ -1188,7 +1403,7 @@ namespace NADA.VFX.Core.State
                 VfxStateKeys.Bound,
                 false);
         }
-        
+
         internal static VfxStyleSave ToStyleSave(string styleName, VfxState state)
         {
             var tempItem = new global::ItemDrop.ItemData

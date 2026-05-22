@@ -8,7 +8,6 @@ namespace NADA.VFX.Runtime.Structure
     {
         private static Mesh _runtimeSphereMesh;
         
-        // Public entry points
         internal static Transform EnsureLocalOrbsBranch(
             Transform localWeaponRootTransform,
             string ownerNameForLogs)
@@ -32,10 +31,7 @@ namespace NADA.VFX.Runtime.Structure
                 NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.OrbitalsName);
 
             if (orbitalsRootTransform == null)
-            {
-                orbitalsRootTransform =
-                    NadaRigTransforms.EnsureChild(localEffectsRootTransform, Plugin.OrbitalsName);
-            }
+                orbitalsRootTransform = NadaRigTransforms.EnsureChild(localEffectsRootTransform, Plugin.OrbitalsName);
 
             Transform orbsRootTransform =
                 NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsOrbsName);
@@ -54,15 +50,60 @@ namespace NADA.VFX.Runtime.Structure
 
             var zSyncTransform = orbsRootTransform.GetComponent<ZSyncTransform>();
             if (zSyncTransform != null)
-            {
                 Object.Destroy(zSyncTransform);
-
-                
-            }
 
             EnsureLocalOrbitalsChildren(orbitalsRootTransform, orbsRootTransform, ownerNameForLogs);
 
             return orbsRootTransform;
+        }
+
+        internal static Transform EnsureLocalCoresBranch(
+            Transform localWeaponRootTransform,
+            string ownerNameForLogs)
+        {
+            if (!NadaRigCache.CacheReady)
+                return null;
+
+            if (NadaRigCache.CoresTemplateInactive == null)
+                return null;
+
+            if (localWeaponRootTransform == null)
+                return null;
+
+            Transform localEffectsRootTransform =
+                NadaRigPaths.FindLocalEffectsRoot(localWeaponRootTransform);
+
+            if (localEffectsRootTransform == null)
+                return null;
+
+            Transform orbitalsRootTransform =
+                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.OrbitalsName);
+
+            if (orbitalsRootTransform == null)
+                orbitalsRootTransform = NadaRigTransforms.EnsureChild(localEffectsRootTransform, Plugin.OrbitalsName);
+
+            Transform coresRootTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsCoresName);
+
+            if (coresRootTransform != null)
+            {
+                coresRootTransform.gameObject.SetActive(true);
+                StripRuntimeArtifacts(coresRootTransform);
+                return coresRootTransform;
+            }
+
+            GameObject coresObject =
+                Object.Instantiate(NadaRigCache.CoresTemplateInactive, orbitalsRootTransform, false);
+
+            coresObject.name = Plugin.OrbitalsCoresName;
+            coresObject.SetActive(true);
+
+            coresRootTransform = coresObject.transform;
+            NadaRigTransforms.ResetLocalTransform(coresRootTransform);
+
+            StripRuntimeArtifacts(coresRootTransform);
+
+            return coresRootTransform;
         }
 
         internal static void FinalizeLocalOrbsBranch(Transform localOrbsRootTransform)
@@ -129,6 +170,9 @@ namespace NADA.VFX.Runtime.Structure
             Transform liveEmbersTransform =
                 NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsEmbersName);
 
+            Transform liveCoresTransform =
+                NadaRigPaths.FindDirectChild(orbitalsRootTransform, Plugin.OrbitalsCoresName);
+
             Transform liveOrbsHeadVisualTransform = ResolveOrbsHeadVisualTransform(liveOrbsTransform);
 
             Transform orbsMotionRootTransform = EnsureOrbitalsMotionRoot(
@@ -147,6 +191,12 @@ namespace NADA.VFX.Runtime.Structure
                 orbitalsRigTransform,
                 Plugin.OrbitalsEmbersMotionRootName,
                 liveEmbersTransform,
+                ownerNameForLogs);
+
+            Transform coresMotionRootTransform = EnsureOrbitalsMotionRoot(
+                orbitalsRigTransform,
+                Plugin.OrbitalsCoresMotionRootName,
+                liveCoresTransform,
                 ownerNameForLogs);
 
             Transform orbsPoolRootTransform = EnsureOrbitalsPool(
@@ -173,18 +223,29 @@ namespace NADA.VFX.Runtime.Structure
                 Plugin.MaxOrbitalsEmberVisuals,
                 ownerNameForLogs);
 
+            Transform coresPoolRootTransform = EnsureOrbitalsPool(
+                orbitalsRigTransform,
+                Plugin.OrbitalsCoresPoolName,
+                liveCoresTransform,
+                Plugin.OrbitalsCoresName,
+                Plugin.MaxOrbitalsCoreVisuals,
+                ownerNameForLogs);
+
             StripRuntimeArtifacts(orbsMotionRootTransform);
             StripRuntimeArtifacts(flamesMotionRootTransform);
             StripRuntimeArtifacts(embersMotionRootTransform);
+            StripRuntimeArtifacts(coresMotionRootTransform);
 
             StripRuntimeArtifacts(liveOrbsTransform);
             StripRuntimeArtifacts(liveOrbsHeadVisualTransform);
             StripRuntimeArtifacts(liveFlamesTransform);
             StripRuntimeArtifacts(liveEmbersTransform);
+            StripRuntimeArtifacts(liveCoresTransform);
 
             StripRuntimeArtifacts(orbsPoolRootTransform);
             StripRuntimeArtifacts(flamesPoolRootTransform);
             StripRuntimeArtifacts(embersPoolRootTransform);
+            StripRuntimeArtifacts(coresPoolRootTransform);
 
             if (orbsMotionRootTransform != null &&
                 liveOrbsHeadVisualTransform != null &&
@@ -221,6 +282,18 @@ namespace NADA.VFX.Runtime.Structure
                     liveEmbersTransform,
                     embersPoolRootTransform);
             }
+
+            if (coresMotionRootTransform != null &&
+                liveCoresTransform != null &&
+                coresPoolRootTransform != null)
+            {
+                NadaMotionBinder.BindOrbitalsMotion(
+                    coresMotionRootTransform,
+                    NadaOrbitalsFamily.Cores,
+                    itemData,
+                    liveCoresTransform,
+                    coresPoolRootTransform);
+            }
         }
         
         internal static Transform EnsureCompleteOrbitalsRig(
@@ -238,6 +311,10 @@ namespace NADA.VFX.Runtime.Structure
 
             if (localOrbsRootTransform != null)
                 FinalizeLocalOrbsBranch(localOrbsRootTransform);
+
+            EnsureLocalCoresBranch(
+                localWeaponRootTransform,
+                ownerNameForLogs);
 
             Transform orbitalsRootTransform =
                 NadaRigPaths.FindLocalOrbitalsRoot(localWeaponRootTransform);
@@ -262,7 +339,6 @@ namespace NADA.VFX.Runtime.Structure
             return orbitalsRootTransform;
         }
         
-        // Live visual setup
         internal static void EnsureLocalOrbitalsChildren(
             Transform orbitalsRootTransform,
             Transform localOrbsRootTransform,
@@ -387,7 +463,6 @@ namespace NADA.VFX.Runtime.Structure
                 ParticleSystemSimulationSpace.World);
         }
         
-        // Pool/motion rig setup
         internal static Transform EnsureOrbitalsMotionRoot(
             Transform orbitalsRigTransform,
             string motionRootName,
@@ -401,10 +476,7 @@ namespace NADA.VFX.Runtime.Structure
                 NadaRigPaths.FindDirectChild(orbitalsRigTransform, Plugin.OrbitalsMotionRootsName);
 
             if (motionRootsTransform == null)
-            {
-                motionRootsTransform =
-                    NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsMotionRootsName);
-            }
+                motionRootsTransform = NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsMotionRootsName);
 
             Transform motionRootTransform =
                 NadaRigPaths.FindDirectChild(motionRootsTransform, motionRootName);
@@ -447,10 +519,7 @@ namespace NADA.VFX.Runtime.Structure
                 NadaRigPaths.FindDirectChild(orbitalsRigTransform, Plugin.OrbitalsPoolsRootName);
 
             if (poolsRootTransform == null)
-            {
-                poolsRootTransform =
-                    NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsPoolsRootName);
-            }
+                poolsRootTransform = NadaRigTransforms.EnsureChild(orbitalsRigTransform, Plugin.OrbitalsPoolsRootName);
 
             Transform poolRootTransform =
                 NadaRigPaths.FindDirectChild(poolsRootTransform, poolName);
@@ -507,11 +576,6 @@ namespace NADA.VFX.Runtime.Structure
                         sourceVisualTransform);
 
                     StripRuntimeArtifacts(existingPooledVisualTransform);
-
-                    NadaRigTransforms.NormalizeParticleSpacesUnder(
-                        existingPooledVisualTransform,
-                        ParticleSystemSimulationSpace.World);
-
                     continue;
                 }
 
@@ -526,10 +590,6 @@ namespace NADA.VFX.Runtime.Structure
                     sourceVisualTransform);
 
                 StripRuntimeArtifacts(pooledVisualObject.transform);
-
-                NadaRigTransforms.NormalizeParticleSpacesUnder(
-                    pooledVisualObject.transform,
-                    ParticleSystemSimulationSpace.World);
             }
         }
         
@@ -546,7 +606,6 @@ namespace NADA.VFX.Runtime.Structure
                 : liveOrbsTransform;
         }
         
-        // Cleanup/helperss
         private static void StripRuntimeArtifacts(Transform rootTransform)
         {
             if (rootTransform == null)

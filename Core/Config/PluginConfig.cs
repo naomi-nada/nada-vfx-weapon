@@ -2,21 +2,22 @@ using BepInEx.Configuration;
 
 namespace NADA.VFX.Core.Config
 {
-    // Innerflames - probably no Z rotation needed
-    // Outerflames - probably no Z rotation needed
-    // Orbitals Orbs - probably no Y rotation needed
-    // Orbitals Strands - probably no Y rotation needed
-    // Orbitals Flames - probably no Y rotation needed
-    // Orbitals Embers - probably no Y rotation needed
+    // Inner Flames, probably no Z rot needed
+    // Outer Flames, probably no Z rot needed
+    // Strands, probably no Y rot needed
+    // Orbitals Orbs, probably no Y rot needed
+    // Orbitals Cores, probably no Y rot needed
+    // Orbitals Flames, probably no Y rot needed
+    // Orbitals Embers, probably no Y rot needed
 
     internal static class PluginConfig
     {
+        internal static ConfigEntry<bool> CharacterSelectionVisibility;
+        internal static ConfigEntry<bool> DroppedItemVisibility;
+        
         internal static ConfigEntry<KeyboardShortcut> AttachHotkey;
         internal static ConfigEntry<KeyboardShortcut> BindHotkey;
         internal static ConfigEntry<bool> UnbindWeapon;
-
-        internal static ConfigEntry<bool> CharacterSelectionVisibility;
-        internal static ConfigEntry<bool> DroppedItemVisibility;
 
         internal static ConfigEntry<bool> SaveStyle;
         internal static ConfigEntry<string> StyleName;
@@ -35,21 +36,26 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<bool> RigTransformBottomSpacer;
         internal static ConfigEntry<bool> InnerFlamesBottomSpacer;
         internal static ConfigEntry<bool> OuterFlamesBottomSpacer;
+        internal static ConfigEntry<bool> StrandsBottomSpacer;
         internal static ConfigEntry<bool> SparksBottomSpacer;
         internal static ConfigEntry<bool> FlareBottomSpacer;
         internal static ConfigEntry<bool> AuraBottomSpacer;
         internal static ConfigEntry<bool> OrbitalsOrbsBottomSpacer;
+        internal static ConfigEntry<bool> OrbitalsCoresBottomSpacer;
         internal static ConfigEntry<bool> OrbitalsFlamesBottomSpacer;
         internal static ConfigEntry<bool> OrbitalsEmbersBottomSpacer;
-        internal static ConfigEntry<bool> OrganicsStrandsBottomSpacer;
 
         internal static ConfigEntry<bool> InnerFlames = null;
+        internal static ConfigEntry<bool> InnerFlamesWorld = null;
+        internal static ConfigEntry<bool> InnerFlamesBlack = null;
+        internal static ConfigEntry<bool> InnerFlamesWhite = null;
         internal static ConfigEntry<float> InnerFlamesEnergy = null;
         internal static ConfigEntry<float> InnerFlamesScale = null;
         internal static ConfigEntry<float> InnerFlamesLuminance = null;
         internal static ConfigEntry<float> InnerFlamesHue = null;
         internal static ConfigEntry<float> InnerFlamesLifetime = null;
         internal static ConfigEntry<float> InnerFlamesLength = null;
+        internal static ConfigEntry<float> InnerFlamesWidth = null;
         internal static ConfigEntry<float> InnerFlamesXOffset = null;
         internal static ConfigEntry<float> InnerFlamesYOffset = null;
         internal static ConfigEntry<float> InnerFlamesZOffset = null;
@@ -58,6 +64,9 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> InnerFlamesZRotation = null;
 
         internal static ConfigEntry<bool> OuterFlames = null;
+        internal static ConfigEntry<bool> OuterFlamesWorld = null;
+        internal static ConfigEntry<bool> OuterFlamesBlack = null;
+        internal static ConfigEntry<bool> OuterFlamesWhite = null;
         internal static ConfigEntry<bool> OuterFlamesDragEnabled = null;
         internal static ConfigEntry<float> OuterFlamesEnergy = null;
         internal static ConfigEntry<float> OuterFlamesScale = null;
@@ -65,12 +74,33 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OuterFlamesHue = null;
         internal static ConfigEntry<float> OuterFlamesLifetime = null;
         internal static ConfigEntry<float> OuterFlamesLength = null;
+        internal static ConfigEntry<float> OuterFlamesWidth = null;
         internal static ConfigEntry<float> OuterFlamesXOffset = null;
         internal static ConfigEntry<float> OuterFlamesYOffset = null;
         internal static ConfigEntry<float> OuterFlamesZOffset = null;
         internal static ConfigEntry<float> OuterFlamesXRotation = null;
         internal static ConfigEntry<float> OuterFlamesYRotation = null;
         internal static ConfigEntry<float> OuterFlamesZRotation = null;
+
+        internal static ConfigEntry<bool> Strands = null;
+        internal static ConfigEntry<bool> StrandsSpectrum = null;
+        internal static ConfigEntry<float> StrandsEnergy = null;
+        internal static ConfigEntry<float> StrandsScaleWhole = null;
+        internal static ConfigEntry<float> StrandsScaleParts = null;
+        internal static ConfigEntry<float> StrandsLuminance = null;
+        internal static ConfigEntry<float> StrandsHue = null;
+        internal static ConfigEntry<float> StrandsLifetime = null;
+        internal static ConfigEntry<float> StrandsLength = null;
+        internal static ConfigEntry<float> StrandsSpectrumSpeed = null;
+        internal static ConfigEntry<float> StrandsSpeed = null;
+        internal static ConfigEntry<float> StrandsRadius = null;
+        internal static ConfigEntry<float> StrandsXOffset = null;
+        internal static ConfigEntry<float> StrandsYOffset = null;
+        internal static ConfigEntry<float> StrandsZOffset = null;
+        internal static ConfigEntry<float> StrandsXRotation = null;
+        internal static ConfigEntry<float> StrandsYRotation = null;
+        internal static ConfigEntry<float> StrandsZRotation = null;
+        internal static ConfigEntry<float> StrandsDrift = null;
 
         internal static ConfigEntry<bool> Sparks = null;
         internal static ConfigEntry<float> SparksEnergy = null;
@@ -126,6 +156,29 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsOrbsZRotation = null;
         internal static ConfigEntry<float> OrbitalsOrbsDrift = null;
 
+        internal static ConfigEntry<bool> OrbitalsCores = null;
+        internal static ConfigEntry<bool> OrbitalsCoresSnake = null;
+        internal static ConfigEntry<bool> OrbitalsCoresGlue = null;
+        internal static ConfigEntry<bool> OrbitalsCoresSync = null;
+        internal static ConfigEntry<bool> OrbitalsCoresSpin = null;
+        internal static ConfigEntry<float> OrbitalsCoresCount = null;
+        internal static ConfigEntry<float> OrbitalsCoresScale = null;
+        internal static ConfigEntry<float> OrbitalsCoresLuminance = null;
+        internal static ConfigEntry<float> OrbitalsCoresHue = null;
+        internal static ConfigEntry<float> OrbitalsCoresSpinSpeed = null;
+        internal static ConfigEntry<float> OrbitalsCoresLength = null;
+        internal static ConfigEntry<float> OrbitalsCoresSpeed = null;
+        internal static ConfigEntry<float> OrbitalsCoresSpacing = null;
+        internal static ConfigEntry<float> OrbitalsCoresRadius = null;
+        internal static ConfigEntry<float> OrbitalsCoresCycles = null;
+        internal static ConfigEntry<float> OrbitalsCoresXOffset = null;
+        internal static ConfigEntry<float> OrbitalsCoresYOffset = null;
+        internal static ConfigEntry<float> OrbitalsCoresZOffset = null;
+        internal static ConfigEntry<float> OrbitalsCoresXRotation = null;
+        internal static ConfigEntry<float> OrbitalsCoresYRotation = null;
+        internal static ConfigEntry<float> OrbitalsCoresZRotation = null;
+        internal static ConfigEntry<float> OrbitalsCoresDrift = null;
+
         internal static ConfigEntry<bool> OrbitalsFlames = null;
         internal static ConfigEntry<float> OrbitalsFlamesCount = null;
         internal static ConfigEntry<float> OrbitalsFlamesEnergy = null;
@@ -166,26 +219,6 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsEmbersZRotation = null;
         internal static ConfigEntry<float> OrbitalsEmbersDrift = null;
 
-        internal static ConfigEntry<bool> OrganicsStrands = null;
-        internal static ConfigEntry<bool> OrganicsStrandsSpectrum = null;
-        internal static ConfigEntry<float> OrganicsStrandsEnergy = null;
-        internal static ConfigEntry<float> OrganicsStrandsScaleWhole = null;
-        internal static ConfigEntry<float> OrganicsStrandsScaleParts = null;
-        internal static ConfigEntry<float> OrganicsStrandsLuminance = null;
-        internal static ConfigEntry<float> OrganicsStrandsHue = null;
-        internal static ConfigEntry<float> OrganicsStrandsLifetime = null;
-        internal static ConfigEntry<float> OrganicsStrandsLength = null;
-        internal static ConfigEntry<float> OrganicsStrandsSpectrumSpeed = null;
-        internal static ConfigEntry<float> OrganicsStrandsSpeed = null;
-        internal static ConfigEntry<float> OrganicsStrandsRadius = null;
-        internal static ConfigEntry<float> OrganicsStrandsXOffset = null;
-        internal static ConfigEntry<float> OrganicsStrandsYOffset = null;
-        internal static ConfigEntry<float> OrganicsStrandsZOffset = null;
-        internal static ConfigEntry<float> OrganicsStrandsXRotation = null;
-        internal static ConfigEntry<float> OrganicsStrandsYRotation = null;
-        internal static ConfigEntry<float> OrganicsStrandsZRotation = null;
-        internal static ConfigEntry<float> OrganicsStrandsDrift = null;
-
         internal const float MinEffectOffset = -2.0f;
         internal const float MaxEffectOffset = 2.0f;
         internal const float DefaultEffectOffset = 0f;
@@ -218,13 +251,17 @@ namespace NADA.VFX.Core.Config
         internal const float MaxFlameLength = 1.50f;
         internal const float DefaultFlameLength = 0.80f;
 
+        internal const float MinFlameWidth = 0.10f;
+        internal const float MaxFlameWidth = 5.10f;
+        internal const float DefaultFlameWidth = 2.60f;
+
         internal const float MinSparksWidth = 0.25f;
         internal const float MaxSparksWidth = 1.75f;
         internal const float DefaultSparksWidth = 1.00f;
 
         internal const float MinAuraScale = 1.10f;
         internal const float MaxAuraScale = 2.10f;
-        internal const float DefaultAuraScale = 1.6f;
+        internal const float DefaultAuraScale = 1.60f;
 
         internal const float MinLifetime = 0.25f;
         internal const float MaxLifetime = 1.75f;
@@ -234,8 +271,11 @@ namespace NADA.VFX.Core.Config
         internal const float MaxDrift = 1.00f;
         internal const float DefaultDrift = 0.00f;
 
-        internal const float MinOrbScaleMult = 0.2f;
-        internal const float MaxOrbScaleMult = 1.8f;
+        internal const float MinOrbScaleMult = 0.20f;
+        internal const float MaxOrbScaleMult = 1.80f;
+
+        internal const float MinCoreScaleMult = 0.20f;
+        internal const float MaxCoreScaleMult = 1.80f;
 
         internal const float MinCountNormalized = 0.00f;
         internal const float MaxCountNormalized = 1.00f;
@@ -261,21 +301,26 @@ namespace NADA.VFX.Core.Config
         internal const float MaxOrbitalsCycles = 5.00f;
         internal const float DefaultOrbitalsCycles = 3.00f;
 
+        internal const float MinCoreSpinSpeed = 0.00f;
+        internal const float MaxCoreSpinSpeed = 5.00f;
+        internal const float DefaultCoreSpinSpeed = 1.00f;
+
         internal static void Bind(ConfigFile config)
         {
-            const string hotkeysSection = "CONTROLS";
             const string visibilitySection = "VISIBILITY";
+            const string hotkeysSection = "CONTROLS";
             const string stylesSection = "STYLES";
             const string rigTransformSection = "RIG TRANSFORM";
             const string innerFlamesSection = "INNER FLAMES";
             const string outerFlamesSection = "OUTER FLAMES";
+            const string strandsSection = "STRANDS";
             const string sparksSection = "SPARKS";
             const string flareSection = "FLARE";
             const string auraSection = "AURA";
             const string orbitalsOrbsSection = "Orbitals: ORBS";
+            const string orbitalsCoresSection = "Orbitals: CORES";
             const string orbitalsFlamesSection = "Orbitals: FLAMES";
             const string orbitalsEmbersSection = "Orbitals: EMBERS";
-            const string organicsStrandsSection = "Organics: STRANDS";
 
             Plugin.DebugLoggingEnabled = config.Bind(
                 "Debug",
@@ -283,7 +328,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Enables verbose NADA VFX structure/discovery logs.",
-                    500,
+                    10000,
                     isAdvanced: true));
 
             Plugin.EquipLoggingEnabled = config.Bind(
@@ -292,7 +337,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Logs one concise NADA VFX line when an equipped item is processed.",
-                    450,
+                    9900,
                     isAdvanced: true));
 
             CharacterSelectionVisibility = config.Bind(
@@ -301,7 +346,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Show bound NADA VFX on character selection / start screen weapon previews.",
-                    300,
+                    10000,
                     dispName: "Character Selection",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -312,7 +357,7 @@ namespace NADA.VFX.Core.Config
                 false,
                 OrderedDescription(
                     "Show bound NADA VFX on dropped world item instances.",
-                    295,
+                    9900,
                     dispName: "Dropped Items",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -340,7 +385,7 @@ namespace NADA.VFX.Core.Config
                 KeyboardShortcut.Empty,
                 OrderedDescription(
                     "Press to attach NADA VFX to the equipped weapon.",
-                    300,
+                    10000,
                     dispName: "Attach to Weapon Hotkey"));
 
             AttachHotkey.SettingChanged += (_, __) => config.Save();
@@ -351,7 +396,7 @@ namespace NADA.VFX.Core.Config
                 KeyboardShortcut.Empty,
                 OrderedDescription(
                     "Press to bind the current NADA VFX rig/settings to the equipped weapon.",
-                    275,
+                    9900,
                     dispName: "Bind to Weapon Hotkey"));
 
             BindHotkey.SettingChanged += (_, __) => config.Save();
@@ -362,7 +407,7 @@ namespace NADA.VFX.Core.Config
                 false,
                 OrderedDescription(
                     "Clears NADA VFX from the equipped weapon and refreshes it using current manager settings.",
-                    260,
+                    9800,
                     dispName: "Unbind Current Weapon",
                     customDrawer: ConfigurationManagerDrawers.DrawUnbindWeaponButton,
                     hideSettingName: true,
@@ -385,7 +430,7 @@ namespace NADA.VFX.Core.Config
                 string.Empty,
                 OrderedDescription(
                     "Name used when saving the current style.",
-                    240,
+                    10000,
                     dispName: "Style Name",
                     isAdvanced: true,
                     browsable: false));
@@ -396,7 +441,7 @@ namespace NADA.VFX.Core.Config
                 "Default",
                 OrderedDescription(
                     "Load a saved style into the manager settings.",
-                    230,
+                    9900,
                     dispName: "Choose Style",
                     customDrawer: ConfigurationManagerDrawers.DrawLoadStyleDropdown,
                     hideDefaultButton: true));
@@ -415,7 +460,7 @@ namespace NADA.VFX.Core.Config
                 false,
                 OrderedDescription(
                     "Save the current manager settings as a named style.",
-                    220,
+                    9800,
                     dispName: "Save Style",
                     customDrawer: ConfigurationManagerDrawers.DrawSaveStyleRow,
                     hideDefaultButton: true));
@@ -437,7 +482,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the entire Rig's X axis offset.",
-                    205,
+                    10000,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "X Offset"));
 
@@ -447,7 +492,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the entire Rig's Y axis offset.",
-                    204,
+                    9900,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Y Offset"));
 
@@ -457,7 +502,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the entire Rig's Z axis offset.",
-                    203,
+                    9800,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Z Offset"));
 
@@ -467,7 +512,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Adjust the entire Rig's X axis rotation.",
-                    202,
+                    9700,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "X Rotation"));
 
@@ -477,7 +522,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Adjust the entire Rig's Y axis rotation.",
-                    201,
+                    9600,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Y Rotation"));
 
@@ -487,7 +532,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Adjust the entire Rig's Z axis rotation.",
-                    200,
+                    9500,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Z Rotation"));
 
@@ -515,9 +560,42 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Inner Flames on or off.",
-                    200,
+                    10000,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+            
+            InnerFlamesWorld = config.Bind(
+                innerFlamesSection,
+                "World",
+                true,
+                OrderedDescription(
+                    "Emit Inner Flames particles in world space.",
+                    9950,
+                    dispName: "World",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+
+            InnerFlamesBlack = config.Bind(
+                innerFlamesSection,
+                "Black",
+                false,
+                OrderedDescription(
+                    "Force Inner Flames to black. When enabled, Color is disabled.",
+                    9900,
+                    dispName: "Black (WIP)",
+                    customDrawer: ConfigurationManagerDrawers.DrawInnerFlamesBlackCheckbox,
+                    hideSettingName: true));
+
+            InnerFlamesWhite = config.Bind(
+                innerFlamesSection,
+                "White",
+                false,
+                OrderedDescription(
+                    "Force Inner Flames to white. When enabled, Color is disabled.",
+                    9800,
+                    dispName: "White",
+                    customDrawer: ConfigurationManagerDrawers.DrawInnerFlamesWhiteCheckbox,
                     hideSettingName: true));
 
             InnerFlamesEnergy = config.Bind(
@@ -526,7 +604,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense Inner Flames feels.",
-                    199,
+                    9700,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"));
 
@@ -536,7 +614,7 @@ namespace NADA.VFX.Core.Config
                 defaultScaleMult,
                 OrderedDescription(
                     "Adjust the size of Inner Flames.",
-                    198,
+                    9600,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale"));
 
@@ -546,7 +624,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLuminance,
                 OrderedDescription(
                     "Adjust how strongly Inner Flames glow.",
-                    197,
+                    9500,
                     new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
                     dispName: "Luminance"));
 
@@ -556,9 +634,10 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of Inner Flames.",
-                    196,
+                    9400,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"));
+                    dispName: "Color",
+                    customDrawer: ConfigurationManagerDrawers.DrawInnerFlamesColorSlider));
 
             InnerFlamesLifetime = config.Bind(
                 innerFlamesSection,
@@ -566,7 +645,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLifetime,
                 OrderedDescription(
                     "Adjust how long emitted inner flames remain visible.",
-                    195,
+                    9300,
                     new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime"));
 
@@ -575,10 +654,20 @@ namespace NADA.VFX.Core.Config
                 "Length",
                 DefaultFlameLength,
                 OrderedDescription(
-                    "Adjust how much of the blade emits inner flames.",
-                    194,
+                    "Adjust the distance Inner Flames emits along the spine of a weapon.",
+                    9200,
                     new AcceptableValueRange<float>(MinFlameLength, MaxFlameLength),
                     dispName: "Length"));
+
+            InnerFlamesWidth = config.Bind(
+                innerFlamesSection,
+                "Width",
+                DefaultFlameWidth,
+                OrderedDescription(
+                    "Adjust the distance Inner Flames emits across the plane of a weapon.",
+                    9100,
+                    new AcceptableValueRange<float>(MinFlameWidth, MaxFlameWidth),
+                    dispName: "Width"));
 
             InnerFlamesXOffset = config.Bind(
                 innerFlamesSection,
@@ -586,7 +675,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the X axis offset of the whole Inner Flames effect.",
-                    193,
+                    9000,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "X Offset"));
 
@@ -596,7 +685,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Y axis offset of the whole Inner Flames effect.",
-                    192,
+                    8900,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Y Offset"));
 
@@ -606,7 +695,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Z axis offset of the whole Inner Flames effect.",
-                    191,
+                    8800,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Z Offset"));
 
@@ -616,7 +705,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Inner Flames effect around its local X axis.",
-                    190,
+                    8700,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "X Rotation"));
 
@@ -626,7 +715,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Inner Flames effect around its local Y axis.",
-                    189,
+                    8600,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Y Rotation"));
 
@@ -636,9 +725,25 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Inner Flames effect around its local Z axis.",
-                    188,
+                    8500,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Z Rotation"));
+
+            InnerFlamesBlack.SettingChanged += (_, __) =>
+            {
+                if (InnerFlamesBlack.Value && InnerFlamesWhite.Value)
+                    InnerFlamesWhite.Value = false;
+
+                config.Save();
+            };
+
+            InnerFlamesWhite.SettingChanged += (_, __) =>
+            {
+                if (InnerFlamesWhite.Value && InnerFlamesBlack.Value)
+                    InnerFlamesBlack.Value = false;
+
+                config.Save();
+            };
 
             InnerFlamesBottomSpacer = config.Bind(
                 innerFlamesSection,
@@ -646,7 +751,7 @@ namespace NADA.VFX.Core.Config
                 false,
                 OrderedDescription(
                     "",
-                    -998,
+                    -999,
                     customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
                     hideSettingName: true,
                     hideDefaultButton: true));
@@ -657,9 +762,42 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Outer Flames on or off.",
-                    190,
+                    10000,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+            
+            OuterFlamesWorld = config.Bind(
+                outerFlamesSection,
+                "World",
+                true,
+                OrderedDescription(
+                    "Emit Outer Flames particles in world space.",
+                    9950,
+                    dispName: "World",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+
+            OuterFlamesBlack = config.Bind(
+                outerFlamesSection,
+                "Black",
+                false,
+                OrderedDescription(
+                    "Force Outer Flames to black. When enabled, Color is disabled.",
+                    9900,
+                    dispName: "Black (WIP)",
+                    customDrawer: ConfigurationManagerDrawers.DrawOuterFlamesBlackCheckbox,
+                    hideSettingName: true));
+
+            OuterFlamesWhite = config.Bind(
+                outerFlamesSection,
+                "White",
+                false,
+                OrderedDescription(
+                    "Force Outer Flames to white. When enabled, Color is disabled.",
+                    9800,
+                    dispName: "White",
+                    customDrawer: ConfigurationManagerDrawers.DrawOuterFlamesWhiteCheckbox,
                     hideSettingName: true));
 
             OuterFlamesDragEnabled = config.Bind(
@@ -668,7 +806,7 @@ namespace NADA.VFX.Core.Config
                 false,
                 OrderedDescription(
                     "Enable or disable motion-based drag on Outer Flames.",
-                    189,
+                    9700,
                     dispName: "Drag",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -679,7 +817,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense Outer Flames feels.",
-                    188,
+                    9600,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"));
 
@@ -689,7 +827,7 @@ namespace NADA.VFX.Core.Config
                 defaultScaleMult,
                 OrderedDescription(
                     "Adjust the size of Outer Flames.",
-                    187,
+                    9500,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale"));
 
@@ -699,7 +837,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLuminance,
                 OrderedDescription(
                     "Adjust how strongly Outer Flames glow.",
-                    186,
+                    9400,
                     new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
                     dispName: "Luminance"));
 
@@ -709,9 +847,10 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of Outer Flames.",
-                    185,
+                    9300,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color"));
+                    dispName: "Color",
+                    customDrawer: ConfigurationManagerDrawers.DrawOuterFlamesColorSlider));
 
             OuterFlamesLifetime = config.Bind(
                 outerFlamesSection,
@@ -719,7 +858,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLifetime,
                 OrderedDescription(
                     "Adjust how long emitted outer flames remain visible.",
-                    184,
+                    9200,
                     new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime"));
 
@@ -729,9 +868,19 @@ namespace NADA.VFX.Core.Config
                 DefaultFlameLength,
                 OrderedDescription(
                     "Adjust how much of the blade emits flames.",
-                    183,
+                    9100,
                     new AcceptableValueRange<float>(MinFlameLength, MaxFlameLength),
                     dispName: "Length"));
+
+            OuterFlamesWidth = config.Bind(
+                outerFlamesSection,
+                "Width",
+                DefaultFlameWidth,
+                OrderedDescription(
+                    "Adjust the distance Outer Flames emits across the plane of a weapon.",
+                    9000,
+                    new AcceptableValueRange<float>(MinFlameWidth, MaxFlameWidth),
+                    dispName: "Width"));
 
             OuterFlamesXOffset = config.Bind(
                 outerFlamesSection,
@@ -739,7 +888,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the X axis offset of the whole Outer Flames effect.",
-                    182,
+                    8900,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "X Offset"));
 
@@ -749,7 +898,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Y axis offset of the whole Outer Flames effect.",
-                    181,
+                    8800,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Y Offset"));
 
@@ -759,7 +908,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Z axis offset of the whole Outer Flames effect.",
-                    180,
+                    8700,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Z Offset"));
 
@@ -769,7 +918,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Outer Flames effect around its local X axis.",
-                    179,
+                    8600,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "X Rotation"));
 
@@ -779,7 +928,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Outer Flames effect around its local Y axis.",
-                    178,
+                    8500,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Y Rotation"));
 
@@ -789,13 +938,234 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Outer Flames effect around its local Z axis.",
-                    177,
+                    8400,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Z Rotation"));
+
+            OuterFlamesBlack.SettingChanged += (_, __) =>
+            {
+                if (OuterFlamesBlack.Value && OuterFlamesWhite.Value)
+                    OuterFlamesWhite.Value = false;
+
+                config.Save();
+            };
+
+            OuterFlamesWhite.SettingChanged += (_, __) =>
+            {
+                if (OuterFlamesWhite.Value && OuterFlamesBlack.Value)
+                    OuterFlamesBlack.Value = false;
+
+                config.Save();
+            };
 
             OuterFlamesBottomSpacer = config.Bind(
                 outerFlamesSection,
                 "__Outer Flames Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true));
+
+            Strands = config.Bind(
+                strandsSection,
+                "Enabled",
+                true,
+                OrderedDescription(
+                    "Turn Strands on or off.",
+                    10000,
+                    dispName: "Enabled",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+
+            StrandsSpectrum = config.Bind(
+                strandsSection,
+                "Spectrum",
+                false,
+                OrderedDescription(
+                    "Continuously cycle Strands through the full color spectrum.",
+                    9900,
+                    dispName: "Spectrum",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+
+            StrandsEnergy = config.Bind(
+                strandsSection,
+                "Energy",
+                DefaultEnergy,
+                OrderedDescription(
+                    "Adjust the emission intensity of the strands.",
+                    9800,
+                    new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
+                    dispName: "Energy"));
+
+            StrandsScaleWhole = config.Bind(
+                strandsSection,
+                "Scale Whole",
+                defaultScaleMult,
+                OrderedDescription(
+                    "Adjust the size of the strands.",
+                    9700,
+                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
+                    dispName: "Scale Whole"));
+
+            StrandsScaleParts = config.Bind(
+                strandsSection,
+                "Scale Parts",
+                1.00f,
+                OrderedDescription(
+                    "Adjust the size of the individual strand particles.",
+                    9600,
+                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
+                    dispName: "Scale Parts"));
+
+            StrandsLuminance = config.Bind(
+                strandsSection,
+                "Luminance",
+                DefaultLuminance,
+                OrderedDescription(
+                    "Adjust how strongly the strands glow.",
+                    9500,
+                    new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
+                    dispName: "Luminance"));
+
+            StrandsHue = config.Bind(
+                strandsSection,
+                "Color",
+                DefaultHue,
+                OrderedDescription(
+                    "Adjust the color of the strands.",
+                    9400,
+                    new AcceptableValueRange<float>(MinHue, MaxHue),
+                    dispName: "Color",
+                    customDrawer: ConfigurationManagerDrawers.DrawStrandsColorSlider));
+
+            StrandsLifetime = config.Bind(
+                strandsSection,
+                "Lifetime",
+                DefaultLifetime,
+                OrderedDescription(
+                    "Adjust the length of time strands exist.",
+                    9300,
+                    new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
+                    dispName: "Lifetime"));
+
+            StrandsLength = config.Bind(
+                strandsSection,
+                "Length",
+                DefaultOrbitalsLength,
+                OrderedDescription(
+                    "Adjust how far the strands stretch along the weapon.",
+                    9200,
+                    new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
+                    dispName: "Length"));
+
+            StrandsSpectrumSpeed = config.Bind(
+                strandsSection,
+                "Spectrum Speed",
+                DefaultSpectrumSpeed,
+                OrderedDescription(
+                    "Adjust how quickly Strands cycle through the color spectrum.",
+                    9100,
+                    new AcceptableValueRange<float>(MinSpectrumSpeed, MaxSpectrumSpeed),
+                    dispName: "Spectrum Speed",
+                    customDrawer: ConfigurationManagerDrawers.DrawStrandsSpectrumSpeedSlider));
+
+            StrandsSpeed = config.Bind(
+                strandsSection,
+                "Speed",
+                DefaultOrbitalsSpeed,
+                OrderedDescription(
+                    "Adjust how quickly the strands animate.",
+                    9000,
+                    new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
+                    dispName: "Speed"));
+
+            StrandsRadius = config.Bind(
+                strandsSection,
+                "Radius",
+                DefaultOrbitalsRadiusMultiplier,
+                OrderedDescription(
+                    "Adjust how much the strands wrap.",
+                    8900,
+                    new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
+                    dispName: "Radius"));
+
+            StrandsXOffset = config.Bind(
+                strandsSection,
+                "X Offset",
+                DefaultEffectOffset,
+                OrderedDescription(
+                    "Adjust the X axis offset of the whole Strands effect.",
+                    8800,
+                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+                    dispName: "X Offset"));
+
+            StrandsYOffset = config.Bind(
+                strandsSection,
+                "Y Offset",
+                DefaultEffectOffset,
+                OrderedDescription(
+                    "Adjust the Y axis offset of the whole Strands effect.",
+                    8700,
+                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+                    dispName: "Y Offset"));
+
+            StrandsZOffset = config.Bind(
+                strandsSection,
+                "Z Offset",
+                DefaultEffectOffset,
+                OrderedDescription(
+                    "Adjust the Z axis offset of the whole Strands effect.",
+                    8600,
+                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+                    dispName: "Z Offset"));
+
+            StrandsXRotation = config.Bind(
+                strandsSection,
+                "X Rotation",
+                DefaultEffectRotation,
+                OrderedDescription(
+                    "Rotate the whole Strands effect around its local X axis.",
+                    8500,
+                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+                    dispName: "X Rotation"));
+
+            StrandsYRotation = config.Bind(
+                strandsSection,
+                "Y Rotation",
+                DefaultEffectRotation,
+                OrderedDescription(
+                    "Rotate the whole Strands effect around its local Y axis.",
+                    8400,
+                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+                    dispName: "Y Rotation"));
+
+            StrandsZRotation = config.Bind(
+                strandsSection,
+                "Z Rotation",
+                DefaultEffectRotation,
+                OrderedDescription(
+                    "Rotate the whole Strands effect around its local Z axis.",
+                    8300,
+                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+                    dispName: "Z Rotation"));
+
+            StrandsDrift = config.Bind(
+                strandsSection,
+                "Drift",
+                DefaultDrift,
+                OrderedDescription(
+                    "Adjust how much the strands adhere to their motion path.",
+                    8200,
+                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
+                    dispName: "Drift"));
+
+            StrandsBottomSpacer = config.Bind(
+                strandsSection,
+                "__Strands Bottom Spacer",
                 false,
                 OrderedDescription(
                     "",
@@ -810,7 +1180,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Sparks on or off.",
-                    180,
+                    10000,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -821,7 +1191,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense Sparks feels.",
-                    179,
+                    9900,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"));
 
@@ -831,7 +1201,7 @@ namespace NADA.VFX.Core.Config
                 defaultScaleMult,
                 OrderedDescription(
                     "Adjust the size of Sparks.",
-                    178,
+                    9800,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale"));
 
@@ -841,7 +1211,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLuminance,
                 OrderedDescription(
                     "Adjust how strongly Sparks glow.",
-                    177,
+                    9700,
                     new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
                     dispName: "Luminance"));
 
@@ -851,7 +1221,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of Sparks.",
-                    176,
+                    9600,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"));
 
@@ -861,7 +1231,7 @@ namespace NADA.VFX.Core.Config
                 DefaultFlameLength,
                 OrderedDescription(
                     "Adjust how much of the weapon emits Sparks.",
-                    175,
+                    9500,
                     new AcceptableValueRange<float>(MinFlameLength, MaxFlameLength),
                     dispName: "Length"));
 
@@ -871,7 +1241,7 @@ namespace NADA.VFX.Core.Config
                 DefaultSparksWidth,
                 OrderedDescription(
                     "Pull Sparks inward or push them wider around the weapon.",
-                    174,
+                    9400,
                     new AcceptableValueRange<float>(MinSparksWidth, MaxSparksWidth),
                     dispName: "Width"));
 
@@ -881,7 +1251,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the X axis offset of the whole Sparks effect.",
-                    173,
+                    9300,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "X Offset"));
 
@@ -891,7 +1261,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Y axis offset of the whole Sparks effect.",
-                    172,
+                    9200,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Y Offset"));
 
@@ -901,7 +1271,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Z axis offset of the whole Sparks effect.",
-                    171,
+                    9100,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Z Offset"));
 
@@ -911,7 +1281,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Sparks effect around its local X axis.",
-                    170,
+                    9000,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "X Rotation"));
 
@@ -921,7 +1291,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Sparks effect around its local Y axis.",
-                    169,
+                    8900,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Y Rotation"));
 
@@ -931,7 +1301,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Sparks effect around its local Z axis.",
-                    168,
+                    8800,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Z Rotation"));
 
@@ -952,7 +1322,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Flare on or off.",
-                    170,
+                    10000,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -963,17 +1333,17 @@ namespace NADA.VFX.Core.Config
                 defaultScaleMult,
                 OrderedDescription(
                     "Adjust the size of Flare.",
-                    169,
+                    9900,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale"));
-            
+
             FlareLuminance = config.Bind(
                 flareSection,
                 "Luminance",
                 DefaultLuminance,
                 OrderedDescription(
                     "Adjust how strongly the flare glows.",
-                    168,
+                    9800,
                     new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
                     dispName: "Luminance"));
 
@@ -983,7 +1353,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of Flare.",
-                    167,
+                    9700,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"));
 
@@ -993,7 +1363,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the X axis offset of the whole Flare effect.",
-                    166,
+                    9600,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "X Offset"));
 
@@ -1003,7 +1373,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Y axis offset of the whole Flare effect.",
-                    165,
+                    9500,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Y Offset"));
 
@@ -1013,7 +1383,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Z axis offset of the whole Flare effect.",
-                    164,
+                    9400,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Z Offset"));
 
@@ -1034,7 +1404,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Aura on or off.",
-                    160,
+                    10000,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -1045,7 +1415,7 @@ namespace NADA.VFX.Core.Config
                 DefaultAuraScale,
                 OrderedDescription(
                     "Adjust the size of Aura.",
-                    159,
+                    9900,
                     new AcceptableValueRange<float>(MinAuraScale, MaxAuraScale),
                     dispName: "Scale"));
 
@@ -1055,7 +1425,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLuminance,
                 OrderedDescription(
                     "Adjust how strongly Aura glows.",
-                    158,
+                    9800,
                     new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
                     dispName: "Luminance"));
 
@@ -1065,7 +1435,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of Aura.",
-                    157,
+                    9700,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"));
 
@@ -1075,7 +1445,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the X axis offset of the whole Aura effect.",
-                    156,
+                    9600,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "X Offset"));
 
@@ -1085,7 +1455,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Y axis offset of the whole Aura effect.",
-                    155,
+                    9500,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Y Offset"));
 
@@ -1095,7 +1465,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Z axis offset of the whole Aura effect.",
-                    154,
+                    9400,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Z Offset"));
 
@@ -1105,7 +1475,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Aura effect around its local X axis.",
-                    153,
+                    9300,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "X Rotation"));
 
@@ -1115,7 +1485,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Aura effect around its local Y axis.",
-                    152,
+                    9200,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Y Rotation"));
 
@@ -1125,7 +1495,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Aura effect around its local Z axis.",
-                    151,
+                    9100,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Z Rotation"));
 
@@ -1146,7 +1516,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Orbs on or off.",
-                    150,
+                    10000,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -1157,7 +1527,7 @@ namespace NADA.VFX.Core.Config
                 false,
                 OrderedDescription(
                     "Turn Snake Mode on or off for Orbs.",
-                    149,
+                    9900,
                     dispName: "Snake",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -1168,18 +1538,26 @@ namespace NADA.VFX.Core.Config
                 false,
                 OrderedDescription(
                     "Keep Flames and Embers locked to Orbs while Orbs are enabled.",
-                    148,
+                    9800,
                     dispName: "Glue",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
+            
+            OrbitalsOrbsGlue.SettingChanged += (_, __) =>
+            {
+                if (OrbitalsOrbsGlue.Value && OrbitalsCoresGlue != null)
+                    OrbitalsCoresGlue.Value = false;
+
+                config.Save();
+            };
 
             OrbitalsOrbsSync = config.Bind(
                 orbitalsOrbsSection,
                 "Sync",
                 false,
                 OrderedDescription(
-                    "Align Flames and Embers with Orbs.",
-                    147,
+                    "Align Cores, Flames, and Embers with Orbs.",
+                    9700,
                     dispName: "Sync",
                     customDrawer: ConfigurationManagerDrawers.DrawOrbitalsOrbsSyncButton,
                     hideSettingName: true,
@@ -1191,7 +1569,7 @@ namespace NADA.VFX.Core.Config
                 DefaultCountNormalized,
                 OrderedDescription(
                     "Adjust how many orbs are active.",
-                    146,
+                    9600,
                     new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
                     dispName: "Count",
                     showRangeAsPercent: true));
@@ -1202,7 +1580,7 @@ namespace NADA.VFX.Core.Config
                 defaultScaleMult,
                 OrderedDescription(
                     "Adjust the size of the orbs.",
-                    145,
+                    9500,
                     new AcceptableValueRange<float>(MinOrbScaleMult, MaxOrbScaleMult),
                     dispName: "Scale"));
 
@@ -1212,7 +1590,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLuminance,
                 OrderedDescription(
                     "Adjust how strongly the orbs glow.",
-                    144,
+                    9400,
                     new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
                     dispName: "Luminance"));
 
@@ -1222,7 +1600,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of the orbs.",
-                    143,
+                    9300,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"));
 
@@ -1232,7 +1610,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the orbs travel along the weapon before turning around.",
-                    142,
+                    9200,
                     new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     dispName: "Length"));
 
@@ -1242,7 +1620,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpeed,
                 OrderedDescription(
                     "Adjust how quickly the orbs travel through their orbit.",
-                    141,
+                    9100,
                     new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
                     dispName: "Speed"));
 
@@ -1252,7 +1630,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpacing,
                 OrderedDescription(
                     "Adjust how closely the orbs follow each other.",
-                    140,
+                    9000,
                     new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     dispName: "Spacing",
                     showRangeAsPercent: true,
@@ -1264,7 +1642,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsRadiusMultiplier,
                 OrderedDescription(
                     "Adjust how wide the orbs wrap around the weapon.",
-                    139,
+                    8900,
                     new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
                     dispName: "Radius"));
 
@@ -1274,7 +1652,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsCycles,
                 OrderedDescription(
                     "Adjust how many turns the orbs make before reversing direction.",
-                    138,
+                    8800,
                     new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
                     dispName: "Cycles"));
 
@@ -1284,7 +1662,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the X axis offset of the whole Orbitals Orbs effect.",
-                    137,
+                    8700,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "X Offset"));
 
@@ -1294,7 +1672,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Y axis offset of the whole Orbitals Orbs effect.",
-                    136,
+                    8600,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Y Offset"));
 
@@ -1304,7 +1682,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Z axis offset of the whole Orbitals Orbs effect.",
-                    135,
+                    8500,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     dispName: "Z Offset"));
 
@@ -1314,7 +1692,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Orbs effect around its local X axis.",
-                    134,
+                    8400,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "X Rotation"));
 
@@ -1324,7 +1702,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Orbs effect around its local Y axis.",
-                    133,
+                    8300,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Y Rotation"));
 
@@ -1334,7 +1712,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Orbs effect around its local Z axis.",
-                    132,
+                    8200,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     dispName: "Z Rotation"));
 
@@ -1344,7 +1722,7 @@ namespace NADA.VFX.Core.Config
                 DefaultDrift,
                 OrderedDescription(
                     "Adjust how much the orbs drift away from their locked orbit path.",
-                    131,
+                    8100,
                     new AcceptableValueRange<float>(MinDrift, MaxDrift),
                     dispName: "Drift",
                     showRangeAsPercent: true));
@@ -1360,13 +1738,262 @@ namespace NADA.VFX.Core.Config
                     hideSettingName: true,
                     hideDefaultButton: true));
 
+            OrbitalsCores = config.Bind(
+                orbitalsCoresSection,
+                "Enabled",
+                true,
+                OrderedDescription(
+                    "Turn Cores on or off.",
+                    8000,
+                    dispName: "Enabled",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+            
+            OrbitalsCoresSnake = config.Bind(
+                orbitalsCoresSection,
+                "Snake",
+                false,
+                OrderedDescription(
+                    "Turn Snake Mode on or off for Cores.",
+                    7900,
+                    dispName: "Snake",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+
+            OrbitalsCoresGlue = config.Bind(
+                orbitalsCoresSection,
+                "Glue",
+                false,
+                OrderedDescription(
+                    "Keep Orbs, Flames and Embers locked to Cores while Cores are enabled.",
+                    7800,
+                    dispName: "Glue",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+
+            OrbitalsCoresGlue.SettingChanged += (_, __) =>
+            {
+                if (OrbitalsCoresGlue.Value && OrbitalsOrbsGlue != null)
+                    OrbitalsOrbsGlue.Value = false;
+
+                config.Save();
+            };
+            
+            OrbitalsCoresSpin = config.Bind(
+                orbitalsCoresSection,
+                "Spin",
+                true,
+                OrderedDescription(
+                    "Spin Cores while they move through the air.",
+                    7700,
+                    dispName: "Spin",
+                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
+                    hideSettingName: true));
+
+            OrbitalsCoresSync = config.Bind(
+                orbitalsCoresSection,
+                "Sync",
+                false,
+                OrderedDescription(
+                    "Align Orbs, Flames, and Embers with Cores.",
+                    7600,
+                    dispName: "Sync",
+                    customDrawer: ConfigurationManagerDrawers.DrawOrbitalsCoresSyncButton,
+                    hideSettingName: true,
+                    hideDefaultButton: true));
+
+            OrbitalsCoresCount = config.Bind(
+                orbitalsCoresSection,
+                "Count",
+                DefaultCountNormalized,
+                OrderedDescription(
+                    "Adjust how many cores are active.",
+                    7500,
+                    new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
+                    dispName: "Count",
+                    showRangeAsPercent: true));
+
+            OrbitalsCoresScale = config.Bind(
+                orbitalsCoresSection,
+                "Scale",
+                defaultScaleMult,
+                OrderedDescription(
+                    "Adjust the size of the cores.",
+                    7400,
+                    new AcceptableValueRange<float>(MinCoreScaleMult, MaxCoreScaleMult),
+                    dispName: "Scale"));
+
+            OrbitalsCoresLuminance = config.Bind(
+                orbitalsCoresSection,
+                "Luminance",
+                DefaultLuminance,
+                OrderedDescription(
+                    "Adjust how strongly the cores glow.",
+                    7300,
+                    new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
+                    dispName: "Luminance"));
+
+            OrbitalsCoresHue = config.Bind(
+                orbitalsCoresSection,
+                "Color",
+                DefaultHue,
+                OrderedDescription(
+                    "Adjust the color of the cores.",
+                    7200,
+                    new AcceptableValueRange<float>(MinHue, MaxHue),
+                    dispName: "Color"));
+
+            OrbitalsCoresSpinSpeed = config.Bind(
+                orbitalsCoresSection,
+                "Spin Speed",
+                DefaultCoreSpinSpeed,
+                OrderedDescription(
+                    "Adjust how quickly the cores spin.",
+                    7100,
+                    new AcceptableValueRange<float>(MinCoreSpinSpeed, MaxCoreSpinSpeed),
+                    dispName: "Spin Speed",
+                    customDrawer: ConfigurationManagerDrawers.DrawOrbitalsCoresSpinSpeedSlider));
+
+            OrbitalsCoresLength = config.Bind(
+                orbitalsCoresSection,
+                "Orbit Length",
+                DefaultOrbitalsLength,
+                OrderedDescription(
+                    "Adjust how far the cores travel along the weapon before turning around.",
+                    7000,
+                    new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
+                    dispName: "Length"));
+
+            OrbitalsCoresSpeed = config.Bind(
+                orbitalsCoresSection,
+                "Speed",
+                DefaultOrbitalsSpeed,
+                OrderedDescription(
+                    "Adjust how quickly the cores travel through their orbit.",
+                    6900,
+                    new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
+                    dispName: "Speed"));
+
+            OrbitalsCoresSpacing = config.Bind(
+                orbitalsCoresSection,
+                "Spacing",
+                DefaultOrbitalsSpacing,
+                OrderedDescription(
+                    "Adjust how closely the cores follow each other.",
+                    6800,
+                    new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
+                    dispName: "Spacing",
+                    showRangeAsPercent: true));
+
+            OrbitalsCoresRadius = config.Bind(
+                orbitalsCoresSection,
+                "Radius",
+                DefaultOrbitalsRadiusMultiplier,
+                OrderedDescription(
+                    "Adjust how wide the cores wrap around the weapon.",
+                    6700,
+                    new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
+                    dispName: "Radius"));
+
+            OrbitalsCoresCycles = config.Bind(
+                orbitalsCoresSection,
+                "Cycles",
+                DefaultOrbitalsCycles,
+                OrderedDescription(
+                    "Adjust how many turns the cores make before reversing direction.",
+                    6600,
+                    new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
+                    dispName: "Cycles"));
+
+            OrbitalsCoresXOffset = config.Bind(
+                orbitalsCoresSection,
+                "X Offset",
+                DefaultEffectOffset,
+                OrderedDescription(
+                    "Adjust the X axis offset of the whole Orbitals Cores effect.",
+                    6500,
+                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+                    dispName: "X Offset"));
+
+            OrbitalsCoresYOffset = config.Bind(
+                orbitalsCoresSection,
+                "Y Offset",
+                DefaultEffectOffset,
+                OrderedDescription(
+                    "Adjust the Y axis offset of the whole Orbitals Cores effect.",
+                    6400,
+                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+                    dispName: "Y Offset"));
+
+            OrbitalsCoresZOffset = config.Bind(
+                orbitalsCoresSection,
+                "Z Offset",
+                DefaultEffectOffset,
+                OrderedDescription(
+                    "Adjust the Z axis offset of the whole Orbitals Cores effect.",
+                    6300,
+                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
+                    dispName: "Z Offset"));
+
+            OrbitalsCoresXRotation = config.Bind(
+                orbitalsCoresSection,
+                "X Rotation",
+                DefaultEffectRotation,
+                OrderedDescription(
+                    "Rotate the whole Orbitals Cores effect around its local X axis.",
+                    6200,
+                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+                    dispName: "X Rotation"));
+
+            OrbitalsCoresYRotation = config.Bind(
+                orbitalsCoresSection,
+                "Y Rotation",
+                DefaultEffectRotation,
+                OrderedDescription(
+                    "Rotate the whole Orbitals Cores effect around its local Y axis.",
+                    6100,
+                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+                    dispName: "Y Rotation"));
+
+            OrbitalsCoresZRotation = config.Bind(
+                orbitalsCoresSection,
+                "Z Rotation",
+                DefaultEffectRotation,
+                OrderedDescription(
+                    "Rotate the whole Orbitals Cores effect around its local Z axis.",
+                    6000,
+                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
+                    dispName: "Z Rotation"));
+
+            OrbitalsCoresDrift = config.Bind(
+                orbitalsCoresSection,
+                "Drift",
+                DefaultDrift,
+                OrderedDescription(
+                    "Adjust how much the cores drift away from their locked orbit path.",
+                    5900,
+                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
+                    dispName: "Drift",
+                    showRangeAsPercent: true));
+
+            OrbitalsCoresBottomSpacer = config.Bind(
+                orbitalsCoresSection,
+                "__Orbitals Cores Bottom Spacer",
+                false,
+                OrderedDescription(
+                    "",
+                    -999,
+                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
+                    hideSettingName: true,
+                    hideDefaultButton: true));
+
             OrbitalsFlames = config.Bind(
                 orbitalsFlamesSection,
                 "Enabled",
                 true,
                 OrderedDescription(
                     "Turn Flames on or off.",
-                    115,
+                    10000,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -1377,7 +2004,7 @@ namespace NADA.VFX.Core.Config
                 DefaultCountNormalized,
                 OrderedDescription(
                     "Adjust how many flames are active.",
-                    114,
+                    9900,
                     new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
                     dispName: "Count",
                     showRangeAsPercent: true));
@@ -1388,7 +2015,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense the flames feel.",
-                    113,
+                    9800,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"));
 
@@ -1398,7 +2025,7 @@ namespace NADA.VFX.Core.Config
                 defaultScaleMult,
                 OrderedDescription(
                     "Adjust the size of the flames.",
-                    112,
+                    9700,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale"));
 
@@ -1408,7 +2035,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLuminance,
                 OrderedDescription(
                     "Adjust how strongly the flames glow.",
-                    111,
+                    9600,
                     new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
                     dispName: "Luminance"));
 
@@ -1418,7 +2045,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of the flames.",
-                    110,
+                    9500,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"));
 
@@ -1428,7 +2055,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLifetime,
                 OrderedDescription(
                     "Adjust how long emitted flames remain visible.",
-                    109,
+                    9400,
                     new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime"));
 
@@ -1438,7 +2065,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the flames travel along the weapon before turning around.",
-                    108,
+                    9300,
                     new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Length"));
@@ -1449,7 +2076,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpeed,
                 OrderedDescription(
                     "Adjust how quickly the flames travel through their orbit.",
-                    107,
+                    9200,
                     new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Speed"));
@@ -1460,7 +2087,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpacing,
                 OrderedDescription(
                     "Adjust how closely the flames follow each other.",
-                    106,
+                    9100,
                     new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Spacing",
@@ -1472,7 +2099,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsRadiusMultiplier,
                 OrderedDescription(
                     "Adjust how wide the flames wrap around the weapon.",
-                    105,
+                    9000,
                     new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Radius"));
@@ -1483,7 +2110,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsCycles,
                 OrderedDescription(
                     "Adjust how many turns the flames make before reversing direction.",
-                    104,
+                    8900,
                     new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Cycles"));
@@ -1494,7 +2121,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the X axis offset of the whole Orbitals Flames effect.",
-                    103,
+                    8800,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "X Offset"));
@@ -1505,7 +2132,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Y axis offset of the whole Orbitals Flames effect.",
-                    102,
+                    8700,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Y Offset"));
@@ -1516,7 +2143,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Z axis offset of the whole Orbitals Flames effect.",
-                    101,
+                    8600,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Z Offset"));
@@ -1527,7 +2154,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Flames effect around its local X axis.",
-                    100,
+                    8500,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "X Rotation"));
@@ -1538,7 +2165,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Flames effect around its local Y axis.",
-                    99,
+                    8400,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Y Rotation"));
@@ -1549,7 +2176,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Flames effect around its local Z axis.",
-                    98,
+                    8300,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Z Rotation"));
@@ -1560,7 +2187,7 @@ namespace NADA.VFX.Core.Config
                 DefaultDrift,
                 OrderedDescription(
                     "Adjust how much the flames drift away from their locked orbit path.",
-                    97,
+                    8200,
                     new AcceptableValueRange<float>(MinDrift, MaxDrift),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Drift",
@@ -1583,7 +2210,7 @@ namespace NADA.VFX.Core.Config
                 true,
                 OrderedDescription(
                     "Turn Embers on or off.",
-                    95,
+                    10000,
                     dispName: "Enabled",
                     customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
                     hideSettingName: true));
@@ -1594,7 +2221,7 @@ namespace NADA.VFX.Core.Config
                 DefaultCountNormalized,
                 OrderedDescription(
                     "Adjust how many embers are active.",
-                    94,
+                    9900,
                     new AcceptableValueRange<float>(MinCountNormalized, MaxCountNormalized),
                     dispName: "Count",
                     showRangeAsPercent: true));
@@ -1605,7 +2232,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEnergy,
                 OrderedDescription(
                     "Adjust how intense the embers feel.",
-                    93,
+                    9800,
                     new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
                     dispName: "Energy"));
 
@@ -1615,7 +2242,7 @@ namespace NADA.VFX.Core.Config
                 defaultScaleMult,
                 OrderedDescription(
                     "Adjust the size of the embers.",
-                    92,
+                    9700,
                     new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
                     dispName: "Scale"));
 
@@ -1625,7 +2252,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLuminance,
                 OrderedDescription(
                     "Adjust how strongly the embers glow.",
-                    91,
+                    9600,
                     new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
                     dispName: "Luminance"));
 
@@ -1635,7 +2262,7 @@ namespace NADA.VFX.Core.Config
                 DefaultHue,
                 OrderedDescription(
                     "Adjust the color of the embers.",
-                    90,
+                    9500,
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"));
 
@@ -1645,7 +2272,7 @@ namespace NADA.VFX.Core.Config
                 DefaultLifetime,
                 OrderedDescription(
                     "Adjust how long emitted embers remain visible.",
-                    89,
+                    9400,
                     new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime"));
 
@@ -1655,7 +2282,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsLength,
                 OrderedDescription(
                     "Adjust how far the embers travel along the weapon before turning around.",
-                    88,
+                    9300,
                     new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Length"));
@@ -1666,7 +2293,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpeed,
                 OrderedDescription(
                     "Adjust how quickly the embers travel through their orbit.",
-                    87,
+                    9200,
                     new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Speed"));
@@ -1677,7 +2304,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsSpacing,
                 OrderedDescription(
                     "Adjust how closely the embers follow each other.",
-                    86,
+                    9100,
                     new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Spacing",
@@ -1689,7 +2316,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsRadiusMultiplier,
                 OrderedDescription(
                     "Adjust how wide the embers wrap around the weapon.",
-                    85,
+                    9000,
                     new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Radius"));
@@ -1700,7 +2327,7 @@ namespace NADA.VFX.Core.Config
                 DefaultOrbitalsCycles,
                 OrderedDescription(
                     "Adjust how many turns the embers make before reversing direction.",
-                    84,
+                    8900,
                     new AcceptableValueRange<float>(MinOrbitalsCycles, MaxOrbitalsCycles),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Cycles"));
@@ -1711,7 +2338,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the X axis offset of the whole Orbitals Embers effect.",
-                    83,
+                    8800,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "X Offset"));
@@ -1722,7 +2349,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Y axis offset of the whole Orbitals Embers effect.",
-                    82,
+                    8700,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Y Offset"));
@@ -1733,7 +2360,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectOffset,
                 OrderedDescription(
                     "Adjust the Z axis offset of the whole Orbitals Embers effect.",
-                    81,
+                    8600,
                     new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Z Offset"));
@@ -1744,7 +2371,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Embers effect around its local X axis.",
-                    80,
+                    8500,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "X Rotation"));
@@ -1755,7 +2382,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Embers effect around its local Y axis.",
-                    79,
+                    8400,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Y Rotation"));
@@ -1766,7 +2393,7 @@ namespace NADA.VFX.Core.Config
                 DefaultEffectRotation,
                 OrderedDescription(
                     "Rotate the whole Orbitals Embers effect around its local Z axis.",
-                    78,
+                    8300,
                     new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Z Rotation"));
@@ -1777,7 +2404,7 @@ namespace NADA.VFX.Core.Config
                 DefaultDrift,
                 OrderedDescription(
                     "Adjust how much the embers drift away from their locked orbit path.",
-                    77,
+                    8200,
                     new AcceptableValueRange<float>(MinDrift, MaxDrift),
                     customDrawer: ConfigurationManagerDrawers.DrawGlueLockedFloatSlider,
                     dispName: "Drift",
@@ -1786,211 +2413,6 @@ namespace NADA.VFX.Core.Config
             OrbitalsEmbersBottomSpacer = config.Bind(
                 orbitalsEmbersSection,
                 "__Orbitals Embers Bottom Spacer",
-                false,
-                OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true));
-
-            OrganicsStrands = config.Bind(
-                organicsStrandsSection,
-                "Enabled",
-                true,
-                OrderedDescription(
-                    "Turn Strands on or off.",
-                    70,
-                    dispName: "Enabled",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true));
-
-            OrganicsStrandsSpectrum = config.Bind(
-                organicsStrandsSection,
-                "Spectrum",
-                false,
-                OrderedDescription(
-                    "Continuously cycle Strands through the full color spectrum.",
-                    69,
-                    dispName: "Spectrum",
-                    customDrawer: ConfigurationManagerDrawers.DrawEnabledCheckboxWithLabel,
-                    hideSettingName: true));
-
-            OrganicsStrandsEnergy = config.Bind(
-                organicsStrandsSection,
-                "Energy",
-                DefaultEnergy,
-                OrderedDescription(
-                    "Adjust how intense the strands feel.",
-                    68,
-                    new AcceptableValueRange<float>(MinEnergy, MaxEnergy),
-                    dispName: "Energy"));
-
-            OrganicsStrandsScaleWhole = config.Bind(
-                organicsStrandsSection,
-                "Scale Whole",
-                defaultScaleMult,
-                OrderedDescription(
-                    "Adjust the overall size of the Strands effect.",
-                    67,
-                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
-                    dispName: "Scale Whole"));
-
-            OrganicsStrandsScaleParts = config.Bind(
-                organicsStrandsSection,
-                "Scale Parts",
-                1.00f,
-                OrderedDescription(
-                    "Adjust the size of the individual strand particles.",
-                    66,
-                    new AcceptableValueRange<float>(MinScaleMult, MaxScaleMult),
-                    dispName: "Scale Parts"));
-
-            OrganicsStrandsLuminance = config.Bind(
-                organicsStrandsSection,
-                "Luminance",
-                DefaultLuminance,
-                OrderedDescription(
-                    "Adjust how strongly the strands glow.",
-                    65,
-                    new AcceptableValueRange<float>(MinLuminance, MaxLuminance),
-                    dispName: "Luminance"));
-
-            OrganicsStrandsHue = config.Bind(
-                organicsStrandsSection,
-                "Color",
-                DefaultHue,
-                OrderedDescription(
-                    "Adjust the color of the strands.",
-                    64,
-                    new AcceptableValueRange<float>(MinHue, MaxHue),
-                    dispName: "Color",
-                    customDrawer: ConfigurationManagerDrawers.DrawStrandsColorSlider));
-
-            OrganicsStrandsLifetime = config.Bind(
-                organicsStrandsSection,
-                "Lifetime",
-                DefaultLifetime,
-                OrderedDescription(
-                    "Adjust the length of time strands exist.",
-                    63,
-                    new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
-                    dispName: "Lifetime"));
-
-            OrganicsStrandsLength = config.Bind(
-                organicsStrandsSection,
-                "Orbit Length",
-                DefaultOrbitalsLength,
-                OrderedDescription(
-                    "Adjust how far the strands stretch along the weapon.",
-                    62,
-                    new AcceptableValueRange<float>(MinOrbitalsLength, MaxOrbitalsLength),
-                    dispName: "Length"));
-
-            OrganicsStrandsSpectrumSpeed = config.Bind(
-                organicsStrandsSection,
-                "Spectrum Speed",
-                DefaultSpectrumSpeed,
-                OrderedDescription(
-                    "Adjust how quickly Strands cycle through the color spectrum.",
-                    61,
-                    new AcceptableValueRange<float>(MinSpectrumSpeed, MaxSpectrumSpeed),
-                    dispName: "Spectrum Speed",
-                    customDrawer: ConfigurationManagerDrawers.DrawStrandsSpectrumSpeedSlider));
-
-            OrganicsStrandsSpeed = config.Bind(
-                organicsStrandsSection,
-                "Speed",
-                DefaultOrbitalsSpeed,
-                OrderedDescription(
-                    "Adjust how quickly the strands animate.",
-                    60,
-                    new AcceptableValueRange<float>(MinOrbitalsSpeed, MaxOrbitalsSpeed),
-                    dispName: "Speed"));
-
-            OrganicsStrandsRadius = config.Bind(
-                organicsStrandsSection,
-                "Radius",
-                DefaultOrbitalsRadiusMultiplier,
-                OrderedDescription(
-                    "Adjust how wide the strands wrap around the weapon.",
-                    59,
-                    new AcceptableValueRange<float>(MinOrbitalsRadiusMultiplier, MaxOrbitalsRadiusMultiplier),
-                    dispName: "Radius"));
-
-            OrganicsStrandsXOffset = config.Bind(
-                organicsStrandsSection,
-                "X Offset",
-                DefaultEffectOffset,
-                OrderedDescription(
-                    "Adjust the X axis offset of the whole Orbitals Strands effect.",
-                    58,
-                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
-                    dispName: "X Offset"));
-
-            OrganicsStrandsYOffset = config.Bind(
-                organicsStrandsSection,
-                "Y Offset",
-                DefaultEffectOffset,
-                OrderedDescription(
-                    "Adjust the Y axis offset of the whole Orbitals Strands effect.",
-                    57,
-                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
-                    dispName: "Y Offset"));
-
-            OrganicsStrandsZOffset = config.Bind(
-                organicsStrandsSection,
-                "Z Offset",
-                DefaultEffectOffset,
-                OrderedDescription(
-                    "Adjust the Z axis offset of the whole Orbitals Strands effect.",
-                    56,
-                    new AcceptableValueRange<float>(MinEffectOffset, MaxEffectOffset),
-                    dispName: "Z Offset"));
-
-            OrganicsStrandsXRotation = config.Bind(
-                organicsStrandsSection,
-                "X Rotation",
-                DefaultEffectRotation,
-                OrderedDescription(
-                    "Rotate the whole Orbitals Strands effect around its local X axis.",
-                    55,
-                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
-                    dispName: "X Rotation"));
-
-            OrganicsStrandsYRotation = config.Bind(
-                organicsStrandsSection,
-                "Y Rotation",
-                DefaultEffectRotation,
-                OrderedDescription(
-                    "Rotate the whole Orbitals Strands effect around its local Y axis.",
-                    54,
-                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
-                    dispName: "Y Rotation"));
-
-            OrganicsStrandsZRotation = config.Bind(
-                organicsStrandsSection,
-                "Z Rotation",
-                DefaultEffectRotation,
-                OrderedDescription(
-                    "Rotate the whole Orbitals Strands effect around its local Z axis.",
-                    53,
-                    new AcceptableValueRange<float>(MinEffectRotation, MaxEffectRotation),
-                    dispName: "Z Rotation"));
-
-            OrganicsStrandsDrift = config.Bind(
-                organicsStrandsSection,
-                "Drift",
-                DefaultDrift,
-                OrderedDescription(
-                    "Adjust how much the strands adhere to their orbit path.",
-                    52,
-                    new AcceptableValueRange<float>(MinDrift, MaxDrift),
-                    dispName: "Drift"));
-
-            OrganicsStrandsBottomSpacer = config.Bind(
-                organicsStrandsSection,
-                "__Organics Strands Bottom Spacer",
                 false,
                 OrderedDescription(
                     "",
@@ -2029,13 +2451,25 @@ namespace NADA.VFX.Core.Config
                     HideDefaultButton = hideDefaultButton
                 });
         }
-
-        internal static void SyncOrbitalsToOrbs()
+        
+                private static void CopyOrbitalsPositionFromOrbsToCores()
         {
-            if (OrbitalsOrbsCount == null)
-                return;
+            OrbitalsCoresDrift.Value = OrbitalsOrbsDrift.Value;
+            OrbitalsCoresSpeed.Value = OrbitalsOrbsSpeed.Value;
+            OrbitalsCoresSpacing.Value = OrbitalsOrbsSpacing.Value;
+            OrbitalsCoresLength.Value = OrbitalsOrbsLength.Value;
+            OrbitalsCoresRadius.Value = OrbitalsOrbsRadius.Value;
+            OrbitalsCoresCycles.Value = OrbitalsOrbsCycles.Value;
+            OrbitalsCoresXOffset.Value = OrbitalsOrbsXOffset.Value;
+            OrbitalsCoresYOffset.Value = OrbitalsOrbsYOffset.Value;
+            OrbitalsCoresZOffset.Value = OrbitalsOrbsZOffset.Value;
+            OrbitalsCoresXRotation.Value = OrbitalsOrbsXRotation.Value;
+            OrbitalsCoresYRotation.Value = OrbitalsOrbsYRotation.Value;
+            OrbitalsCoresZRotation.Value = OrbitalsOrbsZRotation.Value;
+        }
 
-            OrbitalsFlamesCount.Value = OrbitalsOrbsCount.Value;
+        private static void CopyOrbitalsPositionFromOrbsToFlames()
+        {
             OrbitalsFlamesDrift.Value = OrbitalsOrbsDrift.Value;
             OrbitalsFlamesSpeed.Value = OrbitalsOrbsSpeed.Value;
             OrbitalsFlamesSpacing.Value = OrbitalsOrbsSpacing.Value;
@@ -2048,8 +2482,10 @@ namespace NADA.VFX.Core.Config
             OrbitalsFlamesXRotation.Value = OrbitalsOrbsXRotation.Value;
             OrbitalsFlamesYRotation.Value = OrbitalsOrbsYRotation.Value;
             OrbitalsFlamesZRotation.Value = OrbitalsOrbsZRotation.Value;
+        }
 
-            OrbitalsEmbersCount.Value = OrbitalsOrbsCount.Value;
+        private static void CopyOrbitalsPositionFromOrbsToEmbers()
+        {
             OrbitalsEmbersDrift.Value = OrbitalsOrbsDrift.Value;
             OrbitalsEmbersSpeed.Value = OrbitalsOrbsSpeed.Value;
             OrbitalsEmbersSpacing.Value = OrbitalsOrbsSpacing.Value;
@@ -2062,6 +2498,77 @@ namespace NADA.VFX.Core.Config
             OrbitalsEmbersXRotation.Value = OrbitalsOrbsXRotation.Value;
             OrbitalsEmbersYRotation.Value = OrbitalsOrbsYRotation.Value;
             OrbitalsEmbersZRotation.Value = OrbitalsOrbsZRotation.Value;
+        }
+        
+        private static void CopyOrbitalsPositionFromCoresToOrbs()
+        {
+            OrbitalsOrbsDrift.Value = OrbitalsCoresDrift.Value;
+            OrbitalsOrbsSpeed.Value = OrbitalsCoresSpeed.Value;
+            OrbitalsOrbsSpacing.Value = OrbitalsCoresSpacing.Value;
+            OrbitalsOrbsLength.Value = OrbitalsCoresLength.Value;
+            OrbitalsOrbsRadius.Value = OrbitalsCoresRadius.Value;
+            OrbitalsOrbsCycles.Value = OrbitalsCoresCycles.Value;
+            OrbitalsOrbsXOffset.Value = OrbitalsCoresXOffset.Value;
+            OrbitalsOrbsYOffset.Value = OrbitalsCoresYOffset.Value;
+            OrbitalsOrbsZOffset.Value = OrbitalsCoresZOffset.Value;
+            OrbitalsOrbsXRotation.Value = OrbitalsCoresXRotation.Value;
+            OrbitalsOrbsYRotation.Value = OrbitalsCoresYRotation.Value;
+            OrbitalsOrbsZRotation.Value = OrbitalsCoresZRotation.Value;
+        }
+
+        private static void CopyOrbitalsPositionFromCoresToFlames()
+        {
+            OrbitalsFlamesDrift.Value = OrbitalsCoresDrift.Value;
+            OrbitalsFlamesSpeed.Value = OrbitalsCoresSpeed.Value;
+            OrbitalsFlamesSpacing.Value = OrbitalsCoresSpacing.Value;
+            OrbitalsFlamesLength.Value = OrbitalsCoresLength.Value;
+            OrbitalsFlamesRadius.Value = OrbitalsCoresRadius.Value;
+            OrbitalsFlamesCycles.Value = OrbitalsCoresCycles.Value;
+            OrbitalsFlamesXOffset.Value = OrbitalsCoresXOffset.Value;
+            OrbitalsFlamesYOffset.Value = OrbitalsCoresYOffset.Value;
+            OrbitalsFlamesZOffset.Value = OrbitalsCoresZOffset.Value;
+            OrbitalsFlamesXRotation.Value = OrbitalsCoresXRotation.Value;
+            OrbitalsFlamesYRotation.Value = OrbitalsCoresYRotation.Value;
+            OrbitalsFlamesZRotation.Value = OrbitalsCoresZRotation.Value;
+        }
+
+        private static void CopyOrbitalsPositionFromCoresToEmbers()
+        {
+            OrbitalsEmbersDrift.Value = OrbitalsCoresDrift.Value;
+            OrbitalsEmbersSpeed.Value = OrbitalsCoresSpeed.Value;
+            OrbitalsEmbersSpacing.Value = OrbitalsCoresSpacing.Value;
+            OrbitalsEmbersLength.Value = OrbitalsCoresLength.Value;
+            OrbitalsEmbersRadius.Value = OrbitalsCoresRadius.Value;
+            OrbitalsEmbersCycles.Value = OrbitalsCoresCycles.Value;
+            OrbitalsEmbersXOffset.Value = OrbitalsCoresXOffset.Value;
+            OrbitalsEmbersYOffset.Value = OrbitalsCoresYOffset.Value;
+            OrbitalsEmbersZOffset.Value = OrbitalsCoresZOffset.Value;
+            OrbitalsEmbersXRotation.Value = OrbitalsCoresXRotation.Value;
+            OrbitalsEmbersYRotation.Value = OrbitalsCoresYRotation.Value;
+            OrbitalsEmbersZRotation.Value = OrbitalsCoresZRotation.Value;
+        }
+
+        internal static void SyncOrbitalsToOrbs()
+        {
+            if (OrbitalsOrbsCount == null)
+                return;
+
+            CopyOrbitalsPositionFromOrbsToCores();
+            CopyOrbitalsPositionFromOrbsToFlames();
+            CopyOrbitalsPositionFromOrbsToEmbers();
+
+            Plugin.Instance?.ResetOrbitalsStartPoints();
+            Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();
+        }
+        
+        internal static void SyncOrbitalsToCores()
+        {
+            if (OrbitalsCoresCount == null)
+                return;
+
+            CopyOrbitalsPositionFromCoresToOrbs();
+            CopyOrbitalsPositionFromCoresToFlames();
+            CopyOrbitalsPositionFromCoresToEmbers();
 
             Plugin.Instance?.ResetOrbitalsStartPoints();
             Plugin.Instance?.RefreshExistingUnboundEquippedRigsOnly();

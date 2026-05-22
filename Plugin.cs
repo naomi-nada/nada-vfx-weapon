@@ -40,18 +40,21 @@ namespace NADA.VFX
         internal const string ReferencePrefabName = "SwordDyrnwyn";
         internal const string ReferenceRigPath = "attach/Burny vfx";
         internal const string DemisterPrefabName = "demister_ball";
-        internal const string SparksName = "Sparks";
         internal const string SparksReferencePrefabName = "AtgeirHimminAfl";
         internal const string SparksReferencePath = "attach/equiped/Sparcs";
-        internal const string AuraName = "Aura";
         internal const string AuraReferenceMaterialName = "glow_pulse_purple";
         internal const string StrandsReferencePrefabName = "vfx_Potion_health_medium";
         internal const string StrandsReferencePath = "trails";
+        internal const string CoresReferencePrefabName = "SurtlingCore";
+        internal const string CoresReferencePath = "attach/core";
 
         // Core effect names
         internal const string InnerFlamesName = "Inner Flames";
         internal const string OuterFlamesName = "Outer Flames";
+        internal const string StrandsName = "Strands";
+        internal const string SparksName = "Sparks";
         internal const string FlareName = "Flare";
+        internal const string AuraName = "Aura";
 
         // Orbitals names
         internal const string OrbitalsName = "Orbitals";
@@ -63,6 +66,11 @@ namespace NADA.VFX
         internal const string OrbitalsOrbsMotionRootName = "Orbs Motion Root";
         internal const string OrbitalsOrbsPoolName = "Orbs Pool";
         internal const int MaxOrbitalsOrbsVisuals = 40;
+        
+        internal const string OrbitalsCoresName = "Cores";
+        internal const string OrbitalsCoresMotionRootName = "Cores Motion Root";
+        internal const string OrbitalsCoresPoolName = "Cores Pool";
+        internal const int MaxOrbitalsCoreVisuals = 40;
 
         internal const string OrbitalsFlamesName = "Flames";
         internal const string OrbitalsFlamesMotionRootName = "Flames Motion Root";
@@ -73,9 +81,6 @@ namespace NADA.VFX
         internal const string OrbitalsEmbersMotionRootName = "Embers Motion Root";
         internal const string OrbitalsEmbersPoolName = "Embers Pool";
         internal const int MaxOrbitalsEmberVisuals = 40;
-        
-        // Organics
-        internal const string OrganicsStrandsName = "Strands";
 
         // Reference rig transform
         internal static readonly Vector3 RigLocalPosition = new Vector3(0.0f, 1.1f, 0.0f);

@@ -59,6 +59,103 @@ namespace NADA.VFX.Core.Config
             GUILayout.EndHorizontal();
         }
 
+        internal static void DrawDisabledCheckboxWithLabel(ConfigEntryBase entry)
+        {
+            if (entry != null && entry.BoxedValue is bool current && current)
+                entry.BoxedValue = false;
+
+            bool oldEnabled = GUI.enabled;
+            GUI.enabled = false;
+
+            DrawEnabledCheckboxWithLabel(entry);
+
+            GUI.enabled = oldEnabled;
+        }
+
+        internal static void DrawInnerFlamesBlackCheckbox(ConfigEntryBase entry)
+        {
+            DrawDisabledCheckboxWithLabel(entry);
+        }
+
+        internal static void DrawInnerFlamesWhiteCheckbox(ConfigEntryBase entry)
+        {
+            DrawExclusiveCheckboxWithLabel(
+                entry,
+                PluginConfig.InnerFlamesBlack);
+        }
+
+        internal static void DrawInnerFlamesColorSlider(ConfigEntryBase entry)
+        {
+            bool disabled =
+                IsEnabled(PluginConfig.InnerFlamesWhite);
+
+            DrawFloatSlider(entry, disabled);
+        }
+
+        internal static void DrawOuterFlamesBlackCheckbox(ConfigEntryBase entry)
+        {
+            DrawDisabledCheckboxWithLabel(entry);
+        }
+
+        internal static void DrawOuterFlamesWhiteCheckbox(ConfigEntryBase entry)
+        {
+            DrawExclusiveCheckboxWithLabel(
+                entry,
+                PluginConfig.OuterFlamesBlack);
+        }
+
+        internal static void DrawOuterFlamesColorSlider(ConfigEntryBase entry)
+        {
+            bool disabled =
+                IsEnabled(PluginConfig.OuterFlamesWhite);
+
+            DrawFloatSlider(entry, disabled);
+        }
+
+        private static void DrawExclusiveCheckboxWithLabel(
+            ConfigEntryBase entry,
+            ConfigEntry<bool> mutuallyExclusiveEntry)
+        {
+            bool current = (bool)entry.BoxedValue;
+
+            string label = entry.Definition.Key;
+
+            if (entry.Description?.Tags != null)
+            {
+                foreach (object tag in entry.Description.Tags)
+                {
+                    if (tag is ConfigurationManagerAttributes attributes &&
+                        !string.IsNullOrEmpty(attributes.DispName))
+                    {
+                        label = attributes.DispName;
+                        break;
+                    }
+                }
+            }
+
+            GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
+
+            GUILayout.Label(label, GUILayout.ExpandWidth(false));
+            GUILayout.Space(4);
+
+            bool next = GUILayout.Toggle(current, GUIContent.none, GUILayout.Width(18));
+            if (next != current)
+            {
+                entry.BoxedValue = next;
+
+                if (next && mutuallyExclusiveEntry != null)
+                    mutuallyExclusiveEntry.Value = false;
+            }
+
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+        }
+
+        private static bool IsEnabled(ConfigEntry<bool> entry)
+        {
+            return entry != null && entry.Value;
+        }
+
         internal static void DrawOrbsSpacingSlider(ConfigEntryBase entry)
         {
             bool snakeEnabled =
@@ -71,8 +168,8 @@ namespace NADA.VFX.Core.Config
         internal static void DrawStrandsColorSlider(ConfigEntryBase entry)
         {
             bool disabled =
-                PluginConfig.OrganicsStrandsSpectrum != null &&
-                PluginConfig.OrganicsStrandsSpectrum.Value;
+                PluginConfig.StrandsSpectrum != null &&
+                PluginConfig.StrandsSpectrum.Value;
 
             DrawFloatSlider(entry, disabled);
         }
@@ -80,8 +177,17 @@ namespace NADA.VFX.Core.Config
         internal static void DrawStrandsSpectrumSpeedSlider(ConfigEntryBase entry)
         {
             bool disabled =
-                PluginConfig.OrganicsStrandsSpectrum == null ||
-                !PluginConfig.OrganicsStrandsSpectrum.Value;
+                PluginConfig.StrandsSpectrum == null ||
+                !PluginConfig.StrandsSpectrum.Value;
+
+            DrawFloatSlider(entry, disabled);
+        }
+
+        internal static void DrawOrbitalsCoresSpinSpeedSlider(ConfigEntryBase entry)
+        {
+            bool disabled =
+                PluginConfig.OrbitalsCoresSpin == null ||
+                !PluginConfig.OrbitalsCoresSpin.Value;
 
             DrawFloatSlider(entry, disabled);
         }
@@ -247,7 +353,7 @@ namespace NADA.VFX.Core.Config
 
             GUILayout.Space(264f);
 
-            if (GUILayout.Button("Sync Orbs", GUILayout.Width(230f)))
+            if (GUILayout.Button("Sync", GUILayout.Width(230f)))
             {
                 PluginConfig.SyncOrbitalsToOrbs();
                 entry.BoxedValue = false;
@@ -258,21 +364,54 @@ namespace NADA.VFX.Core.Config
 
         internal static void DrawGlueLockedFloatSlider(ConfigEntryBase entry)
         {
-            bool disabled =
+            bool orbsGlueActive =
                 PluginConfig.OrbitalsOrbs != null &&
                 PluginConfig.OrbitalsOrbs.Value &&
                 PluginConfig.OrbitalsOrbsGlue != null &&
                 PluginConfig.OrbitalsOrbsGlue.Value;
 
+            bool coresGlueActive =
+                PluginConfig.OrbitalsCores != null &&
+                PluginConfig.OrbitalsCores.Value &&
+                PluginConfig.OrbitalsCoresGlue != null &&
+                PluginConfig.OrbitalsCoresGlue.Value;
+
+            string key = entry?.Definition.Key ?? string.Empty;
+            string section = entry?.Definition.Section ?? string.Empty;
+
+            bool isOrbsSlider = section.Contains("ORBS");
+            bool isCoresSlider = section.Contains("CORES");
+            bool isFlamesSlider = section.Contains("FLAMES");
+            bool isEmbersSlider = section.Contains("EMBERS");
+
+            bool disabled =
+                (orbsGlueActive && (isCoresSlider || isFlamesSlider || isEmbersSlider)) ||
+                (coresGlueActive && (isOrbsSlider || isFlamesSlider || isEmbersSlider));
+
             DrawFloatSlider(entry, disabled);
         }
-
+        
         internal static void DrawSectionSpacer(ConfigEntryBase entry)
         {
             GUILayout.Label(
                 GUIContent.none,
                 GUILayout.Height(12),
                 GUILayout.ExpandWidth(true));
+        }
+        
+        internal static void DrawOrbitalsCoresSyncButton(ConfigEntryBase entry)
+        {
+            GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
+
+            GUILayout.Space(264f);
+
+            if (GUILayout.Button("Sync", GUILayout.Width(230f)))
+            {
+                PluginConfig.SyncOrbitalsToCores();
+                entry.BoxedValue = false;
+            }
+
+            GUILayout.EndHorizontal();
         }
     }
 }

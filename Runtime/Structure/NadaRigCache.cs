@@ -13,6 +13,7 @@ namespace NADA.VFX.Runtime.Structure
         internal static GameObject SparksTemplateInactive { get; private set; }
         internal static Material AuraMaterial { get; private set; }
         internal static GameObject StrandsTemplateInactive { get; private set; }
+        internal static GameObject CoresTemplateInactive { get; private set; }
 
         internal static IEnumerator CacheReferenceAssetsWhenReady()
         {
@@ -23,6 +24,7 @@ namespace NADA.VFX.Runtime.Structure
             SparksTemplateInactive = null;
             AuraMaterial = null;
             StrandsTemplateInactive = null;
+            CoresTemplateInactive = null;
 
             while (ObjectDB.instance == null)
                 yield return null;
@@ -76,6 +78,7 @@ namespace NADA.VFX.Runtime.Structure
             CacheSparksTemplate();
             CacheAuraMaterial();
             CacheStrandsTemplate();
+            CacheCoresTemplate();
 
             CacheReady = true;
             Plugin.Log.LogInfo(
@@ -235,6 +238,43 @@ namespace NADA.VFX.Runtime.Structure
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: Cached Strands template from " +
                 $"'{Plugin.StrandsReferencePrefabName}/{Plugin.StrandsReferencePath}'.");
+        }
+
+        private static void CacheCoresTemplate()
+        {
+            if (!NadaWeaponTargets.TryGetPrefab(Plugin.CoresReferencePrefabName, out GameObject coresReference) ||
+                coresReference == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Could not find Cores reference prefab '{Plugin.CoresReferencePrefabName}'.");
+                return;
+            }
+
+            Transform coreTransform =
+                coresReference.transform.Find(Plugin.CoresReferencePath);
+
+            if (coreTransform == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: Could not find Cores reference path '{Plugin.CoresReferencePath}' " +
+                    $"under '{Plugin.CoresReferencePrefabName}'.");
+                return;
+            }
+
+            CoresTemplateInactive = Object.Instantiate(coreTransform.gameObject);
+            CoresTemplateInactive.name = "NADA_CoresTemplate";
+            CoresTemplateInactive.SetActive(false);
+            CoresTemplateInactive.hideFlags = HideFlags.HideAndDontSave;
+
+            foreach (Collider collider in CoresTemplateInactive.GetComponentsInChildren<Collider>(true))
+            {
+                if (collider != null)
+                    Object.Destroy(collider);
+            }
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: Cached Cores template from " +
+                $"'{Plugin.CoresReferencePrefabName}/{Plugin.CoresReferencePath}'.");
         }
     }
 }

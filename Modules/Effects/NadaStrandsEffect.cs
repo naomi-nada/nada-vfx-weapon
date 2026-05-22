@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace NADA.VFX.Modules.Effects
 {
-    internal sealed class NadaOrganicsStrandsEffect : MonoBehaviour, INadaItemDataReceiver
+    internal sealed class NadaStrandsEffect : MonoBehaviour, INadaItemDataReceiver
     {
         private const float AuthoredScaleMultiplier = 0.50f;
 
@@ -88,35 +88,35 @@ namespace NADA.VFX.Modules.Effects
 
             VfxState state = ResolveState();
 
-            ApplyEnabled(state.OrganicsStrandsEnabled);
-            ApplyEnergy(state.OrganicsStrandsEnergy);
+            ApplyEnabled(state.StrandsEnabled);
+            ApplyEnergy(state.StrandsEnergy);
 
-            ApplyDrift(state.OrganicsStrandsDrift);
+            ApplyDrift(state.StrandsDrift);
 
-            ApplyScaleWhole(state.OrganicsStrandsScaleWhole);
-            ApplyScaleParts(state.OrganicsStrandsScaleParts);
+            ApplyScaleWhole(state.StrandsScaleWhole);
+            ApplyScaleParts(state.StrandsScaleParts);
 
-            if (state.OrganicsStrandsSpectrumEnabled)
+            if (state.StrandsSpectrumEnabled)
                 ApplySpectrum(
-                    state.OrganicsStrandsSpectrumSpeed,
-                    state.OrganicsStrandsLuminance);
+                    state.StrandsSpectrumSpeed,
+                    state.StrandsLuminance);
             else
                 ApplyHue(
-                    state.OrganicsStrandsHue,
-                    state.OrganicsStrandsLuminance);
+                    state.StrandsHue,
+                    state.StrandsLuminance);
 
-            ApplySpeed(state.OrganicsStrandsSpeed);
-            ApplyLength(state.OrganicsStrandsLength);
-            ApplyRadius(state.OrganicsStrandsRadius);
-            ApplyLifetime(state.OrganicsStrandsLifetime);
+            ApplySpeed(state.StrandsSpeed);
+            ApplyLength(state.StrandsLength);
+            ApplyRadius(state.StrandsRadius);
+            ApplyLifetime(state.StrandsLifetime);
             
             ApplyPlacement(
-                state.OrganicsStrandsXOffset,
-                state.OrganicsStrandsYOffset,
-                state.OrganicsStrandsZOffset,
-                state.OrganicsStrandsXRotation,
-                state.OrganicsStrandsYRotation,
-                state.OrganicsStrandsZRotation);
+                state.StrandsXOffset,
+                state.StrandsYOffset,
+                state.StrandsZOffset,
+                state.StrandsXRotation,
+                state.StrandsYRotation,
+                state.StrandsZRotation);
         }
 
         private VfxState ResolveState()
