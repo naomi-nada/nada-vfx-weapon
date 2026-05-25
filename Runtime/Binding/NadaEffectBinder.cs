@@ -1,7 +1,7 @@
-using NADA.VFX.Modules.Effects;
+using NADA.VFX.Weapon.Modules.Effects;
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Weapon.Runtime.Binding
 {
     internal static class NadaEffectBinder
     {

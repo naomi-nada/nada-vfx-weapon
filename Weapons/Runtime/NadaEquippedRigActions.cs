@@ -1,9 +1,9 @@
-using NADA.VFX.Core.State;
-using NADA.VFX.Runtime.Structure;
-using NADA.VFX.Weapons.Targets;
+using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Runtime.Structure;
+using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
 
-namespace NADA.VFX.Weapons.Runtime
+namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal static class NadaEquippedRigActions
     {

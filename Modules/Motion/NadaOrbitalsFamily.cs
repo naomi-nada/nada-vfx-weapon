@@ -1,4 +1,4 @@
-namespace NADA.VFX.Modules.Motion
+namespace NADA.VFX.Weapon.Modules.Motion
 {
     internal enum NadaOrbitalsFamily
     {

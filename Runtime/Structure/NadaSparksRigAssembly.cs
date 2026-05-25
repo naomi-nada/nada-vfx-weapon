@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Structure
+namespace NADA.VFX.Weapon.Runtime.Structure
 {
     public class NadaSparksRigAssembly
     {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace NADA.VFX.Core.State
+namespace NADA.VFX.Weapon.Core.State
 {
     [Serializable]
     public sealed class VfxStyleSave

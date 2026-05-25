@@ -1,8 +1,8 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using NADA.VFX.Core.State;
+using NADA.VFX.Weapon.Core.State;
 
-namespace NADA.VFX.Core.Visuals
+namespace NADA.VFX.Weapon.Core.Visuals
 {
     internal static class VfxStyleJson
     {

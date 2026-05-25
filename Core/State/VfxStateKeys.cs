@@ -1,4 +1,4 @@
-namespace NADA.VFX.Core.State
+namespace NADA.VFX.Weapon.Core.State
 {
     internal static class VfxStateKeys
     {
@@ -20,6 +20,7 @@ namespace NADA.VFX.Core.State
         internal const string InnerFlamesLuminance = "nada.vfx.innerflames.luminance";
         internal const string InnerFlamesHue = "nada.vfx.innerflames.hue";
         internal const string InnerFlamesLifetime = "nada.vfx.innerflames.lifetime";
+        internal const string InnerFlamesSimulationSpeed = "nada.vfx.innerflames.simulation_speed";
         internal const string InnerFlamesLength = "nada.vfx.innerflames.length";
         internal const string InnerFlamesWidth = "nada.vfx.innerflames.width";
         internal const string InnerFlamesXOffset = "nada.vfx.innerflames.x_offset";
@@ -39,6 +40,7 @@ namespace NADA.VFX.Core.State
         internal const string OuterFlamesLuminance = "nada.vfx.outerflames.luminance";
         internal const string OuterFlamesHue = "nada.vfx.outerflames.hue";
         internal const string OuterFlamesLifetime = "nada.vfx.outerflames.lifetime";
+        internal const string OuterFlamesSimulationSpeed = "nada.vfx.outerflames.simulation_speed";
         internal const string OuterFlamesLength = "nada.vfx.outerflames.length";
         internal const string OuterFlamesWidth = "nada.vfx.outerflames.width";
         internal const string OuterFlamesXOffset = "nada.vfx.outerflames.x_offset";
@@ -57,7 +59,7 @@ namespace NADA.VFX.Core.State
         internal const string StrandsHue = "nada.vfx.strands.hue";
         internal const string StrandsLifetime = "nada.vfx.strands.lifetime";
         internal const string StrandsLength = "nada.vfx.strands.length";
-        internal const string StrandsSpectrumSpeed = "nada.vfx.strands.spectrum.speed";
+        internal const string StrandsSpectrumSpeed = "nada.vfx.strands.spectrum_speed";
         internal const string StrandsSpeed = "nada.vfx.strands.speed";
         internal const string StrandsRadius = "nada.vfx.strands.radius";
         internal const string StrandsXOffset = "nada.vfx.strands.x_offset";
@@ -74,6 +76,7 @@ namespace NADA.VFX.Core.State
         internal const string SparksLuminance = "nada.vfx.sparks.luminance";
         internal const string SparksHue = "nada.vfx.sparks.hue";
         internal const string SparksLifetime = "nada.vfx.sparks.lifetime";
+        internal const string SparksSimulationSpeed = "nada.vfx.sparks.simulation_speed";
         internal const string SparksLength = "nada.vfx.sparks.length";
         internal const string SparksWidth = "nada.vfx.sparks.width";
         internal const string SparksXOffset = "nada.vfx.sparks.x_offset";
@@ -151,6 +154,7 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsFlamesLuminance = "nada.vfx.orbitals.flames.luminance";
         internal const string OrbitalsFlamesHue = "nada.vfx.orbitals.flames.hue";
         internal const string OrbitalsFlamesLifetime = "nada.vfx.orbitals.flames.lifetime";
+        internal const string OrbitalsFlamesSimulationSpeed = "nada.vfx.orbitals.flames.simulation_speed";
         internal const string OrbitalsFlamesSpeed = "nada.vfx.orbitals.flames.speed";
         internal const string OrbitalsFlamesSpacing = "nada.vfx.orbitals.flames.spacing";
         internal const string OrbitalsFlamesLength = "nada.vfx.orbitals.flames.length";
@@ -171,6 +175,7 @@ namespace NADA.VFX.Core.State
         internal const string OrbitalsEmbersLuminance = "nada.vfx.orbitals.embers.luminance";
         internal const string OrbitalsEmbersHue = "nada.vfx.orbitals.embers.hue";
         internal const string OrbitalsEmbersLifetime = "nada.vfx.orbitals.embers.lifetime";
+        internal const string OrbitalsEmbersSimulationSpeed = "nada.vfx.orbitals.embers.simulation_speed";
         internal const string OrbitalsEmbersSpeed = "nada.vfx.orbitals.embers.speed";
         internal const string OrbitalsEmbersSpacing = "nada.vfx.orbitals.embers.spacing";
         internal const string OrbitalsEmbersLength = "nada.vfx.orbitals.embers.length";

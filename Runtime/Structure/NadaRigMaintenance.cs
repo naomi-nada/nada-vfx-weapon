@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
-using NADA.VFX.Core.Config;
-using NADA.VFX.Weapons.Targets;
+using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Weapons.Targets;
 
-namespace NADA.VFX.Runtime.Structure
+namespace NADA.VFX.Weapon.Runtime.Structure
 {
     internal static class NadaRigMaintenance
     {

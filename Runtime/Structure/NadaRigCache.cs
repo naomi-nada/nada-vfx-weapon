@@ -1,8 +1,8 @@
 using System.Collections;
+using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
-using NADA.VFX.Weapons.Targets;
 
-namespace NADA.VFX.Runtime.Structure
+namespace NADA.VFX.Weapon.Runtime.Structure
 {
     internal static class NadaRigCache
     {

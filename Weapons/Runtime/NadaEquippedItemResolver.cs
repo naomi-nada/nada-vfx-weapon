@@ -1,7 +1,7 @@
 using System.Reflection;
 using UnityEngine;
 
-namespace NADA.VFX.Weapons.Runtime
+namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal static class NadaEquippedItemResolver
     {

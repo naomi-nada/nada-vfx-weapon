@@ -2,9 +2,9 @@ using System;
 using System.Globalization;
 using UnityEngine;
 using BepInEx.Configuration;
-using NADA.VFX.Core.Visuals;
+using NADA.VFX.Weapon.Core.Visuals;
 
-namespace NADA.VFX.Core.Config
+namespace NADA.VFX.Weapon.Core.Config
 {
     internal static class ConfigurationManagerDrawers
     {
@@ -397,6 +397,15 @@ namespace NADA.VFX.Core.Config
                 GUIContent.none,
                 GUILayout.Height(12),
                 GUILayout.ExpandWidth(true));
+        }
+        
+        internal static void DrawCoresSpacingSlider(ConfigEntryBase entry)
+        {
+            bool snakeEnabled =
+                PluginConfig.OrbitalsCoresSnake != null &&
+                PluginConfig.OrbitalsCoresSnake.Value;
+
+            DrawFloatSlider(entry, snakeEnabled);
         }
         
         internal static void DrawOrbitalsCoresSyncButton(ConfigEntryBase entry)

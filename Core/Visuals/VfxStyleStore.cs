@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using BepInEx;
-using NADA.VFX.Core.State;
+using NADA.VFX.Weapon.Core.State;
 
-namespace NADA.VFX.Core.Visuals
+namespace NADA.VFX.Weapon.Core.Visuals
 {
     internal static class VfxStyleStore
     {
@@ -14,7 +14,7 @@ namespace NADA.VFX.Core.Visuals
             new(StringComparer.OrdinalIgnoreCase);
 
         private static readonly string StylesDirectory =
-            Path.Combine(Paths.ConfigPath, "NADA.VFX", "Styles");
+            Path.Combine(Paths.ConfigPath, "NADA.VFX.Weapon", "Styles");
 
         private static bool _loaded;
 

@@ -1,6 +1,6 @@
 using BepInEx.Configuration;
 
-namespace NADA.VFX.Core.Config
+namespace NADA.VFX.Weapon.Core.Config
 {
     // Inner Flames, probably no Z rot needed
     // Outer Flames, probably no Z rot needed
@@ -54,6 +54,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> InnerFlamesLuminance = null;
         internal static ConfigEntry<float> InnerFlamesHue = null;
         internal static ConfigEntry<float> InnerFlamesLifetime = null;
+        internal static ConfigEntry<float> InnerFlamesSimulationSpeed = null;
         internal static ConfigEntry<float> InnerFlamesLength = null;
         internal static ConfigEntry<float> InnerFlamesWidth = null;
         internal static ConfigEntry<float> InnerFlamesXOffset = null;
@@ -73,6 +74,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OuterFlamesLuminance = null;
         internal static ConfigEntry<float> OuterFlamesHue = null;
         internal static ConfigEntry<float> OuterFlamesLifetime = null;
+        internal static ConfigEntry<float> OuterFlamesSimulationSpeed = null;
         internal static ConfigEntry<float> OuterFlamesLength = null;
         internal static ConfigEntry<float> OuterFlamesWidth = null;
         internal static ConfigEntry<float> OuterFlamesXOffset = null;
@@ -107,6 +109,8 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> SparksScale = null;
         internal static ConfigEntry<float> SparksLuminance = null;
         internal static ConfigEntry<float> SparksHue = null;
+        internal static ConfigEntry<float> SparksLifetime = null;
+        internal static ConfigEntry<float> SparksSimulationSpeed = null;
         internal static ConfigEntry<float> SparksLength = null;
         internal static ConfigEntry<float> SparksWidth = null;
         internal static ConfigEntry<float> SparksXOffset = null;
@@ -186,6 +190,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsFlamesLuminance = null;
         internal static ConfigEntry<float> OrbitalsFlamesHue = null;
         internal static ConfigEntry<float> OrbitalsFlamesLifetime = null;
+        internal static ConfigEntry<float> OrbitalsFlamesSimulationSpeed = null;
         internal static ConfigEntry<float> OrbitalsFlamesLength = null;
         internal static ConfigEntry<float> OrbitalsFlamesSpeed = null;
         internal static ConfigEntry<float> OrbitalsFlamesSpacing = null;
@@ -206,6 +211,7 @@ namespace NADA.VFX.Core.Config
         internal static ConfigEntry<float> OrbitalsEmbersLuminance = null;
         internal static ConfigEntry<float> OrbitalsEmbersHue = null;
         internal static ConfigEntry<float> OrbitalsEmbersLifetime = null;
+        internal static ConfigEntry<float> OrbitalsEmbersSimulationSpeed = null;
         internal static ConfigEntry<float> OrbitalsEmbersLength = null;
         internal static ConfigEntry<float> OrbitalsEmbersSpeed = null;
         internal static ConfigEntry<float> OrbitalsEmbersSpacing = null;
@@ -266,6 +272,10 @@ namespace NADA.VFX.Core.Config
         internal const float MinLifetime = 0.25f;
         internal const float MaxLifetime = 1.75f;
         internal const float DefaultLifetime = 1.00f;
+        
+        internal const float MinSimulationSpeed = 0.00f;
+        internal const float MaxSimulationSpeed = 2.00f;
+        internal const float DefaultSimulationSpeed = 1.00f;
 
         internal const float MinDrift = 0.00f;
         internal const float MaxDrift = 1.00f;
@@ -644,10 +654,20 @@ namespace NADA.VFX.Core.Config
                 "Lifetime",
                 DefaultLifetime,
                 OrderedDescription(
-                    "Adjust how long emitted inner flames remain visible.",
+                    "Adjust how long emitted Inner Flames remain visible.",
                     9300,
                     new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime"));
+            
+            InnerFlamesSimulationSpeed = config.Bind(
+                innerFlamesSection,
+                "Simulation Speed",
+                DefaultSimulationSpeed,
+                OrderedDescription(
+                    "Adjust how quickly Inner Flames particles animate.",
+                    9250,
+                    new AcceptableValueRange<float>(MinSimulationSpeed, MaxSimulationSpeed),
+                    dispName: "Simulation Speed"));
 
             InnerFlamesLength = config.Bind(
                 innerFlamesSection,
@@ -861,6 +881,16 @@ namespace NADA.VFX.Core.Config
                     9200,
                     new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime"));
+            
+            OuterFlamesSimulationSpeed = config.Bind(
+                outerFlamesSection,
+                "Simulation Speed",
+                DefaultSimulationSpeed,
+                OrderedDescription(
+                    "Adjust how quickly Outer Flames particles animate.",
+                    9150,
+                    new AcceptableValueRange<float>(MinSimulationSpeed, MaxSimulationSpeed),
+                    dispName: "Simulation Speed"));
 
             OuterFlamesLength = config.Bind(
                 outerFlamesSection,
@@ -1225,6 +1255,26 @@ namespace NADA.VFX.Core.Config
                     new AcceptableValueRange<float>(MinHue, MaxHue),
                     dispName: "Color"));
 
+            SparksLifetime = config.Bind(
+                sparksSection,
+                "Lifetime",
+                DefaultLifetime,
+                OrderedDescription(
+                    "Adjust the length of time that Sparks exist.",
+                    9575,
+                    new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
+                    dispName: "Lifetime"));
+            
+            SparksSimulationSpeed = config.Bind(
+                sparksSection,
+                "Simulation Speed",
+                DefaultSimulationSpeed,
+                OrderedDescription(
+                    "Adjust how quickly Sparks particles animate.",
+                    9550,
+                    new AcceptableValueRange<float>(MinSimulationSpeed, MaxSimulationSpeed),
+                    dispName: "Simulation Speed"));
+            
             SparksLength = config.Bind(
                 sparksSection,
                 "Length",
@@ -1883,7 +1933,8 @@ namespace NADA.VFX.Core.Config
                     6800,
                     new AcceptableValueRange<float>(MinOrbitalsSpacing, MaxOrbitalsSpacing),
                     dispName: "Spacing",
-                    showRangeAsPercent: true));
+                    showRangeAsPercent: true,
+                    customDrawer: ConfigurationManagerDrawers.DrawCoresSpacingSlider));
 
             OrbitalsCoresRadius = config.Bind(
                 orbitalsCoresSection,
@@ -2058,6 +2109,16 @@ namespace NADA.VFX.Core.Config
                     9400,
                     new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime"));
+            
+            OrbitalsFlamesSimulationSpeed = config.Bind(
+                orbitalsFlamesSection,
+                "Simulation Speed",
+                DefaultSimulationSpeed,
+                OrderedDescription(
+                    "Adjust how quickly Orbitals: Flames particles animate.",
+                    9350,
+                    new AcceptableValueRange<float>(MinSimulationSpeed, MaxSimulationSpeed),
+                    dispName: "Simulation Speed"));
 
             OrbitalsFlamesLength = config.Bind(
                 orbitalsFlamesSection,
@@ -2275,6 +2336,16 @@ namespace NADA.VFX.Core.Config
                     9400,
                     new AcceptableValueRange<float>(MinLifetime, MaxLifetime),
                     dispName: "Lifetime"));
+            
+            OrbitalsEmbersSimulationSpeed = config.Bind(
+                orbitalsEmbersSection,
+                "Simulation Speed",
+                DefaultSimulationSpeed,
+                OrderedDescription(
+                    "Adjust how quickly Orbitals: Embers particles animate.",
+                    9350,
+                    new AcceptableValueRange<float>(MinSimulationSpeed, MaxSimulationSpeed),
+                    dispName: "Simulation Speed"));
 
             OrbitalsEmbersLength = config.Bind(
                 orbitalsEmbersSection,

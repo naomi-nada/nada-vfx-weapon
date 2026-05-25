@@ -1,7 +1,7 @@
 using UnityEngine;
-using NADA.VFX.Core.State;
+using NADA.VFX.Weapon.Core.State;
 
-namespace NADA.VFX.Runtime.Structure
+namespace NADA.VFX.Weapon.Runtime.Structure
 {
     internal static class NadaRigTransformApplier
     {

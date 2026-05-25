@@ -1,12 +1,12 @@
 using System.Collections.Generic;
-using NADA.VFX.Core.Config;
-using NADA.VFX.Core.State;
-using NADA.VFX.Core.Visuals;
-using NADA.VFX.Runtime.Binding;
-using NADA.VFX.Runtime.Structure;
+using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.Visuals;
+using NADA.VFX.Weapon.Runtime.Binding;
+using NADA.VFX.Weapon.Runtime.Structure;
 using UnityEngine;
 
-namespace NADA.VFX.Modules.Effects
+namespace NADA.VFX.Weapon.Modules.Effects
 {
     internal sealed class NadaSparksEffect : MonoBehaviour, INadaItemDataReceiver
     {
@@ -111,6 +111,8 @@ namespace NADA.VFX.Modules.Effects
 
             ApplyEnabled(state.SparksEnabled);
             ApplyScale(state.SparksScale);
+            ApplyLifetime(state.SparksLifetime);
+            ApplySimulationSpeed(state.SparksSimulationSpeed);
             ApplyLength(state.SparksLength);
             ApplyWidth(state.SparksWidth);
             ApplyHueShift(state.SparksHue, state.SparksLuminance);
@@ -135,8 +137,6 @@ namespace NADA.VFX.Modules.Effects
 
             return VfxStateIO.FromConfig();
         }
-
-        // Cache / baselines
 
         private void RebuildComponentCache()
         {
@@ -397,8 +397,6 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        // Enabled
-
         private void ApplyEnabled(bool enabled)
         {
             ApplyParticleSystemEnabledState(enabled);
@@ -461,8 +459,6 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        // Scale / shape / placement
-
         private void ApplyScale(float scale)
         {
             if (_systems == null)
@@ -491,18 +487,6 @@ namespace NADA.VFX.Modules.Effects
 
                 if (_baseStartSize.TryGetValue(particleSystemId, out var baseStartSize))
                     main.startSize = ScaleMinMaxCurve(baseStartSize, scaleMultiplier);
-
-                if (_baseStartLifetime.TryGetValue(particleSystemId, out var baseStartLifetime))
-                    main.startLifetime = ScaleMinMaxCurve(baseStartLifetime, scaleMultiplier);
-
-                if (_baseSimulationSpeed.TryGetValue(particleSystemId, out float baseSimulationSpeed))
-                {
-                    float simulationSpeedMultiplier =
-                        scaleMultiplier < 1f ? scaleMultiplier : 1f;
-
-                    main.simulationSpeed =
-                        baseSimulationSpeed * simulationSpeedMultiplier;
-                }
             }
             catch { }
 
@@ -525,6 +509,65 @@ namespace NADA.VFX.Modules.Effects
                 }
             }
             catch { }
+        }
+
+        private void ApplyLifetime(float lifetime)
+        {
+            if (_systems == null)
+                return;
+
+            float lifetimeMultiplier = Mathf.Clamp(
+                lifetime,
+                PluginConfig.MinLifetime,
+                PluginConfig.MaxLifetime);
+
+            foreach (ParticleSystem particleSystem in _systems)
+            {
+                if (particleSystem == null)
+                    continue;
+
+                int particleSystemId = particleSystem.GetInstanceID();
+
+                if (!_baseStartLifetime.TryGetValue(
+                        particleSystemId,
+                        out var baseLifetime))
+                    continue;
+
+                try
+                {
+                    var main = particleSystem.main;
+                    main.startLifetime = MultiplyCurve(baseLifetime, lifetimeMultiplier);
+                }
+                catch { }
+            }
+        }
+
+        private void ApplySimulationSpeed(float simulationSpeed)
+        {
+            if (_systems == null)
+                return;
+
+            float simulationSpeedMultiplier = ClampSimulationSpeed(simulationSpeed);
+
+            foreach (ParticleSystem particleSystem in _systems)
+            {
+                if (particleSystem == null)
+                    continue;
+
+                int particleSystemId = particleSystem.GetInstanceID();
+
+                if (!_baseSimulationSpeed.TryGetValue(
+                        particleSystemId,
+                        out float baseSimulationSpeed))
+                    continue;
+
+                try
+                {
+                    var main = particleSystem.main;
+                    main.simulationSpeed = baseSimulationSpeed * simulationSpeedMultiplier;
+                }
+                catch { }
+            }
         }
 
         private void ApplyLength(float length)
@@ -645,8 +688,6 @@ namespace NADA.VFX.Modules.Effects
                 ClampRotation(yRotation),
                 ClampRotation(zRotation));
         }
-
-        // Color
 
         private void ApplyHueShift(float sliderValue, float luminanceMultiplier)
         {
@@ -843,8 +884,6 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        // Energy
-
         private void ApplyEnergy(float energy)
         {
             if (_systems == null)
@@ -900,8 +939,6 @@ namespace NADA.VFX.Modules.Effects
             catch { }
         }
 
-        // Helpers
-
         private static ParticleSystem.MinMaxCurve OverrideConstantBaseline(
             ParticleSystem.MinMaxCurve source,
             float constantValue)
@@ -917,6 +954,20 @@ namespace NADA.VFX.Modules.Effects
                 default:
                     return source;
             }
+        }
+
+        private static ParticleSystem.MinMaxCurve MultiplyCurve(
+            ParticleSystem.MinMaxCurve source,
+            float multiplier)
+        {
+            ParticleSystem.MinMaxCurve result = source;
+
+            result.constant *= multiplier;
+            result.constantMin *= multiplier;
+            result.constantMax *= multiplier;
+            result.curveMultiplier *= multiplier;
+
+            return result;
         }
 
         private static ParticleSystem.MinMaxCurve ScaleMinMaxCurve(
@@ -958,6 +1009,17 @@ namespace NADA.VFX.Modules.Effects
                 value,
                 PluginConfig.MinScaleMult,
                 PluginConfig.MaxScaleMult);
+        }
+
+        private static float ClampSimulationSpeed(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultSimulationSpeed;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinSimulationSpeed,
+                PluginConfig.MaxSimulationSpeed);
         }
 
         private static float ClampOffset(float value)

@@ -1,6 +1,6 @@
 using System;
 
-namespace NADA.VFX.Core.State
+namespace NADA.VFX.Weapon.Core.State
 {
     [Serializable]
     internal struct VfxState
@@ -23,6 +23,7 @@ namespace NADA.VFX.Core.State
         public float InnerFlamesLuminance;
         public float InnerFlamesHue;
         public float InnerFlamesLifetime;
+        public float InnerFlamesSimulationSpeed;
         public float InnerFlamesLength;
         public float InnerFlamesWidth;
         public float InnerFlamesXOffset;
@@ -43,6 +44,7 @@ namespace NADA.VFX.Core.State
         public float OuterFlamesLuminance;
         public float OuterFlamesHue;
         public float OuterFlamesLifetime;
+        public float OuterFlamesSimulationSpeed;
         public float OuterFlamesLength;
         public float OuterFlamesWidth;
         public float OuterFlamesXOffset;
@@ -80,6 +82,7 @@ namespace NADA.VFX.Core.State
         public float SparksLuminance;
         public float SparksHue;
         public float SparksLifetime;
+        public float SparksSimulationSpeed;
         public float SparksLength;
         public float SparksWidth;
         public float SparksXOffset;
@@ -162,6 +165,7 @@ namespace NADA.VFX.Core.State
         public float OrbitalsFlamesLuminance;
         public float OrbitalsFlamesHue;
         public float OrbitalsFlamesLifetime;
+        public float OrbitalsFlamesSimulationSpeed;
         public float OrbitalsFlamesLength;
         public float OrbitalsFlamesSpeed;
         public float OrbitalsFlamesSpacing;
@@ -183,6 +187,7 @@ namespace NADA.VFX.Core.State
         public float OrbitalsEmbersLuminance;
         public float OrbitalsEmbersHue;
         public float OrbitalsEmbersLifetime;
+        public float OrbitalsEmbersSimulationSpeed;
         public float OrbitalsEmbersLength;
         public float OrbitalsEmbersSpeed;
         public float OrbitalsEmbersSpacing;

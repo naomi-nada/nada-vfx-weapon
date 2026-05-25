@@ -1,7 +1,7 @@
 using System;
 using HarmonyLib;
 
-namespace NADA.VFX.Weapons.Patches
+namespace NADA.VFX.Weapon.Weapons.Patches
 {
     [HarmonyPatch(typeof(ZNetScene), "Awake")]
     internal static class ZNetScene_Awake

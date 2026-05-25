@@ -1,7 +1,7 @@
-using NADA.VFX.Core.Debug;
+using NADA.VFX.Weapon.Core.Debug;
 using UnityEngine;
 
-namespace NADA.VFX.Weapons.Runtime
+namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal readonly struct NadaWeaponRigAlignment
     {

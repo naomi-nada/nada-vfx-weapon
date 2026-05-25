@@ -1,7 +1,7 @@
-using NADA.VFX.Core.State;
+using NADA.VFX.Weapon.Core.State;
 using UnityEngine;
 
-namespace NADA.VFX.Weapons.Runtime
+namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal sealed class NadaWeaponRigContext
     {

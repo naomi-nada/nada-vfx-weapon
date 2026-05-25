@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace NADA.VFX.Modules.Motion
+namespace NADA.VFX.Weapon.Modules.Motion
 {
     internal static class NadaOrbitalsPath
     {

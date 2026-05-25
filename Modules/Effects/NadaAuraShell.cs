@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace NADA.VFX.Modules.Effects
+namespace NADA.VFX.Weapon.Modules.Effects
 {
     internal sealed class NadaAuraShell : MonoBehaviour
     {

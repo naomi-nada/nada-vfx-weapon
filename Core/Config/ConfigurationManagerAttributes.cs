@@ -1,7 +1,7 @@
 using System;
 using BepInEx.Configuration;
 
-namespace NADA.VFX.Core.Config
+namespace NADA.VFX.Weapon.Core.Config
 {
     #pragma warning disable CS0649
     

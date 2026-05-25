@@ -1,7 +1,7 @@
-using NADA.VFX.Modules.Motion;
+using NADA.VFX.Weapon.Modules.Motion;
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Weapon.Runtime.Binding
 {
     internal static class NadaMotionBinder
     {

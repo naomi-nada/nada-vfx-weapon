@@ -1,11 +1,11 @@
 using System;
 using System.Collections;
 using HarmonyLib;
-using NADA.VFX.Core.Config;
-using NADA.VFX.Core.State;
-using NADA.VFX.Weapons.Targets;
+using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Weapons.Targets;
 
-namespace NADA.VFX.Weapons.Patches
+namespace NADA.VFX.Weapon.Weapons.Patches
 {
     [HarmonyPatch(typeof(global::ItemDrop), "Awake")]
     internal static class ItemDrop_Awake

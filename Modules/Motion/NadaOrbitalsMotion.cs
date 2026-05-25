@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using NADA.VFX.Core.Config;
-using NADA.VFX.Core.State;
-using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Weapon.Runtime.Binding;
+using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.State;
 using UnityEngine;
 
-namespace NADA.VFX.Modules.Motion
+namespace NADA.VFX.Weapon.Modules.Motion
 {
     internal sealed class NadaOrbitalsMotion : MonoBehaviour
     {
@@ -140,7 +140,8 @@ namespace NADA.VFX.Modules.Motion
                 turnsPerOneWayPass);
 
             float historyStepPerFollower =
-                SmoothHistoryStepPerFollower(ResolveHistoryStepPerFollowerFloat(state));
+                SmoothHistoryStepPerFollower(
+                    ResolveHistoryStepPerFollowerFloat(state, snakeSpacingEnabled));
 
             float orbitAdherence =
                 Mathf.Clamp01(ResolveOrbitAdherence(state));
@@ -176,7 +177,8 @@ namespace NADA.VFX.Modules.Motion
 
             ApplyHeadVisualPosition(
                 currentDistanceAlongCycle,
-                orbitAdherence);
+                orbitAdherence,
+                historyStepPerFollower);
 
             ApplyFollowerPositions(
                 desiredFollowerCount,
@@ -380,8 +382,13 @@ namespace NADA.VFX.Modules.Motion
                 MaxOrbitalsVisuals - 1);
         }
 
-        private float ResolveHistoryStepPerFollowerFloat(VfxState state)
+        private float ResolveHistoryStepPerFollowerFloat(
+            VfxState state,
+            bool snakeSpacingEnabled)
         {
+            if (snakeSpacingEnabled)
+                return MinHistoryStepPerFollower;
+
             bool glueEnabled = ResolveGlueEnabled(state);
 
             float spacingT = _orbitalsFamily switch
@@ -619,7 +626,10 @@ namespace NADA.VFX.Modules.Motion
             return EvaluateHeadWorldPositionAtDistance(currentDistanceAlongCycle - distanceOffset);
         }
 
-        private void ApplyHeadVisualPosition(float currentDistanceAlongCycle, float orbitAdherence)
+        private void ApplyHeadVisualPosition(
+            float currentDistanceAlongCycle,
+            float orbitAdherence,
+            float historyStepPerFollower)
         {
             if (_headVisualTransform == null)
                 return;
@@ -633,8 +643,13 @@ namespace NADA.VFX.Modules.Motion
                 return;
             }
 
+            float headHistorySampleIndex =
+                Mathf.Max(MinHistoryStepPerFollower, historyStepPerFollower);
+
             Vector3 driftedHeadWorldPosition =
-                EvaluateDriftedWorldPosition(currentDistanceAlongCycle, 1f);
+                EvaluateDriftedWorldPosition(
+                    currentDistanceAlongCycle,
+                    headHistorySampleIndex);
 
             _headVisualTransform.position = Vector3.Lerp(
                 driftedHeadWorldPosition,

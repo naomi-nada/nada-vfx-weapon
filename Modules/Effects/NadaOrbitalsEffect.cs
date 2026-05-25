@@ -1,14 +1,14 @@
 using System.Collections.Generic;
-using NADA.VFX.Core.Config;
-using NADA.VFX.Core.Visuals;
-using NADA.VFX.Core.State;
-using NADA.VFX.Runtime.Binding;
-using NADA.VFX.Runtime.Structure;
+using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.Visuals;
+using NADA.VFX.Weapon.Runtime.Binding;
+using NADA.VFX.Weapon.Runtime.Structure;
 using UnityEngine;
 
 // Offset and Rotation lives in NadaOrbitalsMotion
 
-namespace NADA.VFX.Modules.Effects
+namespace NADA.VFX.Weapon.Modules.Effects
 {
     internal sealed class NadaOrbitalsEffect : MonoBehaviour, INadaItemDataReceiver
     {
@@ -81,13 +81,14 @@ namespace NADA.VFX.Modules.Effects
         // Modifier baselines
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartLifetimeByParticleSystemId = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeByParticleSystemId = new();
-        private readonly Dictionary<int, float> _baseSimulationSpeedByParticleSystemId = new();
         private readonly Dictionary<int, bool> _baseSizeOverLifetimeEnabledByParticleSystemId = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseSizeOverLifetimeByParticleSystemId = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColorByParticleSystemId = new();
         private readonly Dictionary<int, bool> _baseColorOverLifetimeEnabledByParticleSystemId = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseColorOverLifetimeByParticleSystemId = new();
+        
+        private readonly Dictionary<int, float> _baseSimulationSpeedByParticleSystemId = new();
 
         private readonly Dictionary<int, bool> _baseCustomDataEnabledByParticleSystemId = new();
         private readonly Dictionary<int, ParticleSystemCustomDataMode> _baseCustom1ModeByParticleSystemId = new();
@@ -291,21 +292,15 @@ namespace NADA.VFX.Modules.Effects
         {
             float clampedScale = ClampVisualScale(scale);
 
-            float baseScaleMultiplier =
+            float sharedScaleMultiplier =
                 DefaultCoreBaselineScaleMultiplier * clampedScale;
-
-            float headScaleMultiplier =
-                baseScaleMultiplier * (snake ? 1.5f : 1f);
-
-            float followerScaleMultiplier =
-                baseScaleMultiplier;
 
             if (_coresRootTransform != null &&
                 _coresBaseLocalScaleByTransformId.TryGetValue(
                     _coresRootTransform.GetInstanceID(),
                     out Vector3 rootBaseScale))
             {
-                _coresRootTransform.localScale = rootBaseScale * headScaleMultiplier;
+                _coresRootTransform.localScale = rootBaseScale * sharedScaleMultiplier;
                 NadaRigTransforms.ForceUniformWorldScale(_coresRootTransform);
             }
 
@@ -321,7 +316,7 @@ namespace NADA.VFX.Modules.Effects
                 if (!_coresBaseLocalScaleByTransformId.TryGetValue(transformId, out Vector3 baseLocalScale))
                     continue;
 
-                pooledCoreTransform.localScale = baseLocalScale * followerScaleMultiplier;
+                pooledCoreTransform.localScale = baseLocalScale * sharedScaleMultiplier;
                 NadaRigTransforms.ForceUniformWorldScale(pooledCoreTransform);
             }
         }
@@ -411,6 +406,10 @@ namespace NADA.VFX.Modules.Effects
             ApplyFlamesEnergy(
                 _flamesParticleSystems,
                 state.OrbitalsFlamesEnergy);
+            
+            ApplySimulationSpeed(
+                _flamesParticleSystems,
+                state.OrbitalsFlamesSimulationSpeed);
 
             ApplyFlamesScale(
                 _flamesParticleSystems,
@@ -418,8 +417,7 @@ namespace NADA.VFX.Modules.Effects
 
             ApplyFlamesLifetime(
                 _flamesParticleSystems,
-                state.OrbitalsFlamesLifetime,
-                state.OrbitalsFlamesScale);
+                state.OrbitalsFlamesLifetime);
 
             LogToggleStateIfChanged(
                 "Orbitals Flames",
@@ -484,17 +482,6 @@ namespace NADA.VFX.Modules.Effects
 
                     if (_baseStartSizeByParticleSystemId.TryGetValue(particleSystemId, out var baseStartSize))
                         main.startSize = ScaleMinMaxCurve(baseStartSize, scaleMultiplier);
-
-                    if (_baseSimulationSpeedByParticleSystemId.TryGetValue(
-                            particleSystemId,
-                            out float baseSimulationSpeed))
-                    {
-                        float simulationSpeedMultiplier =
-                            scaleMultiplier < 1f ? scaleMultiplier : 1f;
-
-                        main.simulationSpeed =
-                            baseSimulationSpeed * simulationSpeedMultiplier;
-                    }
                 }
                 catch { }
 
@@ -522,7 +509,7 @@ namespace NADA.VFX.Modules.Effects
             }
         }
 
-        private void ApplyFlamesLifetime(List<ParticleSystem> particleSystems, float lifetime, float scale)
+        private void ApplyFlamesLifetime(List<ParticleSystem> particleSystems, float lifetime)
         {
             if (particleSystems == null)
                 return;
@@ -531,9 +518,6 @@ namespace NADA.VFX.Modules.Effects
                 lifetime,
                 PluginConfig.MinLifetime,
                 PluginConfig.MaxLifetime);
-
-            float clampedScale = ClampScale(scale);
-            float lifetimeMultiplier = clampedLifetime * clampedScale;
 
             foreach (var particleSystem in particleSystems)
             {
@@ -550,7 +534,7 @@ namespace NADA.VFX.Modules.Effects
                 try
                 {
                     var main = particleSystem.main;
-                    main.startLifetime = MultiplyCurve(baseLifetime, lifetimeMultiplier);
+                    main.startLifetime = MultiplyCurve(baseLifetime, clampedLifetime);
                 }
                 catch { }
             }
@@ -580,6 +564,14 @@ namespace NADA.VFX.Modules.Effects
             ApplyEmbersEnergy(
                 _embersParticleSystems,
                 state.OrbitalsEmbersEnergy);
+
+            ApplyEmbersScale(
+                _embersParticleSystems,
+                state.OrbitalsEmbersScale);
+            
+            ApplySimulationSpeed(
+                _flamesParticleSystems,
+                state.OrbitalsFlamesSimulationSpeed);
 
             ApplyEmbersLifetime(
                 _embersParticleSystems,
@@ -620,6 +612,53 @@ namespace NADA.VFX.Modules.Effects
 
                     if (!particleSystem.isPlaying)
                         particleSystem.Play(true);
+                }
+                catch { }
+            }
+        }
+        
+        private void ApplyEmbersScale(List<ParticleSystem> particleSystems, float scale)
+        {
+            if (particleSystems == null)
+                return;
+
+            float scaleMultiplier = ClampScale(scale);
+
+            foreach (var particleSystem in particleSystems)
+            {
+                if (particleSystem == null)
+                    continue;
+
+                int particleSystemId = particleSystem.GetInstanceID();
+
+                try
+                {
+                    var main = particleSystem.main;
+
+                    if (_baseStartSizeByParticleSystemId.TryGetValue(particleSystemId, out var baseStartSize))
+                        main.startSize = ScaleMinMaxCurve(baseStartSize, scaleMultiplier);
+                }
+                catch { }
+
+                try
+                {
+                    var sizeOverLifetime = particleSystem.sizeOverLifetime;
+
+                    if (_baseSizeOverLifetimeEnabledByParticleSystemId.TryGetValue(
+                            particleSystemId,
+                            out bool wasSizeOverLifetimeEnabled))
+                    {
+                        sizeOverLifetime.enabled = wasSizeOverLifetimeEnabled;
+
+                        if (wasSizeOverLifetimeEnabled &&
+                            _baseSizeOverLifetimeByParticleSystemId.TryGetValue(
+                                particleSystemId,
+                                out var baseSizeOverLifetime))
+                        {
+                            sizeOverLifetime.size =
+                                ScaleMinMaxCurve(baseSizeOverLifetime, scaleMultiplier);
+                        }
+                    }
                 }
                 catch { }
             }
@@ -872,14 +911,14 @@ namespace NADA.VFX.Modules.Effects
         }
 
         private void CacheEmbersBaselines()
-        {
-            CacheParticleBaselines(_embersParticleSystems);
-            CacheEmissionBaselines(_embersParticleSystems);
-            CacheRendererBaselines(_embersRenderers);
-            CacheLightBaselines(_embersLights);
-        }
+                {
+                    CacheParticleBaselines(_embersParticleSystems);
+                    CacheEmissionBaselines(_embersParticleSystems);
+                    CacheRendererBaselines(_embersRenderers);
+                    CacheLightBaselines(_embersLights);
+                }
 
-        private void CacheParticleBaselines(List<ParticleSystem> particleSystems)
+                private void CacheParticleBaselines(List<ParticleSystem> particleSystems)
         {
             if (particleSystems == null)
                 return;
@@ -1131,6 +1170,38 @@ namespace NADA.VFX.Modules.Effects
 
                     try { light.enabled = enabled; } catch { }
                 }
+            }
+        }
+        
+        private void ApplySimulationSpeed(
+            List<ParticleSystem> particleSystems,
+            float simulationSpeed)
+        {
+            if (particleSystems == null)
+                return;
+
+            float clampedSimulationSpeed = ClampSimulationSpeed(simulationSpeed);
+
+            foreach (var particleSystem in particleSystems)
+            {
+                if (particleSystem == null)
+                    continue;
+
+                int particleSystemId = particleSystem.GetInstanceID();
+
+                if (!_baseSimulationSpeedByParticleSystemId.TryGetValue(
+                        particleSystemId,
+                        out float baseSimulationSpeed))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var main = particleSystem.main;
+                    main.simulationSpeed = baseSimulationSpeed * clampedSimulationSpeed;
+                }
+                catch { }
             }
         }
 
@@ -1444,6 +1515,17 @@ namespace NADA.VFX.Modules.Effects
                 value,
                 PluginConfig.MinScaleMult,
                 PluginConfig.MaxScaleMult);
+        }
+        
+        private static float ClampSimulationSpeed(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return PluginConfig.DefaultSimulationSpeed;
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinSimulationSpeed,
+                PluginConfig.MaxSimulationSpeed);
         }
 
         private static Vector3 NormalizeUniformScale(Vector3 scale)

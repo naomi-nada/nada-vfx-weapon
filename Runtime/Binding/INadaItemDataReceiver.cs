@@ -1,4 +1,4 @@
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Weapon.Runtime.Binding
 {
     // Implemented by components that need per item VFX state.
     // The rig system injects ItemData after instantiation.

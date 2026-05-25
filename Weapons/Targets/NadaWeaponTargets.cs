@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace NADA.VFX.Weapons.Targets
+namespace NADA.VFX.Weapon.Weapons.Targets
 {
     internal static class NadaWeaponTargets
     {

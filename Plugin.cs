@@ -6,22 +6,22 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
-using NADA.VFX.Core.Config;
-using NADA.VFX.Core.State;
-using NADA.VFX.Core.Visuals;
-using NADA.VFX.Modules.Motion;
-using NADA.VFX.Runtime.Structure;
-using NADA.VFX.Weapons.Runtime;
+using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.Visuals;
+using NADA.VFX.Weapon.Modules.Motion;
+using NADA.VFX.Weapon.Runtime.Structure;
+using NADA.VFX.Weapon.Weapons.Runtime;
 using UnityEngine;
 
-namespace NADA.VFX
+namespace NADA.VFX.Weapon
 {
     [BepInPlugin(ModGuid, ModName, ModVersion)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string ModGuid = "naomi.nada.vfx";
-        public const string ModName = "NADA VFX";
-        public const string ModVersion = "0.8.1";
+        public const string ModGuid = "naomi.nada.vfx.weapon";
+        public const string ModName = "NADA VFX: Weapon";
+        public const string ModVersion = "0.8.2";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;

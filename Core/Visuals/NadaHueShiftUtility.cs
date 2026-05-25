@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace NADA.VFX.Core.Visuals
+namespace NADA.VFX.Weapon.Core.Visuals
 {
     internal static class NadaHueShiftUtility
     {

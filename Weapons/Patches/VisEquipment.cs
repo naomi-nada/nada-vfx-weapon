@@ -1,13 +1,13 @@
 using System;
 using HarmonyLib;
-using NADA.VFX.Core.State;
-using NADA.VFX.Core.Config;
-using NADA.VFX.Core.Debug;
-using NADA.VFX.Weapons.Targets;
-using NADA.VFX.Weapons.Runtime;
+using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Weapons.Runtime;
+using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
 
-namespace NADA.VFX.Weapons.Patches
+namespace NADA.VFX.Weapon.Weapons.Patches
 {
     [HarmonyPatch(typeof(global::VisEquipment), "UpdateEquipmentVisuals")]
     internal static class VisEquipment

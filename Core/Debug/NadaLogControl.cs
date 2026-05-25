@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace NADA.VFX.Core.Debug
+namespace NADA.VFX.Weapon.Core.Debug
 {
     internal static class NadaLogControl
     {

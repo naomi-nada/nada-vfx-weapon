@@ -1,12 +1,12 @@
 using System.Collections.Generic;
-using NADA.VFX.Core.Config;
-using NADA.VFX.Core.State;
-using NADA.VFX.Core.Visuals;
-using NADA.VFX.Runtime.Binding;
-using NADA.VFX.Runtime.Structure;
+using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.Visuals;
+using NADA.VFX.Weapon.Runtime.Binding;
+using NADA.VFX.Weapon.Runtime.Structure;
 using UnityEngine;
 
-namespace NADA.VFX.Modules.Effects
+namespace NADA.VFX.Weapon.Modules.Effects
 {
     internal sealed class NadaFlareEffect : MonoBehaviour, INadaItemDataReceiver
     {

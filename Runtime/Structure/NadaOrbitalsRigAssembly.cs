@@ -1,8 +1,8 @@
 using UnityEngine;
-using NADA.VFX.Modules.Motion;
-using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Weapon.Modules.Motion;
+using NADA.VFX.Weapon.Runtime.Binding;
 
-namespace NADA.VFX.Runtime.Structure
+namespace NADA.VFX.Weapon.Runtime.Structure
 {
     internal static class NadaOrbitalsRigAssembly
     {

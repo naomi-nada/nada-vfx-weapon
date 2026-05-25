@@ -1,6 +1,7 @@
+using NADA.VFX.Weapon.Weapons.Runtime;
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Structure
+namespace NADA.VFX.Weapon.Runtime.Structure
 {
     internal sealed class NadaRigAlignmentAnchor : MonoBehaviour
     {
@@ -8,7 +9,7 @@ namespace NADA.VFX.Runtime.Structure
         internal Vector3 BaseLocalEulerAngles;
         internal Vector3 BaseLocalScale;
 
-        internal void Set(NADA.VFX.Weapons.Runtime.NadaWeaponRigAlignment alignment)
+        internal void Set(NadaWeaponRigAlignment alignment)
         {
             BaseLocalPosition = alignment.LocalPosition;
             BaseLocalEulerAngles = alignment.LocalEulerAngles;

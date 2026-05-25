@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace NADA.VFX.Modules.Motion
+namespace NADA.VFX.Weapon.Modules.Motion
 {
     // Simple runtime follow motion:
     // - Follows a target transform

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using NADA.VFX.Runtime.Binding;
+using NADA.VFX.Weapon.Runtime.Binding;
 using UnityEngine;
 
-namespace NADA.VFX.Modules.Motion
+namespace NADA.VFX.Weapon.Modules.Motion
 {
     internal sealed class NadaOuterFlamesMotion : MonoBehaviour
     {

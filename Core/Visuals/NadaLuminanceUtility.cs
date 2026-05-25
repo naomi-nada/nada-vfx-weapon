@@ -1,7 +1,7 @@
-using NADA.VFX.Core.Config;
+using NADA.VFX.Weapon.Core.Config;
 using UnityEngine;
 
-namespace NADA.VFX.Core.Visuals
+namespace NADA.VFX.Weapon.Core.Visuals
 {
     internal static class NadaLuminanceUtility
     {

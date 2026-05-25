@@ -1,7 +1,7 @@
-using NADA.VFX.Core.State;
+using NADA.VFX.Weapon.Core.State;
 using UnityEngine;
 
-namespace NADA.VFX.Runtime.Binding
+namespace NADA.VFX.Weapon.Runtime.Binding
 {
     internal static class NadaMotionTuningResolver
     {

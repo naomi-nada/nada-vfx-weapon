@@ -1,9 +1,9 @@
 using UnityEngine;
-using NADA.VFX.Weapons.Targets;
-using NADA.VFX.Weapons.Runtime;
-using NADA.VFX.Core.Debug;
+using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Weapons.Runtime;
+using NADA.VFX.Weapon.Weapons.Targets;
 
-namespace NADA.VFX.Runtime.Structure
+namespace NADA.VFX.Weapon.Runtime.Structure
 {
     internal static class NadaRigRootAssembly
     {
