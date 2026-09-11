@@ -41,33 +41,17 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             }
 
             if (createdOuterFlames)
+            {
                 NadaRigTransforms.ResetLocalTransform(outerFlamesTransform);
 
+                // Normalize the donor VFX once when the flame branch is created.
+                // After this, each effect owns its own simulation space.
+                NadaRigTransforms.NormalizeParticleSpacesUnder(
+                    outerFlamesTransform,
+                    ParticleSystemSimulationSpace.Local);
+            }
+
             SplitFlameChildrenIntoEffects(localEffectsRootTransform, outerFlamesTransform);
-
-            NadaRigTransforms.NormalizeParticleSpacesUnder(
-                outerFlamesTransform,
-                ParticleSystemSimulationSpace.Local);
-
-            Transform flareTransform =
-                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.FlareName);
-
-            if (flareTransform != null)
-            {
-                NadaRigTransforms.NormalizeParticleSpacesUnder(
-                    flareTransform,
-                    ParticleSystemSimulationSpace.Local);
-            }
-
-            Transform innerFlamesTransform =
-                NadaRigPaths.FindDirectChild(localEffectsRootTransform, Plugin.InnerFlamesName);
-
-            if (innerFlamesTransform != null)
-            {
-                NadaRigTransforms.NormalizeParticleSpacesUnder(
-                    innerFlamesTransform,
-                    ParticleSystemSimulationSpace.Local);
-            }
 
             return outerFlamesTransform;
         }
