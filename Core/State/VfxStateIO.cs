@@ -381,6 +381,7 @@ namespace NADA.VFX.Weapon.Core.State
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersLuminance, state.OrbitalsEmbersLuminance);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersHue, state.OrbitalsEmbersHue);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersLifetime, state.OrbitalsEmbersLifetime);
+            WriteFloat(customData, VfxStateKeys.OrbitalsEmbersSimulationSpeed, state.OrbitalsEmbersSimulationSpeed);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersLength, state.OrbitalsEmbersLength);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersSpeed, state.OrbitalsEmbersSpeed);
             WriteFloat(customData, VfxStateKeys.OrbitalsEmbersSpacing, state.OrbitalsEmbersSpacing);
