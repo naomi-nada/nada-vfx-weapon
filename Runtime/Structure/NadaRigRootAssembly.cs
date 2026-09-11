@@ -15,6 +15,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             if (weaponVisualRootTransform == null)
                 return null;
 
+            // Reuse the existing rig if one is already attached. This keeps the assembly idempotent
+            // and lets us refresh alignment/state without creating duplicate rig roots.
             Transform localWeaponRootTransform =
                 NadaRigPaths.FindDirectChild(weaponVisualRootTransform, Plugin.LocalWeaponRootName);
 
@@ -33,6 +35,9 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
             var localWeaponRootObject = new GameObject(Plugin.LocalWeaponRootName);
             localWeaponRootTransform = localWeaponRootObject.transform;
+            
+            // Parent the rig directly to the resolved weapon visual root, not the outer item wrapper.
+            // This keeps the rig in the same local coordinate space as the actual weapon mesh.
             localWeaponRootTransform.SetParent(weaponVisualRootTransform, false);
 
             NadaRigTransforms.EnsureChild(localWeaponRootTransform, Plugin.EffectsRootName);

@@ -82,7 +82,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             return createdRoot != null;
         }
 
-        public bool TryApplyDroppedItem(GameObject root, global::ItemDrop.ItemData itemData)
+        public bool TryApplyDroppedItem(
+            GameObject root,
+            global::ItemDrop.ItemData itemData)
         {
             if (root == null || itemData == null)
                 return false;
@@ -90,8 +92,28 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (!VfxStateIO.IsBound(itemData))
                 return false;
 
-            Transform attachTarget = root.transform;
+            // Dropped items have their own wrapper/root, so attach the rig to the actual weapon visual instead.
+            // Using the ItemDrop root here can put the rig in a completely different local coordinate space.
+            Transform attachTarget =
+                NadaWeaponTargets.FindDroppedWeaponVisualRoot(root.transform);
 
+            if (attachTarget == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [DropApply] could not resolve visual root " +
+                    $"for '{root.name}'.");
+
+                return false;
+            }
+
+            NadaLogControl.Info(
+                $"drop-target:{root.GetInstanceID()}",
+                $"{Plugin.ModName}: [DropTarget] " +
+                $"root='{root.name}' " +
+                $"visualRoot='{attachTarget.name}' " +
+                $"path='{NadaWeaponTargets.FullPath(attachTarget)}'");
+
+            // A bound dropped item may already have its rig, so don't build another one.
             Transform existingRoot =
                 NadaRigPaths.FindDirectChild(
                     attachTarget,
@@ -100,13 +122,15 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (existingRoot != null)
                 return true;
 
-            VfxState state = NadaWeaponStateResolver.Resolve(itemData);
+            VfxState state =
+                NadaWeaponStateResolver.Resolve(itemData);
 
-            var context = new NadaWeaponRigContext(
-                root,
-                itemData,
-                state,
-                attachTarget);
+            var context =
+                new NadaWeaponRigContext(
+                    root,
+                    itemData,
+                    state,
+                    attachTarget);
 
             if (!context.IsValid)
                 return false;

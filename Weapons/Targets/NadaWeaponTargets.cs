@@ -108,12 +108,42 @@ namespace NADA.VFX.Weapon.Weapons.Targets
             return bestTransform;
         }
         
+        internal static Transform FindDroppedWeaponVisualRoot(Transform searchRootTransform)
+        {
+            if (searchRootTransform == null)
+                return null;
+
+            // Dropped weapons usually keep the actual rendered weapon under an "attach" branch,
+            // like AtgeirHimminAfl(Clone)/attach/default.
+            foreach (Transform childTransform in searchRootTransform)
+            {
+                if (childTransform == null)
+                    continue;
+
+                if (!childTransform.name.StartsWith(
+                        "attach",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                Transform visualRoot =
+                    FindEquippedWeaponVisualRoot(childTransform);
+
+                if (visualRoot != null)
+                    return visualRoot;
+            }
+
+            // Fallback for weird prefab layouts. *gulp*
+            return FindVisualMeshRoot(searchRootTransform);
+        }
+        
         internal static Transform FindVisualMeshRoot(Transform root)
         {
             if (root == null)
                 return null;
 
-            // Prefer MeshRenderer (most weapon meshes)
+            // Most weapon visuals use a MeshRenderer.
             var meshRenderers = root.GetComponentsInChildren<MeshRenderer>(true);
             foreach (var r in meshRenderers)
             {
@@ -121,7 +151,7 @@ namespace NADA.VFX.Weapon.Weapons.Targets
                 return r.transform;
             }
 
-            // Fallback: SkinnedMeshRenderer (rare but safe)
+            // Rare fallback for skinned weapon meshes.
             var skinned = root.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             foreach (var r in skinned)
             {

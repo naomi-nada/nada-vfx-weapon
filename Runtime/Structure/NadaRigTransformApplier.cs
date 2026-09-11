@@ -25,6 +25,7 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 ? anchor.BaseLocalScale
                 : Plugin.RigLocalScale;
 
+            // Start from the weapon's base alignment, then apply the saved per-item/style offsets on top.
             rigRoot.localPosition =
                 basePosition + new Vector3(
                     state.RigXOffset,
