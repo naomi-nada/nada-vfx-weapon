@@ -221,6 +221,7 @@ namespace NADA.VFX.Weapon.Core.State
             WriteBool(customData, VfxStateKeys.InnerFlamesWorldEnabled, state.InnerFlamesWorldEnabled);
             WriteBool(customData, VfxStateKeys.InnerFlamesBlackEnabled, state.InnerFlamesBlackEnabled);
             WriteBool(customData, VfxStateKeys.InnerFlamesWhiteEnabled, state.InnerFlamesWhiteEnabled);
+            WriteFloat(customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
             WriteFloat(customData, VfxStateKeys.InnerFlamesScale, state.InnerFlamesScale);
             WriteFloat(customData, VfxStateKeys.InnerFlamesLuminance, state.InnerFlamesLuminance);
             WriteFloat(customData, VfxStateKeys.InnerFlamesHue, state.InnerFlamesHue);
@@ -526,8 +527,8 @@ namespace NADA.VFX.Weapon.Core.State
             state.OrbitalsOrbsDrift = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsDrift, PluginConfig.OrbitalsOrbsDrift.Value);
 
             state.OrbitalsCoresEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresEnabled, PluginConfig.OrbitalsCores.Value);
-            state.OrbitalsCoresSnakeEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSnakeEnabled, PluginConfig.OrbitalsCores.Value);
-            state.OrbitalsCoresGlueEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresGlueEnabled, PluginConfig.OrbitalsCores.Value);
+            state.OrbitalsCoresSnakeEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSnakeEnabled, PluginConfig.OrbitalsCoresSnake.Value);
+            state.OrbitalsCoresGlueEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresGlueEnabled, PluginConfig.OrbitalsCoresGlue.Value);
             state.OrbitalsCoresSpinEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSpinEnabled, PluginConfig.OrbitalsCoresSpin.Value);
             state.OrbitalsCoresCount = ReadFloat(customData, VfxStateKeys.OrbitalsCoresCount, PluginConfig.OrbitalsCoresCount.Value);
             state.OrbitalsCoresScale = ReadFloat(customData, VfxStateKeys.OrbitalsCoresScale, PluginConfig.OrbitalsCoresScale.Value);

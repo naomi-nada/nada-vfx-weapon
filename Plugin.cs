@@ -21,7 +21,7 @@ namespace NADA.VFX.Weapon
     {
         public const string ModGuid = "naomi.nada.vfx.weapon";
         public const string ModName = "NADA VFX: Weapon";
-        public const string ModVersion = "0.8.4";
+        public const string ModVersion = "0.9.0";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
