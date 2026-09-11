@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
 using UnityEngine;
@@ -13,11 +12,13 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         internal const float DefaultCycleProgressPerSecond = 0.10f;
 
+        private const float HeadHistoryStepMultiplier = 0.25f;
+
         private const int ExtraHistoryPadding = 20;
         private const int MinHistoryStepPerFollower = 1;
         private const int MaxHistoryStepPerFollower = 36;
         private const float HardLockAdherenceThreshold = 0.999f;
-        private const float SnakeSpacingMultiplier = 0.3f;
+        private const float SnakeSpacingMultiplier = 0.55f;
 
         private static readonly Vector3 CoreSpinAxis =
             new Vector3(1f, 1f, 0f).normalized;
@@ -259,8 +260,17 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             foreach (Transform childTransform in _followerPoolRootTransform)
             {
-                if (childTransform != null)
-                    _followerVisualTransforms.Add(childTransform);
+                if (childTransform == null)
+                    continue;
+
+                // The head owns its own slot. Followers should never quietly include it.
+                if (childTransform == _headVisualTransform ||
+                    _headVisualTransform.IsChildOf(childTransform) ||
+                    childTransform.IsChildOf(_headVisualTransform) ||
+                    childTransform.name == _headVisualTransform.name)
+                    continue;
+
+                _followerVisualTransforms.Add(childTransform);
             }
 
             _initialized = true;
@@ -643,8 +653,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 return;
             }
 
+            // The head can lag a little, but it should not become follower zero.
             float headHistorySampleIndex =
-                Mathf.Max(MinHistoryStepPerFollower, historyStepPerFollower);
+                Mathf.Max(0.15f, historyStepPerFollower * HeadHistoryStepMultiplier);
 
             Vector3 driftedHeadWorldPosition =
                 EvaluateDriftedWorldPosition(

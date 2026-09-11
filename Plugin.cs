@@ -21,7 +21,7 @@ namespace NADA.VFX.Weapon
     {
         public const string ModGuid = "naomi.nada.vfx.weapon";
         public const string ModName = "NADA VFX: Weapon";
-        public const string ModVersion = "0.8.2";
+        public const string ModVersion = "0.8.4";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -138,6 +138,8 @@ namespace NADA.VFX.Weapon
                 motion.ResetOrbitStartPoint();
             }
         }
+        
+        
 
         internal void RefreshDroppedItemVisibility()
         {

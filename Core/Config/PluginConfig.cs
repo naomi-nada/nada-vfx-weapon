@@ -22,14 +22,7 @@ namespace NADA.VFX.Weapon.Core.Config
         internal static ConfigEntry<bool> SaveStyle;
         internal static ConfigEntry<string> StyleName;
         internal static ConfigEntry<string> LoadStyle;
-
-        internal static ConfigEntry<float> RigXOffset;
-        internal static ConfigEntry<float> RigYOffset;
-        internal static ConfigEntry<float> RigZOffset;
-        internal static ConfigEntry<float> RigXRotation;
-        internal static ConfigEntry<float> RigYRotation;
-        internal static ConfigEntry<float> RigZRotation;
-
+        
         internal static ConfigEntry<bool> ControlsBottomSpacer;
         internal static ConfigEntry<bool> VisibilityBottomSpacer;
         internal static ConfigEntry<bool> StylesBottomSpacer;
@@ -44,6 +37,13 @@ namespace NADA.VFX.Weapon.Core.Config
         internal static ConfigEntry<bool> OrbitalsCoresBottomSpacer;
         internal static ConfigEntry<bool> OrbitalsFlamesBottomSpacer;
         internal static ConfigEntry<bool> OrbitalsEmbersBottomSpacer;
+
+        internal static ConfigEntry<float> RigXOffset;
+        internal static ConfigEntry<float> RigYOffset;
+        internal static ConfigEntry<float> RigZOffset;
+        internal static ConfigEntry<float> RigXRotation;
+        internal static ConfigEntry<float> RigYRotation;
+        internal static ConfigEntry<float> RigZRotation;
 
         internal static ConfigEntry<bool> InnerFlames = null;
         internal static ConfigEntry<bool> InnerFlamesWorld = null;
@@ -83,6 +83,14 @@ namespace NADA.VFX.Weapon.Core.Config
         internal static ConfigEntry<float> OuterFlamesXRotation = null;
         internal static ConfigEntry<float> OuterFlamesYRotation = null;
         internal static ConfigEntry<float> OuterFlamesZRotation = null;
+        
+        internal static ConfigEntry<bool> Flare = null;
+        internal static ConfigEntry<float> FlareScale = null;
+        internal static ConfigEntry<float> FlareLuminance = null;
+        internal static ConfigEntry<float> FlareHue = null;
+        internal static ConfigEntry<float> FlareXOffset = null;
+        internal static ConfigEntry<float> FlareYOffset = null;
+        internal static ConfigEntry<float> FlareZOffset = null;
 
         internal static ConfigEntry<bool> Strands = null;
         internal static ConfigEntry<bool> StrandsSpectrum = null;
@@ -119,14 +127,6 @@ namespace NADA.VFX.Weapon.Core.Config
         internal static ConfigEntry<float> SparksXRotation = null;
         internal static ConfigEntry<float> SparksYRotation = null;
         internal static ConfigEntry<float> SparksZRotation = null;
-
-        internal static ConfigEntry<bool> Flare = null;
-        internal static ConfigEntry<float> FlareScale = null;
-        internal static ConfigEntry<float> FlareLuminance = null;
-        internal static ConfigEntry<float> FlareHue = null;
-        internal static ConfigEntry<float> FlareXOffset = null;
-        internal static ConfigEntry<float> FlareYOffset = null;
-        internal static ConfigEntry<float> FlareZOffset = null;
 
         internal static ConfigEntry<bool> Aura = null;
         internal static ConfigEntry<float> AuraScale = null;

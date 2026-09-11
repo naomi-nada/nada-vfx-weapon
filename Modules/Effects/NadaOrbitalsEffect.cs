@@ -570,8 +570,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 state.OrbitalsEmbersScale);
             
             ApplySimulationSpeed(
-                _flamesParticleSystems,
-                state.OrbitalsFlamesSimulationSpeed);
+                _embersParticleSystems,
+                state.OrbitalsEmbersSimulationSpeed);
 
             ApplyEmbersLifetime(
                 _embersParticleSystems,

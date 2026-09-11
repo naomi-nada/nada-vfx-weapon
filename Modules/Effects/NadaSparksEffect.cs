@@ -31,6 +31,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private readonly Dictionary<int, Vector3> _baseShapeScale = new();
         private readonly Dictionary<int, Vector3> _baseShapePosition = new();
+        private readonly Dictionary<int, float> _baseShapeRadius = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColor = new();
         private readonly Dictionary<int, bool> _baseColorOverLifetimeEnabled = new();
@@ -113,8 +114,11 @@ namespace NADA.VFX.Weapon.Modules.Effects
             ApplyScale(state.SparksScale);
             ApplyLifetime(state.SparksLifetime);
             ApplySimulationSpeed(state.SparksSimulationSpeed);
-            ApplyLength(state.SparksLength);
-            ApplyWidth(state.SparksWidth);
+
+            ApplySparkField(
+                state.SparksLength,
+                state.SparksWidth);
+
             ApplyHueShift(state.SparksHue, state.SparksLuminance);
             ApplyEnergy(state.SparksEnergy);
 
@@ -302,6 +306,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                         var shape = particleSystem.shape;
                         _baseShapeScale[particleSystemId] = shape.scale;
                         _baseShapePosition[particleSystemId] = shape.position;
+                        _baseShapeRadius[particleSystemId] = shape.radius;
                     }
                     catch { }
                 }
@@ -570,7 +575,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             }
         }
 
-        private void ApplyLength(float length)
+        private void ApplySparkField(float length, float width)
         {
             if (_sparkEmitters.Count == 0)
                 return;
@@ -580,38 +585,51 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 PluginConfig.MinFlameLength,
                 PluginConfig.MaxFlameLength);
 
+            float clampedWidth = Mathf.Clamp(
+                width,
+                PluginConfig.MinSparksWidth,
+                PluginConfig.MaxSparksWidth);
+
             float lengthT = Mathf.InverseLerp(
                 PluginConfig.MinFlameLength,
                 PluginConfig.MaxFlameLength,
                 clampedLength);
 
-            int activeCount = Mathf.Clamp(
-                Mathf.RoundToInt(Mathf.Lerp(1f, _sparkEmitters.Count, lengthT)),
-                1,
-                _sparkEmitters.Count);
+            float widthT = Mathf.InverseLerp(
+                PluginConfig.MinSparksWidth,
+                PluginConfig.MaxSparksWidth,
+                clampedWidth);
 
-            float spread = Mathf.Lerp(0f, SparksMaxSpread, lengthT);
+            float lengthSpread =
+                Mathf.Lerp(0.08f, SparksMaxSpread, lengthT);
+
+            float widthSpread =
+                Mathf.Lerp(0.00f, 0.40f, widthT * widthT);
 
             ApplyEmitterDistribution(
-                activeCount,
-                spread);
+                lengthSpread,
+                widthSpread);
+
+            ApplyParticleFieldShape(
+                lengthSpread,
+                clampedWidth,
+                widthT);
         }
 
         private void ApplyEmitterDistribution(
-            int activeCount,
-            float spread)
+            float lengthSpread,
+            float widthSpread)
         {
+            int activeCount = _sparkEmitters.Count;
+
             for (int i = 0; i < _sparkEmitters.Count; i++)
             {
                 Transform sparkTransform = _sparkEmitters[i];
                 if (sparkTransform == null)
                     continue;
 
-                bool active = i < activeCount;
-                sparkTransform.gameObject.SetActive(active);
-
-                if (!active)
-                    continue;
+                if (!sparkTransform.gameObject.activeSelf)
+                    sparkTransform.gameObject.SetActive(true);
 
                 int transformId = sparkTransform.GetInstanceID();
 
@@ -620,27 +638,67 @@ namespace NADA.VFX.Weapon.Modules.Effects
                         ? cached
                         : Vector3.zero;
 
-                float offset = activeCount <= 1
+                float zOffset = activeCount <= 1
                     ? 0f
                     : Mathf.Lerp(
-                        -spread * 0.5f,
-                        spread * 0.5f,
+                        -lengthSpread * 0.5f,
+                        lengthSpread * 0.5f,
                         i / (float)(activeCount - 1));
 
+                Vector2 widthOffset =
+                    EvaluateSparkWidthOffset(
+                        i,
+                        activeCount,
+                        widthSpread);
+
                 sparkTransform.localPosition =
-                    basePosition + new Vector3(0f, 0f, offset);
+                    basePosition +
+                    new Vector3(
+                        widthOffset.x,
+                        widthOffset.y,
+                        zOffset);
             }
         }
 
-        private void ApplyWidth(float width)
+        private static Vector2 EvaluateSparkWidthOffset(
+            int index,
+            int activeCount,
+            float widthSpread)
+        {
+            if (activeCount <= 1 || widthSpread <= 0.0001f)
+                return Vector2.zero;
+
+            const float goldenAngle = 2.399963f;
+
+            float normalizedIndex =
+                (index + 0.5f) / activeCount;
+
+            float radius =
+                Mathf.Sqrt(normalizedIndex) * widthSpread;
+
+            float angle =
+                index * goldenAngle;
+
+            return new Vector2(
+                Mathf.Cos(angle) * radius,
+                Mathf.Sin(angle) * radius * 0.55f);
+        }
+
+        private void ApplyParticleFieldShape(
+            float lengthSpread,
+            float width,
+            float widthT)
         {
             if (_systems == null)
                 return;
 
-            float clampedWidth = Mathf.Clamp(
-                width,
-                PluginConfig.MinSparksWidth,
-                PluginConfig.MaxSparksWidth);
+            float widthMultiplier =
+                Mathf.Lerp(0.25f, 2.85f, widthT * widthT);
+
+            float zFill =
+                _sparkEmitters.Count <= 1
+                    ? 0.08f
+                    : (lengthSpread / Mathf.Max(1, _sparkEmitters.Count - 1)) * 1.8f;
 
             foreach (ParticleSystem particleSystem in _systems)
             {
@@ -649,18 +707,30 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 int particleSystemId = particleSystem.GetInstanceID();
 
-                if (!_baseShapeScale.TryGetValue(particleSystemId, out Vector3 baseScale))
+                if (!_baseShapeScale.TryGetValue(particleSystemId, out Vector3 baseScale) ||
+                    !_baseShapePosition.TryGetValue(particleSystemId, out Vector3 basePosition))
                     continue;
+
+                float baseRadius =
+                    _baseShapeRadius.TryGetValue(particleSystemId, out float cachedRadius)
+                        ? cachedRadius
+                        : 0f;
 
                 try
                 {
                     var shape = particleSystem.shape;
 
                     Vector3 nextScale = baseScale;
-                    nextScale.x = baseScale.x * clampedWidth;
-                    nextScale.y = baseScale.y * clampedWidth;
+
+                    nextScale.x = Mathf.Max(baseScale.x * widthMultiplier, 0.01f);
+                    nextScale.y = Mathf.Max(baseScale.y * widthMultiplier, 0.01f);
+                    nextScale.z = Mathf.Max(baseScale.z, zFill);
 
                     shape.scale = nextScale;
+                    shape.position = basePosition;
+
+                    if (baseRadius > 0.0001f)
+                        shape.radius = Mathf.Max(baseRadius * widthMultiplier, 0.01f);
                 }
                 catch { }
             }
@@ -808,9 +878,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 if (!_baseMaterialByRendererId.TryGetValue(rendererId, out var materialBaseline) ||
                     materialBaseline == null)
-                {
                     continue;
-                }
 
                 try
                 {
@@ -913,9 +981,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     particleSystemId,
                     out EmissionBaseline baseline) ||
                 baseline == null)
-            {
                 return;
-            }
 
             try
             {
