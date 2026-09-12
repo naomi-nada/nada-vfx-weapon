@@ -12,7 +12,7 @@ A modular runtime VFX system for Valheim that lets you build, customize, and bin
 
 NADA VFX: Weapon is a runtime visual-effects system that lets you create custom VFX rigs for weapons and other held items in Valheim.
 
-Rather than requiring custom effect assets, NADA VFX builds its effects at runtime using existing Valheim VFX as building blocks. Multiple effects can be combined into a single VFX rig and extensively customized.
+Rather than requiring custom effect assets, NADA VFX builds its effects at runtime using existing Valheim materials and components loaded in memory as building blocks. Multiple effects can be combined into a single VFX rig and extensively customized.
 
 Once a VFX rig is created, it can be bound to an individual item. The item's VFX configuration is stored as persistent per-item state, allowing different instances of the same weapon to have completely different effects.
 
