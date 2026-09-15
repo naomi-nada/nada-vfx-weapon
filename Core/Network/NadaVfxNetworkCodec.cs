@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using NADA.VFX.Weapon.Core.State;
 
 namespace NADA.VFX.Weapon.Core.Network
@@ -8,6 +9,10 @@ namespace NADA.VFX.Weapon.Core.Network
     internal static class NadaVfxNetworkCodec
     {
         internal const int CurrentVersion = 1;
+
+        // Current payloads are around 8 KB. Keep enough room for the format to grow without accepting arbitrarily large network data.
+        private const int MaxPayloadBytes = 64 * 1024;
+        private const int MaxStateEntries = 512;
 
         internal static string Serialize(
             int itemHash,
@@ -26,7 +31,12 @@ namespace NADA.VFX.Weapon.Core.Network
                 writer.Write(bound);
                 writer.Write(stateEntries.Count);
 
-                foreach (var pair in stateEntries)
+                // Keep the wire format deterministic. The same state should
+                // produce the same payload regardless of dictionary order.
+                foreach (var pair in stateEntries
+                             .OrderBy(
+                                 pair => pair.Key,
+                                 StringComparer.Ordinal))
                 {
                     writer.Write(pair.Key ?? string.Empty);
                     writer.Write(pair.Value ?? string.Empty);
@@ -53,6 +63,12 @@ namespace NADA.VFX.Weapon.Core.Network
                 byte[] bytes =
                     Convert.FromBase64String(payload);
 
+                if (bytes.Length == 0 ||
+                    bytes.Length > MaxPayloadBytes)
+                {
+                    return false;
+                }
+
                 using var stream =
                     new MemoryStream(bytes);
 
@@ -74,20 +90,19 @@ namespace NADA.VFX.Weapon.Core.Network
                 int entryCount =
                     reader.ReadInt32();
 
-                if (entryCount < 0)
+                if (entryCount < 0 ||
+                    entryCount > MaxStateEntries)
+                {
                     return false;
+                }
 
                 var entries =
                     new Dictionary<string, string>(
                         entryCount);
 
-                snapshot =
-                    new NadaVfxNetworkSnapshot
-                    {
-                        Version = version,
-                        ItemHash = itemHash,
-                        Bound = bound
-                    };
+                var snapshotEntries =
+                    new List<NadaVfxNetworkEntry>(
+                        entryCount);
 
                 for (int i = 0; i < entryCount; i++)
                 {
@@ -102,15 +117,30 @@ namespace NADA.VFX.Weapon.Core.Network
 
                     entries[key] = value;
 
-                    snapshot.Entries.Add(
-                        new NadaVfxNetworkEntry(
-                            key,
-                            value));
+                    snapshotEntries.Add(
+                        new NadaVfxNetworkEntry
+                        {
+                            Key = key,
+                            Value = value
+                        });
                 }
 
+                // One payload should contain exactly one snapshot.
+                // Don't silently accept trailing or malformed data.
+                if (stream.Position != stream.Length)
+                    return false;
+
+                snapshot =
+                    new NadaVfxNetworkSnapshot
+                    {
+                        Version = version,
+                        ItemHash = itemHash,
+                        Bound = bound,
+                        Entries = snapshotEntries
+                    };
+
                 state =
-                    VfxStateIO.FromStateEntries(
-                        entries);
+                    VfxStateIO.FromStateEntries(entries);
 
                 return true;
             }
