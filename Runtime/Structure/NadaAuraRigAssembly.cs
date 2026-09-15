@@ -57,14 +57,19 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                     $"(owner='{ownerNameForLogs}').");
             }
 
-            auraRootTransform.localPosition =
-                Vector3.zero;
+            if (createdAura)
+            {
+                // Structure owns the Aura's starting pose.
+                // NadaAuraEffect owns it once the branch is running.
+                auraRootTransform.localPosition =
+                    Vector3.zero;
 
-            auraRootTransform.localRotation =
-                Quaternion.identity;
+                auraRootTransform.localRotation =
+                    Quaternion.identity;
 
-            auraRootTransform.localScale =
-                Vector3.one;
+                auraRootTransform.localScale =
+                    Vector3.one;
+            }
 
             bool hasAuraShells =
                 HasAuraShells(auraRootTransform);

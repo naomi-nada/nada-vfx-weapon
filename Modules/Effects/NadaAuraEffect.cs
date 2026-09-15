@@ -26,6 +26,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private bool _componentCacheDirty = true;
 
+        private float _lastAppliedHue;
+        private float _lastAppliedLuminance;
+        private bool _hasAppliedColor;
+
         private Vector3 _baseLocalPosition;
         private Quaternion _baseLocalRotation;
         private bool _hasBasePlacement;
@@ -75,7 +79,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
             VfxState state = ResolveState();
 
             ApplyEnabled(state.AuraEnabled);
-            ApplyColor(state.AuraHue, state.AuraLuminance);
+            ApplyColorIfChanged(
+                state.AuraHue,
+                state.AuraLuminance);
+
             ApplyScale(state.AuraScale);
 
             ApplyPlacement(
@@ -139,6 +146,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (shell != null)
                     _auraShells.Add(shell);
             }
+
+            // Any newly discovered Aura renderer still needs the current
+            // color applied once.
+            _hasAppliedColor = false;
         }
 
         private Transform ResolveAuraSearchRoot()
@@ -169,6 +180,30 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 renderer.enabled = enabled;
             }
+        }
+
+        private void ApplyColorIfChanged(
+            float hue,
+            float luminance)
+        {
+            if (_hasAppliedColor &&
+                Mathf.Approximately(
+                    _lastAppliedHue,
+                    hue) &&
+                Mathf.Approximately(
+                    _lastAppliedLuminance,
+                    luminance))
+            {
+                return;
+            }
+
+            ApplyColor(
+                hue,
+                luminance);
+
+            _lastAppliedHue = hue;
+            _lastAppliedLuminance = luminance;
+            _hasAppliedColor = true;
         }
 
         private void ApplyColor(
