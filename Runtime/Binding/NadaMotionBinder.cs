@@ -1,3 +1,4 @@
+using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Modules.Motion;
 using UnityEngine;
 
@@ -13,8 +14,30 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             if (orbitalsFamilyRootTransform == null)
                 return;
 
-            var orbitalsMotion = GetOrAddMotion<NadaOrbitalsMotion>(orbitalsFamilyRootTransform);
-            orbitalsMotion.Configure(family, itemData);
+            var orbitalsMotion =
+                GetOrAddMotion<NadaOrbitalsMotion>(
+                    orbitalsFamilyRootTransform);
+
+            orbitalsMotion.Configure(
+                family,
+                itemData);
+        }
+
+        internal static void BindOrbitalsMotion(
+            Transform orbitalsFamilyRootTransform,
+            NadaOrbitalsFamily family,
+            VfxState state)
+        {
+            if (orbitalsFamilyRootTransform == null)
+                return;
+
+            var orbitalsMotion =
+                GetOrAddMotion<NadaOrbitalsMotion>(
+                    orbitalsFamilyRootTransform);
+
+            orbitalsMotion.Configure(
+                family,
+                state);
         }
 
         internal static void BindOrbitalsMotion(
@@ -27,8 +50,37 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             if (orbitalsMotionRootTransform == null)
                 return;
 
-            var orbitalsMotion = GetOrAddMotion<NadaOrbitalsMotion>(orbitalsMotionRootTransform);
-            orbitalsMotion.Configure(family, itemData);
+            var orbitalsMotion =
+                GetOrAddMotion<NadaOrbitalsMotion>(
+                    orbitalsMotionRootTransform);
+
+            orbitalsMotion.Configure(
+                family,
+                itemData);
+
+            orbitalsMotion.SetExternalVisualChain(
+                externalHeadVisualTransform,
+                externalFollowerPoolRootTransform);
+        }
+
+        internal static void BindOrbitalsMotion(
+            Transform orbitalsMotionRootTransform,
+            NadaOrbitalsFamily family,
+            VfxState state,
+            Transform externalHeadVisualTransform,
+            Transform externalFollowerPoolRootTransform)
+        {
+            if (orbitalsMotionRootTransform == null)
+                return;
+
+            var orbitalsMotion =
+                GetOrAddMotion<NadaOrbitalsMotion>(
+                    orbitalsMotionRootTransform);
+
+            orbitalsMotion.Configure(
+                family,
+                state);
+
             orbitalsMotion.SetExternalVisualChain(
                 externalHeadVisualTransform,
                 externalFollowerPoolRootTransform);
@@ -64,8 +116,27 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             if (outerFlamesRootTransform == null)
                 return;
 
-            var outerFlamesMotion = GetOrAddMotion<NadaOuterFlamesMotion>(outerFlamesRootTransform);
-            outerFlamesMotion.SetItemData(itemData);
+            var outerFlamesMotion =
+                GetOrAddMotion<NadaOuterFlamesMotion>(
+                    outerFlamesRootTransform);
+
+            outerFlamesMotion.SetItemData(
+                itemData);
+        }
+
+        internal static void BindOuterFlamesMotion(
+            Transform outerFlamesRootTransform,
+            VfxState state)
+        {
+            if (outerFlamesRootTransform == null)
+                return;
+
+            var outerFlamesMotion =
+                GetOrAddMotion<NadaOuterFlamesMotion>(
+                    outerFlamesRootTransform);
+
+            outerFlamesMotion.SetResolvedState(
+                state);
         }
 
         private static void BindTargetFollowInternal(
@@ -74,20 +145,37 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             Vector3 localPositionOffset,
             Quaternion localRotationOffset)
         {
-            if (targetFollowerTransform == null || followTargetTransform == null)
+            if (targetFollowerTransform == null ||
+                followTargetTransform == null)
+            {
                 return;
+            }
 
-            var targetFollowMotion = GetOrAddMotion<NadaTargetFollowMotion>(targetFollowerTransform);
-            targetFollowMotion.SetLocalOffset(localPositionOffset, localRotationOffset);
-            targetFollowMotion.SetTargetTransform(followTargetTransform);
+            var targetFollowMotion =
+                GetOrAddMotion<NadaTargetFollowMotion>(
+                    targetFollowerTransform);
+
+            targetFollowMotion.SetLocalOffset(
+                localPositionOffset,
+                localRotationOffset);
+
+            targetFollowMotion.SetTargetTransform(
+                followTargetTransform);
         }
 
-        private static TMotion GetOrAddMotion<TMotion>(Transform rootTransform)
+        private static TMotion GetOrAddMotion<TMotion>(
+            Transform rootTransform)
             where TMotion : Component
         {
-            TMotion motion = rootTransform.GetComponent<TMotion>();
+            TMotion motion =
+                rootTransform.GetComponent<TMotion>();
+
             if (motion == null)
-                motion = rootTransform.gameObject.AddComponent<TMotion>();
+            {
+                motion =
+                    rootTransform.gameObject
+                        .AddComponent<TMotion>();
+            }
 
             return motion;
         }

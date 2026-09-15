@@ -8,12 +8,18 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Effects
 {
-    internal sealed class NadaAuraEffect : MonoBehaviour, INadaItemDataReceiver
+    internal sealed class NadaAuraEffect :
+        MonoBehaviour,
+        INadaItemDataReceiver,
+        INadaResolvedStateReceiver
     {
         private static readonly Color BaseAuraColor =
             new(0.925f, 0.157f, 0.953f, 0.02f);
 
         private global::ItemDrop.ItemData _itemData;
+
+        private VfxState _resolvedState;
+        private bool _hasResolvedState;
 
         private readonly List<Renderer> _auraRenderers = new();
         private readonly List<NadaAuraShell> _auraShells = new();
@@ -26,7 +32,21 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
+            if (_itemData == itemData &&
+                !_hasResolvedState)
+            {
+                return;
+            }
+
             _itemData = itemData;
+            _hasResolvedState = false;
+        }
+
+        public void SetResolvedState(VfxState state)
+        {
+            _resolvedState = state;
+            _hasResolvedState = true;
+            _itemData = null;
         }
 
         private void Awake()
@@ -69,10 +89,18 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private VfxState ResolveState()
         {
-            if (_itemData != null && VfxStateIO.IsBound(_itemData))
+            if (_hasResolvedState)
+                return _resolvedState;
+
+            if (_itemData != null &&
+                VfxStateIO.IsBound(_itemData))
             {
-                if (VfxStateIO.TryRead(_itemData, out var itemState))
+                if (VfxStateIO.TryRead(
+                        _itemData,
+                        out VfxState itemState))
+                {
                     return itemState;
+                }
             }
 
             return VfxStateIO.FromConfig();
@@ -95,13 +123,18 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             Transform searchRoot = ResolveAuraSearchRoot();
 
-            foreach (Renderer renderer in searchRoot.GetComponentsInChildren<Renderer>(true))
+            foreach (Renderer renderer in
+                     searchRoot.GetComponentsInChildren<Renderer>(true))
             {
-                if (renderer != null && IsAuraRenderer(renderer.transform))
+                if (renderer != null &&
+                    IsAuraRenderer(renderer.transform))
+                {
                     _auraRenderers.Add(renderer);
+                }
             }
 
-            foreach (NadaAuraShell shell in searchRoot.GetComponentsInChildren<NadaAuraShell>(true))
+            foreach (NadaAuraShell shell in
+                     searchRoot.GetComponentsInChildren<NadaAuraShell>(true))
             {
                 if (shell != null)
                     _auraShells.Add(shell);
@@ -115,7 +148,11 @@ namespace NADA.VFX.Weapon.Modules.Effects
             while (current != null)
             {
                 if (current.name == Plugin.LocalWeaponRootName)
-                    return current.parent != null ? current.parent : transform;
+                {
+                    return current.parent != null
+                        ? current.parent
+                        : transform;
+                }
 
                 current = current.parent;
             }
@@ -134,18 +171,24 @@ namespace NADA.VFX.Weapon.Modules.Effects
             }
         }
 
-        private void ApplyColor(float hue, float luminance)
+        private void ApplyColor(
+            float hue,
+            float luminance)
         {
-            float targetHue = NadaHueShiftUtility.SliderValueToTargetHue(hue);
+            float targetHue =
+                NadaHueShiftUtility.SliderValueToTargetHue(hue);
 
-            float clampedLuminance = Mathf.Clamp(
-                luminance,
-                PluginConfig.MinLuminance,
-                PluginConfig.MaxLuminance);
+            float clampedLuminance =
+                Mathf.Clamp(
+                    luminance,
+                    PluginConfig.MinLuminance,
+                    PluginConfig.MaxLuminance);
 
             Color tintedColor =
                 NadaLuminanceUtility.ApplyToColor(
-                    NadaHueShiftUtility.RetintColorToHue(BaseAuraColor, targetHue),
+                    NadaHueShiftUtility.RetintColorToHue(
+                        BaseAuraColor,
+                        targetHue),
                     clampedLuminance);
 
             foreach (Renderer renderer in _auraRenderers)
@@ -163,12 +206,20 @@ namespace NADA.VFX.Weapon.Modules.Effects
                         continue;
 
                     if (material.HasProperty("_TintColor"))
-                        material.SetColor("_TintColor", tintedColor);
+                    {
+                        material.SetColor(
+                            "_TintColor",
+                            tintedColor);
+                    }
 
                     if (material.HasProperty("_EmissionColor"))
                     {
                         material.EnableKeyword("_EMISSION");
-                        material.SetColor("_EmissionColor", tintedColor * clampedLuminance);
+
+                        material.SetColor(
+                            "_EmissionColor",
+                            tintedColor *
+                            clampedLuminance);
                     }
                 }
             }
@@ -199,17 +250,20 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void ApplyScale(float scale)
         {
-            float clampedScale = Mathf.Clamp(
-                scale,
-                PluginConfig.MinAuraScale,
-                PluginConfig.MaxAuraScale);
+            float clampedScale =
+                Mathf.Clamp(
+                    scale,
+                    PluginConfig.MinAuraScale,
+                    PluginConfig.MaxAuraScale);
 
             foreach (NadaAuraShell shell in _auraShells)
             {
                 if (shell == null)
                     continue;
 
-                ApplyShellScale(shell, clampedScale);
+                ApplyShellScale(
+                    shell,
+                    clampedScale);
             }
         }
 
@@ -217,20 +271,25 @@ namespace NADA.VFX.Weapon.Modules.Effects
             NadaAuraShell shell,
             float clampedScale)
         {
-            Transform scalePivot = shell.transform.parent;
+            Transform scalePivot =
+                shell.transform.parent;
 
             if (scalePivot != null &&
-                scalePivot.name.StartsWith("Aura Shell", System.StringComparison.Ordinal))
+                scalePivot.name.StartsWith(
+                    "Aura Shell",
+                    System.StringComparison.Ordinal))
             {
-                scalePivot.localScale = shell.UsesReadableMesh
-                    ? shell.BasePivotLocalScale
-                    : BuildBoundsAwareUnreadableScale(
-                        shell.BasePivotLocalScale,
-                        shell.SourceBoundsSize,
-                        clampedScale);
+                scalePivot.localScale =
+                    shell.UsesReadableMesh
+                        ? shell.BasePivotLocalScale
+                        : BuildBoundsAwareUnreadableScale(
+                            shell.BasePivotLocalScale,
+                            shell.SourceBoundsSize,
+                            clampedScale);
             }
 
-            shell.transform.localScale = Vector3.one;
+            shell.transform.localScale =
+                Vector3.one;
 
             if (shell.UsesReadableMesh)
                 shell.ApplyScale(clampedScale);
@@ -238,19 +297,25 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private static float ClampOffset(float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
                 return PluginConfig.DefaultEffectOffset;
+            }
 
             return Mathf.Clamp(
                 value,
                 PluginConfig.MinEffectOffset,
                 PluginConfig.MaxEffectOffset);
         }
-        
+
         private static float ClampRotation(float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
                 return PluginConfig.DefaultEffectRotation;
+            }
 
             return Mathf.Clamp(
                 value,
@@ -263,31 +328,46 @@ namespace NADA.VFX.Weapon.Modules.Effects
             Vector3 boundsSize,
             float scale)
         {
-            float delta = scale - 1f;
+            float delta =
+                scale - 1f;
 
-            int longAxis = GetLargestAxis(boundsSize);
+            int longAxis =
+                GetLargestAxis(boundsSize);
 
-            Vector3 weights = Vector3.one;
-            weights[longAxis] = 0.15f;
+            Vector3 weights =
+                Vector3.one;
+
+            weights[longAxis] =
+                0.15f;
 
             return new Vector3(
-                basePivotScale.x * (1f + delta * weights.x),
-                basePivotScale.y * (1f + delta * weights.y),
-                basePivotScale.z * (1f + delta * weights.z));
+                basePivotScale.x *
+                (1f + delta * weights.x),
+                basePivotScale.y *
+                (1f + delta * weights.y),
+                basePivotScale.z *
+                (1f + delta * weights.z));
         }
 
         private static int GetLargestAxis(Vector3 value)
         {
-            if (value.x >= value.y && value.x >= value.z)
+            if (value.x >= value.y &&
+                value.x >= value.z)
+            {
                 return 0;
+            }
 
-            if (value.y >= value.x && value.y >= value.z)
+            if (value.y >= value.x &&
+                value.y >= value.z)
+            {
                 return 1;
+            }
 
             return 2;
         }
 
-        private static bool IsAuraRenderer(Transform transform)
+        private static bool IsAuraRenderer(
+            Transform transform)
         {
             if (transform == null)
                 return false;
@@ -295,13 +375,20 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (transform.name == "Aura Mesh")
                 return true;
 
-            if (transform.name.StartsWith("Aura Shell", System.StringComparison.Ordinal))
+            if (transform.name.StartsWith(
+                    "Aura Shell",
+                    System.StringComparison.Ordinal))
+            {
                 return true;
+            }
 
-            Transform parent = transform.parent;
+            Transform parent =
+                transform.parent;
 
             return parent != null &&
-                   parent.name.StartsWith("Aura Shell", System.StringComparison.Ordinal);
+                   parent.name.StartsWith(
+                       "Aura Shell",
+                       System.StringComparison.Ordinal);
         }
     }
 }

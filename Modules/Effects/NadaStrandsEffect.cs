@@ -8,11 +8,17 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Effects
 {
-    internal sealed class NadaStrandsEffect : MonoBehaviour, INadaItemDataReceiver
+    internal sealed class NadaStrandsEffect :
+        MonoBehaviour,
+        INadaItemDataReceiver,
+        INadaResolvedStateReceiver
     {
         private const float AuthoredScaleMultiplier = 0.50f;
 
         private global::ItemDrop.ItemData _itemData;
+
+        private VfxState _resolvedState;
+        private bool _hasResolvedState;
 
         private ParticleSystem[] _systems;
         private Renderer[] _renderers;
@@ -52,7 +58,21 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
+            if (_itemData == itemData &&
+                !_hasResolvedState)
+            {
+                return;
+            }
+
             _itemData = itemData;
+            _hasResolvedState = false;
+        }
+
+        public void SetResolvedState(VfxState state)
+        {
+            _resolvedState = state;
+            _hasResolvedState = true;
+            _itemData = null;
         }
 
         private void Awake()
@@ -109,7 +129,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             ApplyLength(state.StrandsLength);
             ApplyRadius(state.StrandsRadius);
             ApplyLifetime(state.StrandsLifetime);
-            
+
             ApplyPlacement(
                 state.StrandsXOffset,
                 state.StrandsYOffset,
@@ -121,15 +141,27 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private VfxState ResolveState()
         {
+            if (_hasResolvedState)
+                return _resolvedState;
+
             if (_itemData != null)
             {
-                if (VfxStateIO.TryRead(_itemData, out var itemState))
+                if (VfxStateIO.TryRead(
+                        _itemData,
+                        out VfxState itemState))
+                {
                     return itemState;
+                }
 
-                VfxStateIO.EnsureInitializedFromConfig(_itemData);
+                VfxStateIO.EnsureInitializedFromConfig(
+                    _itemData);
 
-                if (VfxStateIO.TryRead(_itemData, out itemState))
+                if (VfxStateIO.TryRead(
+                        _itemData,
+                        out itemState))
+                {
                     return itemState;
+                }
             }
 
             return VfxStateIO.FromConfig();
@@ -389,7 +421,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             transform.position = _driftWorldPosition;
             transform.rotation = _driftWorldRotation;
         }
-        
+
         private void ApplyPlacement(
             float xOffset,
             float yOffset,
@@ -412,7 +444,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 ClampRotation(yRotation),
                 ClampRotation(zRotation));
         }
-        
+
         private void ApplySimulationSpace(
             ParticleSystemSimulationSpace simulationSpace)
         {
@@ -787,7 +819,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 PluginConfig.MinEffectOffset,
                 PluginConfig.MaxEffectOffset);
         }
-        
+
         private static float ClampRotation(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))

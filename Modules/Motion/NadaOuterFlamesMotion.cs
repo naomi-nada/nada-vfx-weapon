@@ -1,16 +1,21 @@
 using System.Collections.Generic;
+using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Runtime.Binding;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Motion
 {
-    internal sealed class NadaOuterFlamesMotion : MonoBehaviour
+    internal sealed class NadaOuterFlamesMotion :
+        MonoBehaviour,
+        INadaResolvedStateReceiver
     {
         private const float DefaultDragStrength = 0.015f;
         private const float MaxTrackedVelocity = 12f;
         private const float VelocitySmoothing = 12f;
 
         private global::ItemDrop.ItemData _itemData;
+        private VfxState _resolvedState;
+        private bool _hasResolvedState;
 
         private readonly List<CachedParticle> _particles = new();
 
@@ -31,10 +36,24 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         internal void SetItemData(global::ItemDrop.ItemData itemData)
         {
-            if (_itemData == itemData)
+            if (_itemData == itemData &&
+                !_hasResolvedState)
+            {
                 return;
+            }
 
             _itemData = itemData;
+            _hasResolvedState = false;
+
+            ResetVelocityTracking();
+        }
+
+        public void SetResolvedState(VfxState state)
+        {
+            _resolvedState = state;
+            _hasResolvedState = true;
+            _itemData = null;
+
             ResetVelocityTracking();
         }
 
@@ -52,11 +71,18 @@ namespace NADA.VFX.Weapon.Modules.Motion
             if (_particles.Count == 0)
                 return;
 
-            Vector3 weaponVelocity = CalculateSmoothedWeaponVelocity();
+            Vector3 weaponVelocity =
+                CalculateSmoothedWeaponVelocity();
 
-            if (!NadaMotionTuningResolver.GetOuterFlamesDragEnabled(_itemData))
+            VfxState state =
+                ResolveState();
+
+            if (!state.OuterFlamesDragEnabled)
             {
-                ApplyDragVelocity(Vector3.zero, 0f);
+                ApplyDragVelocity(
+                    Vector3.zero,
+                    0f);
+
                 return;
             }
 
@@ -67,27 +93,42 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private Vector3 CalculateSmoothedWeaponVelocity()
         {
-            Vector3 currentWorldPosition = transform.position;
-            Vector3 weaponVelocity = Vector3.zero;
+            Vector3 currentWorldPosition =
+                transform.position;
+
+            Vector3 weaponVelocity =
+                Vector3.zero;
 
             if (_hasLastWorldPosition)
             {
-                float deltaTime = Mathf.Max(Time.deltaTime, 0.0001f);
+                float deltaTime =
+                    Mathf.Max(
+                        Time.deltaTime,
+                        0.0001f);
 
                 weaponVelocity =
-                    (currentWorldPosition - _lastWorldPosition) / deltaTime;
+                    (currentWorldPosition -
+                     _lastWorldPosition) /
+                    deltaTime;
 
                 weaponVelocity =
-                    Vector3.ClampMagnitude(weaponVelocity, MaxTrackedVelocity);
+                    Vector3.ClampMagnitude(
+                        weaponVelocity,
+                        MaxTrackedVelocity);
             }
 
-            _lastWorldPosition = currentWorldPosition;
-            _hasLastWorldPosition = true;
+            _lastWorldPosition =
+                currentWorldPosition;
 
-            _smoothedVelocity = Vector3.Lerp(
-                _smoothedVelocity,
-                weaponVelocity,
-                Time.deltaTime * VelocitySmoothing);
+            _hasLastWorldPosition =
+                true;
+
+            _smoothedVelocity =
+                Vector3.Lerp(
+                    _smoothedVelocity,
+                    weaponVelocity,
+                    Time.deltaTime *
+                    VelocitySmoothing);
 
             return _smoothedVelocity;
         }
@@ -96,67 +137,122 @@ namespace NADA.VFX.Weapon.Modules.Motion
         {
             _particles.Clear();
 
-            foreach (ParticleSystem particleSystem in GetComponentsInChildren<ParticleSystem>(true))
+            foreach (ParticleSystem particleSystem in
+                     GetComponentsInChildren<ParticleSystem>(true))
             {
                 if (particleSystem == null)
                     continue;
 
                 try
                 {
-                    var velocityOverLifetime = particleSystem.velocityOverLifetime;
-                    velocityOverLifetime.enabled = true;
-                    velocityOverLifetime.space = ParticleSystemSimulationSpace.World;
+                    var velocityOverLifetime =
+                        particleSystem.velocityOverLifetime;
 
-                    _particles.Add(new CachedParticle
-                    {
-                        System = particleSystem,
-                        Velocity = velocityOverLifetime
-                    });
+                    velocityOverLifetime.enabled =
+                        true;
+
+                    velocityOverLifetime.space =
+                        ParticleSystemSimulationSpace.World;
+
+                    _particles.Add(
+                        new CachedParticle
+                        {
+                            System = particleSystem,
+                            Velocity = velocityOverLifetime
+                        });
                 }
-                catch { }
+                catch
+                {
+                }
             }
 
-            _initialized = _particles.Count > 0;
+            _initialized =
+                _particles.Count > 0;
         }
-        
+
+        private VfxState ResolveState()
+        {
+            if (_hasResolvedState)
+                return _resolvedState;
+
+            if (_itemData != null &&
+                VfxStateIO.TryRead(
+                    _itemData,
+                    out VfxState itemState))
+            {
+                return itemState;
+            }
+
+            return VfxStateIO.FromConfig();
+        }
+
         private void ResetVelocityTracking()
         {
-            _lastWorldPosition = transform.position;
-            _hasLastWorldPosition = true;
-            _smoothedVelocity = Vector3.zero;
+            _lastWorldPosition =
+                transform.position;
+
+            _hasLastWorldPosition =
+                true;
+
+            _smoothedVelocity =
+                Vector3.zero;
         }
 
         private float ResolveDragStrength()
         {
             float tunedValue =
-                NadaMotionTuningResolver.GetOuterFlamesDrag(_itemData);
+                0.35f;
 
-            if (float.IsNaN(tunedValue) || float.IsInfinity(tunedValue))
+            if (float.IsNaN(tunedValue) ||
+                float.IsInfinity(tunedValue))
+            {
                 return DefaultDragStrength;
+            }
 
-            return Mathf.Max(0f, tunedValue);
+            return Mathf.Max(
+                0f,
+                tunedValue);
         }
 
-        private void ApplyDragVelocity(Vector3 weaponVelocity, float dragStrength)
+        private void ApplyDragVelocity(
+            Vector3 weaponVelocity,
+            float dragStrength)
         {
-            Vector3 dragVelocity = -weaponVelocity * dragStrength;
+            Vector3 dragVelocity =
+                -weaponVelocity *
+                dragStrength;
 
-            _xCurve.constant = dragVelocity.x;
-            _yCurve.constant = dragVelocity.y;
-            _zCurve.constant = dragVelocity.z;
+            _xCurve.constant =
+                dragVelocity.x;
+
+            _yCurve.constant =
+                dragVelocity.y;
+
+            _zCurve.constant =
+                dragVelocity.z;
 
             foreach (CachedParticle particle in _particles)
             {
-                if (particle == null || particle.System == null)
+                if (particle == null ||
+                    particle.System == null)
+                {
                     continue;
+                }
 
                 try
                 {
-                    particle.Velocity.x = _xCurve;
-                    particle.Velocity.y = _yCurve;
-                    particle.Velocity.z = _zCurve;
+                    particle.Velocity.x =
+                        _xCurve;
+
+                    particle.Velocity.y =
+                        _yCurve;
+
+                    particle.Velocity.z =
+                        _zCurve;
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
     }

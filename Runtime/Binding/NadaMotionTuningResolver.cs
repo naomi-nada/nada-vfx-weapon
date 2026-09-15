@@ -8,65 +8,84 @@ namespace NADA.VFX.Weapon.Runtime.Binding
         // 0f = fully adhere to orbit path relative to moving host
         // 1f = free drift
 
-        internal static float GetOrbsOrbitAdherence(global::ItemDrop.ItemData itemData)
+        internal static float GetOrbsOrbitAdherence(
+            global::ItemDrop.ItemData itemData)
         {
-            VfxState state = ResolveState(itemData);
-            return DriftToAdherence(state.OrbitalsOrbsDrift);
-        }
-        
-        internal static float GetFlamesOrbitAdherence(global::ItemDrop.ItemData itemData)
-        {
-            VfxState state = ResolveState(itemData);
-            return DriftToAdherence(state.OrbitalsFlamesDrift);
+            VfxState state =
+                ResolveState(itemData);
+
+            return DriftToAdherence(
+                state.OrbitalsOrbsDrift);
         }
 
-        internal static float GetEmbersOrbitAdherence(global::ItemDrop.ItemData itemData)
+        internal static float GetFlamesOrbitAdherence(
+            global::ItemDrop.ItemData itemData)
         {
-            VfxState state = ResolveState(itemData);
-            return DriftToAdherence(state.OrbitalsEmbersDrift);
+            VfxState state =
+                ResolveState(itemData);
+
+            return DriftToAdherence(
+                state.OrbitalsFlamesDrift);
         }
 
-        internal static float GetCoresOrbitAdherence(global::ItemDrop.ItemData itemData)
+        internal static float GetEmbersOrbitAdherence(
+            global::ItemDrop.ItemData itemData)
         {
-            VfxState state = ResolveState(itemData);
-            return DriftToAdherence(state.OrbitalsCoresDrift);
+            VfxState state =
+                ResolveState(itemData);
+
+            return DriftToAdherence(
+                state.OrbitalsEmbersDrift);
         }
 
-        internal static bool GetOuterFlamesDragEnabled(global::ItemDrop.ItemData itemData)
+        internal static float GetCoresOrbitAdherence(
+            global::ItemDrop.ItemData itemData)
         {
-            VfxState state = ResolveState(itemData);
-            return state.OuterFlamesDragEnabled;
+            VfxState state =
+                ResolveState(itemData);
+
+            return DriftToAdherence(
+                state.OrbitalsCoresDrift);
         }
 
-        internal static float GetOuterFlamesDrag(global::ItemDrop.ItemData itemData)
+        private static VfxState ResolveState(
+            global::ItemDrop.ItemData itemData)
         {
-            return 0.35f;
-        }
+            if (itemData == null)
+                return VfxStateIO.FromConfig();
 
-        private static VfxState ResolveState(global::ItemDrop.ItemData itemData)
-        {
-            if (itemData != null)
+            if (VfxStateIO.TryRead(
+                    itemData,
+                    out VfxState state))
             {
-                if (!VfxStateIO.TryRead(itemData, out VfxState state))
-                {
-                    VfxStateIO.EnsureInitializedFromConfig(itemData);
+                return state;
+            }
 
-                    if (!VfxStateIO.TryRead(itemData, out state))
-                        state = VfxStateIO.FromConfig();
-                }
+            VfxStateIO.EnsureInitializedFromConfig(
+                itemData);
 
+            if (VfxStateIO.TryRead(
+                    itemData,
+                    out state))
+            {
                 return state;
             }
 
             return VfxStateIO.FromConfig();
         }
 
-        private static float DriftToAdherence(float drift)
+        private static float DriftToAdherence(
+            float drift)
         {
-            if (float.IsNaN(drift) || float.IsInfinity(drift))
+            if (float.IsNaN(drift) ||
+                float.IsInfinity(drift))
+            {
                 drift = 0f;
+            }
 
-            drift = Mathf.Clamp01(drift);
+            drift =
+                Mathf.Clamp01(drift);
+
             return 1f - drift;
         }
     }

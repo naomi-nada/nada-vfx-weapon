@@ -10,9 +10,11 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Effects
 {
-    internal sealed class NadaOrbitalsEffect : MonoBehaviour, INadaItemDataReceiver
+    internal sealed class NadaOrbitalsEffect : MonoBehaviour, INadaItemDataReceiver, INadaResolvedStateReceiver
     {
         private global::ItemDrop.ItemData _itemData;
+        private VfxState _resolvedState;
+        private bool _hasResolvedState;
 
         // Orbs
         private Transform _orbsRootTransform;
@@ -117,7 +119,18 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
+            if (_itemData == itemData && !_hasResolvedState)
+                return;
+
             _itemData = itemData;
+            _hasResolvedState = false;
+        }
+        
+        public void SetResolvedState(VfxState state)
+        {
+            _resolvedState = state;
+            _hasResolvedState = true;
+            _itemData = null;
         }
 
         internal void SetLocalOrbsRootTransform(Transform localOrbsRootTransform)
@@ -174,6 +187,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private VfxState ResolveState()
         {
+            if (_hasResolvedState)
+                return _resolvedState;
+
             if (_itemData != null)
             {
                 if (VfxStateIO.TryRead(_itemData, out var itemState))
@@ -1132,18 +1148,24 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                     try
                     {
+                        // Motion owns whether pooled follower GameObjects are active.
+                        // Effects only control behavior on visuals that are already active.
+                        if (!particleSystem.gameObject.activeInHierarchy)
+                            continue;
+
                         if (enabled)
                         {
-                            if (!particleSystem.gameObject.activeSelf)
-                                particleSystem.gameObject.SetActive(true);
-
                             if (!particleSystem.isPlaying)
                                 particleSystem.Play(true);
                         }
                         else
                         {
                             if (particleSystem.isPlaying)
-                                particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                            {
+                                particleSystem.Stop(
+                                    true,
+                                    ParticleSystemStopBehavior.StopEmittingAndClear);
+                            }
                         }
                     }
                     catch { }
@@ -1157,7 +1179,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     if (renderer == null)
                         continue;
 
-                    try { renderer.enabled = enabled; } catch { }
+                    try
+                    {
+                        if (!renderer.gameObject.activeInHierarchy)
+                            continue;
+
+                        renderer.enabled = enabled;
+                    }
+                    catch { }
                 }
             }
 
@@ -1168,7 +1197,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     if (light == null)
                         continue;
 
-                    try { light.enabled = enabled; } catch { }
+                    try
+                    {
+                        if (!light.gameObject.activeInHierarchy)
+                            continue;
+
+                        light.enabled = enabled;
+                    }
+                    catch { }
                 }
             }
         }
@@ -1214,8 +1250,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             foreach (var particleSystem in particleSystems)
             {
-                if (particleSystem != null && !particleSystem.isPlaying)
+                if (particleSystem != null &&
+                    particleSystem.gameObject.activeInHierarchy &&
+                    !particleSystem.isPlaying)
+                {
                     particleSystem.Play(true);
+                }
             }
         }
 

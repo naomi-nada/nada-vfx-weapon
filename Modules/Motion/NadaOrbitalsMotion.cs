@@ -7,6 +7,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
 {
     internal sealed class NadaOrbitalsMotion : MonoBehaviour
     {
+        private VfxState _resolvedState;
+        private bool _hasResolvedState;
+        
         private const int MaxOrbitalsVisuals = 40;
         private const int ArcLengthSampleCount = 192;
 
@@ -66,7 +69,39 @@ namespace NADA.VFX.Weapon.Modules.Motion
             global::ItemDrop.ItemData itemData)
         {
             _orbitalsFamily = orbitalsFamily;
+
             _itemData = itemData;
+            _hasResolvedState = false;
+        }
+        
+        internal void Configure(
+            NadaOrbitalsFamily orbitalsFamily,
+            VfxState state)
+        {
+            _orbitalsFamily = orbitalsFamily;
+
+            _resolvedState = state;
+            _hasResolvedState = true;
+            _itemData = null;
+        }
+        
+        private VfxState ResolveState()
+        {
+            if (_hasResolvedState)
+                return _resolvedState;
+
+            if (_itemData != null &&
+                VfxStateIO.IsBound(_itemData))
+            {
+                if (VfxStateIO.TryRead(
+                        _itemData,
+                        out var itemState))
+                {
+                    return itemState;
+                }
+            }
+
+            return VfxStateIO.FromConfig();
         }
 
         internal void SetExternalVisualChain(
@@ -315,17 +350,6 @@ namespace NADA.VFX.Weapon.Modules.Motion
             }
 
             ResetOrbitStartPoint();
-        }
-
-        private VfxState ResolveState()
-        {
-            if (_itemData != null && VfxStateIO.IsBound(_itemData))
-            {
-                if (VfxStateIO.TryRead(_itemData, out var itemState))
-                    return itemState;
-            }
-
-            return VfxStateIO.FromConfig();
         }
 
         private bool ResolveFamilyEnabled(VfxState state)

@@ -27,11 +27,13 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             }
             catch (Exception e)
             {
-                Plugin.Log.LogWarning($"{Plugin.ModName}: ItemDrop.Awake postfix error: {e}");
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: ItemDrop.Awake postfix error: {e}");
             }
         }
 
-        private static IEnumerator CheckDroppedItemWhenReady(global::ItemDrop itemDrop)
+        private static IEnumerator CheckDroppedItemWhenReady(
+            global::ItemDrop itemDrop)
         {
             yield return null;
             yield return null;
@@ -39,18 +41,20 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             if (itemDrop == null || itemDrop.gameObject == null)
                 yield break;
 
-            var itemData = itemDrop.m_itemData;
+            global::ItemDrop.ItemData itemData = itemDrop.m_itemData;
             if (itemData == null)
                 yield break;
 
-            bool isBound = VfxStateIO.IsBound(itemData);
-            if (!isBound)
+            if (!VfxStateIO.IsBound(itemData))
                 yield break;
 
-            var controller = new Runtime.NadaWeaponRigController();
+            var controller =
+                new Runtime.NadaWeaponRigController();
 
             bool applied =
-                controller.TryApplyDroppedItem(itemDrop.gameObject, itemData);
+                controller.TryApplyDroppedItem(
+                    itemDrop.gameObject,
+                    itemData);
 
             if (!applied)
             {
@@ -59,6 +63,7 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     $"object='{itemDrop.gameObject.name}' " +
                     $"item='{itemData.m_shared?.m_name}' " +
                     $"path='{NadaWeaponTargets.FullPath(itemDrop.transform)}'");
+
                 yield break;
             }
 

@@ -41,16 +41,27 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             global::ItemDrop.ItemData itemData,
             Transform weaponVisualRootTransform)
         {
+            NadaWeaponMetadata metadata =
+                NadaWeaponMetadataResolver.FromItemData(
+                    itemData);
+
+            return Resolve(
+                metadata,
+                weaponVisualRootTransform);
+        }
+
+        internal static NadaWeaponRigAlignment Resolve(
+            NadaWeaponMetadata metadata,
+            Transform weaponVisualRootTransform)
+        {
             if (weaponVisualRootTransform == null)
                 return Default();
 
             string itemName =
-                itemData?.m_shared?.m_name ??
-                string.Empty;
+                metadata.ItemName;
 
             string itemType =
-                itemData?.m_shared?.m_itemType.ToString() ??
-                string.Empty;
+                metadata.ItemType;
 
             Vector3 localCenter =
                 ResolveVisualLocalCenter(
@@ -531,10 +542,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
         }
 
         /// <summary>
-        /// These are the carried weapon categories for which we currently
-        /// have direct evidence that visual-basis normalization is valid.
-        ///
-        /// Keep this deliberately narrow until other categories are tested.
+        /// These are the carried weapon categories where we've actually tested
+        /// the visual-basis correction. Keep this narrow until we know more.
         /// </summary>
         private static bool IsSupportedWeaponTypeForBasisNormalization(
             string itemType)

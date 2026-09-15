@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Effects
 {
-    internal sealed class NadaInnerFlamesEffect : MonoBehaviour, INadaItemDataReceiver
+    internal sealed class NadaInnerFlamesEffect : MonoBehaviour, INadaItemDataReceiver, INadaResolvedStateReceiver
     {
         private static readonly Color BlackFlameColor = new Color(0.10f, 0.035f, 0.16f, 1f);
         private static readonly Color BlackFlameParticleColor = new Color(0.55f, 0.20f, 0.85f, 1f);
@@ -18,6 +18,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private Renderer[] _renderers;
         private Light[] _lights;
         private ParticleSystem[] _systems;
+        
+        private VfxState _resolvedState;
+        private bool _hasResolvedState;
 
         private bool _componentCacheDirty = true;
         private bool _baselineCacheDirty = true;
@@ -68,6 +71,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
+            _hasResolvedState = false;
         }
 
         private void Awake()
@@ -132,13 +136,28 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private VfxState ResolveState()
         {
-            if (_itemData != null && VfxStateIO.IsBound(_itemData))
+            if (_hasResolvedState)
+                return _resolvedState;
+
+            if (_itemData != null &&
+                VfxStateIO.IsBound(_itemData))
             {
-                if (VfxStateIO.TryRead(_itemData, out var itemState))
+                if (VfxStateIO.TryRead(
+                        _itemData,
+                        out VfxState itemState))
+                {
                     return itemState;
+                }
             }
 
             return VfxStateIO.FromConfig();
+        }
+        
+        public void SetResolvedState(VfxState state)
+        {
+            _resolvedState = state;
+            _hasResolvedState = true;
+            _itemData = null;
         }
 
         private void RebuildComponentCache()

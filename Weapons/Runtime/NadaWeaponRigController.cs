@@ -8,7 +8,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal sealed class NadaWeaponRigController
     {
-        public bool TryApply(GameObject root, global::ItemDrop.ItemData itemData = null)
+        public bool TryApply(
+            GameObject root,
+            global::ItemDrop.ItemData itemData = null)
         {
             if (root == null)
                 return false;
@@ -17,66 +19,75 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return false;
 
             Transform weaponVisualRootTransform =
-                NadaWeaponTargets.FindEquippedWeaponVisualRoot(root.transform);
+                NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                    root.transform);
 
             if (weaponVisualRootTransform == null)
                 return false;
 
-            Transform attachTarget = weaponVisualRootTransform;
+            Transform attachTarget =
+                weaponVisualRootTransform;
 
-            Transform existingRoot =
-                NadaRigPaths.FindDirectChild(
-                    attachTarget,
-                    Plugin.LocalWeaponRootName);
+            itemData ??=
+                ResolveItemData(root);
 
-            if (existingRoot != null)
-            {
-                NadaLogControl.Equip(
-                    $"refresh:{existingRoot.GetInstanceID()}",
-                    $"{Plugin.ModName}: [Attach] refreshing existing rig on '{attachTarget.name}'.");
+            VfxState state =
+                NadaWeaponStateResolver.Resolve(itemData);
 
-                itemData ??= ResolveItemData(root);
-
-                VfxState state = NadaWeaponStateResolver.Resolve(itemData);
-
-                var context = new NadaWeaponRigContext(
-                    root,
-                    itemData,
-                    state,
-                    attachTarget);
-
-                if (!context.IsValid)
-                    return false;
-
-                NadaWeaponRigOrchestrator.Run(context);
-
-                return true;
-            }
-
-            itemData ??= ResolveItemData(root);
-
-            VfxState refreshState = NadaWeaponStateResolver.Resolve(itemData);
-
-            var refreshContext = new NadaWeaponRigContext(
+            return TryApplyInternal(
                 root,
                 itemData,
-                refreshState,
+                state,
                 attachTarget);
-            
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: [AttachTarget] root='{root.name}' " +
-                $"visualRoot='{weaponVisualRootTransform.name}' " +
-                $"attachTarget='{attachTarget?.name}' " +
-                $"path='{NadaWeaponTargets.FullPath(attachTarget)}'");
+        }
 
-            if (!refreshContext.IsValid)
+        public bool TryApplyResolvedState(
+            GameObject root,
+            int itemHash,
+            VfxState state)
+        {
+            if (root == null)
                 return false;
 
-            NadaWeaponRigOrchestrator.Run(refreshContext);
+            if (!NadaWeaponTargets.IsTargetOrAttachClone(root))
+                return false;
+
+            Transform weaponVisualRootTransform =
+                NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                    root.transform);
+
+            if (weaponVisualRootTransform == null)
+                return false;
+
+            NadaLogControl.Info(
+                $"remote-rig-target:{root.GetInstanceID()}",
+                $"{Plugin.ModName}: [RemoteRigTarget] " +
+                $"root='{root.name}' " +
+                $"visualRoot='{weaponVisualRootTransform.name}' " +
+                $"itemHash={itemHash} " +
+                $"path='{NadaWeaponTargets.FullPath(weaponVisualRootTransform)}'");
+
+            NadaWeaponMetadata metadata =
+                NadaWeaponMetadataResolver.FromItemHash(
+                    itemHash);
+
+            var context =
+                new NadaWeaponRigContext(
+                    root,
+                    itemData: null,
+                    state,
+                    weaponVisualRootTransform);
+
+            if (!context.IsValid)
+                return false;
+
+            NadaWeaponRigOrchestrator.RunRemote(
+                context,
+                metadata);
 
             Transform createdRoot =
                 NadaRigPaths.FindDirectChild(
-                    attachTarget,
+                    weaponVisualRootTransform,
                     Plugin.LocalWeaponRootName);
 
             return createdRoot != null;
@@ -95,7 +106,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             // Dropped items have their own wrapper/root, so attach the rig to the actual weapon visual instead.
             // Using the ItemDrop root here can put the rig in a completely different local coordinate space.
             Transform attachTarget =
-                NadaWeaponTargets.FindDroppedWeaponVisualRoot(root.transform);
+                NadaWeaponTargets.FindDroppedWeaponVisualRoot(
+                    root.transform);
 
             if (attachTarget == null)
             {
@@ -113,7 +125,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"visualRoot='{attachTarget.name}' " +
                 $"path='{NadaWeaponTargets.FullPath(attachTarget)}'");
 
-            // A bound dropped item may already have its rig, so don't build another one.
             Transform existingRoot =
                 NadaRigPaths.FindDirectChild(
                     attachTarget,
@@ -145,13 +156,70 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             return refreshedRoot != null;
         }
 
-        private static global::ItemDrop.ItemData ResolveItemData(GameObject root)
+        private static bool TryApplyInternal(
+            GameObject root,
+            global::ItemDrop.ItemData itemData,
+            VfxState state,
+            Transform attachTarget)
         {
-            var itemDrop = root.GetComponent<global::ItemDrop>();
+            if (root == null ||
+                attachTarget == null)
+            {
+                return false;
+            }
+
+            Transform existingRoot =
+                NadaRigPaths.FindDirectChild(
+                    attachTarget,
+                    Plugin.LocalWeaponRootName);
+
+            if (existingRoot != null)
+            {
+                NadaLogControl.Equip(
+                    $"refresh:{existingRoot.GetInstanceID()}",
+                    $"{Plugin.ModName}: [Attach] refreshing existing rig on '{attachTarget.name}'.");
+            }
+            else
+            {
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [AttachTarget] " +
+                    $"root='{root.name}' " +
+                    $"visualRoot='{attachTarget.name}' " +
+                    $"attachTarget='{attachTarget.name}' " +
+                    $"path='{NadaWeaponTargets.FullPath(attachTarget)}'");
+            }
+
+            var context =
+                new NadaWeaponRigContext(
+                    root,
+                    itemData,
+                    state,
+                    attachTarget);
+
+            if (!context.IsValid)
+                return false;
+
+            NadaWeaponRigOrchestrator.Run(context);
+
+            Transform refreshedRoot =
+                NadaRigPaths.FindDirectChild(
+                    attachTarget,
+                    Plugin.LocalWeaponRootName);
+
+            return refreshedRoot != null;
+        }
+
+        private static global::ItemDrop.ItemData ResolveItemData(
+            GameObject root)
+        {
+            var itemDrop =
+                root.GetComponent<global::ItemDrop>();
+
             if (itemDrop != null)
                 return itemDrop.m_itemData;
 
-            return NadaEquippedItemResolver.ResolveFirstEquippedItem();
+            return NadaEquippedItemResolver
+                .ResolveFirstEquippedItem();
         }
     }
 }

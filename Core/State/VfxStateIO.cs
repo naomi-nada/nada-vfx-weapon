@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Globalization;
-using System.Runtime.ExceptionServices;
 using NADA.VFX.Weapon.Core.Config;
 
 namespace NADA.VFX.Weapon.Core.State
@@ -1496,6 +1495,64 @@ namespace NADA.VFX.Weapon.Core.State
 
             if (TryRead(tempItem, out VfxState loadedState))
                 return loadedState;
+
+            return fallbackState;
+        }
+        
+        internal static Dictionary<string, string> ToStateEntries(
+            VfxState state)
+        {
+            var tempItem = new global::ItemDrop.ItemData
+            {
+                m_customData = new Dictionary<string, string>()
+            };
+
+            Write(
+                tempItem,
+                state,
+                bound: false);
+
+            tempItem.m_customData.Remove(
+                VfxStateKeys.Bound);
+
+            return tempItem.m_customData;
+        }
+
+        internal static VfxState FromStateEntries(
+            Dictionary<string, string> entries)
+        {
+            VfxState fallbackState =
+                FromDefaults();
+
+            var tempItem = new global::ItemDrop.ItemData
+            {
+                m_customData =
+                    new Dictionary<string, string>()
+            };
+
+            Write(
+                tempItem,
+                fallbackState,
+                bound: false);
+
+            if (entries != null)
+            {
+                foreach (var pair in entries)
+                {
+                    if (string.IsNullOrWhiteSpace(pair.Key))
+                        continue;
+
+                    tempItem.m_customData[pair.Key] =
+                        pair.Value;
+                }
+            }
+
+            if (TryRead(
+                    tempItem,
+                    out VfxState loadedState))
+            {
+                return loadedState;
+            }
 
             return fallbackState;
         }
