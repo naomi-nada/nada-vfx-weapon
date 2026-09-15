@@ -99,15 +99,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
-            if (TryBindUnboundAttachedItem(
-                    leftHandAttach,
-                    leftItem))
-            {
-                return;
-            }
-
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: [Bind] no unbound equipped NADA rig found to bind.");
+            TryBindUnboundAttachedItem(
+                leftHandAttach,
+                leftItem);
         }
 
         internal static void TryUnbindEquipped()
