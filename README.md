@@ -12,7 +12,7 @@
 
 ## About
 
-NADA VFX builds effects at runtime using existing Valheim materials, particle systems, and components loaded in memory as reusable building blocks rather than requiring custom effect assets.
+NADA VFX builds effects at runtime **using existing Valheim materials, particle systems, and components loaded in memory as reusable building blocks rather than requiring custom effect assets**.
 
 In NADA VFX: Weapon, multiple effects can be combined into a single VFX rig, extensively customized, and bound to individual weapons or held items.
 
