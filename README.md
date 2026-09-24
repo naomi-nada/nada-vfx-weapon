@@ -1,6 +1,8 @@
 # NADA VFX: Weapon
 
-A modular runtime VFX system for Valheim that lets you build, customize, and bind visual effects to individual weapons and held items.
+**NADA VFX** is a modular runtime VFX framework for Valheim built around creating, customizing, and controlling visual effects dynamically at runtime.
+
+**NADA VFX: Weapon** is the weapon-focused implementation, allowing VFX rigs to be built, customized, and bound to individual weapons and held items.
 
 > **Development Preview — v0.9.0**
 >
@@ -8,13 +10,15 @@ A modular runtime VFX system for Valheim that lets you build, customize, and bin
 
 <img width="3215" height="1385" alt="NADA VFX: Weapon showcase" src="https://github.com/user-attachments/assets/8a68832f-5c11-436c-85ef-8d9c6b1a62e0" />
 
-## What is NADA VFX: Weapon?
+## About
 
-NADA VFX: Weapon is a runtime visual-effects system that lets you create custom VFX rigs for weapons and other held items in Valheim.
+NADA VFX builds effects at runtime using existing Valheim materials, particle systems, and components loaded in memory as reusable building blocks rather than requiring custom effect assets.
 
-Rather than requiring custom effect assets, NADA VFX builds its effects at runtime using existing Valheim materials and components loaded in memory as building blocks. Multiple effects can be combined into a single VFX rig and extensively customized.
+In NADA VFX: Weapon, multiple effects can be combined into a single VFX rig, extensively customized, and bound to individual weapons or held items.
 
-Once a VFX rig is created, it can be bound to an individual item. The item's VFX configuration is stored as persistent per-item state, allowing different instances of the same weapon to have completely different effects.
+Once a VFX rig is bound, its configuration is stored as persistent per-item state. This allows different instances of the same weapon to have completely different effects while preserving their individual VFX configurations between equips.
+
+NADA VFX is intended to grow into a broader family of focused runtime VFX systems, with separate implementations for weapons, players, armor, buildings, and other world objects.
 
 ## Devlog & Showcase
 
@@ -39,7 +43,7 @@ I made a full devlog/showcase covering why I started the project, how it evolved
 
 4. Launch Valheim.
 
-NADA VFX will create its configuration entries automatically after the game starts.
+NADA VFX: Weapon will create its configuration entries automatically after the game starts.
 
 ## Basic Usage
 
@@ -114,9 +118,25 @@ NADA VFX is still actively evolving. Current plans include:
 - Continued stability and compatibility work
 - Improvements to the style/preset system
 - Expanded weapon support and customization
-- Separate runtime VFX systems for **players/armor** and **building pieces**
+- A dedicated VFX editor/manager
+- A public integration API
+- Separate runtime VFX systems for **players/armor**, **buildings**, and other world objects
 
-The goal is to grow NADA into a family of modular runtime VFX systems while keeping each system independently usable.
+The long-term goal is for NADA VFX to provide a reusable runtime VFX foundation with focused implementations for different kinds of targets.
+
+NADA VFX: Weapon will remain weapon-focused, while player, building, and world-object systems can evolve independently around the same core ideas and public integration layer.
+
+## License
+
+NADA VFX: Weapon is **source-available**, but its implementation is not released under a permissive open-source license.
+
+You're welcome to use NADA VFX: Weapon, read through the source, and build your own mods that interact with it through supported public interfaces. Please don't copy, repackage, redistribute, or distribute modified versions of NADA VFX: Weapon itself without permission.
+
+The planned **NADA VFX public API/SDK** will provide the supported integration layer for third-party mods and will be licensed separately under a permissive license.
+
+See [LICENSE](LICENSE) for the full terms.
+
+The NADA VFX: Weapon license only applies to original code and project material contained in this project. Valheim, game assets, third-party libraries, and other third-party material remain the property of their respective rights holders.
 
 ## Feedback & Community
 
@@ -125,12 +145,4 @@ Bug reports, compatibility reports, effect/modifier ideas, and general feedback 
 - Open an [Issue](https://github.com/naomi-nada/nada-vfx-weapon/issues)
 - Join the [NADA VFX Discord](https://discord.gg/umsYF5uKeY)
 
-Feedback from other mod developers on architecture, performance, and compatibility is also very welcome.
-
-## Credits
-
-**NADA VFX: Weapon** is developed by Naomi Nada B.F.
-
-Built for [Valheim](https://www.valheimgame.com/) using [BepInEx](https://github.com/BepInEx/BepInEx).
-
-Valheim and its original assets are property of Iron Gate Studio and their respective rights holders.
+Feedback from other mod developers on architecture, performance, and compatibility is also very welcome. ^-^
