@@ -1,0 +1,77 @@
+NADA VFX Source-Available License
+Version 1.0
+
+Copyright (c) 2026 Naomi Nada
+All rights reserved.
+
+1. Scope
+
+This license applies to the original source code and project material
+of NADA VFX authored by Naomi Fagon ("NADA VFX").
+
+It does not grant any rights to Valheim, Iron Gate AB assets, third-party
+assets, libraries, trademarks, or other material owned by their respective
+rights holders.
+
+2. Permission to Use
+
+You may:
+
+- download, install, and use NADA VFX;
+- view and study the source code;
+- develop and distribute independent mods or software that depend on,
+  reference, or interact with NADA VFX through documented public interfaces;
+- reference NADA VFX as a dependency of your own project.
+
+3. Restrictions
+
+Unless you have prior written permission from the copyright holder, you may not:
+
+- copy substantial portions of the NADA VFX implementation into another project;
+- redistribute NADA VFX source code or binaries as part of another mod,
+  package, framework, or product;
+- distribute modified, forked, or derivative versions of NADA VFX;
+- repackage or rebrand NADA VFX, in whole or in substantial part, as your own work;
+- use NADA VFX source code to create a substantially equivalent replacement
+  implementation by copying its protected implementation code.
+
+These restrictions do not prevent independently written software from
+interoperating with NADA VFX through its documented public API or other
+supported integration points.
+
+4. Public API / SDK
+
+Code that is explicitly identified by the copyright holder as part of the
+NADA VFX public API, SDK, examples, or integration package may be distributed
+under a separate license.
+
+Where a separate license is provided for such material, that separate license
+controls for that material only.
+
+5. Contributions
+
+Unless otherwise agreed in writing, submitting a contribution does not transfer
+ownership of the contributor's copyright.
+
+By intentionally submitting code for inclusion in NADA VFX, the contributor
+grants the project owner a perpetual, worldwide, non-exclusive, royalty-free
+license to use, modify, reproduce, distribute, and sublicense that contribution
+as part of NADA VFX.
+
+6. No Warranty
+
+NADA VFX is provided "as is", without warranty of any kind, express or implied,
+including but not limited to warranties of merchantability, fitness for a
+particular purpose, and noninfringement.
+
+In no event shall the copyright holder be liable for any claim, damages, or
+other liability arising from the software or its use.
+
+7. Other Rights
+
+No rights are granted except those expressly stated in this license.
+
+Rights required by the terms of a source-code hosting platform for functionality
+provided by that platform are unaffected by this license.
+
+For permissions beyond this license, contact the copyright holder.
