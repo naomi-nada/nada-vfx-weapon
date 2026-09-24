@@ -398,11 +398,16 @@ namespace NADA.VFX.Weapon.Core.State
         internal static bool TryRead(global::ItemDrop.ItemData item, out VfxState state)
         {
             state = default;
-            if (item == null)
+
+            if (item?.m_customData == null)
                 return false;
 
-            Dictionary<string, string> customData = item.m_customData;
-            if (customData == null)
+            Dictionary<string, string> customData =
+                item.m_customData;
+
+                // Bound is the marker that tells us this ItemData actually contains a persisted NADA state.
+                // Other mods use customData too, so the dictionary existing by itself isn't enough.
+            if (!customData.ContainsKey(VfxStateKeys.Bound))
                 return false;
 
             state.RigXOffset = ReadFloat(customData, VfxStateKeys.RigXOffset, PluginConfig.RigXOffset.Value);

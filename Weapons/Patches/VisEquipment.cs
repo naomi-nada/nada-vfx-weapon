@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.Debug;
@@ -6,12 +7,13 @@ using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Weapons.Runtime;
 using NADA.VFX.Weapon.Weapons.Targets;
-using NADA.VFX.Weapon.Runtime.Structure;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Patches
 {
-    [HarmonyPatch(typeof(global::VisEquipment), "UpdateEquipmentVisuals")]
+    [HarmonyPatch(
+        typeof(global::VisEquipment),
+        "UpdateEquipmentVisuals")]
     internal static class VisEquipment
     {
         private static readonly System.Reflection.FieldInfo RightInstField =
@@ -29,22 +31,43 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 typeof(global::VisEquipment),
                 "m_nview");
 
-        private const string RemoteRightPayloadKey =
+        // v1 stored the full Base64 persistence-shaped state here.
+        //
+        // The new transport never reads or writes this key. We only keep the
+        // name around long enough to clear stale test-build payloads once.
+        private const string LegacyRemoteRightPayloadKey =
             "nada.vfx.right.payload";
 
         private static readonly NadaWeaponRigController WeaponRigController =
             new();
 
-        private static void Postfix(global::VisEquipment __instance)
+        // Migration cleanup only. Once we've successfully inspected a local
+        // player's ZDO, there is no reason to keep checking the old payload
+        // during every equipment refresh.
+        private static readonly HashSet<int>
+            LegacyPayloadCheckedVisEquipment =
+                new();
+
+        private static void Postfix(
+            global::VisEquipment __instance)
         {
             try
             {
                 if (__instance == null)
                     return;
 
-                if (!IsAllowedRigOwner(__instance))
+                if (!IsAllowedRigOwner(
+                        __instance))
                 {
-                    HandleRemoteEquipment(__instance);
+                    // Only actual remote players participate in NADA's remote
+                    // weapon state flow. NPCs have VisEquipment too.
+                    if (IsRemotePlayer(
+                            __instance))
+                    {
+                        HandleRemoteEquipment(
+                            __instance);
+                    }
+
                     return;
                 }
 
@@ -69,14 +92,27 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                         __instance);
 
                 global::ItemDrop.ItemData rightItem =
-                    NadaEquippedItemResolver.ResolveRightHandItem();
+                    NadaEquippedItemResolver
+                        .ResolveRightHandItem();
 
                 global::ItemDrop.ItemData leftItem =
-                    NadaEquippedItemResolver.ResolveLeftHandItem();
+                    NadaEquippedItemResolver
+                        .ResolveLeftHandItem();
 
-                WriteLocalRightPayload(
-                    __instance,
-                    rightItem);
+                if (Player.m_localPlayer != null)
+                {
+                    ClearLegacyLocalRightPayloadOnce(
+                        __instance);
+
+                    int rightItemHash =
+                        ReadRightItemHash(
+                            __instance);
+
+                    NadaVfxLocalStatePublisher
+                        .ObserveRight(
+                            rightItem,
+                            rightItemHash);
+                }
 
                 TryApplyIfBound(
                     rightInstance,
@@ -94,110 +130,11 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             }
         }
 
-        private static void WriteLocalRightPayload(
-            global::VisEquipment visEquipment,
-            global::ItemDrop.ItemData rightItem)
-        {
-            if (visEquipment == null)
-                return;
-
-            if (Player.m_localPlayer == null)
-                return;
-
-            if (!visEquipment.transform.IsChildOf(
-                    Player.m_localPlayer.transform))
-            {
-                return;
-            }
-
-            ZNetView nview =
-                SafeGetZNetView(visEquipment);
-
-            if (nview == null ||
-                !nview.IsValid() ||
-                !nview.IsOwner())
-            {
-                return;
-            }
-
-            ZDO zdo =
-                nview.GetZDO();
-
-            if (zdo == null)
-                return;
-
-            int rightItemHash =
-                ReadRightItemHash(visEquipment);
-
-            string currentPayload =
-                zdo.GetString(
-                    RemoteRightPayloadKey,
-                    string.Empty);
-
-            // Valheim can briefly report no usable right-hand identity while
-            // equipment visuals are transitioning. That is not an unbind.
-            //
-            // Keep the last payload until we can resolve a real item again.
-            // The remote hash check will fail closed if the visible weapon
-            // changes before the new NADA state arrives.
-            if (rightItem == null ||
-                rightItemHash == 0)
-            {
-                return;
-            }
-
-            bool isBound =
-                VfxStateIO.IsBound(rightItem);
-
-            string payload;
-
-            if (isBound)
-            {
-                if (!VfxStateIO.TryRead(
-                        rightItem,
-                        out VfxState state))
-                {
-                    return;
-                }
-
-                payload =
-                    NadaVfxNetworkCodec.Serialize(
-                        rightItemHash,
-                        true,
-                        state);
-            }
-            else
-            {
-                // A resolved item that is explicitly unbound is authoritative.
-                payload =
-                    string.Empty;
-            }
-
-            if (currentPayload == payload)
-                return;
-
-            zdo.Set(
-                RemoteRightPayloadKey,
-                payload);
-
-            Plugin.Log.LogInfo(
-                $"{Plugin.ModName}: [NetworkStateWrite] " +
-                $"rightHash={rightItemHash} " +
-                $"bound={isBound} " +
-                $"chars={payload.Length}");
-        }
-
         private static void HandleRemoteEquipment(
             global::VisEquipment visEquipment)
         {
-            if (visEquipment == null)
-                return;
-
-            if (Player.m_localPlayer == null)
-                return;
-
-            if (visEquipment.transform.IsChildOf(
-                    Player.m_localPlayer.transform))
+            if (!IsRemotePlayer(
+                    visEquipment))
             {
                 return;
             }
@@ -214,14 +151,16 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
             Transform rightVisualRoot =
                 rightInstance != null
-                    ? NadaWeaponTargets.FindEquippedWeaponVisualRoot(
-                        rightInstance.transform)
+                    ? NadaWeaponTargets
+                        .FindEquippedWeaponVisualRoot(
+                            rightInstance.transform)
                     : null;
 
             Transform leftVisualRoot =
                 leftInstance != null
-                    ? NadaWeaponTargets.FindEquippedWeaponVisualRoot(
-                        leftInstance.transform)
+                    ? NadaWeaponTargets
+                        .FindEquippedWeaponVisualRoot(
+                            leftInstance.transform)
                     : null;
 
             NadaLogControl.Info(
@@ -239,27 +178,56 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 $"leftVisual='{leftVisualRoot?.name ?? "<null>"}' " +
                 $"leftPath='{NadaWeaponTargets.FullPath(leftVisualRoot)}'");
 
-            TryApplyRemoteRightWeaponState(
-                visEquipment,
-                rightInstance);
+            long peerId =
+                ReadPeerId(
+                    visEquipment);
+
+            int rightItemHash =
+                ReadRightItemHash(
+                    visEquipment);
+
+            NadaVfxRemoteStateTracker
+                .ObserveRight(
+                    peerId,
+                    visEquipment,
+                    rightInstance,
+                    rightItemHash);
         }
 
-        private static void TryApplyRemoteRightWeaponState(
-            global::VisEquipment visEquipment,
-            GameObject rightInstance)
+        private static void ClearLegacyLocalRightPayloadOnce(
+            global::VisEquipment visEquipment)
         {
             if (visEquipment == null ||
-                rightInstance == null)
+                Player.m_localPlayer == null)
+            {
+                return;
+            }
+
+            if (!visEquipment.transform.IsChildOf(
+                    Player.m_localPlayer.transform))
+            {
+                return;
+            }
+
+            int visEquipmentId =
+                visEquipment.GetInstanceID();
+
+            if (LegacyPayloadCheckedVisEquipment.Contains(
+                    visEquipmentId))
             {
                 return;
             }
 
             ZNetView nview =
-                SafeGetZNetView(visEquipment);
+                SafeGetZNetView(
+                    visEquipment);
 
             if (nview == null ||
-                !nview.IsValid())
+                !nview.IsValid() ||
+                !nview.IsOwner())
             {
+                // Don't mark it checked yet. Equipment can reach this patch
+                // before its network view is ready, so retry later.
                 return;
             }
 
@@ -269,102 +237,28 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             if (zdo == null)
                 return;
 
-            string payload =
+            LegacyPayloadCheckedVisEquipment.Add(
+                visEquipmentId);
+
+            string legacyPayload =
                 zdo.GetString(
-                    RemoteRightPayloadKey,
+                    LegacyRemoteRightPayloadKey,
                     string.Empty);
 
-            if (string.IsNullOrWhiteSpace(payload))
+            if (string.IsNullOrEmpty(
+                    legacyPayload))
             {
-                NadaWeaponRigRemoval.RemoveFromEquippedRoot(
-                    rightInstance);
-
                 return;
             }
 
-            if (!NadaVfxNetworkCodec.TryDeserialize(
-                    payload,
-                    out NadaVfxNetworkSnapshot snapshot,
-                    out VfxState state))
-            {
-                NadaLogControl.Info(
-                    $"remote-network-fail:" +
-                    $"{visEquipment.GetInstanceID()}:" +
-                    $"{payload.GetHashCode()}",
-                    $"{Plugin.ModName}: [RemoteNetworkState FAIL] " +
-                    $"payload could not be decoded.");
+            zdo.Set(
+                LegacyRemoteRightPayloadKey,
+                string.Empty);
 
-                NadaWeaponRigRemoval.RemoveFromEquippedRoot(
-                    rightInstance);
-
-                return;
-            }
-
-            if (!snapshot.Bound)
-            {
-                NadaLogControl.Info(
-                    $"remote-network-unbound:" +
-                    $"{visEquipment.GetInstanceID()}:" +
-                    $"{snapshot.ItemHash}",
-                    $"{Plugin.ModName}: [RemoteNetworkState UNBOUND] " +
-                    $"hash={snapshot.ItemHash}");
-
-                NadaWeaponRigRemoval.RemoveFromEquippedRoot(
-                    rightInstance);
-
-                return;
-            }
-
-            int rightItemHash =
-                ReadRightItemHash(visEquipment);
-
-            if (rightItemHash == 0 ||
-                snapshot.ItemHash != rightItemHash)
-            {
-                NadaLogControl.Info(
-                    $"remote-network-stale:" +
-                    $"{visEquipment.GetInstanceID()}:" +
-                    $"{snapshot.ItemHash}:" +
-                    $"{rightItemHash}",
-                    $"{Plugin.ModName}: [RemoteNetworkState STALE] " +
-                    $"payloadHash={snapshot.ItemHash} " +
-                    $"visibleHash={rightItemHash}");
-
-                return;
-            }
-
-            NadaLogControl.Info(
-                $"remote-network-ok:" +
-                $"{visEquipment.GetInstanceID()}:" +
-                $"{snapshot.ItemHash}:" +
-                $"{payload.GetHashCode()}",
-                $"{Plugin.ModName}: [RemoteNetworkState OK] " +
-                $"hash={snapshot.ItemHash} " +
-                $"bound={snapshot.Bound} " +
-                $"entries={snapshot.Entries?.Count ?? 0} " +
-                $"chars={payload.Length} " +
-                $"innerHue={state.InnerFlamesHue:F3} " +
-                $"innerScale={state.InnerFlamesScale:F3} " +
-                $"outer={state.OuterFlamesEnabled} " +
-                $"auraHue={state.AuraHue:F3} " +
-                $"orbsCount={state.OrbitalsOrbsCount:F3} " +
-                $"rigX={state.RigXOffset:F3}");
-
-            bool applied =
-                WeaponRigController
-                    .TryApplyResolvedState(
-                        rightInstance,
-                        snapshot.ItemHash,
-                        state);
-
-            NadaLogControl.Info(
-                $"remote-state-result:" +
-                $"{visEquipment.GetInstanceID()}:" +
-                $"{rightInstance.GetInstanceID()}:" +
-                $"{payload.GetHashCode()}",
-                $"{Plugin.ModName}: [RemoteStateResult] " +
-                $"hash={rightItemHash} " +
-                $"applied={applied}");
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [LegacyNetworkPayloadCleared] " +
+                $"vis={visEquipmentId} " +
+                $"chars={legacyPayload.Length}");
         }
 
         private static void TryApplyIfBound(
@@ -377,8 +271,11 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 return;
             }
 
-            if (!VfxStateIO.IsBound(itemData))
+            if (!VfxStateIO.IsBound(
+                    itemData))
+            {
                 return;
+            }
 
             WeaponRigController.TryApply(
                 itemInstance,
@@ -430,7 +327,8 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             global::VisEquipment visEquipment)
         {
             ZNetView nview =
-                SafeGetZNetView(visEquipment);
+                SafeGetZNetView(
+                    visEquipment);
 
             if (nview == null ||
                 !nview.IsValid())
@@ -448,6 +346,51 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 ZDOVars.s_rightItem);
         }
 
+        private static long ReadPeerId(
+            global::VisEquipment visEquipment)
+        {
+            ZNetView nview =
+                SafeGetZNetView(
+                    visEquipment);
+
+            if (nview == null ||
+                !nview.IsValid())
+            {
+                return 0L;
+            }
+
+            ZDO zdo =
+                nview.GetZDO();
+
+            if (zdo == null)
+                return 0L;
+
+            return zdo.GetOwner();
+        }
+
+        private static bool IsRemotePlayer(
+            global::VisEquipment visEquipment)
+        {
+            if (visEquipment == null ||
+                Player.m_localPlayer == null)
+            {
+                return false;
+            }
+
+            global::Player player =
+                visEquipment
+                    .GetComponentInParent<global::Player>();
+
+            if (player == null)
+                return false;
+
+            return
+                player !=
+                    Player.m_localPlayer &&
+                !visEquipment.transform.IsChildOf(
+                    Player.m_localPlayer.transform);
+        }
+
         private static bool IsAllowedRigOwner(
             global::VisEquipment visEquipment)
         {
@@ -456,11 +399,13 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
             if (Player.m_localPlayer != null)
             {
-                return visEquipment.transform.IsChildOf(
-                    Player.m_localPlayer.transform);
+                return
+                    visEquipment.transform.IsChildOf(
+                        Player.m_localPlayer.transform);
             }
 
-            if (UnityEngine.SceneManagement.SceneManager
+            if (UnityEngine.SceneManagement
+                    .SceneManager
                     .GetActiveScene()
                     .name != "start")
             {
@@ -471,7 +416,10 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 visEquipment.transform;
 
             while (root.parent != null)
-                root = root.parent;
+            {
+                root =
+                    root.parent;
+            }
 
             return root.name.StartsWith(
                 "Player",

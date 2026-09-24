@@ -6,7 +6,9 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Modules.Motion;
@@ -66,7 +68,7 @@ namespace NADA.VFX.Weapon
         internal const string OrbitalsOrbsMotionRootName = "Orbs Motion Root";
         internal const string OrbitalsOrbsPoolName = "Orbs Pool";
         internal const int MaxOrbitalsOrbsVisuals = 40;
-        
+
         internal const string OrbitalsCoresName = "Cores";
         internal const string OrbitalsCoresMotionRootName = "Cores Motion Root";
         internal const string OrbitalsCoresPoolName = "Cores Pool";
@@ -96,6 +98,12 @@ namespace NADA.VFX.Weapon
 
             Log.LogInfo($"{ModName} loaded! Version {ModVersion}");
 
+            // This does not send anything.
+            // It only proves the compact V2 format can round-trip every
+            // field currently present in VfxState.
+            NadaVfxNetworkCodecV2.RunSelfTest();
+            NadaVfxNetworkCodecV2CompatibilityTests.Run();
+
             Harmony.PatchAll(Assembly.GetExecutingAssembly());
             Log.LogInfo($"{ModName}: Applied Harmony patches.");
 
@@ -111,6 +119,8 @@ namespace NADA.VFX.Weapon
                 NadaEquippedRigActions.TryBindEquipped();
 
             NadaRigVisibility.TickCharacterSelectionPreview();
+
+            NadaRuntimeDiagnostics.Tick();
         }
 
         internal void TryUnbindEquipped()
@@ -127,7 +137,7 @@ namespace NADA.VFX.Weapon
         {
             NadaEquippedRigActions.RefreshExistingUnboundEquippedRigsOnly();
         }
-        
+
         internal void ResetOrbitalsStartPoints()
         {
             foreach (NadaOrbitalsMotion motion in FindObjectsOfType<NadaOrbitalsMotion>(true))
@@ -138,8 +148,6 @@ namespace NADA.VFX.Weapon
                 motion.ResetOrbitStartPoint();
             }
         }
-        
-        
 
         internal void RefreshDroppedItemVisibility()
         {

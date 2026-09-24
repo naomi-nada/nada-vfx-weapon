@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.Debug;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Motion
@@ -124,7 +125,14 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private void Awake()
         {
+            NadaRuntimeDiagnostics.OrbitalsMotionCreated();
+            
             _baseHeadLocalPosition = transform.localPosition;
+        }
+        
+        private void OnDestroy()
+        {
+            NadaRuntimeDiagnostics.OrbitalsMotionDestroyed();
         }
 
         private void LateUpdate()

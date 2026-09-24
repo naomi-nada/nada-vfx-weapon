@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.Visuals;
+using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
 using UnityEngine;
@@ -76,6 +77,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void Awake()
         {
+            NadaRuntimeDiagnostics.InnerFlamesCreated();
+            
             RebuildComponentCache();
             CacheBaselines();
 
@@ -87,6 +90,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void OnDestroy()
         {
+            NadaRuntimeDiagnostics.InnerFlamesDestroyed();
+            
             try { CancelInvoke(nameof(TickApply)); } catch { }
         }
 

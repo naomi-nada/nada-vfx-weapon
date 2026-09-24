@@ -1,4 +1,5 @@
 using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
@@ -18,6 +19,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 itemData,
                 currentState,
                 bound: true);
+
+            // ItemData is authoritative after binding. Tell the network
+            // publisher that the persisted state changed; don't publish
+            // directly from config.
+            NadaVfxLocalStatePublisher.MarkDirty(
+                itemData);
 
             string itemName =
                 itemData.m_shared?.m_name ??
@@ -39,6 +46,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             // This only clears the item's NADA state.
             // The caller owns removing any live rig that represents it.
             VfxStateIO.Clear(
+                itemData);
+
+            // If this is the currently presented weapon, publish the new
+            // authoritative unbound state immediately.
+            NadaVfxLocalStatePublisher.MarkDirty(
                 itemData);
 
             string itemName =

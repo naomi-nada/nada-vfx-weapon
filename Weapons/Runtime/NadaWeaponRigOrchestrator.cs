@@ -197,6 +197,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
         {
             if (context == null || !context.IsValid)
                 return;
+            
+            NadaRuntimeDiagnostics.RecordRemoteApply();
 
             GameObject rootObject =
                 context.Root;

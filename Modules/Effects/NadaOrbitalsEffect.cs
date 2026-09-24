@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.Visuals;
+using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
 using UnityEngine;
@@ -89,7 +90,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColorByParticleSystemId = new();
         private readonly Dictionary<int, bool> _baseColorOverLifetimeEnabledByParticleSystemId = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseColorOverLifetimeByParticleSystemId = new();
-        
+
         private readonly Dictionary<int, float> _baseSimulationSpeedByParticleSystemId = new();
 
         private readonly Dictionary<int, bool> _baseCustomDataEnabledByParticleSystemId = new();
@@ -125,7 +126,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             _itemData = itemData;
             _hasResolvedState = false;
         }
-        
+
         public void SetResolvedState(VfxState state)
         {
             _resolvedState = state;
@@ -148,6 +149,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void Awake()
         {
+            NadaRuntimeDiagnostics.OrbitalsEffectCreated();
+
             RebuildOrbitalsComponentCaches();
             CacheModifierBaselines();
 
@@ -159,6 +162,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void OnDestroy()
         {
+            NadaRuntimeDiagnostics.OrbitalsEffectDestroyed();
+
             try { CancelInvoke(nameof(TickApply)); } catch { }
         }
 
@@ -208,18 +213,39 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void ApplyOrbs(VfxState state)
         {
+            bool enabled =
+                state.OrbitalsOrbsEnabled;
+
             ApplyGroupEnabledState(
                 _orbsParticleSystems,
                 _orbsRenderers,
                 _orbsLights,
-                state.OrbitalsOrbsEnabled);
+                enabled);
 
+            if (!enabled)
+            {
+                LogToggleStateIfChanged(
+                    "Orbitals Orbs",
+                    false,
+                    ref _lastOrbsEnabled,
+                    ref _hasLastOrbsEnabled);
+
+                return;
+            }
+
+            // The demister template root has visual content we intentionally
+            // keep hidden. The cached component lists include descendants and
+            // can include root-level components too, so hide that template
+            // content again after enabling the actual orbital visuals.
             if (_orbsRootTransform != null)
-                NadaRigTransforms.DisableRootVisualContent(_orbsRootTransform);
+            {
+                NadaRigTransforms.DisableRootVisualContent(
+                    _orbsRootTransform);
+            }
 
             EnsureParticleSystemsPlayingIfEnabled(
                 _orbsParticleSystems,
-                state.OrbitalsOrbsEnabled);
+                true);
 
             ApplyOrbsScale(
                 state.OrbitalsOrbsScale,
@@ -234,7 +260,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             LogToggleStateIfChanged(
                 "Orbitals Orbs",
-                state.OrbitalsOrbsEnabled,
+                true,
                 ref _lastOrbsEnabled,
                 ref _hasLastOrbsEnabled);
         }
@@ -336,21 +362,40 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 NadaRigTransforms.ForceUniformWorldScale(pooledCoreTransform);
             }
         }
-        
+
         private void ApplyCores(VfxState state)
         {
-            SetRootActive(_coresRootTransform, state.OrbitalsCoresEnabled);
-            SetRootActive(_coresPoolRootTransform, state.OrbitalsCoresEnabled);
+            bool enabled =
+                state.OrbitalsCoresEnabled;
+
+            SetRootActive(
+                _coresRootTransform,
+                enabled);
+
+            SetRootActive(
+                _coresPoolRootTransform,
+                enabled);
 
             ApplyGroupEnabledState(
                 _coresParticleSystems,
                 _coresRenderers,
                 _coresLights,
-                state.OrbitalsCoresEnabled);
+                enabled);
+
+            if (!enabled)
+            {
+                LogToggleStateIfChanged(
+                    "Orbitals Cores",
+                    false,
+                    ref _lastCoresEnabled,
+                    ref _hasLastCoresEnabled);
+
+                return;
+            }
 
             EnsureParticleSystemsPlayingIfEnabled(
                 _coresParticleSystems,
-                state.OrbitalsCoresEnabled);
+                true);
 
             ApplyCoresScale(
                 state.OrbitalsCoresScale,
@@ -365,7 +410,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             LogToggleStateIfChanged(
                 "Orbitals Cores",
-                state.OrbitalsCoresEnabled,
+                true,
                 ref _lastCoresEnabled,
                 ref _hasLastCoresEnabled);
         }
@@ -396,21 +441,34 @@ namespace NADA.VFX.Weapon.Modules.Effects
             _coresBaseLocalScaleByTransformId[transformId] =
                 NormalizeUniformScale(coreTransform.localScale);
         }
-        
 
         // Flames
 
         private void ApplyFlames(VfxState state)
         {
+            bool enabled =
+                state.OrbitalsFlamesEnabled;
+
             ApplyGroupEnabledState(
                 _flamesParticleSystems,
                 _flamesRenderers,
                 _flamesLights,
-                state.OrbitalsFlamesEnabled);
+                enabled);
+
+            if (!enabled)
+            {
+                LogToggleStateIfChanged(
+                    "Orbitals Flames",
+                    false,
+                    ref _lastFlamesEnabled,
+                    ref _hasLastFlamesEnabled);
+
+                return;
+            }
 
             EnsureParticleSystemsPlayingIfEnabled(
                 _flamesParticleSystems,
-                state.OrbitalsFlamesEnabled);
+                true);
 
             ApplyHueShift(
                 _flamesParticleSystems,
@@ -422,7 +480,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             ApplyFlamesEnergy(
                 _flamesParticleSystems,
                 state.OrbitalsFlamesEnergy);
-            
+
             ApplySimulationSpeed(
                 _flamesParticleSystems,
                 state.OrbitalsFlamesSimulationSpeed);
@@ -437,7 +495,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             LogToggleStateIfChanged(
                 "Orbitals Flames",
-                state.OrbitalsFlamesEnabled,
+                true,
                 ref _lastFlamesEnabled,
                 ref _hasLastFlamesEnabled);
         }
@@ -560,15 +618,29 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void ApplyEmbers(VfxState state)
         {
+            bool enabled =
+                state.OrbitalsEmbersEnabled;
+
             ApplyGroupEnabledState(
                 _embersParticleSystems,
                 _embersRenderers,
                 _embersLights,
-                state.OrbitalsEmbersEnabled);
+                enabled);
+
+            if (!enabled)
+            {
+                LogToggleStateIfChanged(
+                    "Orbitals Embers",
+                    false,
+                    ref _lastEmbersEnabled,
+                    ref _hasLastEmbersEnabled);
+
+                return;
+            }
 
             EnsureParticleSystemsPlayingIfEnabled(
                 _embersParticleSystems,
-                state.OrbitalsEmbersEnabled);
+                true);
 
             ApplyHueShift(
                 _embersParticleSystems,
@@ -584,7 +656,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             ApplyEmbersScale(
                 _embersParticleSystems,
                 state.OrbitalsEmbersScale);
-            
+
             ApplySimulationSpeed(
                 _embersParticleSystems,
                 state.OrbitalsEmbersSimulationSpeed);
@@ -595,7 +667,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             LogToggleStateIfChanged(
                 "Orbitals Embers",
-                state.OrbitalsEmbersEnabled,
+                true,
                 ref _lastEmbersEnabled,
                 ref _hasLastEmbersEnabled);
         }
@@ -632,7 +704,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 catch { }
             }
         }
-        
+
         private void ApplyEmbersScale(List<ParticleSystem> particleSystems, float scale)
         {
             if (particleSystems == null)
@@ -927,14 +999,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
         }
 
         private void CacheEmbersBaselines()
-                {
-                    CacheParticleBaselines(_embersParticleSystems);
-                    CacheEmissionBaselines(_embersParticleSystems);
-                    CacheRendererBaselines(_embersRenderers);
-                    CacheLightBaselines(_embersLights);
-                }
+        {
+            CacheParticleBaselines(_embersParticleSystems);
+            CacheEmissionBaselines(_embersParticleSystems);
+            CacheRendererBaselines(_embersRenderers);
+            CacheLightBaselines(_embersLights);
+        }
 
-                private void CacheParticleBaselines(List<ParticleSystem> particleSystems)
+        private void CacheParticleBaselines(List<ParticleSystem> particleSystems)
         {
             if (particleSystems == null)
                 return;
@@ -1208,7 +1280,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 }
             }
         }
-        
+
         private void ApplySimulationSpeed(
             List<ParticleSystem> particleSystems,
             float simulationSpeed)
@@ -1556,7 +1628,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 PluginConfig.MinScaleMult,
                 PluginConfig.MaxScaleMult);
         }
-        
+
         private static float ClampSimulationSpeed(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))
