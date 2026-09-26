@@ -13,49 +13,77 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
     {
         private static float _nextCharacterSelectionProbeTime;
 
+        private static bool _characterSelectionPreviewClearedWhileDisabled;
+
         internal static void TickCharacterSelectionPreview()
         {
-            if (!PluginConfig.CharacterSelectionVisibility.Value)
+            if (Player.m_localPlayer != null)
             {
-                RemoveCharacterSelectionPreview();
+                _characterSelectionPreviewClearedWhileDisabled = false;
                 return;
             }
 
-            if (Player.m_localPlayer != null)
-                return;
-
             if (SceneManager.GetActiveScene().name != "start")
+            {
+                _characterSelectionPreviewClearedWhileDisabled = false;
                 return;
+            }
+
+            if (!PluginConfig.CharacterSelectionVisibility.Value)
+            {
+                // Update calls this every frame. Once we've cleared the
+                // start-screen preview, there's nothing else to do until
+                // visibility is enabled again or we enter a new start scene.
+                if (_characterSelectionPreviewClearedWhileDisabled)
+                    return;
+
+                RemoveCharacterSelectionPreview();
+
+                _characterSelectionPreviewClearedWhileDisabled = true;
+                return;
+            }
+
+            _characterSelectionPreviewClearedWhileDisabled = false;
 
             if (Time.time < _nextCharacterSelectionProbeTime)
                 return;
 
-            _nextCharacterSelectionProbeTime = Time.time + 1f;
+            _nextCharacterSelectionProbeTime =
+                Time.time + 1f;
 
-            GameObject[] roots = SceneManager
-                .GetActiveScene()
-                .GetRootGameObjects();
+            GameObject[] roots =
+                SceneManager
+                    .GetActiveScene()
+                    .GetRootGameObjects();
 
-            var controller = new NadaWeaponRigController();
+            var controller =
+                new NadaWeaponRigController();
 
             foreach (GameObject root in roots)
             {
-                if (root == null || !root.name.StartsWith("Player", System.StringComparison.Ordinal))
+                if (root == null ||
+                    !root.name.StartsWith(
+                        "Player",
+                        System.StringComparison.Ordinal))
+                {
                     continue;
+                }
 
                 bool appliedAny = false;
 
-                appliedAny |= TryApplyCharacterSelectionHandPreview(
-                    root.transform,
-                    "RightHand_Attach",
-                    "m_rightItem",
-                    controller);
+                appliedAny |=
+                    TryApplyCharacterSelectionHandPreview(
+                        root.transform,
+                        "RightHand_Attach",
+                        "m_rightItem",
+                        controller);
 
-                appliedAny |= TryApplyCharacterSelectionHandPreview(
-                    root.transform,
-                    "LeftHand_Attach",
-                    "m_leftItem",
-                    controller);
+                appliedAny |=
+                    TryApplyCharacterSelectionHandPreview(
+                        root.transform,
+                        "LeftHand_Attach",
+                        "m_leftItem",
+                        controller);
 
                 if (appliedAny)
                     return;
@@ -64,20 +92,28 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
         internal static void RefreshDroppedItemVisibility()
         {
-            var drops = Object.FindObjectsByType<global::ItemDrop>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None);
+            var drops =
+                Object.FindObjectsByType<global::ItemDrop>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
 
             foreach (var itemDrop in drops)
             {
-                if (itemDrop == null || itemDrop.gameObject == null)
+                if (itemDrop == null ||
+                    itemDrop.gameObject == null)
+                {
                     continue;
+                }
 
-                if (!VfxStateIO.IsBound(itemDrop.m_itemData))
+                if (!VfxStateIO.IsBound(
+                        itemDrop.m_itemData))
+                {
                     continue;
+                }
 
                 Transform attachTarget =
-                    NadaWeaponTargets.FindVisualMeshRoot(itemDrop.transform)
+                    NadaWeaponTargets.FindVisualMeshRoot(
+                        itemDrop.transform)
                     ?? itemDrop.transform;
 
                 Transform existingRig =
@@ -88,7 +124,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 if (!PluginConfig.DroppedItemVisibility.Value)
                 {
                     if (existingRig != null)
-                        Object.Destroy(existingRig.gameObject);
+                    {
+                        Object.Destroy(
+                            existingRig.gameObject);
+                    }
 
                     continue;
                 }
@@ -96,8 +135,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 if (existingRig != null)
                     continue;
 
-                var controller = new NadaWeaponRigController();
-                controller.TryApplyDroppedItem(itemDrop.gameObject, itemDrop.m_itemData);
+                var controller =
+                    new NadaWeaponRigController();
+
+                controller.TryApplyDroppedItem(
+                    itemDrop.gameObject,
+                    itemDrop.m_itemData);
             }
         }
 
@@ -107,17 +150,24 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             string itemFieldName,
             NadaWeaponRigController controller)
         {
-            if (previewRoot == null || controller == null)
+            if (previewRoot == null ||
+                controller == null)
+            {
                 return false;
+            }
 
             Transform handAttach =
-                FindDescendantByName(previewRoot, attachName);
+                FindDescendantByName(
+                    previewRoot,
+                    attachName);
 
             if (handAttach == null)
                 return false;
 
             global::ItemDrop.ItemData previewItem =
-                ResolvePreviewItemData(previewRoot, itemFieldName);
+                ResolvePreviewItemData(
+                    previewRoot,
+                    itemFieldName);
 
             if (previewItem == null)
             {
@@ -128,7 +178,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return false;
             }
 
-            bool isBound = VfxStateIO.IsBound(previewItem);
+            bool isBound =
+                VfxStateIO.IsBound(
+                    previewItem);
 
             if (!isBound)
                 return false;
@@ -141,13 +193,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     continue;
 
                 Transform weaponVisualRootTransform =
-                    NadaWeaponTargets.FindEquippedWeaponVisualRoot(childTransform);
+                    NadaWeaponTargets
+                        .FindEquippedWeaponVisualRoot(
+                            childTransform);
 
                 if (weaponVisualRootTransform == null)
                     continue;
 
                 Transform attachTarget =
-                    ResolveRigAttachTarget(weaponVisualRootTransform);
+                    ResolveRigAttachTarget(
+                        weaponVisualRootTransform);
 
                 if (attachTarget == null)
                     continue;
@@ -159,13 +214,18 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
                 if (existingRig != null)
                 {
-                    controller.TryApply(childTransform.gameObject, previewItem);
+                    controller.TryApply(
+                        childTransform.gameObject,
+                        previewItem);
+
                     appliedAny = true;
                     continue;
                 }
 
                 bool applied =
-                    controller.TryApply(childTransform.gameObject, previewItem);
+                    controller.TryApply(
+                        childTransform.gameObject,
+                        previewItem);
 
                 if (!applied)
                     continue;
@@ -184,17 +244,28 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (SceneManager.GetActiveScene().name != "start")
                 return;
 
-            GameObject[] roots = SceneManager
-                .GetActiveScene()
-                .GetRootGameObjects();
+            GameObject[] roots =
+                SceneManager
+                    .GetActiveScene()
+                    .GetRootGameObjects();
 
             foreach (GameObject root in roots)
             {
-                if (root == null || !root.name.StartsWith("Player", System.StringComparison.Ordinal))
+                if (root == null ||
+                    !root.name.StartsWith(
+                        "Player",
+                        System.StringComparison.Ordinal))
+                {
                     continue;
+                }
 
-                RemoveCharacterSelectionHandPreview(root.transform, "RightHand_Attach");
-                RemoveCharacterSelectionHandPreview(root.transform, "LeftHand_Attach");
+                RemoveCharacterSelectionHandPreview(
+                    root.transform,
+                    "RightHand_Attach");
+
+                RemoveCharacterSelectionHandPreview(
+                    root.transform,
+                    "LeftHand_Attach");
             }
         }
 
@@ -203,7 +274,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             string attachName)
         {
             Transform handAttach =
-                FindDescendantByName(previewRoot, attachName);
+                FindDescendantByName(
+                    previewRoot,
+                    attachName);
 
             if (handAttach == null)
                 return;
@@ -214,13 +287,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     continue;
 
                 Transform weaponVisualRootTransform =
-                    NadaWeaponTargets.FindEquippedWeaponVisualRoot(childTransform);
+                    NadaWeaponTargets
+                        .FindEquippedWeaponVisualRoot(
+                            childTransform);
 
                 if (weaponVisualRootTransform == null)
                     continue;
 
                 Transform attachTarget =
-                    ResolveRigAttachTarget(weaponVisualRootTransform);
+                    ResolveRigAttachTarget(
+                        weaponVisualRootTransform);
 
                 if (attachTarget == null)
                     continue;
@@ -233,11 +309,13 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 if (existingRig == null)
                     continue;
 
-                Object.Destroy(existingRig.gameObject);
+                Object.Destroy(
+                    existingRig.gameObject);
             }
         }
 
-        private static Transform ResolveRigAttachTarget(Transform weaponVisualRootTransform)
+        private static Transform ResolveRigAttachTarget(
+            Transform weaponVisualRootTransform)
         {
             return weaponVisualRootTransform;
         }
@@ -249,22 +327,35 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (rootTransform == null)
                 return null;
 
-            foreach (Transform childTransform in rootTransform.GetComponentsInChildren<Transform>(true))
+            foreach (Transform childTransform in
+                     rootTransform.GetComponentsInChildren<Transform>(
+                         true))
             {
-                if (childTransform != null && childTransform.name == targetName)
+                if (childTransform != null &&
+                    childTransform.name == targetName)
+                {
                     return childTransform;
+                }
             }
+
             return null;
         }
 
-        private static global::ItemDrop.ItemData ResolvePreviewItemData(
-            Transform previewRoot,
-            string fieldName)
+        private static global::ItemDrop.ItemData
+            ResolvePreviewItemData(
+                Transform previewRoot,
+                string fieldName)
         {
-            if (previewRoot == null || string.IsNullOrWhiteSpace(fieldName))
+            if (previewRoot == null ||
+                string.IsNullOrWhiteSpace(
+                    fieldName))
+            {
                 return null;
+            }
 
-            Humanoid humanoid = previewRoot.GetComponent<Humanoid>();
+            Humanoid humanoid =
+                previewRoot.GetComponent<Humanoid>();
+
             if (humanoid == null)
                 return null;
 
@@ -275,7 +366,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     BindingFlags.NonPublic |
                     BindingFlags.Public);
 
-            return itemField?.GetValue(humanoid) as global::ItemDrop.ItemData;
+            return itemField?.GetValue(humanoid)
+                as global::ItemDrop.ItemData;
         }
     }
 }

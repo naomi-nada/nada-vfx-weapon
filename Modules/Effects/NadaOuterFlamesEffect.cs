@@ -23,6 +23,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _resolvedState;
         private bool _hasResolvedState;
 
+        private VfxState _lastAppliedState;
+        private bool _hasLastAppliedState;
+
         private Renderer[] _renderers;
         private Light[] _lights;
         private ParticleSystem[] _systems;
@@ -154,12 +157,16 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void TickApply()
         {
+            bool forceApply = false;
+
             if (_componentCacheDirty)
             {
                 RebuildComponentCache();
 
                 _componentCacheDirty = false;
                 _baselineCacheDirty = true;
+
+                forceApply = true;
             }
 
             if (_baselineCacheDirty)
@@ -167,10 +174,23 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 CacheBaselines();
 
                 _baselineCacheDirty = false;
+
+                forceApply = true;
             }
 
             VfxState state =
                 ResolveState();
+
+            // Keep the timer for live config editing, but don't keep
+            // rewriting a stable effect when nothing actually changed.
+            if (!forceApply &&
+                _hasLastAppliedState &&
+                OuterFlamesStateEquals(
+                    state,
+                    _lastAppliedState))
+            {
+                return;
+            }
 
             ApplySimulationSpace(
                 state.OuterFlamesWorldEnabled);
@@ -207,6 +227,76 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 state.OuterFlamesXRotation,
                 state.OuterFlamesYRotation,
                 state.OuterFlamesZRotation);
+
+            _lastAppliedState = state;
+            _hasLastAppliedState = true;
+        }
+
+        private static bool OuterFlamesStateEquals(
+            VfxState left,
+            VfxState right)
+        {
+            return
+                left.OuterFlamesEnabled ==
+                    right.OuterFlamesEnabled &&
+                left.OuterFlamesWorldEnabled ==
+                    right.OuterFlamesWorldEnabled &&
+                left.OuterFlamesBlackEnabled ==
+                    right.OuterFlamesBlackEnabled &&
+                left.OuterFlamesWhiteEnabled ==
+                    right.OuterFlamesWhiteEnabled &&
+
+                FloatEquals(
+                    left.OuterFlamesEnergy,
+                    right.OuterFlamesEnergy) &&
+                FloatEquals(
+                    left.OuterFlamesHue,
+                    right.OuterFlamesHue) &&
+                FloatEquals(
+                    left.OuterFlamesLuminance,
+                    right.OuterFlamesLuminance) &&
+                FloatEquals(
+                    left.OuterFlamesScale,
+                    right.OuterFlamesScale) &&
+                FloatEquals(
+                    left.OuterFlamesLength,
+                    right.OuterFlamesLength) &&
+                FloatEquals(
+                    left.OuterFlamesWidth,
+                    right.OuterFlamesWidth) &&
+                FloatEquals(
+                    left.OuterFlamesLifetime,
+                    right.OuterFlamesLifetime) &&
+                FloatEquals(
+                    left.OuterFlamesSimulationSpeed,
+                    right.OuterFlamesSimulationSpeed) &&
+
+                FloatEquals(
+                    left.OuterFlamesXOffset,
+                    right.OuterFlamesXOffset) &&
+                FloatEquals(
+                    left.OuterFlamesYOffset,
+                    right.OuterFlamesYOffset) &&
+                FloatEquals(
+                    left.OuterFlamesZOffset,
+                    right.OuterFlamesZOffset) &&
+
+                FloatEquals(
+                    left.OuterFlamesXRotation,
+                    right.OuterFlamesXRotation) &&
+                FloatEquals(
+                    left.OuterFlamesYRotation,
+                    right.OuterFlamesYRotation) &&
+                FloatEquals(
+                    left.OuterFlamesZRotation,
+                    right.OuterFlamesZRotation);
+        }
+
+        private static bool FloatEquals(
+            float left,
+            float right)
+        {
+            return left.Equals(right);
         }
 
         private VfxState ResolveState()

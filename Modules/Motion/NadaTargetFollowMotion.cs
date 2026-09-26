@@ -16,6 +16,10 @@ namespace NADA.VFX.Weapon.Modules.Motion
         internal void SetTargetTransform(Transform targetTransform)
         {
             _targetTransform = targetTransform;
+
+            // There's nothing for this component to do without a target.
+            // SetTargetTransform will wake it back up when one is assigned.
+            enabled = targetTransform != null;
         }
 
         internal void SetLocalOffset(
@@ -29,18 +33,27 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private void LateUpdate()
         {
             if (_targetTransform == null)
+            {
+                enabled = false;
                 return;
+            }
 
             ApplyFollowTransform();
         }
 
         private void ApplyFollowTransform()
         {
-            transform.position =
-                _targetTransform.TransformPoint(_localPositionOffset);
+            Vector3 worldPosition =
+                _targetTransform.TransformPoint(
+                    _localPositionOffset);
 
-            transform.rotation =
-                _targetTransform.rotation * _localRotationOffset;
+            Quaternion worldRotation =
+                _targetTransform.rotation *
+                _localRotationOffset;
+
+            transform.SetPositionAndRotation(
+                worldPosition,
+                worldRotation);
         }
     }
 }

@@ -18,6 +18,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _resolvedState;
         private bool _hasResolvedState;
 
+        private VfxState _lastAppliedState;
+        private bool _hasLastAppliedState;
+
         private Renderer[] _renderers;
         private Light[] _lights;
         private ParticleSystem[] _systems;
@@ -122,12 +125,16 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void TickApply()
         {
+            bool forceApply = false;
+
             if (_componentCacheDirty)
             {
                 RebuildComponentCache();
 
                 _componentCacheDirty = false;
                 _baselineCacheDirty = true;
+
+                forceApply = true;
             }
 
             if (_baselineCacheDirty)
@@ -135,10 +142,23 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 CacheBaselines();
 
                 _baselineCacheDirty = false;
+
+                forceApply = true;
             }
 
             VfxState state =
                 ResolveState();
+
+            // Keep polling for live editing, but don't keep rewriting
+            // a stable Flare when none of its settings changed.
+            if (!forceApply &&
+                _hasLastAppliedState &&
+                FlareStateEquals(
+                    state,
+                    _lastAppliedState))
+            {
+                return;
+            }
 
             ApplyEnabled(
                 state.FlareEnabled);
@@ -158,6 +178,45 @@ namespace NADA.VFX.Weapon.Modules.Effects
             RestartSystemsIfColorChanged(
                 state.FlareHue,
                 state.FlareLuminance);
+
+            _lastAppliedState = state;
+            _hasLastAppliedState = true;
+        }
+
+        private static bool FlareStateEquals(
+            VfxState left,
+            VfxState right)
+        {
+            return
+                left.FlareEnabled ==
+                    right.FlareEnabled &&
+
+                FloatEquals(
+                    left.FlareScale,
+                    right.FlareScale) &&
+                FloatEquals(
+                    left.FlareHue,
+                    right.FlareHue) &&
+                FloatEquals(
+                    left.FlareLuminance,
+                    right.FlareLuminance) &&
+
+                FloatEquals(
+                    left.FlareXOffset,
+                    right.FlareXOffset) &&
+                FloatEquals(
+                    left.FlareYOffset,
+                    right.FlareYOffset) &&
+                FloatEquals(
+                    left.FlareZOffset,
+                    right.FlareZOffset);
+        }
+
+        private static bool FloatEquals(
+            float left,
+            float right)
+        {
+            return left.Equals(right);
         }
 
         private VfxState ResolveState()
@@ -165,21 +224,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_hasResolvedState)
                 return _resolvedState;
 
-            if (_itemData != null)
+            if (_itemData != null &&
+                VfxStateIO.IsBound(_itemData))
             {
                 if (VfxStateIO.TryRead(
                         _itemData,
                         out VfxState itemState))
-                {
-                    return itemState;
-                }
-
-                VfxStateIO.EnsureInitializedFromConfig(
-                    _itemData);
-
-                if (VfxStateIO.TryRead(
-                        _itemData,
-                        out itemState))
                 {
                     return itemState;
                 }

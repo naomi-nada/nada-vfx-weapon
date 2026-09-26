@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Effects
@@ -6,6 +7,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
     {
         private const float SurfaceOffset = 0.005f;
         private const float BoundsPadding = 0.5f;
+
+        private static readonly HashSet<string> WarnedUnreadableMeshes = new();
 
         private Mesh _runtimeMesh;
 
@@ -44,8 +47,13 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             if (!sourceMesh.isReadable)
             {
-                Plugin.Log.LogWarning(
-                    $"{Plugin.ModName}: [Aura] mesh '{sourceMesh.name}' is not readable; using transform-scale fallback.");
+                ReleaseRuntimeMesh();
+
+                if (WarnedUnreadableMeshes.Add(sourceMesh.name))
+                {
+                    Plugin.Log.LogWarning(
+                        $"{Plugin.ModName}: [Aura] mesh '{sourceMesh.name}' is not readable; using transform-scale fallback.");
+                }
 
                 meshFilter.sharedMesh = sourceMesh;
 
@@ -61,6 +69,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             Mesh sourceMesh,
             MeshFilter meshFilter)
         {
+            ReleaseRuntimeMesh();
+
             _runtimeMesh = Object.Instantiate(sourceMesh);
             _runtimeMesh.name = $"{sourceMesh.name}_NADA_Aura";
 
@@ -72,7 +82,29 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             _center = sourceMesh.bounds.center;
 
+            _lastAppliedScale = -1f;
+
             ApplyScale(1f);
+        }
+
+        private void OnDestroy()
+        {
+            ReleaseRuntimeMesh();
+        }
+
+        private void ReleaseRuntimeMesh()
+        {
+            if (_runtimeMesh == null)
+                return;
+
+            Object.Destroy(_runtimeMesh);
+
+            _runtimeMesh = null;
+            _baseVertices = null;
+            _baseNormals = null;
+            _scaledVertices = null;
+
+            _lastAppliedScale = -1f;
         }
 
         internal void ApplyScale(float scale)

@@ -23,6 +23,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _resolvedState;
         private bool _hasResolvedState;
 
+        private VfxState _lastAppliedState;
+        private bool _hasLastAppliedState;
+
         private bool _componentCacheDirty = true;
         private bool _baselineCacheDirty = true;
 
@@ -97,20 +100,37 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void TickApply()
         {
+            bool forceApply = false;
+
             if (_componentCacheDirty)
             {
                 RebuildComponentCache();
                 _componentCacheDirty = false;
                 _baselineCacheDirty = true;
+
+                forceApply = true;
             }
 
             if (_baselineCacheDirty)
             {
                 CacheBaselines();
                 _baselineCacheDirty = false;
+
+                forceApply = true;
             }
 
             VfxState state = ResolveState();
+
+            // The timer still gives unbound config editing its live preview,
+            // but stable state doesn't need to rewrite the whole effect 20x/sec.
+            if (!forceApply &&
+                _hasLastAppliedState &&
+                InnerFlamesStateEquals(
+                    state,
+                    _lastAppliedState))
+            {
+                return;
+            }
 
             ApplySimulationSpace(state.InnerFlamesWorldEnabled);
             ApplyEnabled(state.InnerFlamesEnabled);
@@ -137,6 +157,76 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 state.InnerFlamesXRotation,
                 state.InnerFlamesYRotation,
                 state.InnerFlamesZRotation);
+
+            _lastAppliedState = state;
+            _hasLastAppliedState = true;
+        }
+
+        private static bool InnerFlamesStateEquals(
+            VfxState left,
+            VfxState right)
+        {
+            return
+                left.InnerFlamesEnabled ==
+                    right.InnerFlamesEnabled &&
+                left.InnerFlamesWorldEnabled ==
+                    right.InnerFlamesWorldEnabled &&
+                left.InnerFlamesBlackEnabled ==
+                    right.InnerFlamesBlackEnabled &&
+                left.InnerFlamesWhiteEnabled ==
+                    right.InnerFlamesWhiteEnabled &&
+
+                FloatEquals(
+                    left.InnerFlamesEnergy,
+                    right.InnerFlamesEnergy) &&
+                FloatEquals(
+                    left.InnerFlamesScale,
+                    right.InnerFlamesScale) &&
+                FloatEquals(
+                    left.InnerFlamesHue,
+                    right.InnerFlamesHue) &&
+                FloatEquals(
+                    left.InnerFlamesLuminance,
+                    right.InnerFlamesLuminance) &&
+                FloatEquals(
+                    left.InnerFlamesLifetime,
+                    right.InnerFlamesLifetime) &&
+                FloatEquals(
+                    left.InnerFlamesSimulationSpeed,
+                    right.InnerFlamesSimulationSpeed) &&
+                FloatEquals(
+                    left.InnerFlamesLength,
+                    right.InnerFlamesLength) &&
+                FloatEquals(
+                    left.InnerFlamesWidth,
+                    right.InnerFlamesWidth) &&
+
+                FloatEquals(
+                    left.InnerFlamesXOffset,
+                    right.InnerFlamesXOffset) &&
+                FloatEquals(
+                    left.InnerFlamesYOffset,
+                    right.InnerFlamesYOffset) &&
+                FloatEquals(
+                    left.InnerFlamesZOffset,
+                    right.InnerFlamesZOffset) &&
+
+                FloatEquals(
+                    left.InnerFlamesXRotation,
+                    right.InnerFlamesXRotation) &&
+                FloatEquals(
+                    left.InnerFlamesYRotation,
+                    right.InnerFlamesYRotation) &&
+                FloatEquals(
+                    left.InnerFlamesZRotation,
+                    right.InnerFlamesZRotation);
+        }
+
+        private static bool FloatEquals(
+            float left,
+            float right)
+        {
+            return left.Equals(right);
         }
 
         private VfxState ResolveState()

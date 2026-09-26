@@ -21,6 +21,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _resolvedState;
         private bool _hasResolvedState;
 
+        private VfxState _lastAppliedState;
+        private bool _hasLastAppliedState;
+
         private readonly List<Renderer> _auraRenderers = new();
         private readonly List<NadaAuraShell> _auraShells = new();
 
@@ -70,15 +73,31 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void TickApply()
         {
+            bool forceApply = false;
+
             if (_componentCacheDirty)
             {
                 RebuildComponentCache();
                 _componentCacheDirty = false;
+
+                forceApply = true;
             }
 
             VfxState state = ResolveState();
 
+            // Keep polling for live config editing, but a stable Aura doesn't
+            // need its renderers, shell scale, and placement rewritten 20x/sec.
+            if (!forceApply &&
+                _hasLastAppliedState &&
+                AuraStateEquals(
+                    state,
+                    _lastAppliedState))
+            {
+                return;
+            }
+
             ApplyEnabled(state.AuraEnabled);
+
             ApplyColorIfChanged(
                 state.AuraHue,
                 state.AuraLuminance);
@@ -92,6 +111,55 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 state.AuraXRotation,
                 state.AuraYRotation,
                 state.AuraZRotation);
+
+            _lastAppliedState = state;
+            _hasLastAppliedState = true;
+        }
+
+        private static bool AuraStateEquals(
+            VfxState left,
+            VfxState right)
+        {
+            return
+                left.AuraEnabled ==
+                    right.AuraEnabled &&
+
+                FloatEquals(
+                    left.AuraHue,
+                    right.AuraHue) &&
+                FloatEquals(
+                    left.AuraLuminance,
+                    right.AuraLuminance) &&
+                FloatEquals(
+                    left.AuraScale,
+                    right.AuraScale) &&
+
+                FloatEquals(
+                    left.AuraXOffset,
+                    right.AuraXOffset) &&
+                FloatEquals(
+                    left.AuraYOffset,
+                    right.AuraYOffset) &&
+                FloatEquals(
+                    left.AuraZOffset,
+                    right.AuraZOffset) &&
+
+                FloatEquals(
+                    left.AuraXRotation,
+                    right.AuraXRotation) &&
+                FloatEquals(
+                    left.AuraYRotation,
+                    right.AuraYRotation) &&
+                FloatEquals(
+                    left.AuraZRotation,
+                    right.AuraZRotation);
+        }
+
+        private static bool FloatEquals(
+            float left,
+            float right)
+        {
+            return left.Equals(right);
         }
 
         private VfxState ResolveState()
@@ -147,8 +215,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     _auraShells.Add(shell);
             }
 
-            // Any newly discovered Aura renderer still needs the current
-            // color applied once.
+            // Newly discovered Aura renderers still need their color once.
             _hasAppliedColor = false;
         }
 

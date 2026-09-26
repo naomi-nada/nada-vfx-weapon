@@ -167,13 +167,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 catalog.StrandsTransform,
                 itemData);
 
-            if (catalog.OrbitalsOrbsRootTransform != null)
-            {
-                NadaMotionBinder.BindOrbsMotion(
-                    catalog.OrbitalsOrbsRootTransform,
-                    itemData);
-            }
-
             NadaRigTransformApplier.Apply(
                 localWeaponRootTransform,
                 context.State);
@@ -191,13 +184,13 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 rootObject);
         }
 
-        internal static void RunRemote(
+        internal static bool RunRemote(
             NadaWeaponRigContext context,
             NadaWeaponMetadata metadata)
         {
             if (context == null || !context.IsValid)
-                return;
-            
+                return false;
+
             NadaRuntimeDiagnostics.RecordRemoteApply();
 
             GameObject rootObject =
@@ -213,13 +206,13 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     $"root='{rootObject?.name}' " +
                     $"visual='{weaponVisualRootTransform?.name}'");
 
-                return;
+                return false;
             }
 
             if (!NadaWeaponTargets.IsTargetOrAttachClone(
                     rootObject))
             {
-                return;
+                return false;
             }
 
             // Remote weapons get behavior from replicated VfxState.
@@ -237,7 +230,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     alignment);
 
             if (localWeaponRootTransform == null)
-                return;
+                return false;
 
             NadaOrbitalsRigAssembly.EnsureCompleteOrbitalsRig(
                 localWeaponRootTransform,
@@ -265,8 +258,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 NadaRigCatalog.Build(
                     localWeaponRootTransform);
 
-            if (catalog == null)
-                return;
+            if (catalog == null || !catalog.IsValid)
+                return false;
 
             NadaEffectBinder.BindInnerFlamesEffect(
                 catalog.InnerFlamesTransform,
@@ -369,6 +362,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"cores={context.State.OrbitalsCoresEnabled} " +
                 $"flames={context.State.OrbitalsFlamesEnabled} " +
                 $"embers={context.State.OrbitalsEmbersEnabled}");
+
+            return true;
         }
     }
 }

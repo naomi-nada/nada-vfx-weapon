@@ -86,16 +86,6 @@ namespace NADA.VFX.Weapon.Runtime.Binding
                 externalFollowerPoolRootTransform);
         }
 
-        internal static void BindOrbsMotion(
-            Transform orbsRootTransform,
-            global::ItemDrop.ItemData itemData)
-        {
-            BindOrbitalsMotion(
-                orbsRootTransform,
-                NadaOrbitalsFamily.Orbs,
-                itemData);
-        }
-
         internal static void BindOrbitalsRigFollow(
             Transform orbitalsRigRootTransform,
             Transform followTargetTransform,

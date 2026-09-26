@@ -5,6 +5,7 @@ using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Runtime;
 using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
@@ -48,6 +49,36 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             LegacyPayloadCheckedVisEquipment =
                 new();
 
+        // A stable bound item doesn't need its entire rig rebuilt every time
+        // vanilla updates equipment. Keep separate records for each hand.
+        private const float LocalVisualRecheckSeconds = 1f;
+
+        private static readonly LocalApplyCache RightLocalApplyCache =
+            new();
+
+        private static readonly LocalApplyCache LeftLocalApplyCache =
+            new();
+
+        private sealed class LocalApplyCache
+        {
+            internal global::VisEquipment Owner;
+            internal GameObject ItemInstance;
+            internal global::ItemDrop.ItemData ItemData;
+            internal Transform VisualRoot;
+            internal Transform RigRoot;
+            internal float NextVisualRecheckTime;
+
+            internal void Clear()
+            {
+                Owner = null;
+                ItemInstance = null;
+                ItemData = null;
+                VisualRoot = null;
+                RigRoot = null;
+                NextVisualRecheckTime = 0f;
+            }
+        }
+
         private static void Postfix(
             global::VisEquipment __instance)
         {
@@ -71,7 +102,10 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     return;
                 }
 
-                if (Player.m_localPlayer == null &&
+                bool isLocalPlayer =
+                    Player.m_localPlayer != null;
+
+                if (!isLocalPlayer &&
                     PluginConfig.CharacterSelectionVisibility.Value)
                 {
                     NadaLogControl.Info(
@@ -99,7 +133,7 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     NadaEquippedItemResolver
                         .ResolveLeftHandItem();
 
-                if (Player.m_localPlayer != null)
+                if (isLocalPlayer)
                 {
                     ClearLegacyLocalRightPayloadOnce(
                         __instance);
@@ -115,12 +149,16 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 }
 
                 TryApplyIfBound(
+                    __instance,
                     rightInstance,
-                    rightItem);
+                    rightItem,
+                    isLocalPlayer ? RightLocalApplyCache : null);
 
                 TryApplyIfBound(
+                    __instance,
                     leftInstance,
-                    leftItem);
+                    leftItem,
+                    isLocalPlayer ? LeftLocalApplyCache : null);
             }
             catch (Exception e)
             {
@@ -144,40 +182,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     RightInstField,
                     visEquipment);
 
-            GameObject leftInstance =
-                SafeGetGameObject(
-                    LeftInstField,
-                    visEquipment);
-
-            Transform rightVisualRoot =
-                rightInstance != null
-                    ? NadaWeaponTargets
-                        .FindEquippedWeaponVisualRoot(
-                            rightInstance.transform)
-                    : null;
-
-            Transform leftVisualRoot =
-                leftInstance != null
-                    ? NadaWeaponTargets
-                        .FindEquippedWeaponVisualRoot(
-                            leftInstance.transform)
-                    : null;
-
-            NadaLogControl.Info(
-                $"remote-state:" +
-                $"{visEquipment.GetInstanceID()}:" +
-                $"{rightInstance?.GetInstanceID() ?? 0}:" +
-                $"{leftInstance?.GetInstanceID() ?? 0}",
-                $"{Plugin.ModName}: [RemoteEquipProbe] " +
-                $"vis='{visEquipment.name}' " +
-                $"path='{NadaWeaponTargets.FullPath(visEquipment.transform)}' " +
-                $"rightInstance='{rightInstance?.name ?? "<null>"}' " +
-                $"rightVisual='{rightVisualRoot?.name ?? "<null>"}' " +
-                $"rightPath='{NadaWeaponTargets.FullPath(rightVisualRoot)}' " +
-                $"leftInstance='{leftInstance?.name ?? "<null>"}' " +
-                $"leftVisual='{leftVisualRoot?.name ?? "<null>"}' " +
-                $"leftPath='{NadaWeaponTargets.FullPath(leftVisualRoot)}'");
-
             long peerId =
                 ReadPeerId(
                     visEquipment);
@@ -186,6 +190,9 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 ReadRightItemHash(
                     visEquipment);
 
+            // The tracker owns remote visual-instance observation.
+            // We don't need to resolve both weapon renderer hierarchies
+            // here just to produce a diagnostic log.
             NadaVfxRemoteStateTracker
                 .ObserveRight(
                     peerId,
@@ -262,24 +269,123 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         }
 
         private static void TryApplyIfBound(
+            global::VisEquipment visEquipment,
             GameObject itemInstance,
-            global::ItemDrop.ItemData itemData)
+            global::ItemDrop.ItemData itemData,
+            LocalApplyCache applyCache)
         {
             if (itemInstance == null ||
-                itemData == null)
+                itemData == null ||
+                !VfxStateIO.IsBound(itemData))
             {
+                applyCache?.Clear();
                 return;
             }
 
-            if (!VfxStateIO.IsBound(
+            if (CanSkipLocalApply(
+                    applyCache,
+                    visEquipment,
+                    itemInstance,
                     itemData))
             {
                 return;
             }
 
-            WeaponRigController.TryApply(
-                itemInstance,
-                itemData);
+            // A failed attempt must not become a cached success.
+            applyCache?.Clear();
+
+            bool applied =
+                WeaponRigController.TryApply(
+                    itemInstance,
+                    itemData);
+
+            if (!applied || applyCache == null)
+                return;
+
+            Transform visualRoot =
+                NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                    itemInstance.transform);
+
+            if (visualRoot == null)
+                return;
+
+            Transform rigRoot =
+                NadaRigPaths.FindDirectChild(
+                    visualRoot,
+                    Plugin.LocalWeaponRootName);
+
+            if (rigRoot == null)
+                return;
+
+            applyCache.Owner = visEquipment;
+            applyCache.ItemInstance = itemInstance;
+            applyCache.ItemData = itemData;
+            applyCache.VisualRoot = visualRoot;
+            applyCache.RigRoot = rigRoot;
+
+            applyCache.NextVisualRecheckTime =
+                Time.realtimeSinceStartup +
+                LocalVisualRecheckSeconds;
+        }
+
+        private static bool CanSkipLocalApply(
+            LocalApplyCache applyCache,
+            global::VisEquipment visEquipment,
+            GameObject itemInstance,
+            global::ItemDrop.ItemData itemData)
+        {
+            if (applyCache == null)
+                return false;
+
+            if (applyCache.Owner != visEquipment ||
+                applyCache.ItemInstance != itemInstance ||
+                !ReferenceEquals(applyCache.ItemData, itemData))
+            {
+                return false;
+            }
+
+            Transform visualRoot =
+                applyCache.VisualRoot;
+
+            Transform rigRoot =
+                applyCache.RigRoot;
+
+            if (visualRoot == null ||
+                rigRoot == null)
+            {
+                return false;
+            }
+
+            // Don't mistake a rig on an old, detached, or hidden visual
+            // for a rig on the weapon Valheim is currently displaying.
+            if (visualRoot.parent != itemInstance.transform ||
+                !visualRoot.gameObject.activeInHierarchy ||
+                rigRoot.parent != visualRoot ||
+                !rigRoot.gameObject.activeInHierarchy)
+            {
+                return false;
+            }
+
+            float now =
+                Time.realtimeSinceStartup;
+
+            if (now >= applyCache.NextVisualRecheckTime)
+            {
+                // Valheim can replace a visual child while keeping the same
+                // equipment wrapper. A targeted 1Hz check catches that case
+                // without doing a renderer search on every equipment update.
+                Transform currentVisualRoot =
+                    NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                        itemInstance.transform);
+
+                if (currentVisualRoot != visualRoot)
+                    return false;
+
+                applyCache.NextVisualRecheckTime =
+                    now + LocalVisualRecheckSeconds;
+            }
+
+            return true;
         }
 
         private static GameObject SafeGetGameObject(

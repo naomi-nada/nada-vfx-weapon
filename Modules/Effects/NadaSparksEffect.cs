@@ -21,6 +21,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _resolvedState;
         private bool _hasResolvedState;
 
+        private VfxState _lastAppliedState;
+        private bool _hasLastAppliedState;
+
         private Renderer[] _renderers;
         private Light[] _lights;
         private ParticleSystem[] _systems;
@@ -113,6 +116,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void TickApply()
         {
+            bool forceApply = false;
+
             if (_componentCacheDirty)
             {
                 RebuildComponentCache();
@@ -120,15 +125,30 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 _componentCacheDirty = false;
                 _baselineCacheDirty = true;
+
+                forceApply = true;
             }
 
             if (_baselineCacheDirty)
             {
                 CacheBaselines();
                 _baselineCacheDirty = false;
+
+                forceApply = true;
             }
 
             VfxState state = ResolveState();
+
+            // Keep the timer for live config editing, but stable spark state
+            // doesn't need to rebuild its particle settings and emitter layout 20x/sec.
+            if (!forceApply &&
+                _hasLastAppliedState &&
+                SparksStateEquals(
+                    state,
+                    _lastAppliedState))
+            {
+                return;
+            }
 
             ApplyEnabled(state.SparksEnabled);
             ApplyScale(state.SparksScale);
@@ -152,6 +172,70 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 state.SparksXRotation,
                 state.SparksYRotation,
                 state.SparksZRotation);
+
+            _lastAppliedState = state;
+            _hasLastAppliedState = true;
+        }
+
+        private static bool SparksStateEquals(
+            VfxState left,
+            VfxState right)
+        {
+            return
+                left.SparksEnabled ==
+                    right.SparksEnabled &&
+
+                FloatEquals(
+                    left.SparksScale,
+                    right.SparksScale) &&
+                FloatEquals(
+                    left.SparksLifetime,
+                    right.SparksLifetime) &&
+                FloatEquals(
+                    left.SparksSimulationSpeed,
+                    right.SparksSimulationSpeed) &&
+                FloatEquals(
+                    left.SparksLength,
+                    right.SparksLength) &&
+                FloatEquals(
+                    left.SparksWidth,
+                    right.SparksWidth) &&
+                FloatEquals(
+                    left.SparksHue,
+                    right.SparksHue) &&
+                FloatEquals(
+                    left.SparksLuminance,
+                    right.SparksLuminance) &&
+                FloatEquals(
+                    left.SparksEnergy,
+                    right.SparksEnergy) &&
+
+                FloatEquals(
+                    left.SparksXOffset,
+                    right.SparksXOffset) &&
+                FloatEquals(
+                    left.SparksYOffset,
+                    right.SparksYOffset) &&
+                FloatEquals(
+                    left.SparksZOffset,
+                    right.SparksZOffset) &&
+
+                FloatEquals(
+                    left.SparksXRotation,
+                    right.SparksXRotation) &&
+                FloatEquals(
+                    left.SparksYRotation,
+                    right.SparksYRotation) &&
+                FloatEquals(
+                    left.SparksZRotation,
+                    right.SparksZRotation);
+        }
+
+        private static bool FloatEquals(
+            float left,
+            float right)
+        {
+            return left.Equals(right);
         }
 
         private VfxState ResolveState()

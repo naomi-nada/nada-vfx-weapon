@@ -9,13 +9,20 @@ namespace NADA.VFX.Weapon.Modules.Motion
         MonoBehaviour,
         INadaResolvedStateReceiver
     {
+        private const float LocalStateRefreshInterval = 0.05f;
+
         private const float DefaultDragStrength = 0.015f;
         private const float MaxTrackedVelocity = 12f;
         private const float VelocitySmoothing = 12f;
 
         private global::ItemDrop.ItemData _itemData;
+
         private VfxState _resolvedState;
         private bool _hasResolvedState;
+
+        private VfxState _cachedLocalState;
+        private bool _hasCachedLocalState;
+        private float _nextLocalStateRefreshTime;
 
         private readonly List<CachedParticle> _particles = new();
 
@@ -23,6 +30,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private bool _hasLastWorldPosition;
         private Vector3 _smoothedVelocity;
         private bool _initialized;
+
+        private bool _lastDragEnabled;
+        private bool _hasLastDragEnabled;
 
         private ParticleSystem.MinMaxCurve _xCurve = new(0f);
         private ParticleSystem.MinMaxCurve _yCurve = new(0f);
@@ -34,7 +44,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
             public ParticleSystem.VelocityOverLifetimeModule Velocity;
         }
 
-        internal void SetItemData(global::ItemDrop.ItemData itemData)
+        internal void SetItemData(
+            global::ItemDrop.ItemData itemData)
         {
             if (_itemData == itemData &&
                 !_hasResolvedState)
@@ -45,16 +56,23 @@ namespace NADA.VFX.Weapon.Modules.Motion
             _itemData = itemData;
             _hasResolvedState = false;
 
+            InvalidateLocalStateCache();
             ResetVelocityTracking();
+
+            _hasLastDragEnabled = false;
         }
 
-        public void SetResolvedState(VfxState state)
+        public void SetResolvedState(
+            VfxState state)
         {
             _resolvedState = state;
             _hasResolvedState = true;
             _itemData = null;
 
+            InvalidateLocalStateCache();
             ResetVelocityTracking();
+
+            _hasLastDragEnabled = false;
         }
 
         private void Awake()
@@ -71,17 +89,31 @@ namespace NADA.VFX.Weapon.Modules.Motion
             if (_particles.Count == 0)
                 return;
 
-            Vector3 weaponVelocity =
-                CalculateSmoothedWeaponVelocity();
-
             VfxState state =
                 ResolveState();
 
-            if (!state.OuterFlamesDragEnabled)
+            // Keep tracking movement even while Drag is off so turning it
+            // back on doesn't start from a stale weapon position.
+            Vector3 weaponVelocity =
+                CalculateSmoothedWeaponVelocity();
+
+            bool dragEnabled =
+                state.OuterFlamesDragEnabled;
+
+            if (!dragEnabled)
             {
-                ApplyDragVelocity(
-                    Vector3.zero,
-                    0f);
+                // Once Drag is off, there's no reason to keep writing the
+                // same zero curves into every particle system each frame.
+                if (!_hasLastDragEnabled ||
+                    _lastDragEnabled)
+                {
+                    ApplyDragVelocity(
+                        Vector3.zero,
+                        0f);
+                }
+
+                _lastDragEnabled = false;
+                _hasLastDragEnabled = true;
 
                 return;
             }
@@ -89,6 +121,56 @@ namespace NADA.VFX.Weapon.Modules.Motion
             ApplyDragVelocity(
                 weaponVelocity,
                 ResolveDragStrength());
+
+            _lastDragEnabled = true;
+            _hasLastDragEnabled = true;
+        }
+
+        private VfxState ResolveState()
+        {
+            if (_hasResolvedState)
+                return _resolvedState;
+
+            float now =
+                Time.unscaledTime;
+
+            if (_hasCachedLocalState &&
+                now < _nextLocalStateRefreshTime)
+            {
+                return _cachedLocalState;
+            }
+
+            _cachedLocalState =
+                ResolveLocalState();
+
+            _hasCachedLocalState = true;
+
+            _nextLocalStateRefreshTime =
+                now + LocalStateRefreshInterval;
+
+            return _cachedLocalState;
+        }
+
+        private VfxState ResolveLocalState()
+        {
+            if (_itemData != null &&
+                VfxStateIO.IsBound(_itemData))
+            {
+                if (VfxStateIO.TryRead(
+                        _itemData,
+                        out VfxState itemState))
+                {
+                    return itemState;
+                }
+            }
+
+            return VfxStateIO.FromConfig();
+        }
+
+        private void InvalidateLocalStateCache()
+        {
+            _hasCachedLocalState = false;
+            _nextLocalStateRefreshTime = 0f;
         }
 
         private Vector3 CalculateSmoothedWeaponVelocity()
@@ -168,22 +250,6 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             _initialized =
                 _particles.Count > 0;
-        }
-
-        private VfxState ResolveState()
-        {
-            if (_hasResolvedState)
-                return _resolvedState;
-
-            if (_itemData != null &&
-                VfxStateIO.TryRead(
-                    _itemData,
-                    out VfxState itemState))
-            {
-                return itemState;
-            }
-
-            return VfxStateIO.FromConfig();
         }
 
         private void ResetVelocityTracking()

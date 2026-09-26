@@ -20,6 +20,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _resolvedState;
         private bool _hasResolvedState;
 
+        private VfxState _lastAppliedStaticState;
+        private bool _hasLastAppliedStaticState;
+
         private ParticleSystem[] _systems;
         private Renderer[] _renderers;
 
@@ -93,43 +96,76 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void TickApply()
         {
+            bool forceStaticApply = false;
+
             if (_componentCacheDirty)
             {
                 RebuildComponentCache();
                 _componentCacheDirty = false;
                 _baselineCacheDirty = true;
+
+                forceStaticApply = true;
             }
 
             if (_baselineCacheDirty)
             {
                 CacheBaselines();
                 _baselineCacheDirty = false;
+
+                forceStaticApply = true;
             }
 
             VfxState state = ResolveState();
 
-            ApplyEnabled(state.StrandsEnabled);
-            ApplyEnergy(state.StrandsEnergy);
+            bool staticStateChanged =
+                forceStaticApply ||
+                !_hasLastAppliedStaticState ||
+                !StrandsStaticStateEquals(
+                    state,
+                    _lastAppliedStaticState);
 
+            if (staticStateChanged)
+            {
+                ApplyEnabled(state.StrandsEnabled);
+                ApplyEnergy(state.StrandsEnergy);
+            }
+
+            // Drift is actual runtime motion, so it still needs to run
+            // continuously even when the underlying state is unchanged.
             ApplyDrift(state.StrandsDrift);
 
-            ApplyScaleWhole(state.StrandsScaleWhole);
-            ApplyScaleParts(state.StrandsScaleParts);
+            if (staticStateChanged)
+            {
+                ApplyScaleWhole(state.StrandsScaleWhole);
+                ApplyScaleParts(state.StrandsScaleParts);
+            }
 
+            // Spectrum is time-driven. Static hue only needs to be
+            // reapplied when its actual state changes.
             if (state.StrandsSpectrumEnabled)
+            {
                 ApplySpectrum(
                     state.StrandsSpectrumSpeed,
                     state.StrandsLuminance);
-            else
+            }
+            else if (staticStateChanged)
+            {
                 ApplyHue(
                     state.StrandsHue,
                     state.StrandsLuminance);
+            }
 
-            ApplySpeed(state.StrandsSpeed);
-            ApplyLength(state.StrandsLength);
-            ApplyRadius(state.StrandsRadius);
-            ApplyLifetime(state.StrandsLifetime);
+            if (staticStateChanged)
+            {
+                ApplySpeed(state.StrandsSpeed);
+                ApplyLength(state.StrandsLength);
+                ApplyRadius(state.StrandsRadius);
+                ApplyLifetime(state.StrandsLifetime);
+            }
 
+            // Keep placement on the existing continuous path for now.
+            // Drift and placement interact, so we'll inspect that properly
+            // during the motion audit instead of changing the feel here.
             ApplyPlacement(
                 state.StrandsXOffset,
                 state.StrandsYOffset,
@@ -137,6 +173,60 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 state.StrandsXRotation,
                 state.StrandsYRotation,
                 state.StrandsZRotation);
+
+            if (staticStateChanged)
+            {
+                _lastAppliedStaticState = state;
+                _hasLastAppliedStaticState = true;
+            }
+        }
+
+        private static bool StrandsStaticStateEquals(
+            VfxState left,
+            VfxState right)
+        {
+            return
+                left.StrandsEnabled ==
+                    right.StrandsEnabled &&
+                left.StrandsSpectrumEnabled ==
+                    right.StrandsSpectrumEnabled &&
+
+                FloatEquals(
+                    left.StrandsEnergy,
+                    right.StrandsEnergy) &&
+                FloatEquals(
+                    left.StrandsScaleWhole,
+                    right.StrandsScaleWhole) &&
+                FloatEquals(
+                    left.StrandsScaleParts,
+                    right.StrandsScaleParts) &&
+
+                FloatEquals(
+                    left.StrandsHue,
+                    right.StrandsHue) &&
+                FloatEquals(
+                    left.StrandsLuminance,
+                    right.StrandsLuminance) &&
+
+                FloatEquals(
+                    left.StrandsSpeed,
+                    right.StrandsSpeed) &&
+                FloatEquals(
+                    left.StrandsLength,
+                    right.StrandsLength) &&
+                FloatEquals(
+                    left.StrandsRadius,
+                    right.StrandsRadius) &&
+                FloatEquals(
+                    left.StrandsLifetime,
+                    right.StrandsLifetime);
+        }
+
+        private static bool FloatEquals(
+            float left,
+            float right)
+        {
+            return left.Equals(right);
         }
 
         private VfxState ResolveState()
@@ -144,21 +234,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_hasResolvedState)
                 return _resolvedState;
 
-            if (_itemData != null)
+            if (_itemData != null &&
+                VfxStateIO.IsBound(_itemData))
             {
                 if (VfxStateIO.TryRead(
                         _itemData,
                         out VfxState itemState))
-                {
-                    return itemState;
-                }
-
-                VfxStateIO.EnsureInitializedFromConfig(
-                    _itemData);
-
-                if (VfxStateIO.TryRead(
-                        _itemData,
-                        out itemState))
                 {
                     return itemState;
                 }

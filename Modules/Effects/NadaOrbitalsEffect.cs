@@ -17,6 +17,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _resolvedState;
         private bool _hasResolvedState;
 
+        private VfxState _lastAppliedStaticState;
+        private bool _hasLastAppliedStaticState;
+
         // Orbs
         private Transform _orbsRootTransform;
         private Transform _localOrbsRootTransform;
@@ -169,25 +172,47 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void TickApply()
         {
+            bool forceStaticApply = false;
+
             if (_componentCachesDirty)
             {
                 RebuildOrbitalsComponentCaches();
                 _componentCachesDirty = false;
                 _modifierBaselinesDirty = true;
+
+                forceStaticApply = true;
             }
 
             if (_modifierBaselinesDirty)
             {
                 CacheModifierBaselines();
                 _modifierBaselinesDirty = false;
+
+                forceStaticApply = true;
             }
 
             VfxState state = ResolveState();
 
-            ApplyOrbs(state);
-            ApplyCores(state);
-            ApplyFlames(state);
-            ApplyEmbers(state);
+            bool staticStateChanged =
+                forceStaticApply ||
+                !_hasLastAppliedStaticState ||
+                !OrbitalsEffectStateEquals(
+                    state,
+                    _lastAppliedStaticState);
+
+            // Motion can activate/deactivate pooled follower objects while
+            // the VFX state itself stays unchanged, so each group still gets
+            // its lightweight runtime/liveness pass every tick.
+            ApplyOrbs(state, staticStateChanged);
+            ApplyCores(state, staticStateChanged);
+            ApplyFlames(state, staticStateChanged);
+            ApplyEmbers(state, staticStateChanged);
+
+            if (staticStateChanged)
+            {
+                _lastAppliedStaticState = state;
+                _hasLastAppliedStaticState = true;
+            }
         }
 
         private VfxState ResolveState()
@@ -195,23 +220,108 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_hasResolvedState)
                 return _resolvedState;
 
-            if (_itemData != null)
+            if (_itemData != null &&
+                VfxStateIO.IsBound(_itemData))
             {
-                if (VfxStateIO.TryRead(_itemData, out var itemState))
+                if (VfxStateIO.TryRead(
+                        _itemData,
+                        out VfxState itemState))
+                {
                     return itemState;
-
-                VfxStateIO.EnsureInitializedFromConfig(_itemData);
-
-                if (VfxStateIO.TryRead(_itemData, out itemState))
-                    return itemState;
+                }
             }
 
             return VfxStateIO.FromConfig();
         }
 
+        private static bool OrbitalsEffectStateEquals(
+            VfxState left,
+            VfxState right)
+        {
+            return
+                left.OrbitalsOrbsEnabled ==
+                    right.OrbitalsOrbsEnabled &&
+                left.OrbitalsOrbsSnakeEnabled ==
+                    right.OrbitalsOrbsSnakeEnabled &&
+                FloatEquals(
+                    left.OrbitalsOrbsScale,
+                    right.OrbitalsOrbsScale) &&
+                FloatEquals(
+                    left.OrbitalsOrbsHue,
+                    right.OrbitalsOrbsHue) &&
+                FloatEquals(
+                    left.OrbitalsOrbsLuminance,
+                    right.OrbitalsOrbsLuminance) &&
+
+                left.OrbitalsCoresEnabled ==
+                    right.OrbitalsCoresEnabled &&
+                left.OrbitalsCoresSnakeEnabled ==
+                    right.OrbitalsCoresSnakeEnabled &&
+                FloatEquals(
+                    left.OrbitalsCoresScale,
+                    right.OrbitalsCoresScale) &&
+                FloatEquals(
+                    left.OrbitalsCoresHue,
+                    right.OrbitalsCoresHue) &&
+                FloatEquals(
+                    left.OrbitalsCoresLuminance,
+                    right.OrbitalsCoresLuminance) &&
+
+                left.OrbitalsFlamesEnabled ==
+                    right.OrbitalsFlamesEnabled &&
+                FloatEquals(
+                    left.OrbitalsFlamesHue,
+                    right.OrbitalsFlamesHue) &&
+                FloatEquals(
+                    left.OrbitalsFlamesLuminance,
+                    right.OrbitalsFlamesLuminance) &&
+                FloatEquals(
+                    left.OrbitalsFlamesEnergy,
+                    right.OrbitalsFlamesEnergy) &&
+                FloatEquals(
+                    left.OrbitalsFlamesSimulationSpeed,
+                    right.OrbitalsFlamesSimulationSpeed) &&
+                FloatEquals(
+                    left.OrbitalsFlamesScale,
+                    right.OrbitalsFlamesScale) &&
+                FloatEquals(
+                    left.OrbitalsFlamesLifetime,
+                    right.OrbitalsFlamesLifetime) &&
+
+                left.OrbitalsEmbersEnabled ==
+                    right.OrbitalsEmbersEnabled &&
+                FloatEquals(
+                    left.OrbitalsEmbersHue,
+                    right.OrbitalsEmbersHue) &&
+                FloatEquals(
+                    left.OrbitalsEmbersLuminance,
+                    right.OrbitalsEmbersLuminance) &&
+                FloatEquals(
+                    left.OrbitalsEmbersEnergy,
+                    right.OrbitalsEmbersEnergy) &&
+                FloatEquals(
+                    left.OrbitalsEmbersScale,
+                    right.OrbitalsEmbersScale) &&
+                FloatEquals(
+                    left.OrbitalsEmbersSimulationSpeed,
+                    right.OrbitalsEmbersSimulationSpeed) &&
+                FloatEquals(
+                    left.OrbitalsEmbersLifetime,
+                    right.OrbitalsEmbersLifetime);
+        }
+
+        private static bool FloatEquals(
+            float left,
+            float right)
+        {
+            return left.Equals(right);
+        }
+
         // Orbs
 
-        private void ApplyOrbs(VfxState state)
+        private void ApplyOrbs(
+            VfxState state,
+            bool applyStaticModifiers)
         {
             bool enabled =
                 state.OrbitalsOrbsEnabled;
@@ -247,16 +357,19 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 _orbsParticleSystems,
                 true);
 
-            ApplyOrbsScale(
-                state.OrbitalsOrbsScale,
-                state.OrbitalsOrbsSnakeEnabled);
+            if (applyStaticModifiers)
+            {
+                ApplyOrbsScale(
+                    state.OrbitalsOrbsScale,
+                    state.OrbitalsOrbsSnakeEnabled);
 
-            ApplyHueShift(
-                _orbsParticleSystems,
-                _orbsRenderers,
-                _orbsLights,
-                state.OrbitalsOrbsHue,
-                state.OrbitalsOrbsLuminance);
+                ApplyHueShift(
+                    _orbsParticleSystems,
+                    _orbsRenderers,
+                    _orbsLights,
+                    state.OrbitalsOrbsHue,
+                    state.OrbitalsOrbsLuminance);
+            }
 
             LogToggleStateIfChanged(
                 "Orbitals Orbs",
@@ -363,7 +476,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
             }
         }
 
-        private void ApplyCores(VfxState state)
+        private void ApplyCores(
+            VfxState state,
+            bool applyStaticModifiers)
         {
             bool enabled =
                 state.OrbitalsCoresEnabled;
@@ -397,16 +512,19 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 _coresParticleSystems,
                 true);
 
-            ApplyCoresScale(
-                state.OrbitalsCoresScale,
-                state.OrbitalsCoresSnakeEnabled);
+            if (applyStaticModifiers)
+            {
+                ApplyCoresScale(
+                    state.OrbitalsCoresScale,
+                    state.OrbitalsCoresSnakeEnabled);
 
-            ApplyHueShift(
-                _coresParticleSystems,
-                _coresRenderers,
-                _coresLights,
-                state.OrbitalsCoresHue,
-                RemapCoreLuminance(state.OrbitalsCoresLuminance));
+                ApplyHueShift(
+                    _coresParticleSystems,
+                    _coresRenderers,
+                    _coresLights,
+                    state.OrbitalsCoresHue,
+                    RemapCoreLuminance(state.OrbitalsCoresLuminance));
+            }
 
             LogToggleStateIfChanged(
                 "Orbitals Cores",
@@ -444,7 +562,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         // Flames
 
-        private void ApplyFlames(VfxState state)
+        private void ApplyFlames(
+            VfxState state,
+            bool applyStaticModifiers)
         {
             bool enabled =
                 state.OrbitalsFlamesEnabled;
@@ -470,28 +590,31 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 _flamesParticleSystems,
                 true);
 
-            ApplyHueShift(
-                _flamesParticleSystems,
-                _flamesRenderers,
-                _flamesLights,
-                state.OrbitalsFlamesHue,
-                state.OrbitalsFlamesLuminance);
+            if (applyStaticModifiers)
+            {
+                ApplyHueShift(
+                    _flamesParticleSystems,
+                    _flamesRenderers,
+                    _flamesLights,
+                    state.OrbitalsFlamesHue,
+                    state.OrbitalsFlamesLuminance);
 
-            ApplyFlamesEnergy(
-                _flamesParticleSystems,
-                state.OrbitalsFlamesEnergy);
+                ApplyFlamesEnergy(
+                    _flamesParticleSystems,
+                    state.OrbitalsFlamesEnergy);
 
-            ApplySimulationSpeed(
-                _flamesParticleSystems,
-                state.OrbitalsFlamesSimulationSpeed);
+                ApplySimulationSpeed(
+                    _flamesParticleSystems,
+                    state.OrbitalsFlamesSimulationSpeed);
 
-            ApplyFlamesScale(
-                _flamesParticleSystems,
-                state.OrbitalsFlamesScale);
+                ApplyFlamesScale(
+                    _flamesParticleSystems,
+                    state.OrbitalsFlamesScale);
 
-            ApplyFlamesLifetime(
-                _flamesParticleSystems,
-                state.OrbitalsFlamesLifetime);
+                ApplyFlamesLifetime(
+                    _flamesParticleSystems,
+                    state.OrbitalsFlamesLifetime);
+            }
 
             LogToggleStateIfChanged(
                 "Orbitals Flames",
@@ -616,7 +739,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         // Embers
 
-        private void ApplyEmbers(VfxState state)
+        private void ApplyEmbers(
+            VfxState state,
+            bool applyStaticModifiers)
         {
             bool enabled =
                 state.OrbitalsEmbersEnabled;
@@ -642,28 +767,31 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 _embersParticleSystems,
                 true);
 
-            ApplyHueShift(
-                _embersParticleSystems,
-                _embersRenderers,
-                _embersLights,
-                state.OrbitalsEmbersHue,
-                state.OrbitalsEmbersLuminance);
+            if (applyStaticModifiers)
+            {
+                ApplyHueShift(
+                    _embersParticleSystems,
+                    _embersRenderers,
+                    _embersLights,
+                    state.OrbitalsEmbersHue,
+                    state.OrbitalsEmbersLuminance);
 
-            ApplyEmbersEnergy(
-                _embersParticleSystems,
-                state.OrbitalsEmbersEnergy);
+                ApplyEmbersEnergy(
+                    _embersParticleSystems,
+                    state.OrbitalsEmbersEnergy);
 
-            ApplyEmbersScale(
-                _embersParticleSystems,
-                state.OrbitalsEmbersScale);
+                ApplyEmbersScale(
+                    _embersParticleSystems,
+                    state.OrbitalsEmbersScale);
 
-            ApplySimulationSpeed(
-                _embersParticleSystems,
-                state.OrbitalsEmbersSimulationSpeed);
+                ApplySimulationSpeed(
+                    _embersParticleSystems,
+                    state.OrbitalsEmbersSimulationSpeed);
 
-            ApplyEmbersLifetime(
-                _embersParticleSystems,
-                state.OrbitalsEmbersLifetime);
+                ApplyEmbersLifetime(
+                    _embersParticleSystems,
+                    state.OrbitalsEmbersLifetime);
+            }
 
             LogToggleStateIfChanged(
                 "Orbitals Embers",

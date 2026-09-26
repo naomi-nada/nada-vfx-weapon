@@ -81,16 +81,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (!context.IsValid)
                 return false;
 
-            NadaWeaponRigOrchestrator.RunRemote(
+            return NadaWeaponRigOrchestrator.RunRemote(
                 context,
                 metadata);
-
-            Transform createdRoot =
-                NadaRigPaths.FindDirectChild(
-                    weaponVisualRootTransform,
-                    Plugin.LocalWeaponRootName);
-
-            return createdRoot != null;
         }
 
         public bool TryApplyDroppedItem(
