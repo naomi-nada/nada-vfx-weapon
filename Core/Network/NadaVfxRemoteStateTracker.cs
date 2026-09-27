@@ -10,6 +10,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal static class NadaVfxRemoteStateTracker
     {
+        private const float FailedApplyRetrySeconds = 1f;
+
         private static readonly NadaWeaponRigController
             WeaponRigController =
                 new();
@@ -64,6 +66,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             internal uint AppliedRevision;
 
             internal bool AppliedBound;
+
+            // A failed application should not rebuild on every equipment
+            // callback. These fields identify the exact failed attempt.
+            internal int FailedApplyInstanceId;
+
+            internal int FailedApplyItemHash;
+
+            internal uint FailedApplyRevision;
+
+            internal float NextApplyRetryTime;
 
             internal bool RequestPending;
 
@@ -141,6 +153,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     itemHash);
 
                 ClearAppliedState(
+                    remoteState);
+
+                ClearFailedApply(
                     remoteState);
             }
 
@@ -582,6 +597,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             if (!remoteState.ReceivedBound)
             {
+                ClearFailedApply(
+                    remoteState);
+
                 NadaWeaponRigRemoval
                     .RemoveFromEquippedRoot(
                         remoteState.RightInstance);
@@ -600,6 +618,21 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
+            // A failed build may be observed hundreds of times per second.
+            // Retry the same instance/revision at most once per second, but
+            // let a different weapon or a newer revision try immediately.
+            if (remoteState.FailedApplyInstanceId ==
+                    rightInstanceId &&
+                remoteState.FailedApplyItemHash ==
+                    remoteState.ReceivedItemHash &&
+                remoteState.FailedApplyRevision ==
+                    remoteState.ReceivedRevision &&
+                Time.unscaledTime <
+                    remoteState.NextApplyRetryTime)
+            {
+                return;
+            }
+
             bool applied =
                 WeaponRigController
                     .TryApplyResolvedState(
@@ -609,6 +642,19 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             if (!applied)
             {
+                remoteState.FailedApplyInstanceId =
+                    rightInstanceId;
+
+                remoteState.FailedApplyItemHash =
+                    remoteState.ReceivedItemHash;
+
+                remoteState.FailedApplyRevision =
+                    remoteState.ReceivedRevision;
+
+                remoteState.NextApplyRetryTime =
+                    Time.unscaledTime +
+                    FailedApplyRetrySeconds;
+
                 NadaLogControl.Info(
                     $"remote-v2-apply-fail:" +
                     $"{remoteState.PeerId}:" +
@@ -623,6 +669,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
                 return;
             }
+
+            ClearFailedApply(
+                remoteState);
 
             RememberAppliedState(
                 remoteState,
@@ -831,6 +880,22 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             remoteState.AppliedBound =
                 false;
+        }
+
+        private static void ClearFailedApply(
+            RemoteRightState remoteState)
+        {
+            remoteState.FailedApplyInstanceId =
+                0;
+
+            remoteState.FailedApplyItemHash =
+                0;
+
+            remoteState.FailedApplyRevision =
+                0;
+
+            remoteState.NextApplyRetryTime =
+                0f;
         }
 
         private static bool IsRevisionNewer(
