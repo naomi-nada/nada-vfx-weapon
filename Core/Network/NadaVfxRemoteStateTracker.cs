@@ -13,6 +13,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
     {
         private const float FailedApplyRetrySeconds = 1f;
 
+        private const float RemoteVisualRecheckSeconds = 1f;
+
         private static readonly NadaWeaponRigController
             WeaponRigController =
                 new();
@@ -68,12 +70,14 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             internal bool AppliedBound;
 
-            // The wrapper and revision can stay unchanged even if the rig
-            // underneath them gets destroyed. Keep the actual applied roots
-            // so we don't mistake a missing rig for a successful application.
+            // These are the actual roots that received the remote state.
+            // Their existence alone isn't enough: the visual must still
+            // belong to the equipped wrapper.
             internal Transform AppliedVisualRoot;
 
             internal Transform AppliedRigRoot;
+
+            internal float NextVisualRecheckTime;
 
             // A failed application should not rebuild on every equipment
             // callback. These fields identify the exact failed attempt.
@@ -608,9 +612,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 ClearFailedApply(
                     remoteState);
 
-                NadaWeaponRigRemoval
-                    .RemoveFromEquippedRoot(
-                        remoteState.RightInstance);
+                // The last rig may be on a visual that has since detached.
+                // Prefer removing the rig we actually applied, not whichever
+                // visual the equipped wrapper resolves to today.
+                if (!RemoveTrackedAppliedRig(
+                        remoteState))
+                {
+                    NadaWeaponRigRemoval
+                        .RemoveFromEquippedRoot(
+                            remoteState.RightInstance);
+                }
 
                 RememberAppliedState(
                     remoteState,
@@ -640,6 +651,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             {
                 return;
             }
+
+            // A rig on an old visual must go away before we try to attach
+            // state to the current visual. This runs only when an application
+            // is actually needed, not on every equipment callback.
+            RetireObsoleteAppliedRigIfNeeded(
+                remoteState);
 
             bool applied =
                 WeaponRigController
@@ -718,6 +735,83 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"hash={remoteState.ReceivedItemHash} " +
                 $"revision={remoteState.ReceivedRevision} " +
                 $"instance={rightInstanceId}");
+        }
+
+        private static void RetireObsoleteAppliedRigIfNeeded(
+            RemoteRightState remoteState)
+        {
+            if (remoteState == null ||
+                !remoteState.AppliedBound ||
+                remoteState.AppliedRigRoot == null ||
+                remoteState.RightInstance == null)
+            {
+                return;
+            }
+
+            Transform previousVisual =
+                remoteState.AppliedVisualRoot;
+
+            Transform previousRig =
+                remoteState.AppliedRigRoot;
+
+            Transform currentVisual =
+                NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                    remoteState.RightInstance.transform);
+
+            bool previousVisualStillOwned =
+                previousVisual != null &&
+                previousVisual.parent ==
+                    remoteState.RightInstance.transform;
+
+            bool previousRigStillOwned =
+                previousVisual != null &&
+                previousRig.parent ==
+                    previousVisual;
+
+            if (previousVisualStillOwned &&
+                previousRigStillOwned &&
+                currentVisual == previousVisual)
+            {
+                // Only the state changed. The rig is still on the actual
+                // weapon visual, so the normal refresh path can reuse it.
+                return;
+            }
+
+            int oldRigId =
+                previousRig.GetInstanceID();
+
+            if (!NadaWeaponRigRemoval.RemoveTrackedRig(
+                    previousRig))
+            {
+                return;
+            }
+
+            NadaLogControl.Info(
+                $"remote-rig-retired:{remoteState.PeerId}:{oldRigId}",
+                $"{Plugin.ModName}: [RemoteRigRetired] " +
+                $"peer={remoteState.PeerId} " +
+                $"oldRigId={oldRigId} " +
+                $"oldVisual='{(previousVisual != null ? previousVisual.name : "<destroyed>")}' " +
+                $"currentVisual='{(currentVisual != null ? currentVisual.name : "<none>")}'");
+
+            // This was a rendering failure, not a network-state change.
+            // Keep ReceivedState so it can be applied to a valid visual.
+            ClearAppliedState(
+                remoteState);
+        }
+
+        private static bool RemoveTrackedAppliedRig(
+            RemoteRightState remoteState)
+        {
+            if (remoteState == null ||
+                !remoteState.AppliedBound ||
+                remoteState.AppliedRigRoot == null)
+            {
+                return false;
+            }
+
+            return NadaWeaponRigRemoval.RemoveTrackedRig(
+                remoteState.AppliedRigRoot);
         }
 
         private static bool HasNewerAdvertisedState(
@@ -841,11 +935,39 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return false;
             }
 
-            // The rig must still belong to the visual that received it.
-            // This is a cheap reference check, not a hierarchy scan.
-            return
-                remoteState.AppliedRigRoot.parent ==
-                    remoteState.AppliedVisualRoot;
+            // P3.1 checked that the rig still existed. P3.2 also checks
+            // whether the visual is still owned by this equipped wrapper.
+            if (remoteState.AppliedVisualRoot.parent !=
+                    remoteState.RightInstance.transform ||
+                remoteState.AppliedRigRoot.parent !=
+                    remoteState.AppliedVisualRoot)
+            {
+                return false;
+            }
+
+            float now =
+                Time.unscaledTime;
+
+            if (now >= remoteState.NextVisualRecheckTime)
+            {
+                // Two visuals can coexist briefly under a wrapper. Check the
+                // resolver's current choice at most once per second instead
+                // of searching renderer hierarchies on every callback.
+                remoteState.NextVisualRecheckTime =
+                    now + RemoteVisualRecheckSeconds;
+
+                Transform currentVisual =
+                    NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                        remoteState.RightInstance.transform);
+
+                if (currentVisual !=
+                    remoteState.AppliedVisualRoot)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static void RememberAppliedState(
@@ -874,6 +996,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             remoteState.AppliedRigRoot =
                 appliedRigRoot;
+
+            remoteState.NextVisualRecheckTime =
+                Time.unscaledTime +
+                RemoteVisualRecheckSeconds;
         }
 
         private static void RemovePreviouslyAppliedRigIfNeeded(
@@ -883,7 +1009,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             int newItemHash)
         {
             if (remoteState == null ||
-                remoteState.AppliedInstance == null)
+                remoteState.AppliedInstanceId == 0 ||
+                !remoteState.AppliedBound)
             {
                 return;
             }
@@ -903,9 +1030,22 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
-            NadaWeaponRigRemoval
-                .RemoveFromEquippedRoot(
-                    remoteState.AppliedInstance);
+            // The former wrapper might already be destroyed, or its old
+            // visual might have detached. Use our tracked rig first.
+            if (RemoveTrackedAppliedRig(
+                    remoteState))
+            {
+                return;
+            }
+
+            // Preserve the old fallback for applications that have no
+            // surviving tracked rig reference.
+            if (remoteState.AppliedInstance != null)
+            {
+                NadaWeaponRigRemoval
+                    .RemoveFromEquippedRoot(
+                        remoteState.AppliedInstance);
+            }
         }
 
         private static void ClearReceivedState(
@@ -950,6 +1090,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             remoteState.AppliedRigRoot =
                 null;
+
+            remoteState.NextVisualRecheckTime =
+                0f;
         }
 
         private static void ClearFailedApply(

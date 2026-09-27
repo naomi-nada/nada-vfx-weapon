@@ -42,5 +42,31 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
             return true;
         }
+
+        internal static bool RemoveTrackedRig(
+            Transform rigRoot)
+        {
+            if (rigRoot == null ||
+                rigRoot.name != Plugin.LocalWeaponRootName)
+            {
+                return false;
+            }
+
+            // The old visual might no longer be under the equipped wrapper.
+            // Remove the exact rig we previously attached instead of
+            // resolving whichever visual happens to be current now.
+            int rigRootId =
+                rigRoot.GetInstanceID();
+
+            Object.Destroy(
+                rigRoot.gameObject);
+
+            NadaLogControl.Info(
+                $"rig-remove-tracked:{rigRootId}",
+                $"{Plugin.ModName}: [RigRemoveTracked] " +
+                $"nadaRootId={rigRootId}");
+
+            return true;
+        }
     }
 }
