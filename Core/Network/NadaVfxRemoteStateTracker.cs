@@ -4,6 +4,7 @@ using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Runtime.Structure;
+using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
@@ -66,6 +67,13 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             internal uint AppliedRevision;
 
             internal bool AppliedBound;
+
+            // The wrapper and revision can stay unchanged even if the rig
+            // underneath them gets destroyed. Keep the actual applied roots
+            // so we don't mistake a missing rig for a successful application.
+            internal Transform AppliedVisualRoot;
+
+            internal Transform AppliedRigRoot;
 
             // A failed application should not rebuild on every equipment
             // callback. These fields identify the exact failed attempt.
@@ -640,6 +648,31 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                         remoteState.ReceivedItemHash,
                         remoteState.ReceivedState);
 
+            Transform appliedVisualRoot = null;
+
+            Transform appliedRigRoot = null;
+
+            if (applied)
+            {
+                // RunRemote() succeeded structurally. Before caching that
+                // success, capture the actual rig it left on the weapon.
+                // Otherwise a missing root could become a permanent success.
+                appliedVisualRoot =
+                    NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                        remoteState.RightInstance.transform);
+
+                if (appliedVisualRoot != null)
+                {
+                    appliedRigRoot =
+                        NadaRigPaths.FindDirectChild(
+                            appliedVisualRoot,
+                            Plugin.LocalWeaponRootName);
+                }
+
+                if (appliedRigRoot == null)
+                    applied = false;
+            }
+
             if (!applied)
             {
                 remoteState.FailedApplyInstanceId =
@@ -675,7 +708,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             RememberAppliedState(
                 remoteState,
-                rightInstanceId);
+                rightInstanceId,
+                appliedVisualRoot,
+                appliedRigRoot);
 
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: [RemoteStateApplied] " +
@@ -781,7 +816,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             RemoteRightState remoteState,
             int rightInstanceId)
         {
-            return
+            bool matchesAppliedState =
                 remoteState.AppliedInstanceId ==
                     rightInstanceId &&
                 remoteState.AppliedItemHash ==
@@ -790,11 +825,34 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     remoteState.ReceivedRevision &&
                 remoteState.AppliedBound ==
                     remoteState.ReceivedBound;
+
+            if (!matchesAppliedState)
+                return false;
+
+            // An unbound state has no rig to validate.
+            if (!remoteState.ReceivedBound)
+                return true;
+
+            // Unity's null check also detects a destroyed GameObject even
+            // when we're still holding its old C# Transform reference.
+            if (remoteState.AppliedVisualRoot == null ||
+                remoteState.AppliedRigRoot == null)
+            {
+                return false;
+            }
+
+            // The rig must still belong to the visual that received it.
+            // This is a cheap reference check, not a hierarchy scan.
+            return
+                remoteState.AppliedRigRoot.parent ==
+                    remoteState.AppliedVisualRoot;
         }
 
         private static void RememberAppliedState(
             RemoteRightState remoteState,
-            int rightInstanceId)
+            int rightInstanceId,
+            Transform appliedVisualRoot = null,
+            Transform appliedRigRoot = null)
         {
             remoteState.AppliedInstance =
                 remoteState.RightInstance;
@@ -810,6 +868,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             remoteState.AppliedBound =
                 remoteState.ReceivedBound;
+
+            remoteState.AppliedVisualRoot =
+                appliedVisualRoot;
+
+            remoteState.AppliedRigRoot =
+                appliedRigRoot;
         }
 
         private static void RemovePreviouslyAppliedRigIfNeeded(
@@ -880,6 +944,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             remoteState.AppliedBound =
                 false;
+
+            remoteState.AppliedVisualRoot =
+                null;
+
+            remoteState.AppliedRigRoot =
+                null;
         }
 
         private static void ClearFailedApply(
