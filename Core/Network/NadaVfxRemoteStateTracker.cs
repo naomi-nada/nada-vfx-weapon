@@ -562,6 +562,34 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"hash={itemHash} " +
                 $"revision={revision} " +
                 $"bound={bound}");
+            
+            // A newer unbind notification is enough to stop rendering the
+            // previous revision. We still request the full packet below so
+            // the received state can become authoritative.
+            if (!bound &&
+                remoteState.AppliedBound &&
+                remoteState.AppliedItemHash == itemHash &&
+                IsRevisionNewer(
+                    revision,
+                    remoteState.AppliedRevision))
+            {
+                bool removedRig =
+                    RemoveTrackedAppliedRig(
+                        remoteState);
+
+                if (removedRig)
+                {
+                    ClearAppliedState(
+                        remoteState);
+                }
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [RemoteUnbindAdvertised] " +
+                    $"peer={sender} " +
+                    $"hash={itemHash} " +
+                    $"revision={revision} " +
+                    $"removedRig={removedRig}");
+            }
 
             if (remoteState.RightInstance == null)
             {
