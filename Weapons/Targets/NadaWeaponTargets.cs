@@ -107,7 +107,7 @@ namespace NADA.VFX.Weapon.Weapons.Targets
 
             return bestTransform;
         }
-        
+
         internal static Transform FindDroppedWeaponVisualRoot(Transform searchRootTransform)
         {
             if (searchRootTransform == null)
@@ -137,7 +137,7 @@ namespace NADA.VFX.Weapon.Weapons.Targets
             // Fallback for weird prefab layouts. *gulp*
             return FindVisualMeshRoot(searchRootTransform);
         }
-        
+
         internal static Transform FindVisualMeshRoot(Transform root)
         {
             if (root == null)
@@ -180,6 +180,11 @@ namespace NADA.VFX.Weapon.Weapons.Targets
             Renderer[] renderers =
                 candidateTransform.GetComponentsInChildren<Renderer>(true);
 
+            // Our own effects shouldn't change which weapon visual wins.
+            // The rig is a direct child of the visual root.
+            Transform nadaRigRoot =
+                candidateTransform.Find(Plugin.LocalWeaponRootName);
+
             int solidRendererCount = 0;
             int vfxRendererCount = 0;
             float totalBoundsVolume = 0f;
@@ -188,6 +193,12 @@ namespace NADA.VFX.Weapon.Weapons.Targets
             {
                 if (renderer == null)
                     continue;
+
+                if (nadaRigRoot != null &&
+                    renderer.transform.IsChildOf(nadaRigRoot))
+                {
+                    continue;
+                }
 
                 if (IsLikelyVfxRenderer(renderer))
                 {
