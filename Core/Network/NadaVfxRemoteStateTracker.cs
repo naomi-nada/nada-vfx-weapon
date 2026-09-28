@@ -31,6 +31,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             internal int VisEquipmentId;
 
+            // Keep the exact player instance that owns this observation.
+            // An old instance must not clear a replacement for the same peer.
+            internal global::Player ObservedPlayer;
+
             internal GameObject RightInstance;
 
             internal int RightInstanceId;
@@ -128,6 +132,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             int visEquipmentId =
                 visEquipment.GetInstanceID();
+
+            // Resolve the Player only when the observed equipment owner
+            // changes, not on every vanilla equipment callback.
+            if (remoteState.VisEquipmentId !=
+                visEquipmentId)
+            {
+                remoteState.ObservedPlayer =
+                    visEquipment
+                        .GetComponentInParent<global::Player>();
+            }
 
             int rightInstanceId =
                 rightInstance != null
@@ -243,6 +257,76 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             RequestStateIfNeeded(
                 remoteState,
                 force: false);
+        }
+
+        // Player.OnDestroy is about this GameObject's lifetime, not proof
+        // that its network peer disconnected.
+        internal static void ReleasePlayerInstance(
+            global::Player player)
+        {
+            if (ReferenceEquals(
+                    player,
+                    null))
+            {
+                return;
+            }
+
+            // Gather keys first so we never modify the dictionary while
+            // enumerating it. A peer's replacement Player might already
+            // exist, so match the actual object reference.
+            List<long> peersToRelease =
+                null;
+
+            foreach (KeyValuePair<long, RemoteRightState> entry
+                     in RemoteRightStates)
+            {
+                if (!ReferenceEquals(
+                        entry.Value.ObservedPlayer,
+                        player))
+                {
+                    continue;
+                }
+
+                peersToRelease ??=
+                    new List<long>();
+
+                peersToRelease.Add(
+                    entry.Key);
+            }
+
+            if (peersToRelease == null)
+                return;
+
+            foreach (long peerId in peersToRelease)
+            {
+                if (!RemoteRightStates.TryGetValue(
+                        peerId,
+                        out RemoteRightState remoteState) ||
+                    !ReferenceEquals(
+                        remoteState.ObservedPlayer,
+                        player))
+                {
+                    continue;
+                }
+
+                int visEquipmentId =
+                    remoteState.VisEquipmentId;
+
+                // Remove the record even if its old rig was already
+                // destroyed along with the player's hierarchy.
+                RemoteRightStates.Remove(
+                    peerId);
+
+                bool removedRig =
+                    RemoveTrackedAppliedRig(
+                        remoteState);
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [RemotePlayerReleased] " +
+                    $"peer={peerId} " +
+                    $"vis={visEquipmentId} " +
+                    $"removedRig={removedRig}");
+            }
         }
 
         private static void EnsureInitialized()
