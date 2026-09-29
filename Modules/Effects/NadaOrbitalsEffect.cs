@@ -16,6 +16,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private global::ItemDrop.ItemData _itemData;
         private VfxState _resolvedState;
         private bool _hasResolvedState;
+        
+        private VfxState _cachedBoundState;
+        private bool _hasCachedBoundState;
 
         private VfxState _lastAppliedStaticState;
         private bool _hasLastAppliedStaticState;
@@ -123,11 +126,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
-            if (_itemData == itemData && !_hasResolvedState)
-                return;
-
             _itemData = itemData;
             _hasResolvedState = false;
+
+            // A reconfiguration may update the same ItemData instance.
+            // Don't retain a snapshot from its previous binding.
+            _hasCachedBoundState = false;
         }
 
         public void SetResolvedState(VfxState state)
@@ -135,6 +139,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             _resolvedState = state;
             _hasResolvedState = true;
             _itemData = null;
+
+            _hasCachedBoundState = false;
         }
 
         internal void SetLocalOrbsRootTransform(Transform localOrbsRootTransform)
@@ -223,13 +229,23 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
+                if (_hasCachedBoundState)
+                    return _cachedBoundState;
+
                 if (VfxStateIO.TryRead(
                         _itemData,
                         out VfxState itemState))
                 {
+                    _cachedBoundState = itemState;
+                    _hasCachedBoundState = true;
+
                     return itemState;
                 }
             }
+
+            // The item is unbound, or its persisted state couldn't be read.
+            // An unbind must never leave the old bound snapshot active.
+            _hasCachedBoundState = false;
 
             return VfxStateIO.FromConfig();
         }
