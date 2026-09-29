@@ -68,6 +68,13 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             internal Transform RigRoot;
             internal float NextVisualRecheckTime;
 
+            // An unbound item needs one cleanup check, not a hierarchy search
+            // on every equipment callback. ItemData identity matters here:
+            // two copies of the same weapon can share a vanilla item hash.
+            internal global::VisEquipment LastUnboundOwner;
+            internal GameObject LastUnboundInstance;
+            internal global::ItemDrop.ItemData LastUnboundItemData;
+
             internal void Clear()
             {
                 Owner = null;
@@ -76,6 +83,10 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 VisualRoot = null;
                 RigRoot = null;
                 NextVisualRecheckTime = 0f;
+
+                LastUnboundOwner = null;
+                LastUnboundInstance = null;
+                LastUnboundItemData = null;
             }
         }
 
@@ -275,10 +286,57 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             LocalApplyCache applyCache)
         {
             if (itemInstance == null ||
-                itemData == null ||
-                !VfxStateIO.IsBound(itemData))
+                itemData == null)
             {
+                // Keep the existing behavior for incomplete equipment
+                // observations. A temporary null is not proof of an unbind.
                 applyCache?.Clear();
+                return;
+            }
+
+            if (!VfxStateIO.IsBound(itemData))
+            {
+                if (applyCache == null)
+                    return;
+
+                // The item is definitively unbound. Check it once per
+                // item/visual identity, even if a transitional null already
+                // cleared our reference to the previous rig.
+                if (applyCache.LastUnboundOwner == visEquipment &&
+                    applyCache.LastUnboundInstance == itemInstance &&
+                    ReferenceEquals(
+                        applyCache.LastUnboundItemData,
+                        itemData))
+                {
+                    return;
+                }
+
+                // Prefer the exact rig we attached. The old visual may have
+                // moved or detached while Valheim switched equipment.
+                bool removedTracked =
+                    applyCache.Owner == visEquipment &&
+                    NadaWeaponRigRemoval.RemoveTrackedRig(
+                        applyCache.RigRoot);
+
+                if (!removedTracked)
+                {
+                    // If the tracked reference was lost during a transition,
+                    // inspect only this equipped wrapper's current visual.
+                    NadaWeaponRigRemoval.RemoveFromEquippedRoot(
+                        itemInstance);
+                }
+
+                applyCache.Clear();
+
+                applyCache.LastUnboundOwner =
+                    visEquipment;
+
+                applyCache.LastUnboundInstance =
+                    itemInstance;
+
+                applyCache.LastUnboundItemData =
+                    itemData;
+
                 return;
             }
 
