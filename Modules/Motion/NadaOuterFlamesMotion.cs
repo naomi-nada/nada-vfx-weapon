@@ -14,6 +14,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private const float DefaultDragStrength = 0.015f;
         private const float MaxTrackedVelocity = 12f;
         private const float VelocitySmoothing = 12f;
+        private const float ParticleDiscoveryRetrySeconds = 1f;
 
         private global::ItemDrop.ItemData _itemData;
 
@@ -31,6 +32,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private bool _hasLastWorldPosition;
         private Vector3 _smoothedVelocity;
         private bool _initialized;
+        private float _nextParticleDiscoveryTime;
 
         private bool _lastDragEnabled;
         private bool _hasLastDragEnabled;
@@ -87,8 +89,11 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private void LateUpdate()
         {
-            if (!_initialized)
+            if (!_initialized &&
+                Time.unscaledTime >= _nextParticleDiscoveryTime)
+            {
                 RebuildParticleSystems();
+            }
 
             if (_particles.Count == 0)
                 return;
@@ -274,6 +279,11 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             _initialized =
                 _particles.Count > 0;
+
+            _nextParticleDiscoveryTime =
+                _initialized
+                    ? 0f
+                    : Time.unscaledTime + ParticleDiscoveryRetrySeconds;
         }
 
         private void ResetVelocityTracking()
