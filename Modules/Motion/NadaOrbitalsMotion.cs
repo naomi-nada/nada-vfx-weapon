@@ -15,6 +15,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private VfxState _cachedLocalState;
         private bool _hasCachedLocalState;
+        private bool _cachedLocalStateIsBound;
         private float _nextLocalStateRefreshTime;
 
         private const int MaxOrbitalsVisuals = 40;
@@ -122,6 +123,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private void InvalidateLocalStateCache()
         {
             _hasCachedLocalState = false;
+            _cachedLocalStateIsBound = false;
             _nextLocalStateRefreshTime = 0f;
         }
 
@@ -139,6 +141,20 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 return _cachedLocalState;
             }
 
+            // Bound state is fixed until we're explicitly reconfigured.
+            // Keep checking the binding marker, though, so an unbind
+            // doesn't leave this component displaying an old snapshot.
+            if (_hasCachedLocalState &&
+                _cachedLocalStateIsBound &&
+                _itemData != null &&
+                VfxStateIO.IsBound(_itemData))
+            {
+                _nextLocalStateRefreshTime =
+                    now + LocalStateRefreshInterval;
+
+                return _cachedLocalState;
+            }
+
             _cachedLocalState =
                 ResolveLocalState();
 
@@ -152,6 +168,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private VfxState ResolveLocalState()
         {
+            _cachedLocalStateIsBound = false;
+
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
@@ -159,6 +177,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
                         _itemData,
                         out VfxState itemState))
                 {
+                    _cachedLocalStateIsBound = true;
+
                     return itemState;
                 }
             }
