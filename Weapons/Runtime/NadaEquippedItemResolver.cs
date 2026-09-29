@@ -5,6 +5,23 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal static class NadaEquippedItemResolver
     {
+        // These fields belong to the Humanoid type, not to a particular
+        // player or weapon. Look them up once instead of on every
+        // equipment observation.
+        private static readonly FieldInfo RightItemField =
+            typeof(Humanoid).GetField(
+                "m_rightItem",
+                BindingFlags.Instance |
+                BindingFlags.NonPublic |
+                BindingFlags.Public);
+
+        private static readonly FieldInfo LeftItemField =
+            typeof(Humanoid).GetField(
+                "m_leftItem",
+                BindingFlags.Instance |
+                BindingFlags.NonPublic |
+                BindingFlags.Public);
+
         internal static global::ItemDrop.ItemData ResolveRightHandItem()
         {
             Player player = Player.m_localPlayer;
@@ -15,7 +32,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (humanoid == null)
                 return null;
 
-            return ReadItemDataField(humanoid, "m_rightItem");
+            return ReadItemDataField(humanoid, RightItemField);
         }
 
         internal static global::ItemDrop.ItemData ResolveLeftHandItem()
@@ -28,7 +45,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (humanoid == null)
                 return null;
 
-            return ReadItemDataField(humanoid, "m_leftItem");
+            return ReadItemDataField(humanoid, LeftItemField);
         }
 
         internal static global::ItemDrop.ItemData ResolveFirstEquippedItem()
@@ -42,15 +59,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
         private static global::ItemDrop.ItemData ReadItemDataField(
             Humanoid humanoid,
-            string fieldName)
+            FieldInfo fieldInfo)
         {
-            FieldInfo fieldInfo =
-                typeof(Humanoid).GetField(
-                    fieldName,
-                    BindingFlags.Instance |
-                    BindingFlags.NonPublic |
-                    BindingFlags.Public);
-
             return fieldInfo?.GetValue(humanoid) as global::ItemDrop.ItemData;
         }
     }
