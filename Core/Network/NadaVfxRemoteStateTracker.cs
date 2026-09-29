@@ -15,6 +15,15 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
         private const float RemoteVisualRecheckSeconds = 1f;
 
+        // A peer that hasn't answered any requests shouldn't restart the
+        // fast retry sequence every time it equips another weapon.
+        //
+        // We still probe occasionally: silence doesn't prove the other
+        // player lacks NADA, and a compatible peer may become responsive.
+        private const int InitialUnansweredRequestLimit = 5;
+
+        private const float UnansweredPeerProbeSeconds = 120f;
+
         private static readonly NadaWeaponRigController
             WeaponRigController =
                 new();
@@ -97,6 +106,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             internal int RequestedItemHash;
 
+            // Count unanswered requests across weapon changes. A response
+            // or valid change notification resets this peer's retry history.
             internal int RequestAttempts;
 
             internal float NextRequestTime;
@@ -211,11 +222,18 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 remoteState.RequestedItemHash =
                     0;
 
-                remoteState.RequestAttempts =
-                    0;
-
-                remoteState.NextRequestTime =
-                    0f;
+                // A different weapon deserves an immediate attempt while
+                // we're still in the normal retry window.
+                //
+                // Once a peer has repeatedly gone unanswered, preserve its
+                // backoff across weapon swaps. Otherwise an unmodded player
+                // can restart our fast requests just by changing equipment.
+                if (remoteState.RequestAttempts <
+                    InitialUnansweredRequestLimit)
+                {
+                    remoteState.NextRequestTime =
+                        0f;
+                }
 
                 if (remoteState.HasReceivedState &&
                     remoteState.ReceivedItemHash !=
@@ -372,6 +390,20 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
+            // A decoded NADA packet proves this peer can answer us, even
+            // if Valheim switched its visible weapon before it arrived.
+            // This only resets retry history; the item/revision guards
+            // below still decide whether the packet can be applied.
+            remoteState.RequestAttempts =
+                0;
+
+            if (remoteState.RequestedItemHash !=
+                remoteState.ObservedItemHash)
+            {
+                remoteState.NextRequestTime =
+                    0f;
+            }
+
             if (remoteState.ObservedItemHash == 0 ||
                 packet.ItemHash !=
                     remoteState.ObservedItemHash)
@@ -522,6 +554,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
+            // A valid advertisement also confirms that this peer speaks
+            // NADA's protocol. Restore its normal request budget.
+            remoteState.RequestAttempts =
+                0;
+
             if (remoteState.ObservedItemHash !=
                 itemHash)
             {
@@ -562,7 +599,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"hash={itemHash} " +
                 $"revision={revision} " +
                 $"bound={bound}");
-            
+
             // A newer unbind notification is enough to stop rendering the
             // previous revision. We still request the full packet below so
             // the received state can become authoritative.
@@ -661,12 +698,31 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             remoteState.RequestedItemHash =
                 remoteState.ObservedItemHash;
 
-            remoteState.RequestAttempts++;
+            int previousAttempts =
+                remoteState.RequestAttempts;
+
+            // Saturate the counter once the slow-probe schedule starts.
+            // This is a long-lived per-peer record; it doesn't need to
+            // count unanswered requests forever.
+            remoteState.RequestAttempts =
+                Math.Min(
+                    previousAttempts + 1,
+                    InitialUnansweredRequestLimit + 1);
 
             remoteState.NextRequestTime =
                 now +
                 GetRetryDelay(
                     remoteState.RequestAttempts);
+
+            if (previousAttempts ==
+                InitialUnansweredRequestLimit)
+            {
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [RemotePeerRequestBackoff] " +
+                    $"peer={remoteState.PeerId} " +
+                    $"unanswered={remoteState.RequestAttempts} " +
+                    $"probeSeconds={UnansweredPeerProbeSeconds}");
+            }
         }
 
         private static float GetRetryDelay(
@@ -684,7 +740,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (attempt == 4)
                 return 10f;
 
-            return 30f;
+            if (attempt == 5)
+                return 30f;
+
+            return UnansweredPeerProbeSeconds;
         }
 
         private static void ApplyReceivedState(
