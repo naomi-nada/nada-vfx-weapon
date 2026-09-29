@@ -20,6 +20,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _resolvedState;
         private bool _hasResolvedState;
 
+        private VfxState _cachedBoundState;
+        private bool _hasCachedBoundState;
+
         private VfxState _lastAppliedStaticState;
         private bool _hasLastAppliedStaticState;
 
@@ -61,14 +64,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
-            if (_itemData == itemData &&
-                !_hasResolvedState)
-            {
-                return;
-            }
-
             _itemData = itemData;
             _hasResolvedState = false;
+
+            // The same item may have been explicitly rebound.
+            // Don't keep its previous bound-state snapshot.
+            _hasCachedBoundState = false;
         }
 
         public void SetResolvedState(VfxState state)
@@ -76,6 +77,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             _resolvedState = state;
             _hasResolvedState = true;
             _itemData = null;
+
+            _hasCachedBoundState = false;
         }
 
         private void Awake()
@@ -237,13 +240,22 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
+                if (_hasCachedBoundState)
+                    return _cachedBoundState;
+
                 if (VfxStateIO.TryRead(
                         _itemData,
                         out VfxState itemState))
                 {
+                    _cachedBoundState = itemState;
+                    _hasCachedBoundState = true;
+
                     return itemState;
                 }
             }
+
+            // Unbinding must discard the previous snapshot.
+            _hasCachedBoundState = false;
 
             return VfxStateIO.FromConfig();
         }

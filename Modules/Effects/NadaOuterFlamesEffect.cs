@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
@@ -22,6 +23,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private VfxState _resolvedState;
         private bool _hasResolvedState;
+
+        private VfxState _cachedBoundState;
+        private bool _hasCachedBoundState;
 
         private VfxState _lastAppliedState;
         private bool _hasLastAppliedState;
@@ -109,25 +113,22 @@ namespace NADA.VFX.Weapon.Modules.Effects
         public void SetItemData(
             global::ItemDrop.ItemData itemData)
         {
-            if (_itemData == itemData &&
-                !_hasResolvedState)
-            {
-                return;
-            }
-
             _itemData = itemData;
-
             _hasResolvedState = false;
+
+            // An explicit reconfiguration can update the same item.
+            // Don't keep its previous bound-state snapshot.
+            _hasCachedBoundState = false;
         }
 
         public void SetResolvedState(
             VfxState state)
         {
             _resolvedState = state;
-
             _hasResolvedState = true;
-
             _itemData = null;
+
+            _hasCachedBoundState = false;
         }
 
         private void Awake()
@@ -307,13 +308,22 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
+                if (_hasCachedBoundState)
+                    return _cachedBoundState;
+
                 if (VfxStateIO.TryRead(
                         _itemData,
                         out VfxState itemState))
                 {
+                    _cachedBoundState = itemState;
+                    _hasCachedBoundState = true;
+
                     return itemState;
                 }
             }
+
+            // An unbound item must return to live config editing.
+            _hasCachedBoundState = false;
 
             return VfxStateIO.FromConfig();
         }
