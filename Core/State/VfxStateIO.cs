@@ -26,7 +26,7 @@ namespace NADA.VFX.Weapon.Core.State
                 InnerFlamesLuminance = PluginConfig.InnerFlamesLuminance.Value,
                 InnerFlamesHue = PluginConfig.InnerFlamesHue.Value,
                 InnerFlamesLifetime = PluginConfig.InnerFlamesLifetime.Value,
-                InnerFlamesSimulationSpeed =  PluginConfig.InnerFlamesSimulationSpeed.Value,
+                InnerFlamesSimulationSpeed = PluginConfig.InnerFlamesSimulationSpeed.Value,
                 InnerFlamesLength = PluginConfig.InnerFlamesLength.Value,
                 InnerFlamesWidth = PluginConfig.InnerFlamesWidth.Value,
                 InnerFlamesXOffset = PluginConfig.InnerFlamesXOffset.Value,
@@ -82,7 +82,7 @@ namespace NADA.VFX.Weapon.Core.State
                 SparksLuminance = PluginConfig.SparksLuminance.Value,
                 SparksHue = PluginConfig.SparksHue.Value,
                 SparksLifetime = PluginConfig.SparksLifetime.Value,
-                SparksSimulationSpeed =  PluginConfig.SparksSimulationSpeed.Value,
+                SparksSimulationSpeed = PluginConfig.SparksSimulationSpeed.Value,
                 SparksLength = PluginConfig.SparksLength.Value,
                 SparksWidth = PluginConfig.SparksWidth.Value,
                 SparksXOffset = PluginConfig.SparksXOffset.Value,
@@ -160,7 +160,7 @@ namespace NADA.VFX.Weapon.Core.State
                 OrbitalsFlamesLuminance = PluginConfig.OrbitalsFlamesLuminance.Value,
                 OrbitalsFlamesHue = PluginConfig.OrbitalsFlamesHue.Value,
                 OrbitalsFlamesLifetime = PluginConfig.OrbitalsFlamesLifetime.Value,
-                OrbitalsFlamesSimulationSpeed =  PluginConfig.OrbitalsFlamesSimulationSpeed.Value,
+                OrbitalsFlamesSimulationSpeed = PluginConfig.OrbitalsFlamesSimulationSpeed.Value,
                 OrbitalsFlamesLength = PluginConfig.OrbitalsFlamesLength.Value,
                 OrbitalsFlamesSpeed = PluginConfig.OrbitalsFlamesSpeed.Value,
                 OrbitalsFlamesSpacing = PluginConfig.OrbitalsFlamesSpacing.Value,
@@ -205,7 +205,19 @@ namespace NADA.VFX.Weapon.Core.State
             if (item.m_customData == null)
                 item.m_customData = new Dictionary<string, string>();
 
-            Dictionary<string, string> customData = item.m_customData;
+            Write(
+                item.m_customData,
+                state,
+                bound);
+        }
+
+        private static void Write(
+            Dictionary<string, string> customData,
+            VfxState state,
+            bool bound)
+        {
+            if (customData == null)
+                return;
 
             WriteBool(customData, VfxStateKeys.Bound, bound);
 
@@ -405,195 +417,211 @@ namespace NADA.VFX.Weapon.Core.State
             Dictionary<string, string> customData =
                 item.m_customData;
 
-                // Bound is the marker that tells us this ItemData actually contains a persisted NADA state.
-                // Other mods use customData too, so the dictionary existing by itself isn't enough.
+            // Bound is the marker that tells us this ItemData actually contains a persisted NADA state.
+            // Other mods use customData too, so the dictionary existing by itself isn't enough.
             if (!customData.ContainsKey(VfxStateKeys.Bound))
                 return false;
 
-            state.RigXOffset = ReadFloat(customData, VfxStateKeys.RigXOffset, PluginConfig.RigXOffset.Value);
-            state.RigYOffset = ReadFloat(customData, VfxStateKeys.RigYOffset, PluginConfig.RigYOffset.Value);
-            state.RigZOffset = ReadFloat(customData, VfxStateKeys.RigZOffset, PluginConfig.RigZOffset.Value);
-            state.RigXRotation = ReadFloat(customData, VfxStateKeys.RigXRotation, PluginConfig.RigXRotation.Value);
-            state.RigYRotation = ReadFloat(customData, VfxStateKeys.RigYRotation, PluginConfig.RigYRotation.Value);
-            state.RigZRotation = ReadFloat(customData, VfxStateKeys.RigZRotation, PluginConfig.RigZRotation.Value);
+            return TryRead(
+                customData,
+                FromConfig(),
+                out state);
+        }
 
-            state.InnerFlamesEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesEnabled, PluginConfig.InnerFlames.Value);
-            state.InnerFlamesWorldEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesWorldEnabled, PluginConfig.InnerFlamesWorld.Value);
-            state.InnerFlamesBlackEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesBlackEnabled, PluginConfig.InnerFlamesBlack.Value);
-            state.InnerFlamesWhiteEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesWhiteEnabled, PluginConfig.InnerFlamesWhite.Value);
-            state.InnerFlamesEnergy = ReadFloat(customData, VfxStateKeys.InnerFlamesEnergy, PluginConfig.InnerFlamesEnergy.Value);
-            state.InnerFlamesScale = ReadFloat(customData, VfxStateKeys.InnerFlamesScale, PluginConfig.InnerFlamesScale.Value);
-            state.InnerFlamesLuminance = ReadFloat(customData, VfxStateKeys.InnerFlamesLuminance, PluginConfig.InnerFlamesLuminance.Value);
-            state.InnerFlamesHue = ReadFloat(customData, VfxStateKeys.InnerFlamesHue, PluginConfig.InnerFlamesHue.Value);
-            state.InnerFlamesLifetime = ReadFloat(customData, VfxStateKeys.InnerFlamesLifetime, PluginConfig.InnerFlamesLifetime.Value);
-            state.InnerFlamesSimulationSpeed = ReadFloat(customData, VfxStateKeys.InnerFlamesSimulationSpeed, PluginConfig.InnerFlamesSimulationSpeed.Value);
-            state.InnerFlamesLength = ReadFloat(customData, VfxStateKeys.InnerFlamesLength, PluginConfig.InnerFlamesLength.Value);
-            state.InnerFlamesWidth = ReadFloat(customData, VfxStateKeys.InnerFlamesWidth, PluginConfig.InnerFlamesWidth.Value);
-            state.InnerFlamesXOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesXOffset, PluginConfig.InnerFlamesXOffset.Value);
-            state.InnerFlamesYOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesYOffset, PluginConfig.InnerFlamesYOffset.Value);
-            state.InnerFlamesZOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesZOffset, PluginConfig.InnerFlamesZOffset.Value);
-            state.InnerFlamesXRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesXRotation, PluginConfig.InnerFlamesXRotation.Value);
-            state.InnerFlamesYRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesYRotation, PluginConfig.InnerFlamesYRotation.Value);
-            state.InnerFlamesZRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesZRotation, PluginConfig.InnerFlamesZRotation.Value);
+        private static bool TryRead(
+            Dictionary<string, string> customData,
+            VfxState fallbackState,
+            out VfxState state)
+        {
+            state = fallbackState;
 
-            state.OuterFlamesEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesEnabled, PluginConfig.OuterFlames.Value);
-            state.OuterFlamesWorldEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesWorldEnabled, PluginConfig.OuterFlamesWorld.Value);
-            state.OuterFlamesBlackEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesBlackEnabled, PluginConfig.OuterFlamesBlack.Value);
-            state.OuterFlamesWhiteEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesWhiteEnabled, PluginConfig.OuterFlamesWhite.Value);
-            state.OuterFlamesDragEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesDragEnabled, PluginConfig.OuterFlamesDragEnabled.Value);
-            state.OuterFlamesEnergy = ReadFloat(customData, VfxStateKeys.OuterFlamesEnergy, PluginConfig.OuterFlamesEnergy.Value);
-            state.OuterFlamesScale = ReadFloat(customData, VfxStateKeys.OuterFlamesScale, PluginConfig.OuterFlamesScale.Value);
-            state.OuterFlamesLuminance = ReadFloat(customData, VfxStateKeys.OuterFlamesLuminance, PluginConfig.OuterFlamesLuminance.Value);
-            state.OuterFlamesHue = ReadFloat(customData, VfxStateKeys.OuterFlamesHue, PluginConfig.OuterFlamesHue.Value);
-            state.OuterFlamesLifetime = ReadFloat(customData, VfxStateKeys.OuterFlamesLifetime, PluginConfig.OuterFlamesLifetime.Value);
-            state.OuterFlamesSimulationSpeed = ReadFloat(customData, VfxStateKeys.OuterFlamesSimulationSpeed, PluginConfig.OuterFlamesSimulationSpeed.Value);
-            state.OuterFlamesLength = ReadFloat(customData, VfxStateKeys.OuterFlamesLength, PluginConfig.OuterFlamesLength.Value);
-            state.OuterFlamesWidth = ReadFloat(customData, VfxStateKeys.OuterFlamesWidth, PluginConfig.OuterFlamesWidth.Value);
-            state.OuterFlamesXOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesXOffset, PluginConfig.OuterFlamesXOffset.Value);
-            state.OuterFlamesYOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesYOffset, PluginConfig.OuterFlamesYOffset.Value);
-            state.OuterFlamesZOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesZOffset, PluginConfig.OuterFlamesZOffset.Value);
-            state.OuterFlamesXRotation = ReadFloat(customData, VfxStateKeys.OuterFlamesXRotation, PluginConfig.OuterFlamesXRotation.Value);
-            state.OuterFlamesYRotation = ReadFloat(customData, VfxStateKeys.OuterFlamesYRotation, PluginConfig.OuterFlamesYRotation.Value);
-            state.OuterFlamesZRotation = ReadFloat(customData, VfxStateKeys.OuterFlamesZRotation, PluginConfig.OuterFlamesZRotation.Value);
+            if (customData == null)
+                return false;
 
-            state.StrandsEnabled = ReadBool(customData, VfxStateKeys.StrandsEnabled, PluginConfig.Strands.Value);
-            state.StrandsSpectrumEnabled = ReadBool(customData, VfxStateKeys.StrandsSpectrumEnabled, PluginConfig.StrandsSpectrum.Value);
-            state.StrandsEnergy = ReadFloat(customData, VfxStateKeys.StrandsEnergy, PluginConfig.StrandsEnergy.Value);
-            state.StrandsScaleWhole = ReadFloat(customData, VfxStateKeys.StrandsScaleWhole, PluginConfig.StrandsScaleWhole.Value);
-            state.StrandsScaleParts = ReadFloat(customData, VfxStateKeys.StrandsScaleParts, PluginConfig.StrandsScaleParts.Value);
-            state.StrandsLuminance = ReadFloat(customData, VfxStateKeys.StrandsLuminance, PluginConfig.StrandsLuminance.Value);
-            state.StrandsHue = ReadFloat(customData, VfxStateKeys.StrandsHue, PluginConfig.StrandsHue.Value);
-            state.StrandsLifetime = ReadFloat(customData, VfxStateKeys.StrandsLifetime, PluginConfig.StrandsLifetime.Value);
-            state.StrandsLength = ReadFloat(customData, VfxStateKeys.StrandsLength, PluginConfig.StrandsLength.Value);
-            state.StrandsSpectrumSpeed = ReadFloat(customData, VfxStateKeys.StrandsSpectrumSpeed, PluginConfig.StrandsSpectrumSpeed.Value);
-            state.StrandsSpeed = ReadFloat(customData, VfxStateKeys.StrandsSpeed, PluginConfig.StrandsSpeed.Value);
-            state.StrandsRadius = ReadFloat(customData, VfxStateKeys.StrandsRadius, PluginConfig.StrandsRadius.Value);
-            state.StrandsXOffset = ReadFloat(customData, VfxStateKeys.StrandsXOffset, PluginConfig.StrandsXOffset.Value);
-            state.StrandsYOffset = ReadFloat(customData, VfxStateKeys.StrandsYOffset, PluginConfig.StrandsYOffset.Value);
-            state.StrandsZOffset = ReadFloat(customData, VfxStateKeys.StrandsZOffset, PluginConfig.StrandsZOffset.Value);
-            state.StrandsXRotation = ReadFloat(customData, VfxStateKeys.StrandsXRotation, PluginConfig.StrandsXRotation.Value);
-            state.StrandsYRotation = ReadFloat(customData, VfxStateKeys.StrandsYRotation, PluginConfig.StrandsYRotation.Value);
-            state.StrandsZRotation = ReadFloat(customData, VfxStateKeys.StrandsZRotation, PluginConfig.StrandsZRotation.Value);
-            state.StrandsDrift = ReadFloat(customData, VfxStateKeys.StrandsDrift, PluginConfig.StrandsDrift.Value);
+            state.RigXOffset = ReadFloat(customData, VfxStateKeys.RigXOffset, state.RigXOffset);
+            state.RigYOffset = ReadFloat(customData, VfxStateKeys.RigYOffset, state.RigYOffset);
+            state.RigZOffset = ReadFloat(customData, VfxStateKeys.RigZOffset, state.RigZOffset);
+            state.RigXRotation = ReadFloat(customData, VfxStateKeys.RigXRotation, state.RigXRotation);
+            state.RigYRotation = ReadFloat(customData, VfxStateKeys.RigYRotation, state.RigYRotation);
+            state.RigZRotation = ReadFloat(customData, VfxStateKeys.RigZRotation, state.RigZRotation);
 
-            state.SparksEnabled = ReadBool(customData, VfxStateKeys.SparksEnabled, PluginConfig.Sparks.Value);
-            state.SparksEnergy = ReadFloat(customData, VfxStateKeys.SparksEnergy, PluginConfig.SparksEnergy.Value);
-            state.SparksScale = ReadFloat(customData, VfxStateKeys.SparksScale, PluginConfig.SparksScale.Value);
-            state.SparksLuminance = ReadFloat(customData, VfxStateKeys.SparksLuminance, PluginConfig.SparksLuminance.Value);
-            state.SparksHue = ReadFloat(customData, VfxStateKeys.SparksHue, PluginConfig.SparksHue.Value);
-            state.SparksLifetime = ReadFloat(customData, VfxStateKeys.SparksLifetime, PluginConfig.SparksLifetime.Value);
-            state.SparksSimulationSpeed = ReadFloat(customData, VfxStateKeys.SparksSimulationSpeed, PluginConfig.SparksSimulationSpeed.Value);
-            state.SparksLength = ReadFloat(customData, VfxStateKeys.SparksLength, PluginConfig.SparksLength.Value);
-            state.SparksWidth = ReadFloat(customData, VfxStateKeys.SparksWidth, PluginConfig.SparksWidth.Value);
-            state.SparksXOffset = ReadFloat(customData, VfxStateKeys.SparksXOffset, PluginConfig.SparksXOffset.Value);
-            state.SparksYOffset = ReadFloat(customData, VfxStateKeys.SparksYOffset, PluginConfig.SparksYOffset.Value);
-            state.SparksZOffset = ReadFloat(customData, VfxStateKeys.SparksZOffset, PluginConfig.SparksZOffset.Value);
-            state.SparksXRotation = ReadFloat(customData, VfxStateKeys.SparksXRotation, PluginConfig.SparksXRotation.Value);
-            state.SparksYRotation = ReadFloat(customData, VfxStateKeys.SparksYRotation, PluginConfig.SparksYRotation.Value);
-            state.SparksZRotation = ReadFloat(customData, VfxStateKeys.SparksZRotation, PluginConfig.SparksZRotation.Value);
+            state.InnerFlamesEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesEnabled, state.InnerFlamesEnabled);
+            state.InnerFlamesWorldEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesWorldEnabled, state.InnerFlamesWorldEnabled);
+            state.InnerFlamesBlackEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesBlackEnabled, state.InnerFlamesBlackEnabled);
+            state.InnerFlamesWhiteEnabled = ReadBool(customData, VfxStateKeys.InnerFlamesWhiteEnabled, state.InnerFlamesWhiteEnabled);
+            state.InnerFlamesEnergy = ReadFloat(customData, VfxStateKeys.InnerFlamesEnergy, state.InnerFlamesEnergy);
+            state.InnerFlamesScale = ReadFloat(customData, VfxStateKeys.InnerFlamesScale, state.InnerFlamesScale);
+            state.InnerFlamesLuminance = ReadFloat(customData, VfxStateKeys.InnerFlamesLuminance, state.InnerFlamesLuminance);
+            state.InnerFlamesHue = ReadFloat(customData, VfxStateKeys.InnerFlamesHue, state.InnerFlamesHue);
+            state.InnerFlamesLifetime = ReadFloat(customData, VfxStateKeys.InnerFlamesLifetime, state.InnerFlamesLifetime);
+            state.InnerFlamesSimulationSpeed = ReadFloat(customData, VfxStateKeys.InnerFlamesSimulationSpeed, state.InnerFlamesSimulationSpeed);
+            state.InnerFlamesLength = ReadFloat(customData, VfxStateKeys.InnerFlamesLength, state.InnerFlamesLength);
+            state.InnerFlamesWidth = ReadFloat(customData, VfxStateKeys.InnerFlamesWidth, state.InnerFlamesWidth);
+            state.InnerFlamesXOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesXOffset, state.InnerFlamesXOffset);
+            state.InnerFlamesYOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesYOffset, state.InnerFlamesYOffset);
+            state.InnerFlamesZOffset = ReadFloat(customData, VfxStateKeys.InnerFlamesZOffset, state.InnerFlamesZOffset);
+            state.InnerFlamesXRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesXRotation, state.InnerFlamesXRotation);
+            state.InnerFlamesYRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesYRotation, state.InnerFlamesYRotation);
+            state.InnerFlamesZRotation = ReadFloat(customData, VfxStateKeys.InnerFlamesZRotation, state.InnerFlamesZRotation);
 
-            state.FlareEnabled = ReadBool(customData, VfxStateKeys.FlareEnabled, PluginConfig.Flare.Value);
-            state.FlareScale = ReadFloat(customData, VfxStateKeys.FlareScale, PluginConfig.FlareScale.Value);
-            state.FlareLuminance = ReadFloat(customData, VfxStateKeys.FlareLuminance, PluginConfig.FlareLuminance.Value);
-            state.FlareHue = ReadFloat(customData, VfxStateKeys.FlareHue, PluginConfig.FlareHue.Value);
-            state.FlareXOffset = ReadFloat(customData, VfxStateKeys.FlareXOffset, PluginConfig.FlareXOffset.Value);
-            state.FlareYOffset = ReadFloat(customData, VfxStateKeys.FlareYOffset, PluginConfig.FlareYOffset.Value);
-            state.FlareZOffset = ReadFloat(customData, VfxStateKeys.FlareZOffset, PluginConfig.FlareZOffset.Value);
+            state.OuterFlamesEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesEnabled, state.OuterFlamesEnabled);
+            state.OuterFlamesWorldEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesWorldEnabled, state.OuterFlamesWorldEnabled);
+            state.OuterFlamesBlackEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesBlackEnabled, state.OuterFlamesBlackEnabled);
+            state.OuterFlamesWhiteEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesWhiteEnabled, state.OuterFlamesWhiteEnabled);
+            state.OuterFlamesDragEnabled = ReadBool(customData, VfxStateKeys.OuterFlamesDragEnabled, state.OuterFlamesDragEnabled);
+            state.OuterFlamesEnergy = ReadFloat(customData, VfxStateKeys.OuterFlamesEnergy, state.OuterFlamesEnergy);
+            state.OuterFlamesScale = ReadFloat(customData, VfxStateKeys.OuterFlamesScale, state.OuterFlamesScale);
+            state.OuterFlamesLuminance = ReadFloat(customData, VfxStateKeys.OuterFlamesLuminance, state.OuterFlamesLuminance);
+            state.OuterFlamesHue = ReadFloat(customData, VfxStateKeys.OuterFlamesHue, state.OuterFlamesHue);
+            state.OuterFlamesLifetime = ReadFloat(customData, VfxStateKeys.OuterFlamesLifetime, state.OuterFlamesLifetime);
+            state.OuterFlamesSimulationSpeed = ReadFloat(customData, VfxStateKeys.OuterFlamesSimulationSpeed, state.OuterFlamesSimulationSpeed);
+            state.OuterFlamesLength = ReadFloat(customData, VfxStateKeys.OuterFlamesLength, state.OuterFlamesLength);
+            state.OuterFlamesWidth = ReadFloat(customData, VfxStateKeys.OuterFlamesWidth, state.OuterFlamesWidth);
+            state.OuterFlamesXOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesXOffset, state.OuterFlamesXOffset);
+            state.OuterFlamesYOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesYOffset, state.OuterFlamesYOffset);
+            state.OuterFlamesZOffset = ReadFloat(customData, VfxStateKeys.OuterFlamesZOffset, state.OuterFlamesZOffset);
+            state.OuterFlamesXRotation = ReadFloat(customData, VfxStateKeys.OuterFlamesXRotation, state.OuterFlamesXRotation);
+            state.OuterFlamesYRotation = ReadFloat(customData, VfxStateKeys.OuterFlamesYRotation, state.OuterFlamesYRotation);
+            state.OuterFlamesZRotation = ReadFloat(customData, VfxStateKeys.OuterFlamesZRotation, state.OuterFlamesZRotation);
 
-            state.AuraEnabled = ReadBool(customData, VfxStateKeys.AuraEnabled, PluginConfig.Aura.Value);
-            state.AuraScale = ReadFloat(customData, VfxStateKeys.AuraScale, PluginConfig.AuraScale.Value);
-            state.AuraLuminance = ReadFloat(customData, VfxStateKeys.AuraLuminance, PluginConfig.AuraLuminance.Value);
-            state.AuraHue = ReadFloat(customData, VfxStateKeys.AuraHue, PluginConfig.AuraHue.Value);
-            state.AuraXOffset = ReadFloat(customData, VfxStateKeys.AuraXOffset, PluginConfig.AuraXOffset.Value);
-            state.AuraYOffset = ReadFloat(customData, VfxStateKeys.AuraYOffset, PluginConfig.AuraYOffset.Value);
-            state.AuraZOffset = ReadFloat(customData, VfxStateKeys.AuraZOffset, PluginConfig.AuraZOffset.Value);
-            state.AuraXRotation = ReadFloat(customData, VfxStateKeys.AuraXRotation, PluginConfig.AuraXRotation.Value);
-            state.AuraYRotation = ReadFloat(customData, VfxStateKeys.AuraYRotation, PluginConfig.AuraYRotation.Value);
-            state.AuraZRotation = ReadFloat(customData, VfxStateKeys.AuraZRotation, PluginConfig.AuraZRotation.Value);
+            state.StrandsEnabled = ReadBool(customData, VfxStateKeys.StrandsEnabled, state.StrandsEnabled);
+            state.StrandsSpectrumEnabled = ReadBool(customData, VfxStateKeys.StrandsSpectrumEnabled, state.StrandsSpectrumEnabled);
+            state.StrandsEnergy = ReadFloat(customData, VfxStateKeys.StrandsEnergy, state.StrandsEnergy);
+            state.StrandsScaleWhole = ReadFloat(customData, VfxStateKeys.StrandsScaleWhole, state.StrandsScaleWhole);
+            state.StrandsScaleParts = ReadFloat(customData, VfxStateKeys.StrandsScaleParts, state.StrandsScaleParts);
+            state.StrandsLuminance = ReadFloat(customData, VfxStateKeys.StrandsLuminance, state.StrandsLuminance);
+            state.StrandsHue = ReadFloat(customData, VfxStateKeys.StrandsHue, state.StrandsHue);
+            state.StrandsLifetime = ReadFloat(customData, VfxStateKeys.StrandsLifetime, state.StrandsLifetime);
+            state.StrandsLength = ReadFloat(customData, VfxStateKeys.StrandsLength, state.StrandsLength);
+            state.StrandsSpectrumSpeed = ReadFloat(customData, VfxStateKeys.StrandsSpectrumSpeed, state.StrandsSpectrumSpeed);
+            state.StrandsSpeed = ReadFloat(customData, VfxStateKeys.StrandsSpeed, state.StrandsSpeed);
+            state.StrandsRadius = ReadFloat(customData, VfxStateKeys.StrandsRadius, state.StrandsRadius);
+            state.StrandsXOffset = ReadFloat(customData, VfxStateKeys.StrandsXOffset, state.StrandsXOffset);
+            state.StrandsYOffset = ReadFloat(customData, VfxStateKeys.StrandsYOffset, state.StrandsYOffset);
+            state.StrandsZOffset = ReadFloat(customData, VfxStateKeys.StrandsZOffset, state.StrandsZOffset);
+            state.StrandsXRotation = ReadFloat(customData, VfxStateKeys.StrandsXRotation, state.StrandsXRotation);
+            state.StrandsYRotation = ReadFloat(customData, VfxStateKeys.StrandsYRotation, state.StrandsYRotation);
+            state.StrandsZRotation = ReadFloat(customData, VfxStateKeys.StrandsZRotation, state.StrandsZRotation);
+            state.StrandsDrift = ReadFloat(customData, VfxStateKeys.StrandsDrift, state.StrandsDrift);
 
-            state.OrbitalsOrbsEnabled = ReadBool(customData, VfxStateKeys.OrbitalsOrbsEnabled, PluginConfig.OrbitalsOrbs.Value);
-            state.OrbitalsOrbsSnakeEnabled = ReadBool(customData, VfxStateKeys.OrbitalsOrbsSnakeEnabled, PluginConfig.OrbitalsOrbsSnake.Value);
-            state.OrbitalsOrbsGlueEnabled = ReadBool(customData, VfxStateKeys.OrbitalsOrbsGlueEnabled, PluginConfig.OrbitalsOrbsGlue.Value);
-            state.OrbitalsOrbsCount = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsCount, PluginConfig.OrbitalsOrbsCount.Value);
-            state.OrbitalsOrbsScale = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsScale, PluginConfig.OrbitalsOrbsScale.Value);
-            state.OrbitalsOrbsLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsLuminance, PluginConfig.OrbitalsOrbsLuminance.Value);
-            state.OrbitalsOrbsHue = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsHue, PluginConfig.OrbitalsOrbsHue.Value);
-            state.OrbitalsOrbsLength = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsLength, PluginConfig.OrbitalsOrbsLength.Value);
-            state.OrbitalsOrbsSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsSpeed, PluginConfig.OrbitalsOrbsSpeed.Value);
-            state.OrbitalsOrbsSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsSpacing, PluginConfig.OrbitalsOrbsSpacing.Value);
-            state.OrbitalsOrbsRadius = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsRadius, PluginConfig.OrbitalsOrbsRadius.Value);
-            state.OrbitalsOrbsCycles = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsCycles, PluginConfig.OrbitalsOrbsCycles.Value);
-            state.OrbitalsOrbsXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsXOffset, PluginConfig.OrbitalsOrbsXOffset.Value);
-            state.OrbitalsOrbsYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsYOffset, PluginConfig.OrbitalsOrbsYOffset.Value);
-            state.OrbitalsOrbsZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsZOffset, PluginConfig.OrbitalsOrbsZOffset.Value);
-            state.OrbitalsOrbsXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsXRotation, PluginConfig.OrbitalsOrbsXRotation.Value);
-            state.OrbitalsOrbsYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsYRotation, PluginConfig.OrbitalsOrbsYRotation.Value);
-            state.OrbitalsOrbsZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsZRotation, PluginConfig.OrbitalsOrbsZRotation.Value);
-            state.OrbitalsOrbsDrift = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsDrift, PluginConfig.OrbitalsOrbsDrift.Value);
+            state.SparksEnabled = ReadBool(customData, VfxStateKeys.SparksEnabled, state.SparksEnabled);
+            state.SparksEnergy = ReadFloat(customData, VfxStateKeys.SparksEnergy, state.SparksEnergy);
+            state.SparksScale = ReadFloat(customData, VfxStateKeys.SparksScale, state.SparksScale);
+            state.SparksLuminance = ReadFloat(customData, VfxStateKeys.SparksLuminance, state.SparksLuminance);
+            state.SparksHue = ReadFloat(customData, VfxStateKeys.SparksHue, state.SparksHue);
+            state.SparksLifetime = ReadFloat(customData, VfxStateKeys.SparksLifetime, state.SparksLifetime);
+            state.SparksSimulationSpeed = ReadFloat(customData, VfxStateKeys.SparksSimulationSpeed, state.SparksSimulationSpeed);
+            state.SparksLength = ReadFloat(customData, VfxStateKeys.SparksLength, state.SparksLength);
+            state.SparksWidth = ReadFloat(customData, VfxStateKeys.SparksWidth, state.SparksWidth);
+            state.SparksXOffset = ReadFloat(customData, VfxStateKeys.SparksXOffset, state.SparksXOffset);
+            state.SparksYOffset = ReadFloat(customData, VfxStateKeys.SparksYOffset, state.SparksYOffset);
+            state.SparksZOffset = ReadFloat(customData, VfxStateKeys.SparksZOffset, state.SparksZOffset);
+            state.SparksXRotation = ReadFloat(customData, VfxStateKeys.SparksXRotation, state.SparksXRotation);
+            state.SparksYRotation = ReadFloat(customData, VfxStateKeys.SparksYRotation, state.SparksYRotation);
+            state.SparksZRotation = ReadFloat(customData, VfxStateKeys.SparksZRotation, state.SparksZRotation);
 
-            state.OrbitalsCoresEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresEnabled, PluginConfig.OrbitalsCores.Value);
-            state.OrbitalsCoresSnakeEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSnakeEnabled, PluginConfig.OrbitalsCoresSnake.Value);
-            state.OrbitalsCoresGlueEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresGlueEnabled, PluginConfig.OrbitalsCoresGlue.Value);
-            state.OrbitalsCoresSpinEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSpinEnabled, PluginConfig.OrbitalsCoresSpin.Value);
-            state.OrbitalsCoresCount = ReadFloat(customData, VfxStateKeys.OrbitalsCoresCount, PluginConfig.OrbitalsCoresCount.Value);
-            state.OrbitalsCoresScale = ReadFloat(customData, VfxStateKeys.OrbitalsCoresScale, PluginConfig.OrbitalsCoresScale.Value);
-            state.OrbitalsCoresLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsCoresLuminance, PluginConfig.OrbitalsCoresLuminance.Value);
-            state.OrbitalsCoresHue = ReadFloat(customData, VfxStateKeys.OrbitalsCoresHue, PluginConfig.OrbitalsCoresHue.Value);
-            state.OrbitalsCoresSpinSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpinSpeed, PluginConfig.OrbitalsCoresSpinSpeed.Value);
-            state.OrbitalsCoresLength = ReadFloat(customData, VfxStateKeys.OrbitalsCoresLength, PluginConfig.OrbitalsCoresLength.Value);
-            state.OrbitalsCoresSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpeed, PluginConfig.OrbitalsCoresSpeed.Value);
-            state.OrbitalsCoresSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpacing, PluginConfig.OrbitalsCoresSpacing.Value);
-            state.OrbitalsCoresRadius = ReadFloat(customData, VfxStateKeys.OrbitalsCoresRadius, PluginConfig.OrbitalsCoresRadius.Value);
-            state.OrbitalsCoresCycles = ReadFloat(customData, VfxStateKeys.OrbitalsCoresCycles, PluginConfig.OrbitalsCoresCycles.Value);
-            state.OrbitalsCoresXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresXOffset, PluginConfig.OrbitalsCoresXOffset.Value);
-            state.OrbitalsCoresYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresYOffset, PluginConfig.OrbitalsCoresYOffset.Value);
-            state.OrbitalsCoresZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresZOffset, PluginConfig.OrbitalsCoresZOffset.Value);
-            state.OrbitalsCoresXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresXRotation, PluginConfig.OrbitalsCoresXRotation.Value);
-            state.OrbitalsCoresYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresYRotation, PluginConfig.OrbitalsCoresYRotation.Value);
-            state.OrbitalsCoresZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresZRotation, PluginConfig.OrbitalsCoresZRotation.Value);
-            state.OrbitalsCoresDrift = ReadFloat(customData, VfxStateKeys.OrbitalsCoresDrift, PluginConfig.OrbitalsCoresDrift.Value);
+            state.FlareEnabled = ReadBool(customData, VfxStateKeys.FlareEnabled, state.FlareEnabled);
+            state.FlareScale = ReadFloat(customData, VfxStateKeys.FlareScale, state.FlareScale);
+            state.FlareLuminance = ReadFloat(customData, VfxStateKeys.FlareLuminance, state.FlareLuminance);
+            state.FlareHue = ReadFloat(customData, VfxStateKeys.FlareHue, state.FlareHue);
+            state.FlareXOffset = ReadFloat(customData, VfxStateKeys.FlareXOffset, state.FlareXOffset);
+            state.FlareYOffset = ReadFloat(customData, VfxStateKeys.FlareYOffset, state.FlareYOffset);
+            state.FlareZOffset = ReadFloat(customData, VfxStateKeys.FlareZOffset, state.FlareZOffset);
 
-            state.OrbitalsFlamesEnabled = ReadBool(customData, VfxStateKeys.OrbitalsFlamesEnabled, PluginConfig.OrbitalsFlames.Value);
-            state.OrbitalsFlamesCount = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesCount, PluginConfig.OrbitalsFlamesCount.Value);
-            state.OrbitalsFlamesEnergy = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesEnergy, PluginConfig.OrbitalsFlamesEnergy.Value);
-            state.OrbitalsFlamesScale = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesScale, PluginConfig.OrbitalsFlamesScale.Value);
-            state.OrbitalsFlamesLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesLuminance, PluginConfig.OrbitalsFlamesLuminance.Value);
-            state.OrbitalsFlamesHue = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesHue, PluginConfig.OrbitalsFlamesHue.Value);
-            state.OrbitalsFlamesLifetime = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesLifetime, PluginConfig.OrbitalsFlamesLifetime.Value);
-            state.OrbitalsFlamesSimulationSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesSimulationSpeed, PluginConfig.OrbitalsFlamesSimulationSpeed.Value);
-            state.OrbitalsFlamesSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesSpeed, PluginConfig.OrbitalsFlamesSpeed.Value);
-            state.OrbitalsFlamesSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesSpacing, PluginConfig.OrbitalsFlamesSpacing.Value);
-            state.OrbitalsFlamesLength = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesLength, PluginConfig.OrbitalsFlamesLength.Value);
-            state.OrbitalsFlamesRadius = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesRadius, PluginConfig.OrbitalsFlamesRadius.Value);
-            state.OrbitalsFlamesCycles = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesCycles, PluginConfig.OrbitalsFlamesCycles.Value);
-            state.OrbitalsFlamesXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesXOffset, PluginConfig.OrbitalsFlamesXOffset.Value);
-            state.OrbitalsFlamesYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesYOffset, PluginConfig.OrbitalsFlamesYOffset.Value);
-            state.OrbitalsFlamesZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesZOffset, PluginConfig.OrbitalsFlamesZOffset.Value);
-            state.OrbitalsFlamesXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesXRotation, PluginConfig.OrbitalsFlamesXRotation.Value);
-            state.OrbitalsFlamesYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesYRotation, PluginConfig.OrbitalsFlamesYRotation.Value);
-            state.OrbitalsFlamesZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesZRotation, PluginConfig.OrbitalsFlamesZRotation.Value);
-            state.OrbitalsFlamesDrift = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesDrift, PluginConfig.OrbitalsFlamesDrift.Value);
+            state.AuraEnabled = ReadBool(customData, VfxStateKeys.AuraEnabled, state.AuraEnabled);
+            state.AuraScale = ReadFloat(customData, VfxStateKeys.AuraScale, state.AuraScale);
+            state.AuraLuminance = ReadFloat(customData, VfxStateKeys.AuraLuminance, state.AuraLuminance);
+            state.AuraHue = ReadFloat(customData, VfxStateKeys.AuraHue, state.AuraHue);
+            state.AuraXOffset = ReadFloat(customData, VfxStateKeys.AuraXOffset, state.AuraXOffset);
+            state.AuraYOffset = ReadFloat(customData, VfxStateKeys.AuraYOffset, state.AuraYOffset);
+            state.AuraZOffset = ReadFloat(customData, VfxStateKeys.AuraZOffset, state.AuraZOffset);
+            state.AuraXRotation = ReadFloat(customData, VfxStateKeys.AuraXRotation, state.AuraXRotation);
+            state.AuraYRotation = ReadFloat(customData, VfxStateKeys.AuraYRotation, state.AuraYRotation);
+            state.AuraZRotation = ReadFloat(customData, VfxStateKeys.AuraZRotation, state.AuraZRotation);
 
-            state.OrbitalsEmbersEnabled = ReadBool(customData, VfxStateKeys.OrbitalsEmbersEnabled, PluginConfig.OrbitalsEmbers.Value);
-            state.OrbitalsEmbersCount = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersCount, PluginConfig.OrbitalsEmbersCount.Value);
-            state.OrbitalsEmbersEnergy = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersEnergy, PluginConfig.OrbitalsEmbersEnergy.Value);
-            state.OrbitalsEmbersScale = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersScale, PluginConfig.OrbitalsEmbersScale.Value);
-            state.OrbitalsEmbersLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersLuminance, PluginConfig.OrbitalsEmbersLuminance.Value);
-            state.OrbitalsEmbersHue = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersHue, PluginConfig.OrbitalsEmbersHue.Value);
-            state.OrbitalsEmbersLifetime = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersLifetime, PluginConfig.OrbitalsEmbersLifetime.Value);
-            state.OrbitalsEmbersSimulationSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersSimulationSpeed, PluginConfig.OrbitalsEmbersSimulationSpeed.Value);
-            state.OrbitalsEmbersLength = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersLength, PluginConfig.OrbitalsEmbersLength.Value);
-            state.OrbitalsEmbersSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersSpeed, PluginConfig.OrbitalsEmbersSpeed.Value);
-            state.OrbitalsEmbersSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersSpacing, PluginConfig.OrbitalsEmbersSpacing.Value);
-            state.OrbitalsEmbersRadius = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersRadius, PluginConfig.OrbitalsEmbersRadius.Value);
-            state.OrbitalsEmbersCycles = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersCycles, PluginConfig.OrbitalsEmbersCycles.Value);
-            state.OrbitalsEmbersXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersXOffset, PluginConfig.OrbitalsEmbersXOffset.Value);
-            state.OrbitalsEmbersYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersYOffset, PluginConfig.OrbitalsEmbersYOffset.Value);
-            state.OrbitalsEmbersZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersZOffset, PluginConfig.OrbitalsEmbersZOffset.Value);
-            state.OrbitalsEmbersXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersXRotation, PluginConfig.OrbitalsEmbersXRotation.Value);
-            state.OrbitalsEmbersYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersYRotation, PluginConfig.OrbitalsEmbersYRotation.Value);
-            state.OrbitalsEmbersZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersZRotation, PluginConfig.OrbitalsEmbersZRotation.Value);
-            state.OrbitalsEmbersDrift = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersDrift, PluginConfig.OrbitalsEmbersDrift.Value);
+            state.OrbitalsOrbsEnabled = ReadBool(customData, VfxStateKeys.OrbitalsOrbsEnabled, state.OrbitalsOrbsEnabled);
+            state.OrbitalsOrbsSnakeEnabled = ReadBool(customData, VfxStateKeys.OrbitalsOrbsSnakeEnabled, state.OrbitalsOrbsSnakeEnabled);
+            state.OrbitalsOrbsGlueEnabled = ReadBool(customData, VfxStateKeys.OrbitalsOrbsGlueEnabled, state.OrbitalsOrbsGlueEnabled);
+            state.OrbitalsOrbsCount = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsCount, state.OrbitalsOrbsCount);
+            state.OrbitalsOrbsScale = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsScale, state.OrbitalsOrbsScale);
+            state.OrbitalsOrbsLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsLuminance, state.OrbitalsOrbsLuminance);
+            state.OrbitalsOrbsHue = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsHue, state.OrbitalsOrbsHue);
+            state.OrbitalsOrbsLength = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsLength, state.OrbitalsOrbsLength);
+            state.OrbitalsOrbsSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsSpeed, state.OrbitalsOrbsSpeed);
+            state.OrbitalsOrbsSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsSpacing, state.OrbitalsOrbsSpacing);
+            state.OrbitalsOrbsRadius = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsRadius, state.OrbitalsOrbsRadius);
+            state.OrbitalsOrbsCycles = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsCycles, state.OrbitalsOrbsCycles);
+            state.OrbitalsOrbsXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsXOffset, state.OrbitalsOrbsXOffset);
+            state.OrbitalsOrbsYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsYOffset, state.OrbitalsOrbsYOffset);
+            state.OrbitalsOrbsZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsZOffset, state.OrbitalsOrbsZOffset);
+            state.OrbitalsOrbsXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsXRotation, state.OrbitalsOrbsXRotation);
+            state.OrbitalsOrbsYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsYRotation, state.OrbitalsOrbsYRotation);
+            state.OrbitalsOrbsZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsZRotation, state.OrbitalsOrbsZRotation);
+            state.OrbitalsOrbsDrift = ReadFloat(customData, VfxStateKeys.OrbitalsOrbsDrift, state.OrbitalsOrbsDrift);
+
+            state.OrbitalsCoresEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresEnabled, state.OrbitalsCoresEnabled);
+            state.OrbitalsCoresSnakeEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSnakeEnabled, state.OrbitalsCoresSnakeEnabled);
+            state.OrbitalsCoresGlueEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresGlueEnabled, state.OrbitalsCoresGlueEnabled);
+            state.OrbitalsCoresSpinEnabled = ReadBool(customData, VfxStateKeys.OrbitalsCoresSpinEnabled, state.OrbitalsCoresSpinEnabled);
+            state.OrbitalsCoresCount = ReadFloat(customData, VfxStateKeys.OrbitalsCoresCount, state.OrbitalsCoresCount);
+            state.OrbitalsCoresScale = ReadFloat(customData, VfxStateKeys.OrbitalsCoresScale, state.OrbitalsCoresScale);
+            state.OrbitalsCoresLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsCoresLuminance, state.OrbitalsCoresLuminance);
+            state.OrbitalsCoresHue = ReadFloat(customData, VfxStateKeys.OrbitalsCoresHue, state.OrbitalsCoresHue);
+            state.OrbitalsCoresSpinSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpinSpeed, state.OrbitalsCoresSpinSpeed);
+            state.OrbitalsCoresLength = ReadFloat(customData, VfxStateKeys.OrbitalsCoresLength, state.OrbitalsCoresLength);
+            state.OrbitalsCoresSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpeed, state.OrbitalsCoresSpeed);
+            state.OrbitalsCoresSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsCoresSpacing, state.OrbitalsCoresSpacing);
+            state.OrbitalsCoresRadius = ReadFloat(customData, VfxStateKeys.OrbitalsCoresRadius, state.OrbitalsCoresRadius);
+            state.OrbitalsCoresCycles = ReadFloat(customData, VfxStateKeys.OrbitalsCoresCycles, state.OrbitalsCoresCycles);
+            state.OrbitalsCoresXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresXOffset, state.OrbitalsCoresXOffset);
+            state.OrbitalsCoresYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresYOffset, state.OrbitalsCoresYOffset);
+            state.OrbitalsCoresZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsCoresZOffset, state.OrbitalsCoresZOffset);
+            state.OrbitalsCoresXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresXRotation, state.OrbitalsCoresXRotation);
+            state.OrbitalsCoresYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresYRotation, state.OrbitalsCoresYRotation);
+            state.OrbitalsCoresZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsCoresZRotation, state.OrbitalsCoresZRotation);
+            state.OrbitalsCoresDrift = ReadFloat(customData, VfxStateKeys.OrbitalsCoresDrift, state.OrbitalsCoresDrift);
+
+            state.OrbitalsFlamesEnabled = ReadBool(customData, VfxStateKeys.OrbitalsFlamesEnabled, state.OrbitalsFlamesEnabled);
+            state.OrbitalsFlamesCount = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesCount, state.OrbitalsFlamesCount);
+            state.OrbitalsFlamesEnergy = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesEnergy, state.OrbitalsFlamesEnergy);
+            state.OrbitalsFlamesScale = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesScale, state.OrbitalsFlamesScale);
+            state.OrbitalsFlamesLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesLuminance, state.OrbitalsFlamesLuminance);
+            state.OrbitalsFlamesHue = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesHue, state.OrbitalsFlamesHue);
+            state.OrbitalsFlamesLifetime = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesLifetime, state.OrbitalsFlamesLifetime);
+            state.OrbitalsFlamesSimulationSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesSimulationSpeed, state.OrbitalsFlamesSimulationSpeed);
+            state.OrbitalsFlamesSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesSpeed, state.OrbitalsFlamesSpeed);
+            state.OrbitalsFlamesSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesSpacing, state.OrbitalsFlamesSpacing);
+            state.OrbitalsFlamesLength = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesLength, state.OrbitalsFlamesLength);
+            state.OrbitalsFlamesRadius = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesRadius, state.OrbitalsFlamesRadius);
+            state.OrbitalsFlamesCycles = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesCycles, state.OrbitalsFlamesCycles);
+            state.OrbitalsFlamesXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesXOffset, state.OrbitalsFlamesXOffset);
+            state.OrbitalsFlamesYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesYOffset, state.OrbitalsFlamesYOffset);
+            state.OrbitalsFlamesZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesZOffset, state.OrbitalsFlamesZOffset);
+            state.OrbitalsFlamesXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesXRotation, state.OrbitalsFlamesXRotation);
+            state.OrbitalsFlamesYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesYRotation, state.OrbitalsFlamesYRotation);
+            state.OrbitalsFlamesZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesZRotation, state.OrbitalsFlamesZRotation);
+            state.OrbitalsFlamesDrift = ReadFloat(customData, VfxStateKeys.OrbitalsFlamesDrift, state.OrbitalsFlamesDrift);
+
+            state.OrbitalsEmbersEnabled = ReadBool(customData, VfxStateKeys.OrbitalsEmbersEnabled, state.OrbitalsEmbersEnabled);
+            state.OrbitalsEmbersCount = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersCount, state.OrbitalsEmbersCount);
+            state.OrbitalsEmbersEnergy = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersEnergy, state.OrbitalsEmbersEnergy);
+            state.OrbitalsEmbersScale = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersScale, state.OrbitalsEmbersScale);
+            state.OrbitalsEmbersLuminance = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersLuminance, state.OrbitalsEmbersLuminance);
+            state.OrbitalsEmbersHue = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersHue, state.OrbitalsEmbersHue);
+            state.OrbitalsEmbersLifetime = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersLifetime, state.OrbitalsEmbersLifetime);
+            state.OrbitalsEmbersSimulationSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersSimulationSpeed, state.OrbitalsEmbersSimulationSpeed);
+            state.OrbitalsEmbersLength = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersLength, state.OrbitalsEmbersLength);
+            state.OrbitalsEmbersSpeed = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersSpeed, state.OrbitalsEmbersSpeed);
+            state.OrbitalsEmbersSpacing = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersSpacing, state.OrbitalsEmbersSpacing);
+            state.OrbitalsEmbersRadius = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersRadius, state.OrbitalsEmbersRadius);
+            state.OrbitalsEmbersCycles = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersCycles, state.OrbitalsEmbersCycles);
+            state.OrbitalsEmbersXOffset = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersXOffset, state.OrbitalsEmbersXOffset);
+            state.OrbitalsEmbersYOffset = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersYOffset, state.OrbitalsEmbersYOffset);
+            state.OrbitalsEmbersZOffset = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersZOffset, state.OrbitalsEmbersZOffset);
+            state.OrbitalsEmbersXRotation = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersXRotation, state.OrbitalsEmbersXRotation);
+            state.OrbitalsEmbersYRotation = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersYRotation, state.OrbitalsEmbersYRotation);
+            state.OrbitalsEmbersZRotation = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersZRotation, state.OrbitalsEmbersZRotation);
+            state.OrbitalsEmbersDrift = ReadFloat(customData, VfxStateKeys.OrbitalsEmbersDrift, state.OrbitalsEmbersDrift);
 
             return true;
         }
@@ -1010,7 +1038,7 @@ namespace NADA.VFX.Weapon.Core.State
                 InnerFlamesLuminance = PluginConfig.DefaultLuminance,
                 InnerFlamesHue = PluginConfig.DefaultHue,
                 InnerFlamesLifetime = PluginConfig.DefaultLifetime,
-                InnerFlamesSimulationSpeed =  PluginConfig.DefaultSimulationSpeed,
+                InnerFlamesSimulationSpeed = PluginConfig.DefaultSimulationSpeed,
                 InnerFlamesLength = PluginConfig.DefaultFlameLength,
                 InnerFlamesWidth = PluginConfig.DefaultFlameWidth,
                 InnerFlamesXOffset = PluginConfig.DefaultEffectOffset,
@@ -1066,7 +1094,7 @@ namespace NADA.VFX.Weapon.Core.State
                 SparksLuminance = PluginConfig.DefaultLuminance,
                 SparksHue = PluginConfig.DefaultHue,
                 SparksLifetime = PluginConfig.DefaultLifetime,
-                SparksSimulationSpeed =  PluginConfig.DefaultSimulationSpeed,
+                SparksSimulationSpeed = PluginConfig.DefaultSimulationSpeed,
                 SparksLength = PluginConfig.DefaultFlameLength,
                 SparksWidth = PluginConfig.DefaultSparksWidth,
                 SparksXOffset = PluginConfig.DefaultEffectOffset,
@@ -1116,7 +1144,7 @@ namespace NADA.VFX.Weapon.Core.State
                 OrbitalsOrbsDrift = PluginConfig.DefaultDrift,
 
                 OrbitalsCoresEnabled = true,
-                OrbitalsCoresSnakeEnabled =  false,
+                OrbitalsCoresSnakeEnabled = false,
                 OrbitalsCoresGlueEnabled = false,
                 OrbitalsCoresSpinEnabled = true,
                 OrbitalsCoresCount = PluginConfig.DefaultCountNormalized,
@@ -1144,7 +1172,7 @@ namespace NADA.VFX.Weapon.Core.State
                 OrbitalsFlamesLuminance = PluginConfig.DefaultLuminance,
                 OrbitalsFlamesHue = PluginConfig.DefaultHue,
                 OrbitalsFlamesLifetime = PluginConfig.DefaultLifetime,
-                OrbitalsFlamesSimulationSpeed =  PluginConfig.DefaultSimulationSpeed,
+                OrbitalsFlamesSimulationSpeed = PluginConfig.DefaultSimulationSpeed,
                 OrbitalsFlamesLength = PluginConfig.DefaultOrbitalsLength,
                 OrbitalsFlamesSpeed = PluginConfig.DefaultOrbitalsSpeed,
                 OrbitalsFlamesSpacing = PluginConfig.DefaultOrbitalsSpacing,
@@ -1369,13 +1397,19 @@ namespace NADA.VFX.Weapon.Core.State
             PluginConfig.OrbitalsEmbersDrift.Value = state.OrbitalsEmbersDrift;
         }
 
-        private static float ReadFloat(Dictionary<string, string> customData, string key, float fallback)
+        private static float ReadFloat(
+            Dictionary<string, string> customData,
+            string key,
+            float fallback)
         {
             if (customData == null)
                 return fallback;
 
-            if (!customData.TryGetValue(key, out string stringValue) || string.IsNullOrWhiteSpace(stringValue))
+            if (!customData.TryGetValue(key, out string stringValue) ||
+                string.IsNullOrWhiteSpace(stringValue))
+            {
                 return fallback;
+            }
 
             if (float.TryParse(
                     stringValue,
@@ -1389,53 +1423,92 @@ namespace NADA.VFX.Weapon.Core.State
             return fallback;
         }
 
-        private static bool ReadBool(Dictionary<string, string> customData, string key, bool fallback)
+        private static bool ReadBool(
+            Dictionary<string, string> customData,
+            string key,
+            bool fallback)
         {
             if (customData == null)
                 return fallback;
 
-            if (!customData.TryGetValue(key, out string stringValue) || string.IsNullOrWhiteSpace(stringValue))
+            if (!customData.TryGetValue(key, out string stringValue) ||
+                string.IsNullOrWhiteSpace(stringValue))
+            {
                 return fallback;
+            }
 
-            if (bool.TryParse(stringValue, out bool parsedValue))
+            if (bool.TryParse(
+                    stringValue,
+                    out bool parsedValue))
+            {
                 return parsedValue;
+            }
 
             return fallback;
         }
 
-        private static void WriteFloat(Dictionary<string, string> customData, string key, float value)
+        private static void WriteFloat(
+            Dictionary<string, string> customData,
+            string key,
+            float value)
         {
             if (customData == null)
                 return;
 
-            customData[key] = value.ToString(CultureInfo.InvariantCulture);
+            customData[key] =
+                value.ToString(
+                    CultureInfo.InvariantCulture);
         }
 
-        private static void WriteBool(Dictionary<string, string> customData, string key, bool value)
+        private static void WriteBool(
+            Dictionary<string, string> customData,
+            string key,
+            bool value)
         {
             if (customData == null)
                 return;
 
-            customData[key] = value ? "true" : "false";
+            customData[key] =
+                value
+                    ? "true"
+                    : "false";
         }
 
-        private static void BackfillMissing(Dictionary<string, string> customData, string key, float value)
+        private static void BackfillMissing(
+            Dictionary<string, string> customData,
+            string key,
+            float value)
         {
-            if (customData == null || customData.ContainsKey(key))
+            if (customData == null ||
+                customData.ContainsKey(key))
+            {
                 return;
+            }
 
-            customData[key] = value.ToString(CultureInfo.InvariantCulture);
+            customData[key] =
+                value.ToString(
+                    CultureInfo.InvariantCulture);
         }
 
-        private static void BackfillMissing(Dictionary<string, string> customData, string key, bool value)
+        private static void BackfillMissing(
+            Dictionary<string, string> customData,
+            string key,
+            bool value)
         {
-            if (customData == null || customData.ContainsKey(key))
+            if (customData == null ||
+                customData.ContainsKey(key))
+            {
                 return;
+            }
 
-            customData[key] = value ? "true" : "false";
+            customData[key] =
+                value
+                    ? "true"
+                    : "false";
         }
 
-        internal static bool IsBound(global::ItemDrop.ItemData item)
+        internal static bool IsBound(
+            global::ItemDrop.ItemData item)
         {
             if (item?.m_customData == null)
                 return false;
@@ -1446,47 +1519,43 @@ namespace NADA.VFX.Weapon.Core.State
                 false);
         }
 
-        internal static VfxStyleSave ToStyleSave(string styleName, VfxState state)
+        internal static VfxStyleSave ToStyleSave(
+            string styleName,
+            VfxState state)
         {
-            var tempItem = new global::ItemDrop.ItemData
+            Dictionary<string, string> entries =
+                ToStateEntries(state);
+
+            var save =
+                new VfxStyleSave
+                {
+                    Version = 1,
+                    Name = styleName
+                };
+
+            foreach (var pair in entries)
             {
-                m_customData = new Dictionary<string, string>()
-            };
-
-            Write(tempItem, state, bound: false);
-
-            tempItem.m_customData.Remove(VfxStateKeys.Bound);
-
-            var save = new VfxStyleSave
-            {
-                Version = 1,
-                Name = styleName
-            };
-
-            foreach (var pair in tempItem.m_customData)
-            {
-                save.Entries.Add(new VfxStyleEntry(pair.Key, pair.Value));
+                save.Entries.Add(
+                    new VfxStyleEntry(
+                        pair.Key,
+                        pair.Value));
             }
 
             return save;
         }
 
-        internal static VfxState FromStyleSave(VfxStyleSave save)
+        internal static VfxState FromStyleSave(
+            VfxStyleSave save)
         {
-            VfxState fallbackState = FromDefaults();
-
-            if (save == null || save.Entries == null)
-                return fallbackState;
-
-            var tempItem = new global::ItemDrop.ItemData
+            if (save == null ||
+                save.Entries == null)
             {
-                m_customData = new Dictionary<string, string>()
-            };
+                return FromDefaults();
+            }
 
-            // First write defaults so missing/new fields are safe.
-            Write(tempItem, fallbackState, bound: false);
+            var entries =
+                new Dictionary<string, string>();
 
-            // Then overwrite only the fields this style actually saved.
             foreach (VfxStyleEntry entry in save.Entries)
             {
                 if (entry == null)
@@ -1495,32 +1564,28 @@ namespace NADA.VFX.Weapon.Core.State
                 if (string.IsNullOrWhiteSpace(entry.Key))
                     continue;
 
-                tempItem.m_customData[entry.Key] = entry.Value;
+                entries[entry.Key] =
+                    entry.Value;
             }
 
-            if (TryRead(tempItem, out VfxState loadedState))
-                return loadedState;
-
-            return fallbackState;
+            return FromStateEntries(entries);
         }
-        
+
         internal static Dictionary<string, string> ToStateEntries(
             VfxState state)
         {
-            var tempItem = new global::ItemDrop.ItemData
-            {
-                m_customData = new Dictionary<string, string>()
-            };
+            var entries =
+                new Dictionary<string, string>();
 
             Write(
-                tempItem,
+                entries,
                 state,
                 bound: false);
 
-            tempItem.m_customData.Remove(
+            entries.Remove(
                 VfxStateKeys.Bound);
 
-            return tempItem.m_customData;
+            return entries;
         }
 
         internal static VfxState FromStateEntries(
@@ -1529,31 +1594,12 @@ namespace NADA.VFX.Weapon.Core.State
             VfxState fallbackState =
                 FromDefaults();
 
-            var tempItem = new global::ItemDrop.ItemData
-            {
-                m_customData =
-                    new Dictionary<string, string>()
-            };
-
-            Write(
-                tempItem,
-                fallbackState,
-                bound: false);
-
-            if (entries != null)
-            {
-                foreach (var pair in entries)
-                {
-                    if (string.IsNullOrWhiteSpace(pair.Key))
-                        continue;
-
-                    tempItem.m_customData[pair.Key] =
-                        pair.Value;
-                }
-            }
+            if (entries == null)
+                return fallbackState;
 
             if (TryRead(
-                    tempItem,
+                    entries,
+                    fallbackState,
                     out VfxState loadedState))
             {
                 return loadedState;

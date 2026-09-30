@@ -3,10 +3,14 @@ using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
+using NADA.VFX.Weapon.Core.State.Migration;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
 {
+    
     internal static class NadaWeaponRigOrchestrator
     {
         internal static void Run(NadaWeaponRigContext context)
@@ -125,6 +129,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (catalog == null)
                 return;
 
+            VfxEffectBlock sparksBlock =
+                CreateSparksBlockPrototype(
+                    context,
+                    "local");
+
             if (itemData != null)
             {
                 NadaEffectBinder.BindInnerFlamesEffect(
@@ -146,9 +155,30 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 catalog.OuterFlamesTransform,
                 itemData);
 
-            NadaEffectBinder.BindSparksEffect(
-                catalog.SparksTransform,
-                itemData);
+            if (itemData != null &&
+                VfxStateIO.IsBound(itemData))
+            {
+                if (sparksBlock != null)
+                {
+                    NadaEffectInstanceAssembly.EnsureInstance(
+                        localEffectsRootTransform,
+                        sparksBlock.InstanceId,
+                        sparksBlock.TypeId,
+                        rootObject.name);
+                }
+
+                NadaEffectBinder.BindSparksBlockEffect(
+                    catalog.SparksTransform,
+                    sparksBlock);
+            }
+            else
+            {
+                // Keep the legacy source temporarily so unbound config editing
+                // continues updating live while the block-state pipeline is built.
+                NadaEffectBinder.BindSparksEffect(
+                    catalog.SparksTransform,
+                    itemData);
+            }
 
             NadaEffectBinder.BindFlareEffect(
                 catalog.FlareTransform,
@@ -261,6 +291,25 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (catalog == null || !catalog.IsValid)
                 return false;
 
+            VfxEffectBlock sparksBlock =
+                CreateSparksBlockPrototype(
+                    context,
+                    "remote");
+            
+            Transform remoteEffectsRootTransform =
+                NadaRigPaths.FindLocalEffectsRoot(
+                    localWeaponRootTransform);
+
+            if (sparksBlock != null &&
+                remoteEffectsRootTransform != null)
+            {
+                NadaEffectInstanceAssembly.EnsureInstance(
+                    remoteEffectsRootTransform,
+                    sparksBlock.InstanceId,
+                    sparksBlock.TypeId,
+                    rootObject.name);
+            }
+
             NadaEffectBinder.BindInnerFlamesEffect(
                 catalog.InnerFlamesTransform,
                 context.State);
@@ -297,9 +346,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     .gameObject
                     .SetActive(true);
 
-                NadaEffectBinder.BindSparksEffect(
+                NadaEffectBinder.BindSparksBlockEffect(
                     catalog.SparksTransform,
-                    context.State);
+                    sparksBlock);
             }
 
             if (catalog.StrandsTransform != null)
@@ -364,6 +413,86 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"embers={context.State.OrbitalsEmbersEnabled}");
 
             return true;
+        }
+        
+        private static VfxEffectBlock CreateSparksBlockPrototype(
+            NadaWeaponRigContext context,
+            string source)
+        {
+            if (context == null ||
+                context.Root == null)
+            {
+                return null;
+            }
+
+            WeaponVfxState blockState =
+                LegacyVfxStateAdapter.CreateSparksPrototype(
+                    context.State);
+
+            if (blockState?.Effects == null ||
+                blockState.Effects.Count != 1)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [BlockPrototype] " +
+                    $"Sparks prototype did not contain exactly one effect block.");
+
+                return null;
+            }
+
+            VfxEffectBlock block =
+                blockState.Effects[0];
+
+            if (block == null ||
+                block.Settings is not SparksVfxSettings sparks)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [BlockPrototype] " +
+                    $"Sparks prototype contained invalid settings.");
+
+                return null;
+            }
+
+            VfxState legacy =
+                context.State;
+
+            bool matchesLegacy =
+                block.InstanceId == 4 &&
+                block.TypeId == VfxEffectTypeIds.Sparks &&
+                block.Enabled == legacy.SparksEnabled &&
+
+                block.Transform.XOffset == legacy.SparksXOffset &&
+                block.Transform.YOffset == legacy.SparksYOffset &&
+                block.Transform.ZOffset == legacy.SparksZOffset &&
+
+                block.Transform.XRotation == legacy.SparksXRotation &&
+                block.Transform.YRotation == legacy.SparksYRotation &&
+                block.Transform.ZRotation == legacy.SparksZRotation &&
+
+                sparks.Energy == legacy.SparksEnergy &&
+                sparks.Scale == legacy.SparksScale &&
+                sparks.Luminance == legacy.SparksLuminance &&
+                sparks.Hue == legacy.SparksHue &&
+                sparks.Lifetime == legacy.SparksLifetime &&
+                sparks.SimulationSpeed == legacy.SparksSimulationSpeed &&
+                sparks.Length == legacy.SparksLength &&
+                sparks.Width == legacy.SparksWidth;
+
+            NadaLogControl.Info(
+                $"block-prototype:sparks:{source}:{context.Root.GetInstanceID()}",
+                $"{Plugin.ModName}: [BlockPrototype] " +
+                $"source='{source}' " +
+                $"root='{context.Root.name}' " +
+                $"type='{block.TypeId}' " +
+                $"id={block.InstanceId} " +
+                $"enabled={block.Enabled} " +
+                $"hue={sparks.Hue} " +
+                $"scale={sparks.Scale} " +
+                $"position=({block.Transform.XOffset}, " +
+                $"{block.Transform.YOffset}, " +
+                $"{block.Transform.ZOffset}) " +
+                $"matchesLegacy={matchesLegacy}");
+
+            return block;
         }
     }
 }

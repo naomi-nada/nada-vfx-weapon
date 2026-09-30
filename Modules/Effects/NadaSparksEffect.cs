@@ -4,6 +4,8 @@ using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Effects
@@ -13,6 +15,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         INadaItemDataReceiver,
         INadaResolvedStateReceiver
     {
+        private SparksRuntimeState _blockState;
+        private bool _hasBlockState;
+        
         private const float SparksBaseEmissionRate = 5.00f;
         private const float SparksMaxSpread = 1.50f;
 
@@ -24,7 +29,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _cachedBoundState;
         private bool _hasCachedBoundState;
 
-        private VfxState _lastAppliedState;
+        private SparksRuntimeState _lastAppliedState;
         private bool _hasLastAppliedState;
 
         private Renderer[] _renderers;
@@ -67,6 +72,78 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private readonly Dictionary<int, float> _baseSimulationSpeed = new();
         private readonly Dictionary<int, bool> _baseSizeOverLifetimeEnabled = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseSizeOverLifetime = new();
+        
+        private struct SparksRuntimeState
+        {
+            public bool Enabled;
+
+            public float Energy;
+            public float Scale;
+            public float Luminance;
+            public float Hue;
+            public float Lifetime;
+            public float SimulationSpeed;
+            public float Length;
+            public float Width;
+
+            public float XOffset;
+            public float YOffset;
+            public float ZOffset;
+
+            public float XRotation;
+            public float YRotation;
+            public float ZRotation;
+        }
+        
+        internal bool SetBlockState(
+            VfxEffectBlock block)
+        {
+            // Block state becomes the only authority for this component.
+            _itemData = null;
+            _hasResolvedState = false;
+            _hasCachedBoundState = false;
+
+            _hasBlockState = true;
+            _hasLastAppliedState = false;
+
+            // Invalid block data fails closed. Never fall through to config.
+            _blockState =
+                CreateDisabledRuntimeState();
+
+            if (block == null ||
+                block.TypeId != VfxEffectTypeIds.Sparks ||
+                block.Transform == null ||
+                block.Settings is not SparksVfxSettings settings)
+            {
+                return false;
+            }
+
+            _blockState =
+                new SparksRuntimeState
+                {
+                    Enabled = block.Enabled,
+
+                    Energy = settings.Energy,
+                    Scale = settings.Scale,
+                    Luminance = settings.Luminance,
+                    Hue = settings.Hue,
+                    Lifetime = settings.Lifetime,
+                    SimulationSpeed =
+                        settings.SimulationSpeed,
+                    Length = settings.Length,
+                    Width = settings.Width,
+
+                    XOffset = block.Transform.XOffset,
+                    YOffset = block.Transform.YOffset,
+                    ZOffset = block.Transform.ZOffset,
+
+                    XRotation = block.Transform.XRotation,
+                    YRotation = block.Transform.YRotation,
+                    ZRotation = block.Transform.ZRotation
+                };
+
+            return true;
+        }
 
         private sealed class MaterialBaseline
         {
@@ -86,20 +163,28 @@ namespace NADA.VFX.Weapon.Modules.Effects
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
+
             _hasResolvedState = false;
+            _hasBlockState = false;
 
             // The same item may have been explicitly rebound.
             // Don't keep its previous bound-state snapshot.
             _hasCachedBoundState = false;
+
+            _hasLastAppliedState = false;
         }
 
         public void SetResolvedState(VfxState state)
         {
             _resolvedState = state;
-            _hasResolvedState = true;
-            _itemData = null;
 
+            _hasResolvedState = true;
+            _hasBlockState = false;
+
+            _itemData = null;
             _hasCachedBoundState = false;
+
+            _hasLastAppliedState = false;
         }
 
         private void Awake()
@@ -158,7 +243,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 forceApply = true;
             }
 
-            VfxState state = ResolveState();
+            SparksRuntimeState state =
+                ResolveRuntimeState();
 
             // Keep the timer for live config editing, but stable spark state
             // doesn't need to rebuild its particle settings and emitter layout 20x/sec.
@@ -171,85 +257,85 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 return;
             }
 
-            ApplyEnabled(state.SparksEnabled);
-            ApplyScale(state.SparksScale);
-            ApplyLifetime(state.SparksLifetime);
-            ApplySimulationSpeed(state.SparksSimulationSpeed);
+            ApplyEnabled(state.Enabled);
+            ApplyScale(state.Scale);
+            ApplyLifetime(state.Lifetime);
+            ApplySimulationSpeed(state.SimulationSpeed);
 
             ApplySparkField(
-                state.SparksLength,
-                state.SparksWidth);
+                state.Length,
+                state.Width);
 
             ApplyHueShift(
-                state.SparksHue,
-                state.SparksLuminance);
+                state.Hue,
+                state.Luminance);
 
-            ApplyEnergy(state.SparksEnergy);
+            ApplyEnergy(state.Energy);
 
             ApplyPlacement(
-                state.SparksXOffset,
-                state.SparksYOffset,
-                state.SparksZOffset,
-                state.SparksXRotation,
-                state.SparksYRotation,
-                state.SparksZRotation);
+                state.XOffset,
+                state.YOffset,
+                state.ZOffset,
+                state.XRotation,
+                state.YRotation,
+                state.ZRotation);
 
             _lastAppliedState = state;
             _hasLastAppliedState = true;
         }
 
         private static bool SparksStateEquals(
-            VfxState left,
-            VfxState right)
+            SparksRuntimeState left,
+            SparksRuntimeState right)
         {
             return
-                left.SparksEnabled ==
-                    right.SparksEnabled &&
+                left.Enabled ==
+                right.Enabled &&
 
                 FloatEquals(
-                    left.SparksScale,
-                    right.SparksScale) &&
+                    left.Scale,
+                    right.Scale) &&
                 FloatEquals(
-                    left.SparksLifetime,
-                    right.SparksLifetime) &&
+                    left.Lifetime,
+                    right.Lifetime) &&
                 FloatEquals(
-                    left.SparksSimulationSpeed,
-                    right.SparksSimulationSpeed) &&
+                    left.SimulationSpeed,
+                    right.SimulationSpeed) &&
                 FloatEquals(
-                    left.SparksLength,
-                    right.SparksLength) &&
+                    left.Length,
+                    right.Length) &&
                 FloatEquals(
-                    left.SparksWidth,
-                    right.SparksWidth) &&
+                    left.Width,
+                    right.Width) &&
                 FloatEquals(
-                    left.SparksHue,
-                    right.SparksHue) &&
+                    left.Hue,
+                    right.Hue) &&
                 FloatEquals(
-                    left.SparksLuminance,
-                    right.SparksLuminance) &&
+                    left.Luminance,
+                    right.Luminance) &&
                 FloatEquals(
-                    left.SparksEnergy,
-                    right.SparksEnergy) &&
+                    left.Energy,
+                    right.Energy) &&
 
                 FloatEquals(
-                    left.SparksXOffset,
-                    right.SparksXOffset) &&
+                    left.XOffset,
+                    right.XOffset) &&
                 FloatEquals(
-                    left.SparksYOffset,
-                    right.SparksYOffset) &&
+                    left.YOffset,
+                    right.YOffset) &&
                 FloatEquals(
-                    left.SparksZOffset,
-                    right.SparksZOffset) &&
+                    left.ZOffset,
+                    right.ZOffset) &&
 
                 FloatEquals(
-                    left.SparksXRotation,
-                    right.SparksXRotation) &&
+                    left.XRotation,
+                    right.XRotation) &&
                 FloatEquals(
-                    left.SparksYRotation,
-                    right.SparksYRotation) &&
+                    left.YRotation,
+                    right.YRotation) &&
                 FloatEquals(
-                    left.SparksZRotation,
-                    right.SparksZRotation);
+                    left.ZRotation,
+                    right.ZRotation);
         }
 
         private static bool FloatEquals(
@@ -259,16 +345,27 @@ namespace NADA.VFX.Weapon.Modules.Effects
             return left.Equals(right);
         }
 
-        private VfxState ResolveState()
+        private SparksRuntimeState ResolveRuntimeState()
         {
+            // New block state is already resolved.
+            // It must never fall back to ItemData or local config.
+            if (_hasBlockState)
+                return _blockState;
+
             if (_hasResolvedState)
-                return _resolvedState;
+            {
+                return CreateRuntimeState(
+                    _resolvedState);
+            }
 
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
                 if (_hasCachedBoundState)
-                    return _cachedBoundState;
+                {
+                    return CreateRuntimeState(
+                        _cachedBoundState);
+                }
 
                 if (VfxStateIO.TryRead(
                         _itemData,
@@ -277,14 +374,68 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     _cachedBoundState = itemState;
                     _hasCachedBoundState = true;
 
-                    return itemState;
+                    return CreateRuntimeState(
+                        itemState);
                 }
             }
 
             // Unbinding must discard the previous snapshot.
             _hasCachedBoundState = false;
 
-            return VfxStateIO.FromConfig();
+            return CreateRuntimeState(
+                VfxStateIO.FromConfig());
+        }
+        
+        private static SparksRuntimeState CreateRuntimeState(
+            VfxState state)
+        {
+            return new SparksRuntimeState
+            {
+                Enabled = state.SparksEnabled,
+
+                Energy = state.SparksEnergy,
+                Scale = state.SparksScale,
+                Luminance = state.SparksLuminance,
+                Hue = state.SparksHue,
+                Lifetime = state.SparksLifetime,
+                SimulationSpeed =
+                    state.SparksSimulationSpeed,
+                Length = state.SparksLength,
+                Width = state.SparksWidth,
+
+                XOffset = state.SparksXOffset,
+                YOffset = state.SparksYOffset,
+                ZOffset = state.SparksZOffset,
+
+                XRotation = state.SparksXRotation,
+                YRotation = state.SparksYRotation,
+                ZRotation = state.SparksZRotation
+            };
+        }
+
+        private static SparksRuntimeState CreateDisabledRuntimeState()
+        {
+            return new SparksRuntimeState
+            {
+                Enabled = false,
+
+                Energy = 0f,
+                Scale = 1f,
+                Luminance = 1f,
+                Hue = 0f,
+                Lifetime = 1f,
+                SimulationSpeed = 1f,
+                Length = 1f,
+                Width = 1f,
+
+                XOffset = 0f,
+                YOffset = 0f,
+                ZOffset = 0f,
+
+                XRotation = 0f,
+                YRotation = 0f,
+                ZRotation = 0f
+            };
         }
 
         private void RebuildComponentCache()

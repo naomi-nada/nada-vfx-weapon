@@ -1,5 +1,7 @@
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Modules.Effects;
+using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Core.State.Blocks;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Runtime.Binding
@@ -58,6 +60,29 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             BindResolvedStateEffect<NadaSparksEffect>(
                 sparksTransform,
                 state);
+        }
+        
+        internal static void BindSparksBlockEffect(
+            Transform sparksTransform,
+            VfxEffectBlock block)
+        {
+            if (sparksTransform == null)
+                return;
+
+            NadaSparksEffect sparksEffect =
+                GetOrAddEffect<NadaSparksEffect>(
+                    sparksTransform);
+
+            bool accepted =
+                sparksEffect.SetBlockState(
+                    block);
+
+            NadaLogControl.Info(
+                $"sparks-block-bind:{sparksTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [SparksBlockBind] " +
+                $"root='{sparksTransform.name}' " +
+                $"id={(block != null ? block.InstanceId.ToString() : "null")} " +
+                $"accepted={accepted}");
         }
 
         internal static void BindFlareEffect(
