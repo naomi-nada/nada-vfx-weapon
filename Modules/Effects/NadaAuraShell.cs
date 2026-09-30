@@ -11,6 +11,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private static readonly HashSet<string> WarnedUnreadableMeshes = new();
 
         private Mesh _runtimeMesh;
+        private Material _ownedMaterial;
 
         private Vector3[] _baseVertices;
         private Vector3[] _baseNormals;
@@ -32,6 +33,15 @@ namespace NADA.VFX.Weapon.Modules.Effects
         internal void SetBasePivotLocalScale(Vector3 scale)
         {
             _basePivotLocalScale = scale;
+        }
+
+        internal void SetOwnedMaterial(Material material)
+        {
+            if (_ownedMaterial == material)
+                return;
+
+            ReleaseOwnedMaterial();
+            _ownedMaterial = material;
         }
 
         internal void Initialize(Mesh sourceMesh)
@@ -90,6 +100,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private void OnDestroy()
         {
             ReleaseRuntimeMesh();
+            ReleaseOwnedMaterial();
         }
 
         private void ReleaseRuntimeMesh()
@@ -105,6 +116,17 @@ namespace NADA.VFX.Weapon.Modules.Effects
             _scaledVertices = null;
 
             _lastAppliedScale = -1f;
+        }
+
+        private void ReleaseOwnedMaterial()
+        {
+            if (_ownedMaterial == null)
+                return;
+
+            // Several submesh slots can use this same instance.
+            // The shell owns one material, so release it once.
+            Object.Destroy(_ownedMaterial);
+            _ownedMaterial = null;
         }
 
         internal void ApplyScale(float scale)

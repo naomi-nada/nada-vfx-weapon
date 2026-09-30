@@ -107,6 +107,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private readonly Dictionary<int, EmissionBaseline> _baseEmissionByParticleSystemId = new();
         private readonly Dictionary<int, MaterialBaseline> _baseMaterialByRendererId = new();
+        private readonly HashSet<Material> _ownedRendererMaterials = new();
         private readonly Dictionary<int, Color> _baseLightColorByLightId = new();
 
         private sealed class MaterialBaseline
@@ -173,7 +174,21 @@ namespace NADA.VFX.Weapon.Modules.Effects
         {
             NadaRuntimeDiagnostics.OrbitalsEffectDestroyed();
 
-            try { CancelInvoke(nameof(TickApply)); } catch { }
+            try
+            {
+                CancelInvoke(nameof(TickApply));
+            }
+            catch { }
+
+            foreach (Material material in _ownedRendererMaterials)
+            {
+                if (material != null)
+                {
+                    Object.Destroy(material);
+                }
+            }
+
+            _ownedRendererMaterials.Clear();
         }
 
         private void TickApply()
@@ -1289,14 +1304,33 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (renderer == null)
                     continue;
 
+                int rendererId = renderer.GetInstanceID();
+
+                if (_baseMaterialByRendererId.ContainsKey(rendererId))
+                    continue;
+
+                Material previousMaterial;
                 Material material;
-                try { material = renderer.material; } catch { continue; }
+
+                try
+                {
+                    previousMaterial = renderer.sharedMaterial;
+                    material = renderer.material;
+                }
+                catch
+                {
+                    continue;
+                }
+
                 if (material == null)
                     continue;
 
-                int rendererId = renderer.GetInstanceID();
-                if (_baseMaterialByRendererId.ContainsKey(rendererId))
-                    continue;
+                // Only track an instance created by this access.
+                // The original shared material belongs to its source.
+                if (material != previousMaterial)
+                {
+                    _ownedRendererMaterials.Add(material);
+                }
 
                 var materialBaseline = new MaterialBaseline();
 

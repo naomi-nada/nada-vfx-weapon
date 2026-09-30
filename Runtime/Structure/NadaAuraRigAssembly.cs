@@ -267,6 +267,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                     new Material(
                         NadaRigCache.AuraMaterial);
 
+                auraShell.SetOwnedMaterial(auraMaterial);
+
                 Color tintColor =
                     auraMaterial.GetColor("_TintColor");
 

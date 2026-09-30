@@ -208,10 +208,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
             _auraRenderers.Clear();
             _auraShells.Clear();
 
-            Transform searchRoot = ResolveAuraSearchRoot();
-
+            // Aura shells belong to this branch. Don't search the
+            // surrounding weapon hierarchy for renderers to modify.
             foreach (Renderer renderer in
-                     searchRoot.GetComponentsInChildren<Renderer>(true))
+                     GetComponentsInChildren<Renderer>(true))
             {
                 if (renderer != null &&
                     IsAuraRenderer(renderer.transform))
@@ -221,33 +221,13 @@ namespace NADA.VFX.Weapon.Modules.Effects
             }
 
             foreach (NadaAuraShell shell in
-                     searchRoot.GetComponentsInChildren<NadaAuraShell>(true))
+                     GetComponentsInChildren<NadaAuraShell>(true))
             {
                 if (shell != null)
                     _auraShells.Add(shell);
             }
 
-            // Newly discovered Aura renderers still need their color once.
             _hasAppliedColor = false;
-        }
-
-        private Transform ResolveAuraSearchRoot()
-        {
-            Transform current = transform;
-
-            while (current != null)
-            {
-                if (current.name == Plugin.LocalWeaponRootName)
-                {
-                    return current.parent != null
-                        ? current.parent
-                        : transform;
-                }
-
-                current = current.parent;
-            }
-
-            return transform;
         }
 
         private void ApplyEnabled(bool enabled)
@@ -310,7 +290,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (renderer == null)
                     continue;
 
-                Material[] materials = renderer.materials;
+                Material[] materials = renderer.sharedMaterials;
                 if (materials == null)
                     continue;
 

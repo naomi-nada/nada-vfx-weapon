@@ -37,6 +37,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private Vector3 _baseLocalPosition;
         private Quaternion _baseLocalRotation;
         private bool _hasBasePlacement;
+        
+        private readonly HashSet<Material> _ownedRendererMaterials = new();
 
         private readonly List<Transform> _sparkEmitters = new();
         private readonly Dictionary<int, Vector3> _baseEmitterPosition = new();
@@ -114,7 +116,23 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void OnDestroy()
         {
-            try { CancelInvoke(nameof(TickApply)); } catch { }
+            try
+            {
+                CancelInvoke(nameof(TickApply));
+            }
+            catch
+            {
+            }
+
+            foreach (Material material in _ownedRendererMaterials)
+            {
+                if (material != null)
+                {
+                    Object.Destroy(material);
+                }
+            }
+
+            _ownedRendererMaterials.Clear();
         }
 
         private void TickApply()
@@ -533,10 +551,18 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (renderer == null)
                     continue;
 
+                int rendererId = renderer.GetInstanceID();
+
+                if (_baseMaterialByRendererId.ContainsKey(rendererId))
+                    continue;
+
+                Material sharedMaterial;
                 Material material;
 
                 try
                 {
+                    // Capture the existing reference before accessing .material.
+                    sharedMaterial = renderer.sharedMaterial;
                     material = renderer.material;
                 }
                 catch
@@ -547,14 +573,16 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (material == null)
                     continue;
 
-                int rendererId =
-                    renderer.GetInstanceID();
+                // Only take ownership if this access produced a new instance.
+                // Never register the borrowed donor material for destruction.
+                if (material != sharedMaterial)
+                {
+                    _ownedRendererMaterials.Add(material);
+                }
 
-                if (_baseMaterialByRendererId.ContainsKey(rendererId))
-                    continue;
+                var materialBaseline = new MaterialBaseline();
 
-                var materialBaseline =
-                    new MaterialBaseline();
+                // Keep the existing baseline-property reads below this point.
 
                 try
                 {

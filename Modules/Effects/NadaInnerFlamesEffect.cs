@@ -35,6 +35,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private Vector3 _baseLocalPosition;
         private Quaternion _baseLocalRotation;
         private bool _hasBasePlacement;
+        
+        private readonly HashSet<Material> _ownedRendererMaterials = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColor = new();
         private readonly Dictionary<int, bool> _baseColorOverLifetimeEnabled = new();
@@ -101,8 +103,22 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private void OnDestroy()
         {
             NadaRuntimeDiagnostics.InnerFlamesDestroyed();
-            
-            try { CancelInvoke(nameof(TickApply)); } catch { }
+
+            try
+            {
+                CancelInvoke(nameof(TickApply));
+            }
+            catch { }
+
+            foreach (Material material in _ownedRendererMaterials)
+            {
+                if (material != null)
+                {
+                    Object.Destroy(material);
+                }
+            }
+
+            _ownedRendererMaterials.Clear();
         }
 
         private void TickApply()
@@ -461,15 +477,33 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (renderer == null)
                     continue;
 
+                int rendererId = renderer.GetInstanceID();
+
+                if (_baseMaterialByRendererId.ContainsKey(rendererId))
+                    continue;
+
+                Material previousMaterial;
                 Material material;
-                try { material = renderer.material; } catch { continue; }
+
+                try
+                {
+                    previousMaterial = renderer.sharedMaterial;
+                    material = renderer.material;
+                }
+                catch
+                {
+                    continue;
+                }
 
                 if (material == null)
                     continue;
 
-                int rendererId = renderer.GetInstanceID();
-                if (_baseMaterialByRendererId.ContainsKey(rendererId))
-                    continue;
+                // Only own a material if this access created an instance.
+                // Never destroy the borrowed donor material.
+                if (material != previousMaterial)
+                {
+                    _ownedRendererMaterials.Add(material);
+                }
 
                 var materialBaseline = new MaterialBaseline();
 

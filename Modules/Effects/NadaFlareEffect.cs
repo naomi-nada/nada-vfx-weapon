@@ -41,6 +41,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private bool _componentCacheDirty = true;
         private bool _baselineCacheDirty = true;
+        
+        private readonly HashSet<Material> _ownedRendererMaterials = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient>
             _baseMainStartColor = new();
@@ -124,8 +126,18 @@ namespace NADA.VFX.Weapon.Modules.Effects
             catch
             {
             }
-        }
 
+            foreach (Material material in _ownedRendererMaterials)
+            {
+                if (material != null)
+                {
+                    Object.Destroy(material);
+                }
+            }
+
+            _ownedRendererMaterials.Clear();
+        }
+        
         private void TickApply()
         {
             bool forceApply = false;
@@ -397,12 +409,18 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (renderer == null)
                     continue;
 
+                int rendererId = renderer.GetInstanceID();
+
+                if (_baseMaterialByRendererId.ContainsKey(rendererId))
+                    continue;
+
+                Material previousMaterial;
                 Material material;
 
                 try
                 {
-                    material =
-                        renderer.material;
+                    previousMaterial = renderer.sharedMaterial;
+                    material = renderer.material;
                 }
                 catch
                 {
@@ -412,17 +430,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (material == null)
                     continue;
 
-                int rendererId =
-                    renderer.GetInstanceID();
-
-                if (_baseMaterialByRendererId.ContainsKey(
-                        rendererId))
+                // Only take ownership when this access creates a
+                // renderer-specific instance. The donor stays borrowed.
+                if (material != previousMaterial)
                 {
-                    continue;
+                    _ownedRendererMaterials.Add(material);
                 }
 
-                var materialBaseline =
-                    new MaterialBaseline();
+                var materialBaseline = new MaterialBaseline();
 
                 try
                 {
@@ -454,8 +469,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 {
                 }
 
-                _baseMaterialByRendererId[
-                    rendererId] =
+                _baseMaterialByRendererId[rendererId] =
                     materialBaseline;
             }
         }
