@@ -113,9 +113,15 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 localWeaponRootTransform,
                 rootObject.name);
 
-            NadaSparksRigAssembly.EnsureLocalSparksBranch(
-                localWeaponRootTransform,
-                rootObject.name);
+            // Unbound Sparks still uses the legacy singleton branch so live config
+            // editing keeps working during the block migration.
+            if (itemData == null ||
+                !VfxStateIO.IsBound(itemData))
+            {
+                NadaSparksRigAssembly.EnsureLocalSparksBranch(
+                    localWeaponRootTransform,
+                    rootObject.name);
+            }
 
             NadaAuraRigAssembly.EnsureLocalAuraBranch(
                 localWeaponRootTransform,
@@ -158,23 +164,35 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (itemData != null &&
                 VfxStateIO.IsBound(itemData))
             {
+                Transform blockSparksTransform = null;
+
                 if (sparksBlock != null)
                 {
-                    NadaEffectInstanceAssembly.EnsureInstance(
-                        localEffectsRootTransform,
-                        sparksBlock.InstanceId,
-                        sparksBlock.TypeId,
-                        rootObject.name);
+                    NadaEffectInstance sparksInstance =
+                        NadaEffectInstanceAssembly.EnsureInstance(
+                            localEffectsRootTransform,
+                            sparksBlock.InstanceId,
+                            sparksBlock.TypeId,
+                            rootObject.name);
+
+                    if (sparksInstance != null &&
+                        sparksInstance.IsValid)
+                    {
+                        blockSparksTransform =
+                            NadaSparksRigAssembly.EnsureSparksBranch(
+                                sparksInstance.RootTransform,
+                                rootObject.name);
+                    }
                 }
 
                 NadaEffectBinder.BindSparksBlockEffect(
-                    catalog.SparksTransform,
+                    blockSparksTransform,
                     sparksBlock);
             }
             else
             {
-                // Keep the legacy source temporarily so unbound config editing
-                // continues updating live while the block-state pipeline is built.
+                // Legacy live-config path remains until the new state pipeline
+                // becomes authoritative for unbound editing too.
                 NadaEffectBinder.BindSparksEffect(
                     catalog.SparksTransform,
                     itemData);
@@ -271,10 +289,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 localWeaponRootTransform,
                 rootObject.name);
 
-            NadaSparksRigAssembly.EnsureLocalSparksBranch(
-                localWeaponRootTransform,
-                rootObject.name);
-
             NadaStrandsRigAssembly.EnsureLocalStrandsBranch(
                 localWeaponRootTransform,
                 rootObject.name);
@@ -296,6 +310,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     context,
                     "remote");
             
+            Transform remoteSparksTransform = null;
+
             Transform remoteEffectsRootTransform =
                 NadaRigPaths.FindLocalEffectsRoot(
                     localWeaponRootTransform);
@@ -303,11 +319,21 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (sparksBlock != null &&
                 remoteEffectsRootTransform != null)
             {
-                NadaEffectInstanceAssembly.EnsureInstance(
-                    remoteEffectsRootTransform,
-                    sparksBlock.InstanceId,
-                    sparksBlock.TypeId,
-                    rootObject.name);
+                NadaEffectInstance sparksInstance =
+                    NadaEffectInstanceAssembly.EnsureInstance(
+                        remoteEffectsRootTransform,
+                        sparksBlock.InstanceId,
+                        sparksBlock.TypeId,
+                        rootObject.name);
+
+                if (sparksInstance != null &&
+                    sparksInstance.IsValid)
+                {
+                    remoteSparksTransform =
+                        NadaSparksRigAssembly.EnsureSparksBranch(
+                            sparksInstance.RootTransform,
+                            rootObject.name);
+                }
             }
 
             NadaEffectBinder.BindInnerFlamesEffect(
@@ -340,14 +366,14 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     context.State);
             }
 
-            if (catalog.SparksTransform != null)
+            if (remoteSparksTransform != null)
             {
-                catalog.SparksTransform
+                remoteSparksTransform
                     .gameObject
                     .SetActive(true);
 
                 NadaEffectBinder.BindSparksBlockEffect(
-                    catalog.SparksTransform,
+                    remoteSparksTransform,
                     sparksBlock);
             }
 
