@@ -57,8 +57,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
                         if (existing.RootTransform != null)
                         {
-                            // Destroy is deferred. Detach immediately so the
-                            // stale instance no longer owns this runtime ID.
+                            // Destroy is deferred. Detach immediately so this
+                            // stale owner cannot be rediscovered this frame.
                             existing.RootTransform.SetParent(
                                 null,
                                 false);
@@ -68,8 +68,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                             existing.RootObject);
                     }
 
-                    // Fail closed for this pass. A later reconciliation can
-                    // create the requested type after the stale owner is gone.
+                    // Fail closed for this pass instead of creating two
+                    // runtime owners for the same logical InstanceId.
                     return null;
                 }
 
@@ -177,8 +177,6 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
             if (instance.RootTransform != null)
             {
-                // Relinquish hierarchy ownership immediately even though
-                // Unity will not destroy the object until end-of-frame.
                 instance.RootTransform.SetParent(
                     null,
                     false);
@@ -284,25 +282,25 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                         ? "duplicate-runtime"
                         : "not-in-state";
 
+                GameObject childObject =
+                    child.gameObject;
+
+                int rootId =
+                    child.GetInstanceID();
+
+                string rootName =
+                    child.name;
+
                 uint removedInstanceId =
                     identity.InstanceId;
 
                 string removedTypeId =
                     identity.TypeId;
 
-                string rootName =
-                    child.name;
-
-                int rootId =
-                    child.GetInstanceID();
-
-                GameObject childObject =
-                    child.gameObject;
-
                 childObject.SetActive(false);
 
-                // Destroy is deferred. Remove this object from Instances now
-                // so another reconciliation pass cannot rediscover it.
+                // Destroy is deferred by Unity. Detach first so another
+                // reconciliation pass cannot rediscover this stale root.
                 child.SetParent(
                     null,
                     false);
@@ -318,6 +316,102 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
                 Object.Destroy(
                     childObject);
+            }
+        }
+
+        internal static void ReconcileInstanceOrder(
+            Transform localEffectsRootTransform,
+            WeaponVfxState state,
+            string ownerNameForLogs)
+        {
+            if (localEffectsRootTransform == null)
+                return;
+
+            if (state?.Effects == null)
+                return;
+
+            Transform instancesRootTransform =
+                NadaRigPaths.FindDirectChild(
+                    localEffectsRootTransform,
+                    NadaRigPaths.EffectInstancesRootName);
+
+            if (instancesRootTransform == null)
+                return;
+
+            var seenStateIds =
+                new HashSet<uint>();
+
+            int targetSiblingIndex = 0;
+
+            for (int stateIndex = 0;
+                 stateIndex < state.Effects.Count;
+                 stateIndex++)
+            {
+                VfxEffectBlock block =
+                    state.Effects[stateIndex];
+
+                if (block == null ||
+                    block.InstanceId == 0 ||
+                    string.IsNullOrWhiteSpace(block.TypeId))
+                {
+                    continue;
+                }
+
+                // Invalid duplicate IDs should never cause one runtime root
+                // to be ordered more than once.
+                if (!seenStateIds.Add(
+                        block.InstanceId))
+                {
+                    continue;
+                }
+
+                NadaEffectInstance instance =
+                    FindInstance(
+                        instancesRootTransform,
+                        block.InstanceId);
+
+                if (instance == null ||
+                    !instance.IsValid ||
+                    instance.RootTransform == null)
+                {
+                    continue;
+                }
+
+                // An InstanceId only owns this list position if the runtime
+                // instance also matches the block's type.
+                if (!string.Equals(
+                        instance.TypeId,
+                        block.TypeId,
+                        StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Transform rootTransform =
+                    instance.RootTransform;
+
+                int previousSiblingIndex =
+                    rootTransform.GetSiblingIndex();
+
+                if (previousSiblingIndex !=
+                    targetSiblingIndex)
+                {
+                    rootTransform.SetSiblingIndex(
+                        targetSiblingIndex);
+
+                    Plugin.Log.LogInfo(
+                        $"{Plugin.ModName}: [EffectInstanceReordered] " +
+                        $"owner='{ownerNameForLogs}' " +
+                        $"id={block.InstanceId} " +
+                        $"type='{block.TypeId}' " +
+                        $"root='{rootTransform.name}' " +
+                        $"rootId={rootTransform.GetInstanceID()} " +
+                        $"stateIndex={stateIndex} " +
+                        $"from={previousSiblingIndex} " +
+                        $"to={targetSiblingIndex}");
+                }
+
+                targetSiblingIndex++;
             }
         }
 
