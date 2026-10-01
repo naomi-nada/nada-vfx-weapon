@@ -13,11 +13,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
     internal static class NadaWeaponRigOrchestrator
     {
         private const uint PrototypeLegacySparksInstanceId = 4;
+        private const uint PrototypeLegacyFlareInstanceId = 5;
 
-        internal static void Run(NadaWeaponRigContext context)
+        internal static void Run(
+            NadaWeaponRigContext context)
         {
-            if (context == null || !context.IsValid)
+            if (context == null ||
+                !context.IsValid)
+            {
                 return;
+            }
 
             GameObject rootObject =
                 context.Root;
@@ -114,24 +119,30 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 localWeaponRootTransform,
                 rootObject.name);
 
-            bool hasBoundSparksState =
+            bool hasBoundBlockState =
                 itemData != null &&
                 VfxStateIO.IsBound(itemData);
 
-            if (hasBoundSparksState)
+            if (hasBoundBlockState)
             {
-                // Bound Sparks is block-owned. A direct legacy branch must
-                // not survive an ownership transition into block mode.
+                // Bound migrated effects belong exclusively to block roots.
                 NadaSparksRigAssembly.RemoveDirectSparksBranch(
+                    localEffectsRootTransform,
+                    rootObject.name);
+
+                NadaFlareRigAssembly.RemoveDirectFlareBranch(
                     localEffectsRootTransform,
                     rootObject.name);
             }
             else
             {
-                // Unbound Sparks temporarily stays config-driven while the
-                // block-state migration is still in progress.
+                // Unbound effects temporarily retain live-config ownership.
                 NadaSparksRigAssembly.EnsureLocalSparksBranch(
                     localWeaponRootTransform,
+                    rootObject.name);
+
+                NadaFlareRigAssembly.EnsureFlareBranch(
+                    localEffectsRootTransform,
                     rootObject.name);
             }
 
@@ -168,10 +179,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 catalog.OuterFlamesTransform,
                 itemData);
 
-            if (hasBoundSparksState)
+            if (hasBoundBlockState)
             {
                 WeaponVfxState blockState =
-                    CreateSparksPrototypeState(
+                    CreateMigratedPrototypeState(
                         context,
                         "local");
 
@@ -179,25 +190,41 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     localEffectsRootTransform,
                     blockState,
                     rootObject.name);
+
+                BindFlareBlocks(
+                    localEffectsRootTransform,
+                    blockState,
+                    rootObject.name);
+
+                NadaEffectInstanceAssembly.ReconcileInstanceOrder(
+                    localEffectsRootTransform,
+                    blockState,
+                    rootObject.name);
             }
             else
             {
-                // Legacy/config mode owns Sparks now. Any block-owned Sparks
-                // instance left from a previous bound state is stale.
+                // Legacy/config ownership means any migrated runtime
+                // instances left from bound mode are stale.
                 NadaEffectInstanceAssembly.ReconcileInstancesOfType(
                     localEffectsRootTransform,
                     null,
                     VfxEffectTypeIds.Sparks,
                     rootObject.name);
 
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.Flare,
+                    rootObject.name);
+
                 NadaEffectBinder.BindSparksEffect(
                     catalog.SparksTransform,
                     itemData);
-            }
 
-            NadaEffectBinder.BindFlareEffect(
-                catalog.FlareTransform,
-                itemData);
+                NadaEffectBinder.BindFlareEffect(
+                    catalog.FlareTransform,
+                    itemData);
+            }
 
             NadaEffectBinder.BindAuraEffect(
                 catalog.AuraTransform,
@@ -233,8 +260,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             NadaWeaponRigContext context,
             NadaWeaponMetadata metadata)
         {
-            if (context == null || !context.IsValid)
+            if (context == null ||
+                !context.IsValid)
+            {
                 return false;
+            }
 
             NadaRuntimeDiagnostics.RecordRemoteApply();
 
@@ -287,6 +317,24 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 localWeaponRootTransform,
                 rootObject.name);
 
+            Transform remoteEffectsRootTransform =
+                NadaRigPaths.FindLocalEffectsRoot(
+                    localWeaponRootTransform);
+
+            if (remoteEffectsRootTransform == null)
+                return false;
+
+            // Remote migrated effects must not retain singleton visual owners.
+            // context.State is already the decoded replicated state, so neither
+            // effect is allowed to fall back to this client's local config.
+            NadaSparksRigAssembly.RemoveDirectSparksBranch(
+                remoteEffectsRootTransform,
+                rootObject.name);
+
+            NadaFlareRigAssembly.RemoveDirectFlareBranch(
+                remoteEffectsRootTransform,
+                rootObject.name);
+
             NadaAuraRigAssembly.EnsureLocalAuraBranch(
                 localWeaponRootTransform,
                 weaponVisualRootTransform,
@@ -296,23 +344,33 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 NadaRigCatalog.Build(
                     localWeaponRootTransform);
 
-            if (catalog == null || !catalog.IsValid)
+            if (catalog == null ||
+                !catalog.IsValid)
+            {
                 return false;
+            }
 
-            Transform remoteEffectsRootTransform =
-                NadaRigPaths.FindLocalEffectsRoot(
-                    localWeaponRootTransform);
-
-            NadaSparksRigAssembly.RemoveDirectSparksBranch(
-                remoteEffectsRootTransform,
-                rootObject.name);
-
+            // Networking is still transporting legacy VfxState for now.
+            // Convert the already-decoded remote state into the same block
+            // representation used by local bound runtime.
             WeaponVfxState blockState =
-                CreateSparksPrototypeState(
+                CreateMigratedPrototypeState(
                     context,
                     "remote");
 
             BindSparksBlocks(
+                remoteEffectsRootTransform,
+                blockState,
+                rootObject.name);
+
+            BindFlareBlocks(
+                remoteEffectsRootTransform,
+                blockState,
+                rootObject.name);
+
+            // List position is the single ordering authority across all
+            // migrated effect types.
+            NadaEffectInstanceAssembly.ReconcileInstanceOrder(
                 remoteEffectsRootTransform,
                 blockState,
                 rootObject.name);
@@ -333,17 +391,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
                 NadaMotionBinder.BindOuterFlamesMotion(
                     catalog.OuterFlamesTransform,
-                    context.State);
-            }
-
-            if (catalog.FlareTransform != null)
-            {
-                catalog.FlareTransform
-                    .gameObject
-                    .SetActive(true);
-
-                NadaEffectBinder.BindFlareEffect(
-                    catalog.FlareTransform,
                     context.State);
             }
 
@@ -428,7 +475,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (state?.Effects == null)
                 return;
 
-            foreach (VfxEffectBlock block in state.Effects)
+            foreach (VfxEffectBlock block in
+                     state.Effects)
             {
                 if (block == null)
                     continue;
@@ -470,13 +518,110 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     sparksTransform,
                     block);
             }
+        }
 
-            // Block list position is the ordering authority. Keep ordering
-            // generic here instead of teaching Sparks about sibling indices.
-            NadaEffectInstanceAssembly.ReconcileInstanceOrder(
+        private static void BindFlareBlocks(
+            Transform localEffectsRootTransform,
+            WeaponVfxState state,
+            string ownerNameForLogs)
+        {
+            if (localEffectsRootTransform == null)
+                return;
+
+            NadaEffectInstanceAssembly.ReconcileInstancesOfType(
                 localEffectsRootTransform,
                 state,
+                VfxEffectTypeIds.Flare,
                 ownerNameForLogs);
+
+            if (state?.Effects == null)
+                return;
+
+            foreach (VfxEffectBlock block in
+                     state.Effects)
+            {
+                if (block == null)
+                    continue;
+
+                if (!string.Equals(
+                        block.TypeId,
+                        VfxEffectTypeIds.Flare,
+                        System.StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                NadaEffectInstance flareInstance =
+                    NadaEffectInstanceAssembly.EnsureInstance(
+                        localEffectsRootTransform,
+                        block.InstanceId,
+                        block.TypeId,
+                        ownerNameForLogs);
+
+                if (flareInstance == null ||
+                    !flareInstance.IsValid)
+                {
+                    continue;
+                }
+
+                Transform flareTransform =
+                    NadaFlareRigAssembly.EnsureFlareBranch(
+                        flareInstance.RootTransform,
+                        ownerNameForLogs);
+
+                if (flareTransform == null)
+                    continue;
+
+                // Feed state before activation so a newly extracted donor
+                // cannot briefly render with its vanilla appearance.
+                NadaEffectBinder.BindFlareBlockEffect(
+                    flareTransform,
+                    block);
+
+                flareTransform
+                    .gameObject
+                    .SetActive(true);
+            }
+        }
+
+        private static WeaponVfxState CreateMigratedPrototypeState(
+            NadaWeaponRigContext context,
+            string source)
+        {
+            WeaponVfxState sparksState =
+                CreateSparksPrototypeState(
+                    context,
+                    source);
+
+            WeaponVfxState flareState =
+                CreateFlarePrototypeState(
+                    context,
+                    source);
+
+            if (sparksState?.Effects == null ||
+                sparksState.Effects.Count != 1 ||
+                flareState?.Effects == null ||
+                flareState.Effects.Count != 1)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [BlockPrototypeState] " +
+                    $"Could not build combined Sparks + Flare prototype.");
+
+                return null;
+            }
+
+            sparksState.Effects.Add(
+                flareState.Effects[0]);
+
+            NadaLogControl.Info(
+                $"block-prototype-state:{source}:{context.Root.GetInstanceID()}",
+                $"{Plugin.ModName}: [BlockPrototypeState] " +
+                $"source='{source}' " +
+                $"root='{context.Root.name}' " +
+                $"effects={sparksState.Effects.Count} " +
+                $"order='[4:sparks,5:flare]'");
+
+            return sparksState;
         }
 
         private static WeaponVfxState CreateSparksPrototypeState(
@@ -569,6 +714,92 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"enabled={block.Enabled} " +
                 $"hue={sparks.Hue} " +
                 $"scale={sparks.Scale} " +
+                $"position=({block.Transform.XOffset}, " +
+                $"{block.Transform.YOffset}, " +
+                $"{block.Transform.ZOffset}) " +
+                $"matchesLegacy={matchesLegacy}");
+
+            return blockState;
+        }
+
+        private static WeaponVfxState CreateFlarePrototypeState(
+            NadaWeaponRigContext context,
+            string source)
+        {
+            if (context == null ||
+                context.Root == null)
+            {
+                return null;
+            }
+
+            WeaponVfxState blockState =
+                LegacyVfxStateAdapter.CreateFlarePrototype(
+                    context.State);
+
+            if (blockState?.Effects == null ||
+                blockState.Effects.Count != 1)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [FlareBlockPrototype] " +
+                    $"Flare prototype did not contain exactly one migrated effect block.");
+
+                return null;
+            }
+
+            VfxEffectBlock block =
+                blockState.Effects[0];
+
+            if (block == null ||
+                block.Transform == null ||
+                block.Settings is not FlareVfxSettings flare)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [FlareBlockPrototype] " +
+                    $"Flare prototype contained invalid settings.");
+
+                return null;
+            }
+
+            VfxState legacy =
+                context.State;
+
+            bool matchesLegacy =
+                block.InstanceId ==
+                    PrototypeLegacyFlareInstanceId &&
+                block.TypeId ==
+                    VfxEffectTypeIds.Flare &&
+                block.Enabled ==
+                    legacy.FlareEnabled &&
+
+                block.Transform.XOffset ==
+                    legacy.FlareXOffset &&
+                block.Transform.YOffset ==
+                    legacy.FlareYOffset &&
+                block.Transform.ZOffset ==
+                    legacy.FlareZOffset &&
+
+                block.Transform.XRotation == 0f &&
+                block.Transform.YRotation == 0f &&
+                block.Transform.ZRotation == 0f &&
+
+                flare.Scale ==
+                    legacy.FlareScale &&
+                flare.Luminance ==
+                    legacy.FlareLuminance &&
+                flare.Hue ==
+                    legacy.FlareHue;
+
+            NadaLogControl.Info(
+                $"block-prototype:flare:{source}:{context.Root.GetInstanceID()}",
+                $"{Plugin.ModName}: [FlareBlockPrototype] " +
+                $"source='{source}' " +
+                $"root='{context.Root.name}' " +
+                $"type='{block.TypeId}' " +
+                $"id={block.InstanceId} " +
+                $"enabled={block.Enabled} " +
+                $"hue={flare.Hue} " +
+                $"scale={flare.Scale} " +
+                $"luminance={flare.Luminance} " +
                 $"position=({block.Transform.XOffset}, " +
                 $"{block.Transform.YOffset}, " +
                 $"{block.Transform.ZOffset}) " +

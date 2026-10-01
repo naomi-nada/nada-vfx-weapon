@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
@@ -21,7 +23,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _cachedBoundState;
         private bool _hasCachedBoundState;
 
-        private VfxState _lastAppliedState;
+        private FlareRuntimeState _blockState;
+        private bool _hasBlockState;
+
+        private FlareRuntimeState _lastAppliedState;
         private bool _hasLastAppliedState;
 
         private Renderer[] _renderers;
@@ -41,8 +46,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private bool _componentCacheDirty = true;
         private bool _baselineCacheDirty = true;
-        
-        private readonly HashSet<Material> _ownedRendererMaterials = new();
+
+        private readonly HashSet<Material>
+            _ownedRendererMaterials = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient>
             _baseMainStartColor = new();
@@ -74,6 +80,23 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private readonly Dictionary<int, Color>
             _baseLightColorByLightId = new();
 
+        private struct FlareRuntimeState
+        {
+            internal bool Enabled;
+
+            internal float Scale;
+            internal float Luminance;
+            internal float Hue;
+
+            internal float XOffset;
+            internal float YOffset;
+            internal float ZOffset;
+
+            internal float XRotation;
+            internal float YRotation;
+            internal float ZRotation;
+        }
+
         private sealed class MaterialBaseline
         {
             public Color? Color;
@@ -86,7 +109,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
             global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
+
             _hasResolvedState = false;
+            _hasBlockState = false;
 
             // An explicit reconfiguration can update the same item.
             // Don't keep its previous bound-state snapshot.
@@ -97,10 +122,70 @@ namespace NADA.VFX.Weapon.Modules.Effects
             VfxState state)
         {
             _resolvedState = state;
+
             _hasResolvedState = true;
+            _hasBlockState = false;
+
             _itemData = null;
 
             _hasCachedBoundState = false;
+        }
+
+        public bool SetBlockState(
+            VfxEffectBlock block)
+        {
+            if (block == null ||
+                block.Transform == null ||
+                !string.Equals(
+                    block.TypeId,
+                    VfxEffectTypeIds.Flare,
+                    System.StringComparison.Ordinal) ||
+                block.Settings is not FlareVfxSettings settings)
+            {
+                return false;
+            }
+
+            _blockState =
+                new FlareRuntimeState
+                {
+                    Enabled =
+                        block.Enabled,
+
+                    Scale =
+                        settings.Scale,
+
+                    Luminance =
+                        settings.Luminance,
+
+                    Hue =
+                        settings.Hue,
+
+                    XOffset =
+                        block.Transform.XOffset,
+
+                    YOffset =
+                        block.Transform.YOffset,
+
+                    ZOffset =
+                        block.Transform.ZOffset,
+
+                    XRotation =
+                        block.Transform.XRotation,
+
+                    YRotation =
+                        block.Transform.YRotation,
+
+                    ZRotation =
+                        block.Transform.ZRotation
+                };
+
+            _hasBlockState = true;
+
+            _itemData = null;
+            _hasResolvedState = false;
+            _hasCachedBoundState = false;
+
+            return true;
         }
 
         private void Awake()
@@ -121,23 +206,26 @@ namespace NADA.VFX.Weapon.Modules.Effects
         {
             try
             {
-                CancelInvoke(nameof(TickApply));
+                CancelInvoke(
+                    nameof(TickApply));
             }
             catch
             {
             }
 
-            foreach (Material material in _ownedRendererMaterials)
+            foreach (Material material in
+                     _ownedRendererMaterials)
             {
                 if (material != null)
                 {
-                    Object.Destroy(material);
+                    Object.Destroy(
+                        material);
                 }
             }
 
             _ownedRendererMaterials.Clear();
         }
-        
+
         private void TickApply()
         {
             bool forceApply = false;
@@ -161,11 +249,11 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 forceApply = true;
             }
 
-            VfxState state =
-                ResolveState();
+            FlareRuntimeState state =
+                ResolveRuntimeState();
 
-            // Keep polling for live editing, but don't keep rewriting
-            // a stable Flare when none of its settings changed.
+            // Legacy config still needs polling, but neither stable legacy
+            // state nor stable block state needs to rewrite the visual 20x/sec.
             if (!forceApply &&
                 _hasLastAppliedState &&
                 FlareStateEquals(
@@ -176,65 +264,97 @@ namespace NADA.VFX.Weapon.Modules.Effects
             }
 
             ApplyEnabled(
-                state.FlareEnabled);
+                state.Enabled);
 
             ApplyScale(
-                state.FlareScale);
+                state.Scale);
 
             ApplyHueShift(
-                state.FlareHue,
-                state.FlareLuminance);
+                state.Hue,
+                state.Luminance);
 
             ApplyPlacement(
-                state.FlareXOffset,
-                state.FlareYOffset,
-                state.FlareZOffset);
+                state.XOffset,
+                state.YOffset,
+                state.ZOffset,
+                state.XRotation,
+                state.YRotation,
+                state.ZRotation);
 
             RestartSystemsIfColorChanged(
-                state.FlareHue,
-                state.FlareLuminance);
+                state.Hue,
+                state.Luminance);
 
-            _lastAppliedState = state;
-            _hasLastAppliedState = true;
+            _lastAppliedState =
+                state;
+
+            _hasLastAppliedState =
+                true;
         }
 
         private static bool FlareStateEquals(
-            VfxState left,
-            VfxState right)
+            FlareRuntimeState left,
+            FlareRuntimeState right)
         {
             return
-                left.FlareEnabled ==
-                    right.FlareEnabled &&
+                left.Enabled ==
+                    right.Enabled &&
 
                 FloatEquals(
-                    left.FlareScale,
-                    right.FlareScale) &&
-                FloatEquals(
-                    left.FlareHue,
-                    right.FlareHue) &&
-                FloatEquals(
-                    left.FlareLuminance,
-                    right.FlareLuminance) &&
+                    left.Scale,
+                    right.Scale) &&
 
                 FloatEquals(
-                    left.FlareXOffset,
-                    right.FlareXOffset) &&
+                    left.Hue,
+                    right.Hue) &&
+
                 FloatEquals(
-                    left.FlareYOffset,
-                    right.FlareYOffset) &&
+                    left.Luminance,
+                    right.Luminance) &&
+
                 FloatEquals(
-                    left.FlareZOffset,
-                    right.FlareZOffset);
+                    left.XOffset,
+                    right.XOffset) &&
+
+                FloatEquals(
+                    left.YOffset,
+                    right.YOffset) &&
+
+                FloatEquals(
+                    left.ZOffset,
+                    right.ZOffset) &&
+
+                FloatEquals(
+                    left.XRotation,
+                    right.XRotation) &&
+
+                FloatEquals(
+                    left.YRotation,
+                    right.YRotation) &&
+
+                FloatEquals(
+                    left.ZRotation,
+                    right.ZRotation);
         }
 
         private static bool FloatEquals(
             float left,
             float right)
         {
-            return left.Equals(right);
+            return left.Equals(
+                right);
         }
 
-        private VfxState ResolveState()
+        private FlareRuntimeState ResolveRuntimeState()
+        {
+            if (_hasBlockState)
+                return _blockState;
+
+            return CreateRuntimeState(
+                ResolveLegacyState());
+        }
+
+        private VfxState ResolveLegacyState()
         {
             if (_hasResolvedState)
                 return _resolvedState;
@@ -249,8 +369,11 @@ namespace NADA.VFX.Weapon.Modules.Effects
                         _itemData,
                         out VfxState itemState))
                 {
-                    _cachedBoundState = itemState;
-                    _hasCachedBoundState = true;
+                    _cachedBoundState =
+                        itemState;
+
+                    _hasCachedBoundState =
+                        true;
 
                     return itemState;
                 }
@@ -262,18 +385,54 @@ namespace NADA.VFX.Weapon.Modules.Effects
             return VfxStateIO.FromConfig();
         }
 
+        private static FlareRuntimeState CreateRuntimeState(
+            VfxState state)
+        {
+            return new FlareRuntimeState
+            {
+                Enabled =
+                    state.FlareEnabled,
+
+                Scale =
+                    state.FlareScale,
+
+                Luminance =
+                    state.FlareLuminance,
+
+                Hue =
+                    state.FlareHue,
+
+                XOffset =
+                    state.FlareXOffset,
+
+                YOffset =
+                    state.FlareYOffset,
+
+                ZOffset =
+                    state.FlareZOffset,
+
+                // Legacy Flare had no rotation controls.
+                XRotation = 0f,
+                YRotation = 0f,
+                ZRotation = 0f
+            };
+        }
+
         // Cache / baselines
 
         private void RebuildComponentCache()
         {
             _renderers =
-                GetComponentsInChildren<Renderer>(true);
+                GetComponentsInChildren<Renderer>(
+                    true);
 
             _lights =
-                GetComponentsInChildren<Light>(true);
+                GetComponentsInChildren<Light>(
+                    true);
 
             _systems =
-                GetComponentsInChildren<ParticleSystem>(true);
+                GetComponentsInChildren<ParticleSystem>(
+                    true);
         }
 
         private void CacheBaselines()
@@ -283,7 +442,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 _baseScale =
                     transform.localScale;
 
-                _hasBaseScale = true;
+                _hasBaseScale =
+                    true;
             }
 
             CacheBasePlacement();
@@ -304,7 +464,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             _baseLocalRotation =
                 transform.localRotation;
 
-            _hasBasePlacement = true;
+            _hasBasePlacement =
+                true;
         }
 
         private void CacheParticleBaselines()
@@ -312,7 +473,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_systems == null)
                 return;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
@@ -404,23 +566,31 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_renderers == null)
                 return;
 
-            foreach (Renderer renderer in _renderers)
+            foreach (Renderer renderer in
+                     _renderers)
             {
                 if (renderer == null)
                     continue;
 
-                int rendererId = renderer.GetInstanceID();
+                int rendererId =
+                    renderer.GetInstanceID();
 
-                if (_baseMaterialByRendererId.ContainsKey(rendererId))
+                if (_baseMaterialByRendererId.ContainsKey(
+                        rendererId))
+                {
                     continue;
+                }
 
                 Material previousMaterial;
                 Material material;
 
                 try
                 {
-                    previousMaterial = renderer.sharedMaterial;
-                    material = renderer.material;
+                    previousMaterial =
+                        renderer.sharedMaterial;
+
+                    material =
+                        renderer.material;
                 }
                 catch
                 {
@@ -434,42 +604,53 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 // renderer-specific instance. The donor stays borrowed.
                 if (material != previousMaterial)
                 {
-                    _ownedRendererMaterials.Add(material);
+                    _ownedRendererMaterials.Add(
+                        material);
                 }
 
-                var materialBaseline = new MaterialBaseline();
+                var materialBaseline =
+                    new MaterialBaseline();
 
                 try
                 {
-                    if (material.HasProperty("_Color"))
+                    if (material.HasProperty(
+                            "_Color"))
                     {
                         materialBaseline.Color =
-                            material.GetColor("_Color");
+                            material.GetColor(
+                                "_Color");
                     }
 
-                    if (material.HasProperty("_BaseColor"))
+                    if (material.HasProperty(
+                            "_BaseColor"))
                     {
                         materialBaseline.BaseColor =
-                            material.GetColor("_BaseColor");
+                            material.GetColor(
+                                "_BaseColor");
                     }
 
-                    if (material.HasProperty("_TintColor"))
+                    if (material.HasProperty(
+                            "_TintColor"))
                     {
                         materialBaseline.TintColor =
-                            material.GetColor("_TintColor");
+                            material.GetColor(
+                                "_TintColor");
                     }
 
-                    if (material.HasProperty("_EmissionColor"))
+                    if (material.HasProperty(
+                            "_EmissionColor"))
                     {
                         materialBaseline.EmissionColor =
-                            material.GetColor("_EmissionColor");
+                            material.GetColor(
+                                "_EmissionColor");
                     }
                 }
                 catch
                 {
                 }
 
-                _baseMaterialByRendererId[rendererId] =
+                _baseMaterialByRendererId[
+                    rendererId] =
                     materialBaseline;
             }
         }
@@ -479,7 +660,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_lights == null)
                 return;
 
-            foreach (Light light in _lights)
+            foreach (Light light in
+                     _lights)
             {
                 if (light == null)
                     continue;
@@ -499,7 +681,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             }
         }
 
-        // Config-facing apply path
+        // Apply path
 
         private void ApplyEnabled(
             bool enabled)
@@ -520,7 +702,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_systems == null)
                 return;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
@@ -531,7 +714,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     {
                         if (!particleSystem.isPlaying)
                         {
-                            particleSystem.Play(true);
+                            particleSystem.Play(
+                                true);
                         }
                     }
                     else
@@ -557,7 +741,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_renderers == null)
                 return;
 
-            foreach (Renderer renderer in _renderers)
+            foreach (Renderer renderer in
+                     _renderers)
             {
                 if (renderer == null)
                     continue;
@@ -579,7 +764,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_lights == null)
                 return;
 
-            foreach (Light light in _lights)
+            foreach (Light light in
+                     _lights)
             {
                 if (light == null)
                     continue;
@@ -609,7 +795,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private void ApplyPlacement(
             float xOffset,
             float yOffset,
-            float zOffset)
+            float zOffset,
+            float xRotation,
+            float yRotation,
+            float zRotation)
         {
             if (!_hasBasePlacement)
                 return;
@@ -621,7 +810,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 ClampOffset(xOffset),
                 ClampOffset(yOffset),
                 ClampOffset(zOffset),
-                0f);
+                ClampRotation(xRotation),
+                ClampRotation(yRotation),
+                ClampRotation(zRotation));
         }
 
         private void ApplyHueShift(
@@ -664,7 +855,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_systems == null)
                 return;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
@@ -796,7 +988,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_renderers == null)
                 return;
 
-            foreach (Renderer renderer in _renderers)
+            foreach (Renderer renderer in
+                     _renderers)
             {
                 if (renderer == null)
                     continue;
@@ -828,7 +1021,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                                     materialBaseline.Color.Value,
                                     targetHue);
 
-                        if (material.HasProperty("_Color"))
+                        if (material.HasProperty(
+                                "_Color"))
                         {
                             material.SetColor(
                                 "_Color",
@@ -840,7 +1034,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     }
 
                     if (materialBaseline.BaseColor.HasValue &&
-                        material.HasProperty("_BaseColor"))
+                        material.HasProperty(
+                            "_BaseColor"))
                     {
                         material.SetColor(
                             "_BaseColor",
@@ -851,7 +1046,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     }
 
                     if (materialBaseline.TintColor.HasValue &&
-                        material.HasProperty("_TintColor"))
+                        material.HasProperty(
+                            "_TintColor"))
                     {
                         material.SetColor(
                             "_TintColor",
@@ -862,7 +1058,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     }
 
                     if (materialBaseline.EmissionColor.HasValue &&
-                        material.HasProperty("_EmissionColor"))
+                        material.HasProperty(
+                            "_EmissionColor"))
                     {
                         Color retintedEmission =
                             NadaHueShiftUtility
@@ -892,7 +1089,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_lights == null)
                 return;
 
-            foreach (Light light in _lights)
+            foreach (Light light in
+                     _lights)
             {
                 if (light == null)
                     continue;
@@ -954,7 +1152,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_systems == null)
                 return;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
@@ -1005,6 +1204,21 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 value,
                 PluginConfig.MinEffectOffset,
                 PluginConfig.MaxEffectOffset);
+        }
+
+        private static float ClampRotation(
+            float value)
+        {
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
+                return PluginConfig.DefaultEffectRotation;
+            }
+
+            return Mathf.Clamp(
+                value,
+                PluginConfig.MinEffectRotation,
+                PluginConfig.MaxEffectRotation);
         }
     }
 }

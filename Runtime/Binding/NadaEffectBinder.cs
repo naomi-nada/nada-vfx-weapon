@@ -1,7 +1,7 @@
-using NADA.VFX.Weapon.Core.State;
-using NADA.VFX.Weapon.Modules.Effects;
 using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Modules.Effects;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Runtime.Binding
@@ -61,7 +61,7 @@ namespace NADA.VFX.Weapon.Runtime.Binding
                 sparksTransform,
                 state);
         }
-        
+
         internal static void BindSparksBlockEffect(
             Transform sparksTransform,
             VfxEffectBlock block)
@@ -101,6 +101,29 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             BindResolvedStateEffect<NadaFlareEffect>(
                 flareTransform,
                 state);
+        }
+
+        internal static void BindFlareBlockEffect(
+            Transform flareTransform,
+            VfxEffectBlock block)
+        {
+            if (flareTransform == null)
+                return;
+
+            NadaFlareEffect flareEffect =
+                GetOrAddEffect<NadaFlareEffect>(
+                    flareTransform);
+
+            bool accepted =
+                flareEffect.SetBlockState(
+                    block);
+
+            NadaLogControl.Info(
+                $"flare-block-bind:{flareTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [FlareBlockBind] " +
+                $"root='{flareTransform.name}' " +
+                $"id={(block != null ? block.InstanceId.ToString() : "null")} " +
+                $"accepted={accepted}");
         }
 
         internal static void BindAuraEffect(
