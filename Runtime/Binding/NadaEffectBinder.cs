@@ -26,6 +26,29 @@ namespace NADA.VFX.Weapon.Runtime.Binding
                 state);
         }
 
+        internal static void BindInnerFlamesBlockEffect(
+            Transform innerFlamesTransform,
+            VfxEffectBlock block)
+        {
+            if (innerFlamesTransform == null)
+                return;
+
+            NadaInnerFlamesEffect innerFlamesEffect =
+                GetOrAddEffect<NadaInnerFlamesEffect>(
+                    innerFlamesTransform);
+
+            bool accepted =
+                innerFlamesEffect.SetBlockState(
+                    block);
+
+            NadaLogControl.Info(
+                $"inner-flames-block-bind:{innerFlamesTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [InnerFlamesBlockBind] " +
+                $"root='{innerFlamesTransform.name}' " +
+                $"id={(block != null ? block.InstanceId.ToString() : "null")} " +
+                $"accepted={accepted}");
+        }
+
         internal static void BindOuterFlamesEffect(
             Transform outerFlamesTransform,
             global::ItemDrop.ItemData itemData)
@@ -198,6 +221,29 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             BindResolvedStateEffect<NadaStrandsEffect>(
                 strandsTransform,
                 state);
+        }
+
+        internal static void BindStrandsBlockEffect(
+            Transform strandsTransform,
+            VfxEffectBlock block)
+        {
+            if (strandsTransform == null)
+                return;
+
+            NadaStrandsEffect strandsEffect =
+                GetOrAddEffect<NadaStrandsEffect>(
+                    strandsTransform);
+
+            bool accepted =
+                strandsEffect.SetBlockState(
+                    block);
+
+            NadaLogControl.Info(
+                $"strands-block-bind:{strandsTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [StrandsBlockBind] " +
+                $"root='{strandsTransform.name}' " +
+                $"id={(block != null ? block.InstanceId.ToString() : "null")} " +
+                $"accepted={accepted}");
         }
 
         private static void BindItemDataEffect<TEffect>(

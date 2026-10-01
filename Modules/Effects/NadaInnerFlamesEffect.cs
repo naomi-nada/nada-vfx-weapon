@@ -1,33 +1,44 @@
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
-using NADA.VFX.Weapon.Core.State;
-using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
+using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Effects
 {
-    internal sealed class NadaInnerFlamesEffect : MonoBehaviour, INadaItemDataReceiver, INadaResolvedStateReceiver
+    internal sealed class NadaInnerFlamesEffect :
+        MonoBehaviour,
+        INadaItemDataReceiver,
+        INadaResolvedStateReceiver
     {
-        private static readonly Color BlackFlameColor = new Color(0.10f, 0.035f, 0.16f, 1f);
-        private static readonly Color BlackFlameParticleColor = new Color(0.55f, 0.20f, 0.85f, 1f);
+        private static readonly Color BlackFlameColor =
+            new Color(0.10f, 0.035f, 0.16f, 1f);
+
+        private static readonly Color BlackFlameParticleColor =
+            new Color(0.55f, 0.20f, 0.85f, 1f);
 
         private global::ItemDrop.ItemData _itemData;
+
+        private VfxState _resolvedState;
+        private bool _hasResolvedState;
+
+        private VfxState _cachedBoundState;
+        private bool _hasCachedBoundState;
+
+        private InnerFlamesRuntimeState _blockState;
+        private bool _hasBlockState;
+
+        private InnerFlamesRuntimeState _lastAppliedState;
+        private bool _hasLastAppliedState;
 
         private Renderer[] _renderers;
         private Light[] _lights;
         private ParticleSystem[] _systems;
-        
-        private VfxState _resolvedState;
-        private bool _hasResolvedState;
-        
-        private VfxState _cachedBoundState;
-        private bool _hasCachedBoundState;
-
-        private VfxState _lastAppliedState;
-        private bool _hasLastAppliedState;
 
         private bool _componentCacheDirty = true;
         private bool _baselineCacheDirty = true;
@@ -35,7 +46,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private Vector3 _baseLocalPosition;
         private Quaternion _baseLocalRotation;
         private bool _hasBasePlacement;
-        
+
         private readonly HashSet<Material> _ownedRendererMaterials = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseMainStartColor = new();
@@ -62,6 +73,34 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private readonly Dictionary<int, Vector3> _baseShapeScale = new();
         private readonly Dictionary<int, Vector3> _baseShapePosition = new();
 
+        private struct InnerFlamesRuntimeState
+        {
+            internal bool Enabled;
+            internal bool WorldEnabled;
+            internal bool BlackEnabled;
+            internal bool WhiteEnabled;
+
+            internal float Energy;
+            internal float Scale;
+
+            internal float Luminance;
+            internal float Hue;
+
+            internal float Lifetime;
+            internal float SimulationSpeed;
+
+            internal float Length;
+            internal float Width;
+
+            internal float XOffset;
+            internal float YOffset;
+            internal float ZOffset;
+
+            internal float XRotation;
+            internal float YRotation;
+            internal float ZRotation;
+        }
+
         private sealed class MaterialBaseline
         {
             public Color? Color;
@@ -77,27 +116,132 @@ namespace NADA.VFX.Weapon.Modules.Effects
             public ParticleSystem.MinMaxCurve RateOverDistance;
         }
 
-        public void SetItemData(global::ItemDrop.ItemData itemData)
+        public void SetItemData(
+            global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
+
             _hasResolvedState = false;
+            _hasBlockState = false;
 
             // An explicit reconfiguration may update the same ItemData.
             // Don't keep its previous bound-state snapshot.
             _hasCachedBoundState = false;
         }
 
+        public void SetResolvedState(
+            VfxState state)
+        {
+            _resolvedState = state;
+
+            _hasResolvedState = true;
+            _hasBlockState = false;
+
+            _itemData = null;
+            _hasCachedBoundState = false;
+        }
+
+        internal bool SetBlockState(
+            VfxEffectBlock block)
+        {
+            if (block == null ||
+                block.Transform == null ||
+                block.TypeId != VfxEffectTypeIds.InnerFlames ||
+                block.Settings is not InnerFlamesVfxSettings settings)
+            {
+                // Block ownership must never fall back to config or legacy
+                // ItemData when the supplied state is invalid.
+                _blockState = default;
+                _hasBlockState = true;
+
+                _itemData = null;
+                _hasResolvedState = false;
+                _hasCachedBoundState = false;
+
+                return false;
+            }
+
+            _blockState =
+                new InnerFlamesRuntimeState
+                {
+                    Enabled =
+                        block.Enabled,
+
+                    WorldEnabled =
+                        settings.WorldEnabled,
+
+                    BlackEnabled =
+                        settings.BlackEnabled,
+
+                    WhiteEnabled =
+                        settings.WhiteEnabled,
+
+                    Energy =
+                        settings.Energy,
+
+                    Scale =
+                        settings.Scale,
+
+                    Luminance =
+                        settings.Luminance,
+
+                    Hue =
+                        settings.Hue,
+
+                    Lifetime =
+                        settings.Lifetime,
+
+                    SimulationSpeed =
+                        settings.SimulationSpeed,
+
+                    Length =
+                        settings.Length,
+
+                    Width =
+                        settings.Width,
+
+                    XOffset =
+                        block.Transform.XOffset,
+
+                    YOffset =
+                        block.Transform.YOffset,
+
+                    ZOffset =
+                        block.Transform.ZOffset,
+
+                    XRotation =
+                        block.Transform.XRotation,
+
+                    YRotation =
+                        block.Transform.YRotation,
+
+                    ZRotation =
+                        block.Transform.ZRotation
+                };
+
+            _hasBlockState = true;
+
+            _itemData = null;
+            _hasResolvedState = false;
+            _hasCachedBoundState = false;
+
+            return true;
+        }
+
         private void Awake()
         {
             NadaRuntimeDiagnostics.InnerFlamesCreated();
-            
+
             RebuildComponentCache();
             CacheBaselines();
 
             _componentCacheDirty = false;
             _baselineCacheDirty = false;
 
-            InvokeRepeating(nameof(TickApply), 0f, 0.05f);
+            InvokeRepeating(
+                nameof(TickApply),
+                0f,
+                0.05f);
         }
 
         private void OnDestroy()
@@ -108,9 +252,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
             {
                 CancelInvoke(nameof(TickApply));
             }
-            catch { }
+            catch
+            {
+            }
 
-            foreach (Material material in _ownedRendererMaterials)
+            foreach (Material material in
+                     _ownedRendererMaterials)
             {
                 if (material != null)
                 {
@@ -128,6 +275,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_componentCacheDirty)
             {
                 RebuildComponentCache();
+
                 _componentCacheDirty = false;
                 _baselineCacheDirty = true;
 
@@ -137,12 +285,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_baselineCacheDirty)
             {
                 CacheBaselines();
+
                 _baselineCacheDirty = false;
 
                 forceApply = true;
             }
 
-            VfxState state = ResolveState();
+            InnerFlamesRuntimeState state =
+                ResolveRuntimeState();
 
             // The timer still gives unbound config editing its live preview,
             // but stable state doesn't need to rewrite the whole effect 20x/sec.
@@ -155,94 +305,104 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 return;
             }
 
-            ApplySimulationSpace(state.InnerFlamesWorldEnabled);
-            ApplyEnabled(state.InnerFlamesEnabled);
-            ApplyEnergy(state.InnerFlamesEnergy);
-            ApplyScale(state.InnerFlamesScale);
+            ApplySimulationSpace(
+                state.WorldEnabled);
+
+            ApplyEnabled(
+                state.Enabled);
+
+            ApplyEnergy(
+                state.Energy);
+
+            ApplyScale(
+                state.Scale);
+
             ApplyColor(
-                state.InnerFlamesHue,
-                state.InnerFlamesLuminance,
-                state.InnerFlamesBlackEnabled,
-                state.InnerFlamesWhiteEnabled);
-            
-            ApplyLifetime(state.InnerFlamesLifetime);
-            
-            ApplySimulationSpeed(state.InnerFlamesSimulationSpeed);
+                state.Hue,
+                state.Luminance,
+                state.BlackEnabled,
+                state.WhiteEnabled);
+
+            ApplyLifetime(
+                state.Lifetime);
+
+            ApplySimulationSpeed(
+                state.SimulationSpeed);
 
             ApplyFlameFieldShape(
-                state.InnerFlamesLength,
-                state.InnerFlamesWidth);
+                state.Length,
+                state.Width);
 
             ApplyPlacement(
-                state.InnerFlamesXOffset,
-                state.InnerFlamesYOffset,
-                state.InnerFlamesZOffset,
-                state.InnerFlamesXRotation,
-                state.InnerFlamesYRotation,
-                state.InnerFlamesZRotation);
+                state.XOffset,
+                state.YOffset,
+                state.ZOffset,
+                state.XRotation,
+                state.YRotation,
+                state.ZRotation);
 
             _lastAppliedState = state;
             _hasLastAppliedState = true;
         }
 
         private static bool InnerFlamesStateEquals(
-            VfxState left,
-            VfxState right)
+            InnerFlamesRuntimeState left,
+            InnerFlamesRuntimeState right)
         {
             return
-                left.InnerFlamesEnabled ==
-                    right.InnerFlamesEnabled &&
-                left.InnerFlamesWorldEnabled ==
-                    right.InnerFlamesWorldEnabled &&
-                left.InnerFlamesBlackEnabled ==
-                    right.InnerFlamesBlackEnabled &&
-                left.InnerFlamesWhiteEnabled ==
-                    right.InnerFlamesWhiteEnabled &&
+                left.Enabled ==
+                    right.Enabled &&
+                left.WorldEnabled ==
+                    right.WorldEnabled &&
+                left.BlackEnabled ==
+                    right.BlackEnabled &&
+                left.WhiteEnabled ==
+                    right.WhiteEnabled &&
 
                 FloatEquals(
-                    left.InnerFlamesEnergy,
-                    right.InnerFlamesEnergy) &&
+                    left.Energy,
+                    right.Energy) &&
                 FloatEquals(
-                    left.InnerFlamesScale,
-                    right.InnerFlamesScale) &&
+                    left.Scale,
+                    right.Scale) &&
                 FloatEquals(
-                    left.InnerFlamesHue,
-                    right.InnerFlamesHue) &&
+                    left.Hue,
+                    right.Hue) &&
                 FloatEquals(
-                    left.InnerFlamesLuminance,
-                    right.InnerFlamesLuminance) &&
+                    left.Luminance,
+                    right.Luminance) &&
                 FloatEquals(
-                    left.InnerFlamesLifetime,
-                    right.InnerFlamesLifetime) &&
+                    left.Lifetime,
+                    right.Lifetime) &&
                 FloatEquals(
-                    left.InnerFlamesSimulationSpeed,
-                    right.InnerFlamesSimulationSpeed) &&
+                    left.SimulationSpeed,
+                    right.SimulationSpeed) &&
                 FloatEquals(
-                    left.InnerFlamesLength,
-                    right.InnerFlamesLength) &&
+                    left.Length,
+                    right.Length) &&
                 FloatEquals(
-                    left.InnerFlamesWidth,
-                    right.InnerFlamesWidth) &&
+                    left.Width,
+                    right.Width) &&
 
                 FloatEquals(
-                    left.InnerFlamesXOffset,
-                    right.InnerFlamesXOffset) &&
+                    left.XOffset,
+                    right.XOffset) &&
                 FloatEquals(
-                    left.InnerFlamesYOffset,
-                    right.InnerFlamesYOffset) &&
+                    left.YOffset,
+                    right.YOffset) &&
                 FloatEquals(
-                    left.InnerFlamesZOffset,
-                    right.InnerFlamesZOffset) &&
+                    left.ZOffset,
+                    right.ZOffset) &&
 
                 FloatEquals(
-                    left.InnerFlamesXRotation,
-                    right.InnerFlamesXRotation) &&
+                    left.XRotation,
+                    right.XRotation) &&
                 FloatEquals(
-                    left.InnerFlamesYRotation,
-                    right.InnerFlamesYRotation) &&
+                    left.YRotation,
+                    right.YRotation) &&
                 FloatEquals(
-                    left.InnerFlamesZRotation,
-                    right.InnerFlamesZRotation);
+                    left.ZRotation,
+                    right.ZRotation);
         }
 
         private static bool FloatEquals(
@@ -252,16 +412,25 @@ namespace NADA.VFX.Weapon.Modules.Effects
             return left.Equals(right);
         }
 
-        private VfxState ResolveState()
+        private InnerFlamesRuntimeState ResolveRuntimeState()
         {
+            if (_hasBlockState)
+                return _blockState;
+
             if (_hasResolvedState)
-                return _resolvedState;
+            {
+                return FromLegacyState(
+                    _resolvedState);
+            }
 
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
                 if (_hasCachedBoundState)
-                    return _cachedBoundState;
+                {
+                    return FromLegacyState(
+                        _cachedBoundState);
+                }
 
                 if (VfxStateIO.TryRead(
                         _itemData,
@@ -270,30 +439,89 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     _cachedBoundState = itemState;
                     _hasCachedBoundState = true;
 
-                    return itemState;
+                    return FromLegacyState(
+                        itemState);
                 }
             }
 
             // Unbinding must discard the previous snapshot.
             _hasCachedBoundState = false;
 
-            return VfxStateIO.FromConfig();
+            return FromLegacyState(
+                VfxStateIO.FromConfig());
         }
-        
-        public void SetResolvedState(VfxState state)
-        {
-            _resolvedState = state;
-            _hasResolvedState = true;
-            _itemData = null;
 
-            _hasCachedBoundState = false;
+        private static InnerFlamesRuntimeState FromLegacyState(
+            VfxState state)
+        {
+            return new InnerFlamesRuntimeState
+            {
+                Enabled =
+                    state.InnerFlamesEnabled,
+
+                WorldEnabled =
+                    state.InnerFlamesWorldEnabled,
+
+                BlackEnabled =
+                    state.InnerFlamesBlackEnabled,
+
+                WhiteEnabled =
+                    state.InnerFlamesWhiteEnabled,
+
+                Energy =
+                    state.InnerFlamesEnergy,
+
+                Scale =
+                    state.InnerFlamesScale,
+
+                Luminance =
+                    state.InnerFlamesLuminance,
+
+                Hue =
+                    state.InnerFlamesHue,
+
+                Lifetime =
+                    state.InnerFlamesLifetime,
+
+                SimulationSpeed =
+                    state.InnerFlamesSimulationSpeed,
+
+                Length =
+                    state.InnerFlamesLength,
+
+                Width =
+                    state.InnerFlamesWidth,
+
+                XOffset =
+                    state.InnerFlamesXOffset,
+
+                YOffset =
+                    state.InnerFlamesYOffset,
+
+                ZOffset =
+                    state.InnerFlamesZOffset,
+
+                XRotation =
+                    state.InnerFlamesXRotation,
+
+                YRotation =
+                    state.InnerFlamesYRotation,
+
+                ZRotation =
+                    state.InnerFlamesZRotation
+            };
         }
 
         private void RebuildComponentCache()
         {
-            _renderers = GetComponentsInChildren<Renderer>(true);
-            _lights = GetComponentsInChildren<Light>(true);
-            _systems = GetComponentsInChildren<ParticleSystem>(true);
+            _renderers =
+                GetComponentsInChildren<Renderer>(true);
+
+            _lights =
+                GetComponentsInChildren<Light>(true);
+
+            _systems =
+                GetComponentsInChildren<ParticleSystem>(true);
         }
 
         private void CacheBaselines()
@@ -311,8 +539,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_hasBasePlacement)
                 return;
 
-            _baseLocalPosition = transform.localPosition;
-            _baseLocalRotation = transform.localRotation;
+            _baseLocalPosition =
+                transform.localPosition;
+
+            _baseLocalRotation =
+                transform.localRotation;
+
             _hasBasePlacement = true;
         }
 
@@ -321,52 +553,82 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_systems == null)
                 return;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
-                int particleSystemId = particleSystem.GetInstanceID();
+                int particleSystemId =
+                    particleSystem.GetInstanceID();
 
-                if (!_baseMainStartColor.ContainsKey(particleSystemId))
+                if (!_baseMainStartColor.ContainsKey(
+                        particleSystemId))
                 {
                     try
                     {
-                        var main = particleSystem.main;
-                        _baseMainStartColor[particleSystemId] = main.startColor;
+                        var main =
+                            particleSystem.main;
+
+                        _baseMainStartColor[particleSystemId] =
+                            main.startColor;
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
 
-                if (!_baseColorOverLifetimeEnabled.ContainsKey(particleSystemId) ||
-                    !_baseColorOverLifetime.ContainsKey(particleSystemId))
+                if (!_baseColorOverLifetimeEnabled.ContainsKey(
+                        particleSystemId) ||
+                    !_baseColorOverLifetime.ContainsKey(
+                        particleSystemId))
                 {
                     try
                     {
-                        var colorOverLifetime = particleSystem.colorOverLifetime;
-                        _baseColorOverLifetimeEnabled[particleSystemId] = colorOverLifetime.enabled;
-                        _baseColorOverLifetime[particleSystemId] = colorOverLifetime.color;
+                        var colorOverLifetime =
+                            particleSystem.colorOverLifetime;
+
+                        _baseColorOverLifetimeEnabled[particleSystemId] =
+                            colorOverLifetime.enabled;
+
+                        _baseColorOverLifetime[particleSystemId] =
+                            colorOverLifetime.color;
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
 
-                if (!_baseCustomDataEnabled.ContainsKey(particleSystemId))
+                if (!_baseCustomDataEnabled.ContainsKey(
+                        particleSystemId))
                 {
                     try
                     {
-                        var customData = particleSystem.customData;
+                        var customData =
+                            particleSystem.customData;
 
-                        _baseCustomDataEnabled[particleSystemId] = customData.enabled;
+                        _baseCustomDataEnabled[particleSystemId] =
+                            customData.enabled;
+
                         _baseCustom1Mode[particleSystemId] =
-                            customData.GetMode(ParticleSystemCustomData.Custom1);
+                            customData.GetMode(
+                                ParticleSystemCustomData.Custom1);
+
                         _baseCustom2Mode[particleSystemId] =
-                            customData.GetMode(ParticleSystemCustomData.Custom2);
+                            customData.GetMode(
+                                ParticleSystemCustomData.Custom2);
+
                         _baseCustom1Color[particleSystemId] =
-                            customData.GetColor(ParticleSystemCustomData.Custom1);
+                            customData.GetColor(
+                                ParticleSystemCustomData.Custom1);
+
                         _baseCustom2Color[particleSystemId] =
-                            customData.GetColor(ParticleSystemCustomData.Custom2);
+                            customData.GetColor(
+                                ParticleSystemCustomData.Custom2);
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
             }
         }
@@ -376,64 +638,101 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_systems == null)
                 return;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
-                int particleSystemId = particleSystem.GetInstanceID();
+                int particleSystemId =
+                    particleSystem.GetInstanceID();
 
-                if (!_baseStartSize.ContainsKey(particleSystemId))
+                if (!_baseStartSize.ContainsKey(
+                        particleSystemId))
                 {
                     try
                     {
-                        var main = particleSystem.main;
-                        _baseStartSize[particleSystemId] = main.startSize;
+                        var main =
+                            particleSystem.main;
+
+                        _baseStartSize[particleSystemId] =
+                            main.startSize;
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
 
-                if (!_baseStartLifetime.ContainsKey(particleSystemId))
+                if (!_baseStartLifetime.ContainsKey(
+                        particleSystemId))
                 {
                     try
                     {
-                        var main = particleSystem.main;
-                        _baseStartLifetime[particleSystemId] = main.startLifetime;
+                        var main =
+                            particleSystem.main;
+
+                        _baseStartLifetime[particleSystemId] =
+                            main.startLifetime;
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
 
-                if (!_baseSimulationSpeed.ContainsKey(particleSystemId))
+                if (!_baseSimulationSpeed.ContainsKey(
+                        particleSystemId))
                 {
                     try
                     {
-                        var main = particleSystem.main;
-                        _baseSimulationSpeed[particleSystemId] = main.simulationSpeed;
+                        var main =
+                            particleSystem.main;
+
+                        _baseSimulationSpeed[particleSystemId] =
+                            main.simulationSpeed;
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
 
-                if (!_baseSizeOverLifetimeEnabled.ContainsKey(particleSystemId) ||
-                    !_baseSizeOverLifetime.ContainsKey(particleSystemId))
+                if (!_baseSizeOverLifetimeEnabled.ContainsKey(
+                        particleSystemId) ||
+                    !_baseSizeOverLifetime.ContainsKey(
+                        particleSystemId))
                 {
                     try
                     {
-                        var sizeOverLifetime = particleSystem.sizeOverLifetime;
-                        _baseSizeOverLifetimeEnabled[particleSystemId] = sizeOverLifetime.enabled;
-                        _baseSizeOverLifetime[particleSystemId] = sizeOverLifetime.size;
+                        var sizeOverLifetime =
+                            particleSystem.sizeOverLifetime;
+
+                        _baseSizeOverLifetimeEnabled[particleSystemId] =
+                            sizeOverLifetime.enabled;
+
+                        _baseSizeOverLifetime[particleSystemId] =
+                            sizeOverLifetime.size;
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
 
-                if (!_baseShapeScale.ContainsKey(particleSystemId))
+                if (!_baseShapeScale.ContainsKey(
+                        particleSystemId))
                 {
                     try
                     {
-                        var shape = particleSystem.shape;
-                        _baseShapeScale[particleSystemId] = shape.scale;
-                        _baseShapePosition[particleSystemId] = shape.position;
+                        var shape =
+                            particleSystem.shape;
+
+                        _baseShapeScale[particleSystemId] =
+                            shape.scale;
+
+                        _baseShapePosition[particleSystemId] =
+                            shape.position;
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
             }
         }
@@ -443,27 +742,42 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_systems == null)
                 return;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
-                int particleSystemId = particleSystem.GetInstanceID();
-                if (_baseEmissionByParticleSystemId.ContainsKey(particleSystemId))
+                int particleSystemId =
+                    particleSystem.GetInstanceID();
+
+                if (_baseEmissionByParticleSystemId.ContainsKey(
+                        particleSystemId))
+                {
                     continue;
+                }
 
                 try
                 {
-                    var emission = particleSystem.emission;
+                    var emission =
+                        particleSystem.emission;
 
-                    _baseEmissionByParticleSystemId[particleSystemId] = new EmissionBaseline
-                    {
-                        Enabled = emission.enabled,
-                        RateOverTime = emission.rateOverTime,
-                        RateOverDistance = emission.rateOverDistance
-                    };
+                    _baseEmissionByParticleSystemId[particleSystemId] =
+                        new EmissionBaseline
+                        {
+                            Enabled =
+                                emission.enabled,
+
+                            RateOverTime =
+                                emission.rateOverTime,
+
+                            RateOverDistance =
+                                emission.rateOverDistance
+                        };
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -472,23 +786,31 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_renderers == null)
                 return;
 
-            foreach (Renderer renderer in _renderers)
+            foreach (Renderer renderer in
+                     _renderers)
             {
                 if (renderer == null)
                     continue;
 
-                int rendererId = renderer.GetInstanceID();
+                int rendererId =
+                    renderer.GetInstanceID();
 
-                if (_baseMaterialByRendererId.ContainsKey(rendererId))
+                if (_baseMaterialByRendererId.ContainsKey(
+                        rendererId))
+                {
                     continue;
+                }
 
                 Material previousMaterial;
                 Material material;
 
                 try
                 {
-                    previousMaterial = renderer.sharedMaterial;
-                    material = renderer.material;
+                    previousMaterial =
+                        renderer.sharedMaterial;
+
+                    material =
+                        renderer.material;
                 }
                 catch
                 {
@@ -502,28 +824,45 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 // Never destroy the borrowed donor material.
                 if (material != previousMaterial)
                 {
-                    _ownedRendererMaterials.Add(material);
+                    _ownedRendererMaterials.Add(
+                        material);
                 }
 
-                var materialBaseline = new MaterialBaseline();
+                var materialBaseline =
+                    new MaterialBaseline();
 
                 try
                 {
                     if (material.HasProperty("_Color"))
-                        materialBaseline.Color = material.GetColor("_Color");
+                    {
+                        materialBaseline.Color =
+                            material.GetColor("_Color");
+                    }
 
                     if (material.HasProperty("_BaseColor"))
-                        materialBaseline.BaseColor = material.GetColor("_BaseColor");
+                    {
+                        materialBaseline.BaseColor =
+                            material.GetColor("_BaseColor");
+                    }
 
                     if (material.HasProperty("_TintColor"))
-                        materialBaseline.TintColor = material.GetColor("_TintColor");
+                    {
+                        materialBaseline.TintColor =
+                            material.GetColor("_TintColor");
+                    }
 
                     if (material.HasProperty("_EmissionColor"))
-                        materialBaseline.EmissionColor = material.GetColor("_EmissionColor");
+                    {
+                        materialBaseline.EmissionColor =
+                            material.GetColor("_EmissionColor");
+                    }
                 }
-                catch { }
+                catch
+                {
+                }
 
-                _baseMaterialByRendererId[rendererId] = materialBaseline;
+                _baseMaterialByRendererId[rendererId] =
+                    materialBaseline;
             }
         }
 
@@ -532,20 +871,28 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_lights == null)
                 return;
 
-            foreach (Light light in _lights)
+            foreach (Light light in
+                     _lights)
             {
                 if (light == null)
                     continue;
 
-                int lightId = light.GetInstanceID();
-                if (_baseLightColorByLightId.ContainsKey(lightId))
-                    continue;
+                int lightId =
+                    light.GetInstanceID();
 
-                _baseLightColorByLightId[lightId] = light.color;
+                if (_baseLightColorByLightId.ContainsKey(
+                        lightId))
+                {
+                    continue;
+                }
+
+                _baseLightColorByLightId[lightId] =
+                    light.color;
             }
         }
 
-        private void ApplySimulationSpace(bool worldEnabled)
+        private void ApplySimulationSpace(
+            bool worldEnabled)
         {
             if (_systems == null)
                 return;
@@ -555,37 +902,53 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     ? ParticleSystemSimulationSpace.World
                     : ParticleSystemSimulationSpace.Local;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
                 try
                 {
-                    var main = particleSystem.main;
+                    var main =
+                        particleSystem.main;
 
-                    if (main.simulationSpace == targetSpace)
+                    if (main.simulationSpace ==
+                        targetSpace)
+                    {
                         continue;
+                    }
 
-                    main.simulationSpace = targetSpace;
+                    main.simulationSpace =
+                        targetSpace;
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyEnabled(bool enabled)
+        private void ApplyEnabled(
+            bool enabled)
         {
-            ApplyParticleSystemEnabledState(enabled);
-            ApplyRendererEnabledState(enabled);
-            ApplyLightEnabledState(enabled);
+            ApplyParticleSystemEnabledState(
+                enabled);
+
+            ApplyRendererEnabledState(
+                enabled);
+
+            ApplyLightEnabledState(
+                enabled);
         }
 
-        private void ApplyParticleSystemEnabledState(bool enabled)
+        private void ApplyParticleSystemEnabledState(
+            bool enabled)
         {
             if (_systems == null)
                 return;
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
@@ -595,59 +958,92 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     if (enabled)
                     {
                         if (!particleSystem.isPlaying)
-                            particleSystem.Play(true);
+                        {
+                            particleSystem.Play(
+                                true);
+                        }
                     }
                     else
                     {
                         if (particleSystem.isPlaying)
-                            particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                        {
+                            particleSystem.Stop(
+                                true,
+                                ParticleSystemStopBehavior.StopEmittingAndClear);
+                        }
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyRendererEnabledState(bool enabled)
+        private void ApplyRendererEnabledState(
+            bool enabled)
         {
             if (_renderers == null)
                 return;
 
-            foreach (Renderer renderer in _renderers)
+            foreach (Renderer renderer in
+                     _renderers)
             {
                 if (renderer == null)
                     continue;
 
-                try { renderer.enabled = enabled; } catch { }
+                try
+                {
+                    renderer.enabled =
+                        enabled;
+                }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyLightEnabledState(bool enabled)
+        private void ApplyLightEnabledState(
+            bool enabled)
         {
             if (_lights == null)
                 return;
 
-            foreach (Light light in _lights)
+            foreach (Light light in
+                     _lights)
             {
                 if (light == null)
                     continue;
 
-                try { light.enabled = enabled; } catch { }
+                try
+                {
+                    light.enabled =
+                        enabled;
+                }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyScale(float scale)
+        private void ApplyScale(
+            float scale)
         {
             if (_systems == null)
                 return;
 
-            float scaleMultiplier = ClampScale(scale);
+            float scaleMultiplier =
+                ClampScale(
+                    scale);
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
-                ApplyParticleScale(particleSystem, scaleMultiplier);
+                ApplyParticleScale(
+                    particleSystem,
+                    scaleMultiplier);
             }
         }
 
@@ -655,59 +1051,84 @@ namespace NADA.VFX.Weapon.Modules.Effects
             ParticleSystem particleSystem,
             float scaleMultiplier)
         {
-            int particleSystemId = particleSystem.GetInstanceID();
+            int particleSystemId =
+                particleSystem.GetInstanceID();
 
             try
             {
-                var main = particleSystem.main;
+                var main =
+                    particleSystem.main;
 
-                if (_baseStartSize.TryGetValue(particleSystemId, out var baseStartSize))
-                    main.startSize = ScaleMinMaxCurve(baseStartSize, scaleMultiplier);
+                if (_baseStartSize.TryGetValue(
+                        particleSystemId,
+                        out var baseStartSize))
+                {
+                    main.startSize =
+                        ScaleMinMaxCurve(
+                            baseStartSize,
+                            scaleMultiplier);
+                }
             }
-            catch { }
+            catch
+            {
+            }
 
             try
             {
-                var sizeOverLifetime = particleSystem.sizeOverLifetime;
+                var sizeOverLifetime =
+                    particleSystem.sizeOverLifetime;
 
                 if (_baseSizeOverLifetimeEnabled.TryGetValue(
                         particleSystemId,
                         out bool wasSizeOverLifetimeEnabled))
                 {
-                    sizeOverLifetime.enabled = wasSizeOverLifetimeEnabled;
+                    sizeOverLifetime.enabled =
+                        wasSizeOverLifetimeEnabled;
 
                     if (wasSizeOverLifetimeEnabled &&
-                        _baseSizeOverLifetime.TryGetValue(particleSystemId, out var baseSize))
+                        _baseSizeOverLifetime.TryGetValue(
+                            particleSystemId,
+                            out var baseSize))
                     {
                         sizeOverLifetime.size =
-                            ScaleMinMaxCurve(baseSize, scaleMultiplier);
+                            ScaleMinMaxCurve(
+                                baseSize,
+                                scaleMultiplier);
                     }
                 }
             }
-            catch { }
+            catch
+            {
+            }
         }
 
-        private void ApplyFlameFieldShape(float length, float width)
+        private void ApplyFlameFieldShape(
+            float length,
+            float width)
         {
             if (_systems == null)
                 return;
 
-            float clampedLength = Mathf.Clamp(
-                length,
-                PluginConfig.MinFlameLength,
-                PluginConfig.MaxFlameLength);
+            float clampedLength =
+                Mathf.Clamp(
+                    length,
+                    PluginConfig.MinFlameLength,
+                    PluginConfig.MaxFlameLength);
 
-            float clampedWidth = Mathf.Clamp(
-                width,
-                PluginConfig.MinFlameWidth,
-                PluginConfig.MaxFlameWidth);
+            float clampedWidth =
+                Mathf.Clamp(
+                    width,
+                    PluginConfig.MinFlameWidth,
+                    PluginConfig.MaxFlameWidth);
 
-            float widthT = Mathf.InverseLerp(
-                PluginConfig.MinFlameWidth,
-                PluginConfig.MaxFlameWidth,
-                clampedWidth);
+            float widthT =
+                Mathf.InverseLerp(
+                    PluginConfig.MinFlameWidth,
+                    PluginConfig.MaxFlameWidth,
+                    clampedWidth);
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
@@ -726,84 +1147,125 @@ namespace NADA.VFX.Weapon.Modules.Effects
             float clampedWidth,
             float widthT)
         {
-            int particleSystemId = particleSystem.GetInstanceID();
+            int particleSystemId =
+                particleSystem.GetInstanceID();
 
-            if (!_baseShapeScale.TryGetValue(particleSystemId, out Vector3 baseScale) ||
-                !_baseShapePosition.TryGetValue(particleSystemId, out Vector3 basePosition))
+            if (!_baseShapeScale.TryGetValue(
+                    particleSystemId,
+                    out Vector3 baseScale) ||
+                !_baseShapePosition.TryGetValue(
+                    particleSystemId,
+                    out Vector3 basePosition))
             {
                 return;
             }
 
             try
             {
-                var shape = particleSystem.shape;
+                var shape =
+                    particleSystem.shape;
 
-                Vector3 nextScale = baseScale;
+                Vector3 nextScale =
+                    baseScale;
 
                 // Length owns the main emission line along the weapon.
-                nextScale.z = baseScale.z * clampedLength;
+                nextScale.z =
+                    baseScale.z *
+                    clampedLength;
 
-                // Width owns the emitter field around that line.
-                // Think of this as turning on a wider set of parallel emitter lanes,
-                // not changing the length of the lane itself.
-                nextScale.x = baseScale.x * clampedWidth;
-                nextScale.y = baseScale.y * Mathf.Lerp(1f, clampedWidth, widthT * 0.65f);
+                // Width widens the emitter field around that line.
+                nextScale.x =
+                    baseScale.x *
+                    clampedWidth;
 
-                Vector3 nextPosition = basePosition;
+                nextScale.y =
+                    baseScale.y *
+                    Mathf.Lerp(
+                        1f,
+                        clampedWidth,
+                        widthT * 0.65f);
+
+                Vector3 nextPosition =
+                    basePosition;
+
                 nextPosition.z =
                     basePosition.z -
-                    ((baseScale.z - nextScale.z) * 0.5f);
+                    ((baseScale.z -
+                      nextScale.z) * 0.5f);
 
-                shape.scale = nextScale;
-                shape.position = nextPosition;
+                shape.scale =
+                    nextScale;
+
+                shape.position =
+                    nextPosition;
             }
-            catch { }
+            catch
+            {
+            }
         }
 
-        private void ApplyLifetime(float lifetime)
+        private void ApplyLifetime(
+            float lifetime)
         {
             if (_systems == null)
                 return;
 
-            float lifetimeMultiplier = Mathf.Clamp(
-                lifetime,
-                PluginConfig.MinLifetime,
-                PluginConfig.MaxLifetime);
+            float lifetimeMultiplier =
+                Mathf.Clamp(
+                    lifetime,
+                    PluginConfig.MinLifetime,
+                    PluginConfig.MaxLifetime);
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
-                int particleSystemId = particleSystem.GetInstanceID();
+                int particleSystemId =
+                    particleSystem.GetInstanceID();
 
                 if (!_baseStartLifetime.TryGetValue(
                         particleSystemId,
                         out var baseLifetime))
+                {
                     continue;
+                }
 
                 try
                 {
-                    var main = particleSystem.main;
-                    main.startLifetime = MultiplyCurve(baseLifetime, lifetimeMultiplier);
+                    var main =
+                        particleSystem.main;
+
+                    main.startLifetime =
+                        MultiplyCurve(
+                            baseLifetime,
+                            lifetimeMultiplier);
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
-        
-        private void ApplySimulationSpeed(float simulationSpeed)
+
+        private void ApplySimulationSpeed(
+            float simulationSpeed)
         {
             if (_systems == null)
                 return;
 
-            float speedMultiplier = ClampSimulationSpeed(simulationSpeed);
+            float speedMultiplier =
+                ClampSimulationSpeed(
+                    simulationSpeed);
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
-                int particleSystemId = particleSystem.GetInstanceID();
+                int particleSystemId =
+                    particleSystem.GetInstanceID();
 
                 if (!_baseSimulationSpeed.TryGetValue(
                         particleSystemId,
@@ -814,10 +1276,16 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 try
                 {
-                    var main = particleSystem.main;
-                    main.simulationSpeed = baseSimulationSpeed * speedMultiplier;
+                    var main =
+                        particleSystem.main;
+
+                    main.simulationSpeed =
+                        baseSimulationSpeed *
+                        speedMultiplier;
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -850,144 +1318,221 @@ namespace NADA.VFX.Weapon.Modules.Effects
             bool blackEnabled,
             bool whiteEnabled)
         {
-            float rendererLuminanceMultiplier = Mathf.Clamp(
-                luminanceMultiplier,
-                PluginConfig.MinLuminance,
-                PluginConfig.MaxLuminance);
+            float rendererLuminanceMultiplier =
+                Mathf.Clamp(
+                    luminanceMultiplier,
+                    PluginConfig.MinLuminance,
+                    PluginConfig.MaxLuminance);
 
             if (whiteEnabled)
             {
-                ApplySolidColor(Color.white, rendererLuminanceMultiplier);
+                ApplySolidColor(
+                    Color.white,
+                    rendererLuminanceMultiplier);
+
                 return;
             }
 
             if (blackEnabled)
             {
-                ApplyBlackFlame(rendererLuminanceMultiplier);
+                ApplyBlackFlame(
+                    rendererLuminanceMultiplier);
+
                 return;
             }
 
-            ApplyHueShift(sliderValue, rendererLuminanceMultiplier);
+            ApplyHueShift(
+                sliderValue,
+                rendererLuminanceMultiplier);
         }
 
-        private void ApplySolidColor(Color targetColor, float luminanceMultiplier)
+        private void ApplySolidColor(
+            Color targetColor,
+            float luminanceMultiplier)
         {
-            ApplyParticleSolidColor(targetColor, luminanceMultiplier);
-            ApplyRendererSolidColor(targetColor, luminanceMultiplier);
-            ApplyLightSolidColor(targetColor, luminanceMultiplier);
+            ApplyParticleSolidColor(
+                targetColor,
+                luminanceMultiplier);
+
+            ApplyRendererSolidColor(
+                targetColor,
+                luminanceMultiplier);
+
+            ApplyLightSolidColor(
+                targetColor,
+                luminanceMultiplier);
         }
 
-        private void ApplyBlackFlame(float luminanceMultiplier)
+        private void ApplyBlackFlame(
+            float luminanceMultiplier)
         {
             // Additive/transparent flame particles cannot be true black,
             // or the effect visually extinguishes.
             ApplyParticleSolidColor(
                 BlackFlameParticleColor,
-                Mathf.Max(luminanceMultiplier, 1.25f));
+                Mathf.Max(
+                    luminanceMultiplier,
+                    1.25f));
 
             ApplyRendererSolidColor(
                 BlackFlameColor,
-                Mathf.Max(luminanceMultiplier, 2.25f));
+                Mathf.Max(
+                    luminanceMultiplier,
+                    2.25f));
 
             ApplyLightSolidColor(
                 BlackFlameColor,
-                Mathf.Max(luminanceMultiplier, 1.5f));
+                Mathf.Max(
+                    luminanceMultiplier,
+                    1.5f));
         }
 
-        private void ApplyParticleSolidColor(Color targetColor, float luminanceMultiplier)
+        private void ApplyParticleSolidColor(
+            Color targetColor,
+            float luminanceMultiplier)
         {
             if (_systems == null)
                 return;
 
             float particleLuminance =
-                NadaLuminanceUtility.RemapParticleLuminance(luminanceMultiplier);
+                NadaLuminanceUtility.RemapParticleLuminance(
+                    luminanceMultiplier);
 
             Color particleColor =
-                NadaLuminanceUtility.ApplyToColor(targetColor, particleLuminance);
+                NadaLuminanceUtility.ApplyToColor(
+                    targetColor,
+                    particleLuminance);
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
-                int particleSystemId = particleSystem.GetInstanceID();
+                int particleSystemId =
+                    particleSystem.GetInstanceID();
 
                 try
                 {
-                    if (_baseMainStartColor.ContainsKey(particleSystemId))
+                    if (_baseMainStartColor.ContainsKey(
+                            particleSystemId))
                     {
-                        var main = particleSystem.main;
-                        main.startColor = ParticleSystemGradientFromColor(particleColor);
+                        var main =
+                            particleSystem.main;
+
+                        main.startColor =
+                            ParticleSystemGradientFromColor(
+                                particleColor);
                     }
                 }
-                catch { }
+                catch
+                {
+                }
 
                 try
                 {
-                    var colorOverLifetime = particleSystem.colorOverLifetime;
+                    var colorOverLifetime =
+                        particleSystem.colorOverLifetime;
 
                     if (_baseColorOverLifetimeEnabled.TryGetValue(
                             particleSystemId,
                             out bool wasColorOverLifetimeEnabled))
                     {
-                        colorOverLifetime.enabled = wasColorOverLifetimeEnabled;
+                        colorOverLifetime.enabled =
+                            wasColorOverLifetimeEnabled;
                     }
 
-                    if (_baseColorOverLifetime.ContainsKey(particleSystemId))
-                        colorOverLifetime.color = ParticleSystemGradientFromColor(particleColor);
+                    if (_baseColorOverLifetime.ContainsKey(
+                            particleSystemId))
+                    {
+                        colorOverLifetime.color =
+                            ParticleSystemGradientFromColor(
+                                particleColor);
+                    }
                 }
-                catch { }
+                catch
+                {
+                }
 
                 try
                 {
-                    var customData = particleSystem.customData;
+                    var customData =
+                        particleSystem.customData;
 
                     if (_baseCustomDataEnabled.TryGetValue(
                             particleSystemId,
                             out bool wasCustomDataEnabled))
                     {
-                        customData.enabled = wasCustomDataEnabled;
+                        customData.enabled =
+                            wasCustomDataEnabled;
                     }
 
-                    if (_baseCustom1Mode.TryGetValue(particleSystemId, out var custom1Mode))
-                        customData.SetMode(ParticleSystemCustomData.Custom1, custom1Mode);
+                    if (_baseCustom1Mode.TryGetValue(
+                            particleSystemId,
+                            out var custom1Mode))
+                    {
+                        customData.SetMode(
+                            ParticleSystemCustomData.Custom1,
+                            custom1Mode);
+                    }
 
-                    if (_baseCustom2Mode.TryGetValue(particleSystemId, out var custom2Mode))
-                        customData.SetMode(ParticleSystemCustomData.Custom2, custom2Mode);
+                    if (_baseCustom2Mode.TryGetValue(
+                            particleSystemId,
+                            out var custom2Mode))
+                    {
+                        customData.SetMode(
+                            ParticleSystemCustomData.Custom2,
+                            custom2Mode);
+                    }
 
-                    if (_baseCustom1Color.ContainsKey(particleSystemId))
+                    if (_baseCustom1Color.ContainsKey(
+                            particleSystemId))
                     {
                         customData.SetColor(
                             ParticleSystemCustomData.Custom1,
-                            ParticleSystemGradientFromColor(particleColor));
+                            ParticleSystemGradientFromColor(
+                                particleColor));
                     }
 
-                    if (_baseCustom2Color.ContainsKey(particleSystemId))
+                    if (_baseCustom2Color.ContainsKey(
+                            particleSystemId))
                     {
                         customData.SetColor(
                             ParticleSystemCustomData.Custom2,
-                            ParticleSystemGradientFromColor(particleColor));
+                            ParticleSystemGradientFromColor(
+                                particleColor));
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyRendererSolidColor(Color targetColor, float luminanceMultiplier)
+        private void ApplyRendererSolidColor(
+            Color targetColor,
+            float luminanceMultiplier)
         {
             if (_renderers == null)
                 return;
 
-            Color rendererColor = ScaleColorRgb(targetColor, luminanceMultiplier);
+            Color rendererColor =
+                ScaleColorRgb(
+                    targetColor,
+                    luminanceMultiplier);
 
-            foreach (Renderer renderer in _renderers)
+            foreach (Renderer renderer in
+                     _renderers)
             {
                 if (renderer == null)
                     continue;
 
-                int rendererId = renderer.GetInstanceID();
+                int rendererId =
+                    renderer.GetInstanceID();
 
-                if (!_baseMaterialByRendererId.TryGetValue(rendererId, out var materialBaseline) ||
+                if (!_baseMaterialByRendererId.TryGetValue(
+                        rendererId,
+                        out var materialBaseline) ||
                     materialBaseline == null)
                 {
                     continue;
@@ -995,99 +1540,160 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 try
                 {
-                    Material material = renderer.material;
+                    Material material =
+                        renderer.material;
+
                     if (material == null)
                         continue;
 
                     if (materialBaseline.Color.HasValue)
                     {
                         if (material.HasProperty("_Color"))
-                            material.SetColor("_Color", rendererColor);
+                        {
+                            material.SetColor(
+                                "_Color",
+                                rendererColor);
+                        }
 
-                        material.color = rendererColor;
+                        material.color =
+                            rendererColor;
                     }
 
-                    if (materialBaseline.BaseColor.HasValue && material.HasProperty("_BaseColor"))
-                        material.SetColor("_BaseColor", rendererColor);
-
-                    if (materialBaseline.TintColor.HasValue && material.HasProperty("_TintColor"))
-                        material.SetColor("_TintColor", rendererColor);
-
-                    if (materialBaseline.EmissionColor.HasValue && material.HasProperty("_EmissionColor"))
+                    if (materialBaseline.BaseColor.HasValue &&
+                        material.HasProperty("_BaseColor"))
                     {
-                        material.EnableKeyword("_EMISSION");
-                        material.SetColor("_EmissionColor", rendererColor);
+                        material.SetColor(
+                            "_BaseColor",
+                            rendererColor);
+                    }
+
+                    if (materialBaseline.TintColor.HasValue &&
+                        material.HasProperty("_TintColor"))
+                    {
+                        material.SetColor(
+                            "_TintColor",
+                            rendererColor);
+                    }
+
+                    if (materialBaseline.EmissionColor.HasValue &&
+                        material.HasProperty("_EmissionColor"))
+                    {
+                        material.EnableKeyword(
+                            "_EMISSION");
+
+                        material.SetColor(
+                            "_EmissionColor",
+                            rendererColor);
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyLightSolidColor(Color targetColor, float luminanceMultiplier)
+        private void ApplyLightSolidColor(
+            Color targetColor,
+            float luminanceMultiplier)
         {
             if (_lights == null)
                 return;
 
             Color lightColor =
-                NadaLuminanceUtility.ApplyToColor(targetColor, luminanceMultiplier);
+                NadaLuminanceUtility.ApplyToColor(
+                    targetColor,
+                    luminanceMultiplier);
 
-            foreach (Light light in _lights)
+            foreach (Light light in
+                     _lights)
             {
                 if (light == null)
                     continue;
 
-                try { light.color = lightColor; } catch { }
+                try
+                {
+                    light.color =
+                        lightColor;
+                }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyHueShift(float sliderValue, float luminanceMultiplier)
+        private void ApplyHueShift(
+            float sliderValue,
+            float luminanceMultiplier)
         {
             float targetHue =
-                NadaHueShiftUtility.SliderValueToTargetHue(sliderValue);
+                NadaHueShiftUtility.SliderValueToTargetHue(
+                    sliderValue);
 
-            ApplyParticleHueShift(targetHue, luminanceMultiplier);
-            ApplyRendererHueShift(targetHue, luminanceMultiplier);
-            ApplyLightHueShift(targetHue, luminanceMultiplier);
+            ApplyParticleHueShift(
+                targetHue,
+                luminanceMultiplier);
+
+            ApplyRendererHueShift(
+                targetHue,
+                luminanceMultiplier);
+
+            ApplyLightHueShift(
+                targetHue,
+                luminanceMultiplier);
         }
 
-        private void ApplyParticleHueShift(float targetHue, float luminanceMultiplier)
+        private void ApplyParticleHueShift(
+            float targetHue,
+            float luminanceMultiplier)
         {
             if (_systems == null)
                 return;
 
             float particleLuminance =
-                NadaLuminanceUtility.RemapParticleLuminance(luminanceMultiplier);
+                NadaLuminanceUtility.RemapParticleLuminance(
+                    luminanceMultiplier);
 
-            foreach (ParticleSystem particleSystem in _systems)
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
 
-                int particleSystemId = particleSystem.GetInstanceID();
+                int particleSystemId =
+                    particleSystem.GetInstanceID();
 
                 try
                 {
-                    if (_baseMainStartColor.TryGetValue(particleSystemId, out var baseStartColor))
+                    if (_baseMainStartColor.TryGetValue(
+                            particleSystemId,
+                            out var baseStartColor))
                     {
-                        var main = particleSystem.main;
+                        var main =
+                            particleSystem.main;
 
                         main.startColor =
                             NadaLuminanceUtility.ApplyToGradient(
-                                NadaHueShiftUtility.RetintMinMaxGradientToHue(baseStartColor, targetHue),
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(
+                                    baseStartColor,
+                                    targetHue),
                                 particleLuminance);
                     }
                 }
-                catch { }
+                catch
+                {
+                }
 
                 try
                 {
-                    var colorOverLifetime = particleSystem.colorOverLifetime;
+                    var colorOverLifetime =
+                        particleSystem.colorOverLifetime;
 
                     if (_baseColorOverLifetimeEnabled.TryGetValue(
                             particleSystemId,
                             out bool wasColorOverLifetimeEnabled))
                     {
-                        colorOverLifetime.enabled = wasColorOverLifetimeEnabled;
+                        colorOverLifetime.enabled =
+                            wasColorOverLifetimeEnabled;
                     }
 
                     if (_baseColorOverLifetime.TryGetValue(
@@ -1096,60 +1702,94 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     {
                         colorOverLifetime.color =
                             NadaLuminanceUtility.ApplyToGradient(
-                                NadaHueShiftUtility.RetintMinMaxGradientToHue(baseColorOverLifetime, targetHue),
+                                NadaHueShiftUtility.RetintMinMaxGradientToHue(
+                                    baseColorOverLifetime,
+                                    targetHue),
                                 particleLuminance);
                     }
                 }
-                catch { }
+                catch
+                {
+                }
 
                 try
                 {
-                    var customData = particleSystem.customData;
+                    var customData =
+                        particleSystem.customData;
 
                     if (_baseCustomDataEnabled.TryGetValue(
                             particleSystemId,
                             out bool wasCustomDataEnabled))
                     {
-                        customData.enabled = wasCustomDataEnabled;
+                        customData.enabled =
+                            wasCustomDataEnabled;
                     }
 
-                    if (_baseCustom1Mode.TryGetValue(particleSystemId, out var custom1Mode))
-                        customData.SetMode(ParticleSystemCustomData.Custom1, custom1Mode);
+                    if (_baseCustom1Mode.TryGetValue(
+                            particleSystemId,
+                            out var custom1Mode))
+                    {
+                        customData.SetMode(
+                            ParticleSystemCustomData.Custom1,
+                            custom1Mode);
+                    }
 
-                    if (_baseCustom2Mode.TryGetValue(particleSystemId, out var custom2Mode))
-                        customData.SetMode(ParticleSystemCustomData.Custom2, custom2Mode);
+                    if (_baseCustom2Mode.TryGetValue(
+                            particleSystemId,
+                            out var custom2Mode))
+                    {
+                        customData.SetMode(
+                            ParticleSystemCustomData.Custom2,
+                            custom2Mode);
+                    }
 
-                    if (_baseCustom1Color.TryGetValue(particleSystemId, out var custom1Color))
+                    if (_baseCustom1Color.TryGetValue(
+                            particleSystemId,
+                            out var custom1Color))
                     {
                         customData.SetColor(
                             ParticleSystemCustomData.Custom1,
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(custom1Color, targetHue));
+                            NadaHueShiftUtility.RetintMinMaxGradientToHue(
+                                custom1Color,
+                                targetHue));
                     }
 
-                    if (_baseCustom2Color.TryGetValue(particleSystemId, out var custom2Color))
+                    if (_baseCustom2Color.TryGetValue(
+                            particleSystemId,
+                            out var custom2Color))
                     {
                         customData.SetColor(
                             ParticleSystemCustomData.Custom2,
-                            NadaHueShiftUtility.RetintMinMaxGradientToHue(custom2Color, targetHue));
+                            NadaHueShiftUtility.RetintMinMaxGradientToHue(
+                                custom2Color,
+                                targetHue));
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyRendererHueShift(float targetHue, float luminanceMultiplier)
+        private void ApplyRendererHueShift(
+            float targetHue,
+            float luminanceMultiplier)
         {
             if (_renderers == null)
                 return;
 
-            foreach (Renderer renderer in _renderers)
+            foreach (Renderer renderer in
+                     _renderers)
             {
                 if (renderer == null)
                     continue;
 
-                int rendererId = renderer.GetInstanceID();
+                int rendererId =
+                    renderer.GetInstanceID();
 
-                if (!_baseMaterialByRendererId.TryGetValue(rendererId, out var materialBaseline) ||
+                if (!_baseMaterialByRendererId.TryGetValue(
+                        rendererId,
+                        out var materialBaseline) ||
                     materialBaseline == null)
                 {
                     continue;
@@ -1157,7 +1797,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 try
                 {
-                    Material material = renderer.material;
+                    Material material =
+                        renderer.material;
+
                     if (material == null)
                         continue;
 
@@ -1171,12 +1813,18 @@ namespace NADA.VFX.Weapon.Modules.Effects
                                 luminanceMultiplier);
 
                         if (material.HasProperty("_Color"))
-                            material.SetColor("_Color", color);
+                        {
+                            material.SetColor(
+                                "_Color",
+                                color);
+                        }
 
-                        material.color = color;
+                        material.color =
+                            color;
                     }
 
-                    if (materialBaseline.BaseColor.HasValue && material.HasProperty("_BaseColor"))
+                    if (materialBaseline.BaseColor.HasValue &&
+                        material.HasProperty("_BaseColor"))
                     {
                         material.SetColor(
                             "_BaseColor",
@@ -1187,7 +1835,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                                 luminanceMultiplier));
                     }
 
-                    if (materialBaseline.TintColor.HasValue && material.HasProperty("_TintColor"))
+                    if (materialBaseline.TintColor.HasValue &&
+                        material.HasProperty("_TintColor"))
                     {
                         material.SetColor(
                             "_TintColor",
@@ -1198,9 +1847,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
                                 luminanceMultiplier));
                     }
 
-                    if (materialBaseline.EmissionColor.HasValue && material.HasProperty("_EmissionColor"))
+                    if (materialBaseline.EmissionColor.HasValue &&
+                        material.HasProperty("_EmissionColor"))
                     {
-                        material.EnableKeyword("_EMISSION");
+                        material.EnableKeyword(
+                            "_EMISSION");
+
                         material.SetColor(
                             "_EmissionColor",
                             ScaleColorRgb(
@@ -1210,45 +1862,66 @@ namespace NADA.VFX.Weapon.Modules.Effects
                                 luminanceMultiplier));
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
-        private void ApplyLightHueShift(float targetHue, float luminanceMultiplier)
+        private void ApplyLightHueShift(
+            float targetHue,
+            float luminanceMultiplier)
         {
             if (_lights == null)
                 return;
 
-            foreach (Light light in _lights)
+            foreach (Light light in
+                     _lights)
             {
                 if (light == null)
                     continue;
 
-                int lightId = light.GetInstanceID();
+                int lightId =
+                    light.GetInstanceID();
 
-                if (_baseLightColorByLightId.TryGetValue(lightId, out Color baseColor))
+                if (_baseLightColorByLightId.TryGetValue(
+                        lightId,
+                        out Color baseColor))
                 {
                     try
                     {
                         light.color =
                             NadaLuminanceUtility.ApplyToColor(
-                                NadaHueShiftUtility.RetintColorToHue(baseColor, targetHue),
+                                NadaHueShiftUtility.RetintColorToHue(
+                                    baseColor,
+                                    targetHue),
                                 luminanceMultiplier);
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
             }
         }
 
-        private void ApplyEnergy(float energy)
+        private void ApplyEnergy(
+            float energy)
         {
             if (_systems == null)
                 return;
 
-            float energyT = Mathf.Clamp01(energy);
-            float emissionMultiplier = Mathf.Lerp(1f, 10f, energyT);
+            float energyT =
+                Mathf.Clamp01(
+                    energy);
 
-            foreach (ParticleSystem particleSystem in _systems)
+            float emissionMultiplier =
+                Mathf.Lerp(
+                    1f,
+                    10f,
+                    energyT);
+
+            foreach (ParticleSystem particleSystem in
+                     _systems)
             {
                 if (particleSystem == null)
                     continue;
@@ -1263,7 +1936,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
             ParticleSystem particleSystem,
             float emissionMultiplier)
         {
-            int particleSystemId = particleSystem.GetInstanceID();
+            int particleSystemId =
+                particleSystem.GetInstanceID();
 
             if (!_baseEmissionByParticleSystemId.TryGetValue(
                     particleSystemId,
@@ -1275,38 +1949,56 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             try
             {
-                var emission = particleSystem.emission;
+                var emission =
+                    particleSystem.emission;
 
-                emission.enabled = baseline.Enabled;
+                emission.enabled =
+                    baseline.Enabled;
+
                 if (!baseline.Enabled)
                     return;
 
                 emission.rateOverTime =
-                    ScaleMinMaxCurve(baseline.RateOverTime, emissionMultiplier);
+                    ScaleMinMaxCurve(
+                        baseline.RateOverTime,
+                        emissionMultiplier);
 
                 emission.rateOverDistance =
-                    ScaleMinMaxCurve(baseline.RateOverDistance, emissionMultiplier);
+                    ScaleMinMaxCurve(
+                        baseline.RateOverDistance,
+                        emissionMultiplier);
             }
-            catch { }
+            catch
+            {
+            }
         }
 
-        private static ParticleSystem.MinMaxGradient ParticleSystemGradientFromColor(Color color)
+        private static ParticleSystem.MinMaxGradient ParticleSystemGradientFromColor(
+            Color color)
         {
-            return new ParticleSystem.MinMaxGradient(color);
+            return new ParticleSystem.MinMaxGradient(
+                color);
         }
 
-        private static Color ScaleColorRgb(Color color, float multiplier)
+        private static Color ScaleColorRgb(
+            Color color,
+            float multiplier)
         {
             color.r *= multiplier;
             color.g *= multiplier;
             color.b *= multiplier;
+
             return color;
         }
 
-        private static float ClampScale(float value)
+        private static float ClampScale(
+            float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
                 return 1f;
+            }
 
             return Mathf.Clamp(
                 value,
@@ -1314,10 +2006,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 PluginConfig.MaxScaleMult);
         }
 
-        private static float ClampOffset(float value)
+        private static float ClampOffset(
+            float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
                 return PluginConfig.DefaultEffectOffset;
+            }
 
             return Mathf.Clamp(
                 value,
@@ -1325,21 +2021,29 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 PluginConfig.MaxEffectOffset);
         }
 
-        private static float ClampRotation(float value)
+        private static float ClampRotation(
+            float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
                 return PluginConfig.DefaultEffectRotation;
+            }
 
             return Mathf.Clamp(
                 value,
                 PluginConfig.MinEffectRotation,
                 PluginConfig.MaxEffectRotation);
         }
-        
-        private static float ClampSimulationSpeed(float value)
+
+        private static float ClampSimulationSpeed(
+            float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
                 return PluginConfig.DefaultSimulationSpeed;
+            }
 
             return Mathf.Clamp(
                 value,
@@ -1351,12 +2055,20 @@ namespace NADA.VFX.Weapon.Modules.Effects
             ParticleSystem.MinMaxCurve source,
             float multiplier)
         {
-            ParticleSystem.MinMaxCurve result = source;
+            ParticleSystem.MinMaxCurve result =
+                source;
 
-            result.constant *= multiplier;
-            result.constantMin *= multiplier;
-            result.constantMax *= multiplier;
-            result.curveMultiplier *= multiplier;
+            result.constant *=
+                multiplier;
+
+            result.constantMin *=
+                multiplier;
+
+            result.constantMax *=
+                multiplier;
+
+            result.curveMultiplier *=
+                multiplier;
 
             return result;
         }
@@ -1368,21 +2080,27 @@ namespace NADA.VFX.Weapon.Modules.Effects
             switch (source.mode)
             {
                 case ParticleSystemCurveMode.Constant:
-                    return new ParticleSystem.MinMaxCurve(source.constant * multiplier);
+                    return new ParticleSystem.MinMaxCurve(
+                        source.constant *
+                        multiplier);
 
                 case ParticleSystemCurveMode.TwoConstants:
                     return new ParticleSystem.MinMaxCurve(
-                        source.constantMin * multiplier,
-                        source.constantMax * multiplier);
+                        source.constantMin *
+                        multiplier,
+                        source.constantMax *
+                        multiplier);
 
                 case ParticleSystemCurveMode.Curve:
                     return new ParticleSystem.MinMaxCurve(
-                        source.curveMultiplier * multiplier,
+                        source.curveMultiplier *
+                        multiplier,
                         source.curve);
 
                 case ParticleSystemCurveMode.TwoCurves:
                     return new ParticleSystem.MinMaxCurve(
-                        source.curveMultiplier * multiplier,
+                        source.curveMultiplier *
+                        multiplier,
                         source.curveMin,
                         source.curveMax);
 

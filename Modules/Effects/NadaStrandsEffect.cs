@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
@@ -23,7 +25,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _cachedBoundState;
         private bool _hasCachedBoundState;
 
-        private VfxState _lastAppliedStaticState;
+        private StrandsRuntimeState _blockState;
+        private bool _hasBlockState;
+
+        private StrandsRuntimeState _lastAppliedStaticState;
         private bool _hasLastAppliedStaticState;
 
         private ParticleSystem[] _systems;
@@ -39,7 +44,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private bool _hasDriftWorldPose;
         private Vector3 _driftWorldPosition;
         private Quaternion _driftWorldRotation;
-        
+
         private readonly HashSet<Material> _ownedRendererMaterials = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient> _baseStartColors = new();
@@ -57,6 +62,36 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeY = new();
         private readonly Dictionary<int, ParticleSystem.MinMaxCurve> _baseStartSizeZ = new();
 
+        private struct StrandsRuntimeState
+        {
+            internal bool Enabled;
+            internal bool SpectrumEnabled;
+
+            internal float Energy;
+
+            internal float ScaleWhole;
+            internal float ScaleParts;
+
+            internal float Luminance;
+            internal float Hue;
+
+            internal float Lifetime;
+            internal float Length;
+
+            internal float SpectrumSpeed;
+            internal float Speed;
+            internal float Radius;
+            internal float Drift;
+
+            internal float XOffset;
+            internal float YOffset;
+            internal float ZOffset;
+
+            internal float XRotation;
+            internal float YRotation;
+            internal float ZRotation;
+        }
+
         private sealed class MaterialBaseline
         {
             public Color? Color;
@@ -67,7 +102,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
         public void SetItemData(global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
+
             _hasResolvedState = false;
+            _hasBlockState = false;
 
             // The same item may have been explicitly rebound.
             // Don't keep its previous bound-state snapshot.
@@ -77,10 +114,104 @@ namespace NADA.VFX.Weapon.Modules.Effects
         public void SetResolvedState(VfxState state)
         {
             _resolvedState = state;
-            _hasResolvedState = true;
-            _itemData = null;
 
+            _hasResolvedState = true;
+            _hasBlockState = false;
+
+            _itemData = null;
             _hasCachedBoundState = false;
+        }
+
+        internal bool SetBlockState(
+            VfxEffectBlock block)
+        {
+            if (block == null ||
+                block.Transform == null ||
+                block.TypeId != VfxEffectTypeIds.Strands ||
+                block.Settings is not StrandsVfxSettings settings)
+            {
+                // A malformed block must not silently fall back to local
+                // config or legacy ItemData. Block mode fails closed.
+                _blockState = default;
+                _hasBlockState = true;
+
+                _itemData = null;
+                _hasResolvedState = false;
+                _hasCachedBoundState = false;
+
+                _hasDriftWorldPose = false;
+
+                return false;
+            }
+
+            _blockState =
+                new StrandsRuntimeState
+                {
+                    Enabled =
+                        block.Enabled,
+
+                    SpectrumEnabled =
+                        settings.SpectrumEnabled,
+
+                    Energy =
+                        settings.Energy,
+
+                    ScaleWhole =
+                        settings.ScaleWhole,
+
+                    ScaleParts =
+                        settings.ScaleParts,
+
+                    Luminance =
+                        settings.Luminance,
+
+                    Hue =
+                        settings.Hue,
+
+                    Lifetime =
+                        settings.Lifetime,
+
+                    Length =
+                        settings.Length,
+
+                    SpectrumSpeed =
+                        settings.SpectrumSpeed,
+
+                    Speed =
+                        settings.Speed,
+
+                    Radius =
+                        settings.Radius,
+
+                    Drift =
+                        settings.Drift,
+
+                    XOffset =
+                        block.Transform.XOffset,
+
+                    YOffset =
+                        block.Transform.YOffset,
+
+                    ZOffset =
+                        block.Transform.ZOffset,
+
+                    XRotation =
+                        block.Transform.XRotation,
+
+                    YRotation =
+                        block.Transform.YRotation,
+
+                    ZRotation =
+                        block.Transform.ZRotation
+                };
+
+            _hasBlockState = true;
+
+            _itemData = null;
+            _hasResolvedState = false;
+            _hasCachedBoundState = false;
+
+            return true;
         }
 
         private void Awake()
@@ -136,7 +267,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 forceStaticApply = true;
             }
 
-            VfxState state = ResolveState();
+            StrandsRuntimeState state =
+                ResolveRuntimeState();
 
             bool staticStateChanged =
                 forceStaticApply ||
@@ -147,53 +279,53 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             if (staticStateChanged)
             {
-                ApplyEnabled(state.StrandsEnabled);
-                ApplyEnergy(state.StrandsEnergy);
+                ApplyEnabled(state.Enabled);
+                ApplyEnergy(state.Energy);
             }
 
             // Drift is actual runtime motion, so it still needs to run
             // continuously even when the underlying state is unchanged.
-            ApplyDrift(state.StrandsDrift);
+            ApplyDrift(state.Drift);
 
             if (staticStateChanged)
             {
-                ApplyScaleWhole(state.StrandsScaleWhole);
-                ApplyScaleParts(state.StrandsScaleParts);
+                ApplyScaleWhole(state.ScaleWhole);
+                ApplyScaleParts(state.ScaleParts);
             }
 
             // Spectrum is time-driven. Static hue only needs to be
             // reapplied when its actual state changes.
-            if (state.StrandsSpectrumEnabled)
+            if (state.SpectrumEnabled)
             {
                 ApplySpectrum(
-                    state.StrandsSpectrumSpeed,
-                    state.StrandsLuminance);
+                    state.SpectrumSpeed,
+                    state.Luminance);
             }
             else if (staticStateChanged)
             {
                 ApplyHue(
-                    state.StrandsHue,
-                    state.StrandsLuminance);
+                    state.Hue,
+                    state.Luminance);
             }
 
             if (staticStateChanged)
             {
-                ApplySpeed(state.StrandsSpeed);
-                ApplyLength(state.StrandsLength);
-                ApplyRadius(state.StrandsRadius);
-                ApplyLifetime(state.StrandsLifetime);
+                ApplySpeed(state.Speed);
+                ApplyLength(state.Length);
+                ApplyRadius(state.Radius);
+                ApplyLifetime(state.Lifetime);
             }
 
             // Keep placement on the existing continuous path for now.
             // Drift and placement interact, so we'll inspect that properly
             // during the motion audit instead of changing the feel here.
             ApplyPlacement(
-                state.StrandsXOffset,
-                state.StrandsYOffset,
-                state.StrandsZOffset,
-                state.StrandsXRotation,
-                state.StrandsYRotation,
-                state.StrandsZRotation);
+                state.XOffset,
+                state.YOffset,
+                state.ZOffset,
+                state.XRotation,
+                state.YRotation,
+                state.ZRotation);
 
             if (staticStateChanged)
             {
@@ -203,44 +335,44 @@ namespace NADA.VFX.Weapon.Modules.Effects
         }
 
         private static bool StrandsStaticStateEquals(
-            VfxState left,
-            VfxState right)
+            StrandsRuntimeState left,
+            StrandsRuntimeState right)
         {
             return
-                left.StrandsEnabled ==
-                    right.StrandsEnabled &&
-                left.StrandsSpectrumEnabled ==
-                    right.StrandsSpectrumEnabled &&
+                left.Enabled ==
+                    right.Enabled &&
+                left.SpectrumEnabled ==
+                    right.SpectrumEnabled &&
 
                 FloatEquals(
-                    left.StrandsEnergy,
-                    right.StrandsEnergy) &&
+                    left.Energy,
+                    right.Energy) &&
                 FloatEquals(
-                    left.StrandsScaleWhole,
-                    right.StrandsScaleWhole) &&
+                    left.ScaleWhole,
+                    right.ScaleWhole) &&
                 FloatEquals(
-                    left.StrandsScaleParts,
-                    right.StrandsScaleParts) &&
+                    left.ScaleParts,
+                    right.ScaleParts) &&
 
                 FloatEquals(
-                    left.StrandsHue,
-                    right.StrandsHue) &&
+                    left.Hue,
+                    right.Hue) &&
                 FloatEquals(
-                    left.StrandsLuminance,
-                    right.StrandsLuminance) &&
+                    left.Luminance,
+                    right.Luminance) &&
 
                 FloatEquals(
-                    left.StrandsSpeed,
-                    right.StrandsSpeed) &&
+                    left.Speed,
+                    right.Speed) &&
                 FloatEquals(
-                    left.StrandsLength,
-                    right.StrandsLength) &&
+                    left.Length,
+                    right.Length) &&
                 FloatEquals(
-                    left.StrandsRadius,
-                    right.StrandsRadius) &&
+                    left.Radius,
+                    right.Radius) &&
                 FloatEquals(
-                    left.StrandsLifetime,
-                    right.StrandsLifetime);
+                    left.Lifetime,
+                    right.Lifetime);
         }
 
         private static bool FloatEquals(
@@ -250,16 +382,25 @@ namespace NADA.VFX.Weapon.Modules.Effects
             return left.Equals(right);
         }
 
-        private VfxState ResolveState()
+        private StrandsRuntimeState ResolveRuntimeState()
         {
+            if (_hasBlockState)
+                return _blockState;
+
             if (_hasResolvedState)
-                return _resolvedState;
+            {
+                return FromLegacyState(
+                    _resolvedState);
+            }
 
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
                 if (_hasCachedBoundState)
-                    return _cachedBoundState;
+                {
+                    return FromLegacyState(
+                        _cachedBoundState);
+                }
 
                 if (VfxStateIO.TryRead(
                         _itemData,
@@ -268,14 +409,80 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     _cachedBoundState = itemState;
                     _hasCachedBoundState = true;
 
-                    return itemState;
+                    return FromLegacyState(
+                        itemState);
                 }
             }
 
             // Unbinding must discard the previous snapshot.
             _hasCachedBoundState = false;
 
-            return VfxStateIO.FromConfig();
+            return FromLegacyState(
+                VfxStateIO.FromConfig());
+        }
+
+        private static StrandsRuntimeState FromLegacyState(
+            VfxState state)
+        {
+            return new StrandsRuntimeState
+            {
+                Enabled =
+                    state.StrandsEnabled,
+
+                SpectrumEnabled =
+                    state.StrandsSpectrumEnabled,
+
+                Energy =
+                    state.StrandsEnergy,
+
+                ScaleWhole =
+                    state.StrandsScaleWhole,
+
+                ScaleParts =
+                    state.StrandsScaleParts,
+
+                Luminance =
+                    state.StrandsLuminance,
+
+                Hue =
+                    state.StrandsHue,
+
+                Lifetime =
+                    state.StrandsLifetime,
+
+                Length =
+                    state.StrandsLength,
+
+                SpectrumSpeed =
+                    state.StrandsSpectrumSpeed,
+
+                Speed =
+                    state.StrandsSpeed,
+
+                Radius =
+                    state.StrandsRadius,
+
+                Drift =
+                    state.StrandsDrift,
+
+                XOffset =
+                    state.StrandsXOffset,
+
+                YOffset =
+                    state.StrandsYOffset,
+
+                ZOffset =
+                    state.StrandsZOffset,
+
+                XRotation =
+                    state.StrandsXRotation,
+
+                YRotation =
+                    state.StrandsYRotation,
+
+                ZRotation =
+                    state.StrandsZRotation
+            };
         }
 
         // Cache / baselines
@@ -442,10 +649,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     else
                     {
                         if (system.isPlaying)
-                            system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                            system.Stop(
+                                true,
+                                ParticleSystemStopBehavior.StopEmittingAndClear);
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -459,7 +670,13 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (renderer == null)
                     continue;
 
-                try { renderer.enabled = enabled; } catch { }
+                try
+                {
+                    renderer.enabled = enabled;
+                }
+                catch
+                {
+                }
             }
         }
 
@@ -478,17 +695,25 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 int systemId = system.GetInstanceID();
 
-                if (!_baseEmissionRates.TryGetValue(systemId, out float baseRate))
+                if (!_baseEmissionRates.TryGetValue(
+                        systemId,
+                        out float baseRate))
+                {
                     baseRate = 10f;
+                }
 
                 try
                 {
                     var emission = system.emission;
                     emission.enabled = true;
+
                     emission.rateOverTime =
-                        new ParticleSystem.MinMaxCurve(baseRate * multiplier);
+                        new ParticleSystem.MinMaxCurve(
+                            baseRate * multiplier);
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -511,6 +736,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
             }
 
             Transform parentTransform = transform.parent;
+
             if (parentTransform == null)
             {
                 _hasDriftWorldPose = false;
@@ -527,27 +753,39 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 _hasDriftWorldPose = true;
             }
 
-            float driftT = Mathf.Pow(clampedDrift, 0.35f);
+            float driftT =
+                Mathf.Pow(
+                    clampedDrift,
+                    0.35f);
 
-            float followSpeed = Mathf.Lerp(
-                30f,
-                0.15f,
-                driftT);
+            float followSpeed =
+                Mathf.Lerp(
+                    30f,
+                    0.15f,
+                    driftT);
 
-            float t = 1f - Mathf.Exp(-followSpeed * Time.deltaTime);
+            float t =
+                1f -
+                Mathf.Exp(
+                    -followSpeed * Time.deltaTime);
 
-            _driftWorldPosition = Vector3.Lerp(
-                _driftWorldPosition,
-                targetWorldPosition,
-                t);
+            _driftWorldPosition =
+                Vector3.Lerp(
+                    _driftWorldPosition,
+                    targetWorldPosition,
+                    t);
 
-            _driftWorldRotation = Quaternion.Slerp(
-                _driftWorldRotation,
-                targetWorldRotation,
-                t);
+            _driftWorldRotation =
+                Quaternion.Slerp(
+                    _driftWorldRotation,
+                    targetWorldRotation,
+                    t);
 
-            transform.position = _driftWorldPosition;
-            transform.rotation = _driftWorldRotation;
+            transform.position =
+                _driftWorldPosition;
+
+            transform.rotation =
+                _driftWorldRotation;
         }
 
         private void ApplyPlacement(
@@ -596,31 +834,45 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     system.Clear(true);
                     system.Play(true);
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
         // Color / spectrum
 
-        private void ApplyHue(float hue, float luminance)
+        private void ApplyHue(
+            float hue,
+            float luminance)
         {
             float targetHue =
-                NadaHueShiftUtility.SliderValueToTargetHue(hue);
+                NadaHueShiftUtility.SliderValueToTargetHue(
+                    hue);
 
-            ApplyHueFromNormalizedHue(targetHue, luminance);
+            ApplyHueFromNormalizedHue(
+                targetHue,
+                luminance);
         }
 
-        private void ApplySpectrum(float speed, float luminance)
+        private void ApplySpectrum(
+            float speed,
+            float luminance)
         {
-            float clampedSpeed = Mathf.Clamp(
-                speed,
-                PluginConfig.MinSpectrumSpeed,
-                PluginConfig.MaxSpectrumSpeed);
+            float clampedSpeed =
+                Mathf.Clamp(
+                    speed,
+                    PluginConfig.MinSpectrumSpeed,
+                    PluginConfig.MaxSpectrumSpeed);
 
             float hue =
-                Mathf.Repeat(Time.time * clampedSpeed, 1f);
+                Mathf.Repeat(
+                    Time.time * clampedSpeed,
+                    1f);
 
-            ApplyHueFromNormalizedHue(hue, luminance);
+            ApplyHueFromNormalizedHue(
+                hue,
+                luminance);
         }
 
         private void ApplyHueFromNormalizedHue(
@@ -628,15 +880,22 @@ namespace NADA.VFX.Weapon.Modules.Effects
             float luminance)
         {
             float particleLuminance =
-                NadaLuminanceUtility.RemapParticleLuminance(luminance);
+                NadaLuminanceUtility.RemapParticleLuminance(
+                    luminance);
 
-            float rendererEmissionMultiplier = Mathf.Clamp(
-                luminance,
-                PluginConfig.MinLuminance,
-                PluginConfig.MaxLuminance);
+            float rendererEmissionMultiplier =
+                Mathf.Clamp(
+                    luminance,
+                    PluginConfig.MinLuminance,
+                    PluginConfig.MaxLuminance);
 
-            ApplyParticleHue(targetHue, particleLuminance);
-            ApplyRendererHue(targetHue, rendererEmissionMultiplier);
+            ApplyParticleHue(
+                targetHue,
+                particleLuminance);
+
+            ApplyRendererHue(
+                targetHue,
+                rendererEmissionMultiplier);
         }
 
         private void ApplyParticleHue(
@@ -655,7 +914,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 try
                 {
-                    if (_baseStartColors.TryGetValue(systemId, out var baseStartColor))
+                    if (_baseStartColors.TryGetValue(
+                            systemId,
+                            out var baseStartColor))
                     {
                         var mainModule = system.main;
 
@@ -667,16 +928,26 @@ namespace NADA.VFX.Weapon.Modules.Effects
                                 particleLuminance);
                     }
                 }
-                catch { }
+                catch
+                {
+                }
 
                 try
                 {
-                    if (_baseColorOverLifetime.TryGetValue(systemId, out var baseColor))
+                    if (_baseColorOverLifetime.TryGetValue(
+                            systemId,
+                            out var baseColor))
                     {
-                        var colorOverLifetime = system.colorOverLifetime;
+                        var colorOverLifetime =
+                            system.colorOverLifetime;
 
-                        if (_baseColorOverLifetimeEnabled.TryGetValue(systemId, out bool wasEnabled))
-                            colorOverLifetime.enabled = wasEnabled;
+                        if (_baseColorOverLifetimeEnabled.TryGetValue(
+                                systemId,
+                                out bool wasEnabled))
+                        {
+                            colorOverLifetime.enabled =
+                                wasEnabled;
+                        }
 
                         colorOverLifetime.color =
                             NadaLuminanceUtility.ApplyToGradient(
@@ -686,7 +957,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
                                 particleLuminance);
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -704,14 +977,24 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 int rendererId = renderer.GetInstanceID();
 
-                if (!_baseMaterials.TryGetValue(rendererId, out MaterialBaseline baseline) ||
+                if (!_baseMaterials.TryGetValue(
+                        rendererId,
+                        out MaterialBaseline baseline) ||
                     baseline == null)
                 {
                     continue;
                 }
 
                 Material material;
-                try { material = renderer.material; } catch { continue; }
+
+                try
+                {
+                    material = renderer.material;
+                }
+                catch
+                {
+                    continue;
+                }
 
                 if (material == null)
                     continue;
@@ -751,10 +1034,13 @@ namespace NADA.VFX.Weapon.Modules.Effects
                             "_EmissionColor",
                             NadaHueShiftUtility.RetintColorToHue(
                                 baseline.EmissionColor.Value,
-                                targetHue) * rendererEmissionMultiplier);
+                                targetHue) *
+                            rendererEmissionMultiplier);
                     }
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -762,21 +1048,24 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void ApplyScaleWhole(float scale)
         {
-            float clamped = Mathf.Clamp(
-                scale,
-                PluginConfig.MinScaleMult,
-                PluginConfig.MaxScaleMult);
+            float clamped =
+                Mathf.Clamp(
+                    scale,
+                    PluginConfig.MinScaleMult,
+                    PluginConfig.MaxScaleMult);
 
             transform.localScale =
-                Vector3.one * (clamped * AuthoredScaleMultiplier);
+                Vector3.one *
+                (clamped * AuthoredScaleMultiplier);
         }
 
         private void ApplyScaleParts(float scale)
         {
-            float clamped = Mathf.Clamp(
-                scale,
-                PluginConfig.MinScaleMult,
-                PluginConfig.MaxScaleMult);
+            float clamped =
+                Mathf.Clamp(
+                    scale,
+                    PluginConfig.MinScaleMult,
+                    PluginConfig.MaxScaleMult);
 
             if (_systems == null)
                 return;
@@ -788,34 +1077,61 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 int systemId = system.GetInstanceID();
 
-                if (!_baseStartSizeX.TryGetValue(systemId, out ParticleSystem.MinMaxCurve baseSizeX))
+                if (!_baseStartSizeX.TryGetValue(
+                        systemId,
+                        out ParticleSystem.MinMaxCurve baseSizeX))
+                {
                     continue;
+                }
 
-                if (!_baseStartSizeY.TryGetValue(systemId, out ParticleSystem.MinMaxCurve baseSizeY))
+                if (!_baseStartSizeY.TryGetValue(
+                        systemId,
+                        out ParticleSystem.MinMaxCurve baseSizeY))
+                {
                     baseSizeY = baseSizeX;
+                }
 
-                if (!_baseStartSizeZ.TryGetValue(systemId, out ParticleSystem.MinMaxCurve baseSizeZ))
+                if (!_baseStartSizeZ.TryGetValue(
+                        systemId,
+                        out ParticleSystem.MinMaxCurve baseSizeZ))
+                {
                     baseSizeZ = baseSizeX;
+                }
 
                 try
                 {
                     var mainModule = system.main;
 
                     mainModule.startSize3D = true;
-                    mainModule.startSizeX = MultiplyCurve(baseSizeX, clamped);
-                    mainModule.startSizeY = MultiplyCurve(baseSizeY, clamped);
-                    mainModule.startSizeZ = MultiplyCurve(baseSizeZ, clamped);
+
+                    mainModule.startSizeX =
+                        MultiplyCurve(
+                            baseSizeX,
+                            clamped);
+
+                    mainModule.startSizeY =
+                        MultiplyCurve(
+                            baseSizeY,
+                            clamped);
+
+                    mainModule.startSizeZ =
+                        MultiplyCurve(
+                            baseSizeZ,
+                            clamped);
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
         private void ApplyLength(float length)
         {
-            float clamped = Mathf.Clamp(
-                length,
-                PluginConfig.MinOrbitalsLength,
-                PluginConfig.MaxOrbitalsLength);
+            float clamped =
+                Mathf.Clamp(
+                    length,
+                    PluginConfig.MinOrbitalsLength,
+                    PluginConfig.MaxOrbitalsLength);
 
             if (_systems == null)
                 return;
@@ -827,29 +1143,38 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 int systemId = system.GetInstanceID();
 
-                if (!_baseShapeScale.TryGetValue(systemId, out Vector3 baseScale))
+                if (!_baseShapeScale.TryGetValue(
+                        systemId,
+                        out Vector3 baseScale))
+                {
                     baseScale = Vector3.one;
+                }
 
                 try
                 {
                     var shape = system.shape;
 
                     shape.enabled = true;
-                    shape.scale = new Vector3(
-                        baseScale.x,
-                        baseScale.y * clamped,
-                        baseScale.z);
+
+                    shape.scale =
+                        new Vector3(
+                            baseScale.x,
+                            baseScale.y * clamped,
+                            baseScale.z);
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
         private void ApplyRadius(float radius)
         {
-            float clamped = Mathf.Clamp(
-                radius,
-                PluginConfig.MinOrbitalsRadiusMultiplier,
-                PluginConfig.MaxOrbitalsRadiusMultiplier);
+            float clamped =
+                Mathf.Clamp(
+                    radius,
+                    PluginConfig.MinOrbitalsRadiusMultiplier,
+                    PluginConfig.MaxOrbitalsRadiusMultiplier);
 
             if (_systems == null)
                 return;
@@ -861,17 +1186,24 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 int systemId = system.GetInstanceID();
 
-                if (!_baseShapeRadius.TryGetValue(systemId, out float baseRadius))
+                if (!_baseShapeRadius.TryGetValue(
+                        systemId,
+                        out float baseRadius))
+                {
                     baseRadius = 0.5f;
+                }
 
                 try
                 {
                     var shape = system.shape;
 
                     shape.enabled = true;
-                    shape.radius = baseRadius * clamped;
+                    shape.radius =
+                        baseRadius * clamped;
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -879,13 +1211,17 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private void ApplySpeed(float speed)
         {
-            float normalized = Mathf.InverseLerp(
-                PluginConfig.MinOrbitalsSpeed,
-                PluginConfig.MaxOrbitalsSpeed,
-                speed);
+            float normalized =
+                Mathf.InverseLerp(
+                    PluginConfig.MinOrbitalsSpeed,
+                    PluginConfig.MaxOrbitalsSpeed,
+                    speed);
 
             float speedMultiplier =
-                Mathf.Lerp(0.25f, 2.5f, normalized);
+                Mathf.Lerp(
+                    0.25f,
+                    2.5f,
+                    normalized);
 
             if (_systems == null)
                 return;
@@ -898,18 +1234,22 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 try
                 {
                     var mainModule = system.main;
-                    mainModule.simulationSpeed = speedMultiplier;
+                    mainModule.simulationSpeed =
+                        speedMultiplier;
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
         private void ApplyLifetime(float lifetime)
         {
-            float clamped = Mathf.Clamp(
-                lifetime,
-                PluginConfig.MinLifetime,
-                PluginConfig.MaxLifetime);
+            float clamped =
+                Mathf.Clamp(
+                    lifetime,
+                    PluginConfig.MinLifetime,
+                    PluginConfig.MaxLifetime);
 
             if (_systems == null)
                 return;
@@ -921,17 +1261,24 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 int systemId = system.GetInstanceID();
 
-                if (!_baseStartLifetimes.TryGetValue(systemId, out float baseLifetime))
+                if (!_baseStartLifetimes.TryGetValue(
+                        systemId,
+                        out float baseLifetime))
+                {
                     baseLifetime = 2f;
+                }
 
                 try
                 {
                     var mainModule = system.main;
 
                     mainModule.startLifetime =
-                        new ParticleSystem.MinMaxCurve(baseLifetime * clamped);
+                        new ParticleSystem.MinMaxCurve(
+                            baseLifetime * clamped);
                 }
-                catch { }
+                catch
+                {
+                }
             }
         }
 
@@ -939,8 +1286,11 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private static float ClampOffset(float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
                 return PluginConfig.DefaultEffectOffset;
+            }
 
             return Mathf.Clamp(
                 value,
@@ -950,8 +1300,11 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
         private static float ClampRotation(float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
                 return PluginConfig.DefaultEffectRotation;
+            }
 
             return Mathf.Clamp(
                 value,
@@ -963,12 +1316,20 @@ namespace NADA.VFX.Weapon.Modules.Effects
             ParticleSystem.MinMaxCurve source,
             float multiplier)
         {
-            ParticleSystem.MinMaxCurve result = source;
+            ParticleSystem.MinMaxCurve result =
+                source;
 
-            result.constant *= multiplier;
-            result.constantMin *= multiplier;
-            result.constantMax *= multiplier;
-            result.curveMultiplier *= multiplier;
+            result.constant *=
+                multiplier;
+
+            result.constantMin *=
+                multiplier;
+
+            result.constantMax *=
+                multiplier;
+
+            result.curveMultiplier *=
+                multiplier;
 
             return result;
         }
