@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Core.State.Blocks;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -14,6 +16,9 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             string ownerNameForLogs)
         {
             if (localEffectsRootTransform == null)
+                return null;
+
+            if (instanceId == 0)
                 return null;
 
             if (string.IsNullOrWhiteSpace(typeId))
@@ -48,12 +53,23 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
                     if (existing.RootObject != null)
                     {
+                        existing.RootObject.SetActive(false);
+
+                        if (existing.RootTransform != null)
+                        {
+                            // Destroy is deferred. Detach immediately so the
+                            // stale instance no longer owns this runtime ID.
+                            existing.RootTransform.SetParent(
+                                null,
+                                false);
+                        }
+
                         Object.Destroy(
                             existing.RootObject);
                     }
 
-                    // Destroy is deferred by Unity. Fail closed for this
-                    // pass instead of creating two owners for the same ID.
+                    // Fail closed for this pass. A later reconciliation can
+                    // create the requested type after the stale owner is gone.
                     return null;
                 }
 
@@ -157,10 +173,152 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 return false;
             }
 
+            instance.RootObject.SetActive(false);
+
+            if (instance.RootTransform != null)
+            {
+                // Relinquish hierarchy ownership immediately even though
+                // Unity will not destroy the object until end-of-frame.
+                instance.RootTransform.SetParent(
+                    null,
+                    false);
+            }
+
             Object.Destroy(
                 instance.RootObject);
 
             return true;
+        }
+
+        internal static void ReconcileInstancesOfType(
+            Transform localEffectsRootTransform,
+            WeaponVfxState state,
+            string typeId,
+            string ownerNameForLogs)
+        {
+            if (localEffectsRootTransform == null)
+                return;
+
+            if (string.IsNullOrWhiteSpace(typeId))
+                return;
+
+            Transform instancesRootTransform =
+                NadaRigPaths.FindDirectChild(
+                    localEffectsRootTransform,
+                    NadaRigPaths.EffectInstancesRootName);
+
+            if (instancesRootTransform == null)
+                return;
+
+            var desiredIds =
+                new HashSet<uint>();
+
+            if (state?.Effects != null)
+            {
+                foreach (VfxEffectBlock block in state.Effects)
+                {
+                    if (block == null ||
+                        block.InstanceId == 0)
+                    {
+                        continue;
+                    }
+
+                    if (!string.Equals(
+                            block.TypeId,
+                            typeId,
+                            StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    desiredIds.Add(
+                        block.InstanceId);
+                }
+            }
+
+            var seenRuntimeIds =
+                new HashSet<uint>();
+
+            for (int i =
+                     instancesRootTransform.childCount - 1;
+                 i >= 0;
+                 i--)
+            {
+                Transform child =
+                    instancesRootTransform.GetChild(i);
+
+                if (child == null)
+                    continue;
+
+                NadaEffectInstanceIdentity identity =
+                    child.GetComponent<
+                        NadaEffectInstanceIdentity>();
+
+                if (identity == null)
+                    continue;
+
+                if (!string.Equals(
+                        identity.TypeId,
+                        typeId,
+                        StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                bool duplicateRuntimeInstance =
+                    !seenRuntimeIds.Add(
+                        identity.InstanceId);
+
+                bool stillDesired =
+                    desiredIds.Contains(
+                        identity.InstanceId);
+
+                if (stillDesired &&
+                    !duplicateRuntimeInstance)
+                {
+                    continue;
+                }
+
+                string reason =
+                    duplicateRuntimeInstance
+                        ? "duplicate-runtime"
+                        : "not-in-state";
+
+                uint removedInstanceId =
+                    identity.InstanceId;
+
+                string removedTypeId =
+                    identity.TypeId;
+
+                string rootName =
+                    child.name;
+
+                int rootId =
+                    child.GetInstanceID();
+
+                GameObject childObject =
+                    child.gameObject;
+
+                childObject.SetActive(false);
+
+                // Destroy is deferred. Remove this object from Instances now
+                // so another reconciliation pass cannot rediscover it.
+                child.SetParent(
+                    null,
+                    false);
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [EffectInstanceRemoved] " +
+                    $"owner='{ownerNameForLogs}' " +
+                    $"id={removedInstanceId} " +
+                    $"type='{removedTypeId}' " +
+                    $"root='{rootName}' " +
+                    $"rootId={rootId} " +
+                    $"reason='{reason}'");
+
+                Object.Destroy(
+                    childObject);
+            }
         }
 
         private static Transform EnsureInstancesRoot(

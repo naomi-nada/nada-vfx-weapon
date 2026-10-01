@@ -101,5 +101,51 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
             return sparksRootTransform;
         }
+
+        internal static bool RemoveDirectSparksBranch(
+            Transform parentTransform,
+            string ownerNameForLogs)
+        {
+            if (parentTransform == null)
+                return false;
+
+            Transform sparksRootTransform =
+                NadaRigPaths.FindDirectChild(
+                    parentTransform,
+                    Plugin.SparksName);
+
+            if (sparksRootTransform == null)
+                return false;
+
+            GameObject sparksRootObject =
+                sparksRootTransform.gameObject;
+
+            int rootId =
+                sparksRootTransform.GetInstanceID();
+
+            string rootName =
+                sparksRootTransform.name;
+
+            sparksRootObject.SetActive(false);
+
+            // Destroy is deferred, so detach immediately. That prevents another
+            // orchestrator pass from finding and "removing" the same branch again.
+            sparksRootTransform.SetParent(
+                null,
+                false);
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [SparksBranchRemoved] " +
+                $"owner='{ownerNameForLogs}' " +
+                $"parent='{parentTransform.name}' " +
+                $"root='{rootName}' " +
+                $"rootId={rootId} " +
+                $"reason='ownership-change'");
+
+            Object.Destroy(
+                sparksRootObject);
+
+            return true;
+        }
     }
 }
