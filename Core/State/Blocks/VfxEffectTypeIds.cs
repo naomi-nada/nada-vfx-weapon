@@ -9,8 +9,10 @@ namespace NADA.VFX.Weapon.Core.State.Blocks
     internal static class VfxEffectTypeIds
     {
         internal const string InnerFlames = "inner_flames";
+        internal const string OuterFlames = "outer_flames";
         internal const string Strands = "strands";
         internal const string Sparks = "sparks";
         internal const string Flare = "flare";
+        internal const string Aura = "aura";
     }
 }

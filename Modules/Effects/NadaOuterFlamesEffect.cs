@@ -1,7 +1,8 @@
-
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
@@ -27,7 +28,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _cachedBoundState;
         private bool _hasCachedBoundState;
 
-        private VfxState _lastAppliedState;
+        private OuterFlamesRuntimeState _blockState;
+        private bool _hasBlockState;
+
+        private OuterFlamesRuntimeState _lastAppliedState;
         private bool _hasLastAppliedState;
 
         private Renderer[] _renderers;
@@ -40,7 +44,7 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private Vector3 _baseLocalPosition;
         private Quaternion _baseLocalRotation;
         private bool _hasBasePlacement;
-        
+
         private readonly HashSet<Material> _ownedRendererMaterials = new();
 
         private readonly Dictionary<int, ParticleSystem.MinMaxGradient>
@@ -97,6 +101,34 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private readonly Dictionary<int, Vector3>
             _baseShapePosition = new();
 
+        private struct OuterFlamesRuntimeState
+        {
+            internal bool Enabled;
+            internal bool WorldEnabled;
+            internal bool BlackEnabled;
+            internal bool WhiteEnabled;
+
+            internal float Energy;
+            internal float Scale;
+
+            internal float Luminance;
+            internal float Hue;
+
+            internal float Lifetime;
+            internal float SimulationSpeed;
+
+            internal float Length;
+            internal float Width;
+
+            internal float XOffset;
+            internal float YOffset;
+            internal float ZOffset;
+
+            internal float XRotation;
+            internal float YRotation;
+            internal float ZRotation;
+        }
+
         private sealed class MaterialBaseline
         {
             public Color? Color;
@@ -116,7 +148,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
             global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
+
             _hasResolvedState = false;
+            _hasBlockState = false;
 
             // An explicit reconfiguration can update the same item.
             // Don't keep its previous bound-state snapshot.
@@ -127,10 +161,99 @@ namespace NADA.VFX.Weapon.Modules.Effects
             VfxState state)
         {
             _resolvedState = state;
-            _hasResolvedState = true;
-            _itemData = null;
 
+            _hasResolvedState = true;
+            _hasBlockState = false;
+
+            _itemData = null;
             _hasCachedBoundState = false;
+        }
+
+        internal bool SetBlockState(
+            VfxEffectBlock block)
+        {
+            if (block == null ||
+                block.Transform == null ||
+                block.TypeId != VfxEffectTypeIds.OuterFlames ||
+                block.Settings is not OuterFlamesVfxSettings settings)
+            {
+                // Block ownership must fail closed. Invalid block state must
+                // never silently fall back to ItemData or local config.
+                _blockState = default;
+                _hasBlockState = true;
+
+                _itemData = null;
+                _hasResolvedState = false;
+                _hasCachedBoundState = false;
+
+                return false;
+            }
+
+            _blockState =
+                new OuterFlamesRuntimeState
+                {
+                    Enabled =
+                        block.Enabled,
+
+                    WorldEnabled =
+                        settings.WorldEnabled,
+
+                    BlackEnabled =
+                        settings.BlackEnabled,
+
+                    WhiteEnabled =
+                        settings.WhiteEnabled,
+
+                    Energy =
+                        settings.Energy,
+
+                    Scale =
+                        settings.Scale,
+
+                    Luminance =
+                        settings.Luminance,
+
+                    Hue =
+                        settings.Hue,
+
+                    Lifetime =
+                        settings.Lifetime,
+
+                    SimulationSpeed =
+                        settings.SimulationSpeed,
+
+                    Length =
+                        settings.Length,
+
+                    Width =
+                        settings.Width,
+
+                    XOffset =
+                        block.Transform.XOffset,
+
+                    YOffset =
+                        block.Transform.YOffset,
+
+                    ZOffset =
+                        block.Transform.ZOffset,
+
+                    XRotation =
+                        block.Transform.XRotation,
+
+                    YRotation =
+                        block.Transform.YRotation,
+
+                    ZRotation =
+                        block.Transform.ZRotation
+                };
+
+            _hasBlockState = true;
+
+            _itemData = null;
+            _hasResolvedState = false;
+            _hasCachedBoundState = false;
+
+            return true;
         }
 
         private void Awake()
@@ -191,8 +314,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 forceApply = true;
             }
 
-            VfxState state =
-                ResolveState();
+            OuterFlamesRuntimeState state =
+                ResolveRuntimeState();
 
             // Keep the timer for live config editing, but don't keep
             // rewriting a stable effect when nothing actually changed.
@@ -206,103 +329,103 @@ namespace NADA.VFX.Weapon.Modules.Effects
             }
 
             ApplySimulationSpace(
-                state.OuterFlamesWorldEnabled);
+                state.WorldEnabled);
 
             ApplyEnabled(
-                state.OuterFlamesEnabled);
+                state.Enabled);
 
             ApplyEnergy(
-                state.OuterFlamesEnergy);
+                state.Energy);
 
             ApplyColor(
-                state.OuterFlamesHue,
-                state.OuterFlamesLuminance,
-                state.OuterFlamesBlackEnabled,
-                state.OuterFlamesWhiteEnabled);
+                state.Hue,
+                state.Luminance,
+                state.BlackEnabled,
+                state.WhiteEnabled);
 
             ApplyScale(
-                state.OuterFlamesScale);
+                state.Scale);
 
             ApplyFlameFieldShape(
-                state.OuterFlamesLength,
-                state.OuterFlamesWidth);
+                state.Length,
+                state.Width);
 
             ApplyLifetime(
-                state.OuterFlamesLifetime);
+                state.Lifetime);
 
             ApplySimulationSpeed(
-                state.OuterFlamesSimulationSpeed);
+                state.SimulationSpeed);
 
             ApplyPlacement(
-                state.OuterFlamesXOffset,
-                state.OuterFlamesYOffset,
-                state.OuterFlamesZOffset,
-                state.OuterFlamesXRotation,
-                state.OuterFlamesYRotation,
-                state.OuterFlamesZRotation);
+                state.XOffset,
+                state.YOffset,
+                state.ZOffset,
+                state.XRotation,
+                state.YRotation,
+                state.ZRotation);
 
             _lastAppliedState = state;
             _hasLastAppliedState = true;
         }
 
         private static bool OuterFlamesStateEquals(
-            VfxState left,
-            VfxState right)
+            OuterFlamesRuntimeState left,
+            OuterFlamesRuntimeState right)
         {
             return
-                left.OuterFlamesEnabled ==
-                    right.OuterFlamesEnabled &&
-                left.OuterFlamesWorldEnabled ==
-                    right.OuterFlamesWorldEnabled &&
-                left.OuterFlamesBlackEnabled ==
-                    right.OuterFlamesBlackEnabled &&
-                left.OuterFlamesWhiteEnabled ==
-                    right.OuterFlamesWhiteEnabled &&
+                left.Enabled ==
+                    right.Enabled &&
+                left.WorldEnabled ==
+                    right.WorldEnabled &&
+                left.BlackEnabled ==
+                    right.BlackEnabled &&
+                left.WhiteEnabled ==
+                    right.WhiteEnabled &&
 
                 FloatEquals(
-                    left.OuterFlamesEnergy,
-                    right.OuterFlamesEnergy) &&
+                    left.Energy,
+                    right.Energy) &&
                 FloatEquals(
-                    left.OuterFlamesHue,
-                    right.OuterFlamesHue) &&
+                    left.Hue,
+                    right.Hue) &&
                 FloatEquals(
-                    left.OuterFlamesLuminance,
-                    right.OuterFlamesLuminance) &&
+                    left.Luminance,
+                    right.Luminance) &&
                 FloatEquals(
-                    left.OuterFlamesScale,
-                    right.OuterFlamesScale) &&
+                    left.Scale,
+                    right.Scale) &&
                 FloatEquals(
-                    left.OuterFlamesLength,
-                    right.OuterFlamesLength) &&
+                    left.Length,
+                    right.Length) &&
                 FloatEquals(
-                    left.OuterFlamesWidth,
-                    right.OuterFlamesWidth) &&
+                    left.Width,
+                    right.Width) &&
                 FloatEquals(
-                    left.OuterFlamesLifetime,
-                    right.OuterFlamesLifetime) &&
+                    left.Lifetime,
+                    right.Lifetime) &&
                 FloatEquals(
-                    left.OuterFlamesSimulationSpeed,
-                    right.OuterFlamesSimulationSpeed) &&
+                    left.SimulationSpeed,
+                    right.SimulationSpeed) &&
 
                 FloatEquals(
-                    left.OuterFlamesXOffset,
-                    right.OuterFlamesXOffset) &&
+                    left.XOffset,
+                    right.XOffset) &&
                 FloatEquals(
-                    left.OuterFlamesYOffset,
-                    right.OuterFlamesYOffset) &&
+                    left.YOffset,
+                    right.YOffset) &&
                 FloatEquals(
-                    left.OuterFlamesZOffset,
-                    right.OuterFlamesZOffset) &&
+                    left.ZOffset,
+                    right.ZOffset) &&
 
                 FloatEquals(
-                    left.OuterFlamesXRotation,
-                    right.OuterFlamesXRotation) &&
+                    left.XRotation,
+                    right.XRotation) &&
                 FloatEquals(
-                    left.OuterFlamesYRotation,
-                    right.OuterFlamesYRotation) &&
+                    left.YRotation,
+                    right.YRotation) &&
                 FloatEquals(
-                    left.OuterFlamesZRotation,
-                    right.OuterFlamesZRotation);
+                    left.ZRotation,
+                    right.ZRotation);
         }
 
         private static bool FloatEquals(
@@ -312,16 +435,25 @@ namespace NADA.VFX.Weapon.Modules.Effects
             return left.Equals(right);
         }
 
-        private VfxState ResolveState()
+        private OuterFlamesRuntimeState ResolveRuntimeState()
         {
+            if (_hasBlockState)
+                return _blockState;
+
             if (_hasResolvedState)
-                return _resolvedState;
+            {
+                return FromLegacyState(
+                    _resolvedState);
+            }
 
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
                 if (_hasCachedBoundState)
-                    return _cachedBoundState;
+                {
+                    return FromLegacyState(
+                        _cachedBoundState);
+                }
 
                 if (VfxStateIO.TryRead(
                         _itemData,
@@ -330,14 +462,77 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     _cachedBoundState = itemState;
                     _hasCachedBoundState = true;
 
-                    return itemState;
+                    return FromLegacyState(
+                        itemState);
                 }
             }
 
             // An unbound item must return to live config editing.
             _hasCachedBoundState = false;
 
-            return VfxStateIO.FromConfig();
+            return FromLegacyState(
+                VfxStateIO.FromConfig());
+        }
+
+        private static OuterFlamesRuntimeState FromLegacyState(
+            VfxState state)
+        {
+            return new OuterFlamesRuntimeState
+            {
+                Enabled =
+                    state.OuterFlamesEnabled,
+
+                WorldEnabled =
+                    state.OuterFlamesWorldEnabled,
+
+                BlackEnabled =
+                    state.OuterFlamesBlackEnabled,
+
+                WhiteEnabled =
+                    state.OuterFlamesWhiteEnabled,
+
+                Energy =
+                    state.OuterFlamesEnergy,
+
+                Scale =
+                    state.OuterFlamesScale,
+
+                Luminance =
+                    state.OuterFlamesLuminance,
+
+                Hue =
+                    state.OuterFlamesHue,
+
+                Lifetime =
+                    state.OuterFlamesLifetime,
+
+                SimulationSpeed =
+                    state.OuterFlamesSimulationSpeed,
+
+                Length =
+                    state.OuterFlamesLength,
+
+                Width =
+                    state.OuterFlamesWidth,
+
+                XOffset =
+                    state.OuterFlamesXOffset,
+
+                YOffset =
+                    state.OuterFlamesYOffset,
+
+                ZOffset =
+                    state.OuterFlamesZOffset,
+
+                XRotation =
+                    state.OuterFlamesXRotation,
+
+                YRotation =
+                    state.OuterFlamesYRotation,
+
+                ZRotation =
+                    state.OuterFlamesZRotation
+            };
         }
 
         private void RebuildComponentCache()
@@ -660,8 +855,6 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
                 var materialBaseline =
                     new MaterialBaseline();
-
-                // Keep the existing baseline-property reads below this point.
 
                 try
                 {

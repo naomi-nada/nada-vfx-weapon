@@ -67,6 +67,29 @@ namespace NADA.VFX.Weapon.Runtime.Binding
                 state);
         }
 
+        internal static void BindOuterFlamesBlockEffect(
+            Transform outerFlamesTransform,
+            VfxEffectBlock block)
+        {
+            if (outerFlamesTransform == null)
+                return;
+
+            NadaOuterFlamesEffect outerFlamesEffect =
+                GetOrAddEffect<NadaOuterFlamesEffect>(
+                    outerFlamesTransform);
+
+            bool accepted =
+                outerFlamesEffect.SetBlockState(
+                    block);
+
+            NadaLogControl.Info(
+                $"outer-flames-block-bind:{outerFlamesTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [OuterFlamesBlockBind] " +
+                $"root='{outerFlamesTransform.name}' " +
+                $"id={(block != null ? block.InstanceId.ToString() : "null")} " +
+                $"accepted={accepted}");
+        }
+
         internal static void BindSparksEffect(
             Transform sparksTransform,
             global::ItemDrop.ItemData itemData)
@@ -165,6 +188,29 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             BindResolvedStateEffect<NadaAuraEffect>(
                 auraTransform,
                 state);
+        }
+
+        internal static void BindAuraBlockEffect(
+            Transform auraTransform,
+            VfxEffectBlock block)
+        {
+            if (auraTransform == null)
+                return;
+
+            NadaAuraEffect auraEffect =
+                GetOrAddEffect<NadaAuraEffect>(
+                    auraTransform);
+
+            bool accepted =
+                auraEffect.SetBlockState(
+                    block);
+
+            NadaLogControl.Info(
+                $"aura-block-bind:{auraTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [AuraBlockBind] " +
+                $"root='{auraTransform.name}' " +
+                $"id={(block != null ? block.InstanceId.ToString() : "null")} " +
+                $"accepted={accepted}");
         }
 
         internal static void BindOrbitalsEffect(

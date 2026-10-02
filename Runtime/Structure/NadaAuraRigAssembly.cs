@@ -31,9 +31,90 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             if (localEffectsRootTransform == null)
                 return null;
 
+            return EnsureAuraBranchInternal(
+                localEffectsRootTransform,
+                weaponVisualRootTransform,
+                ownerNameForLogs,
+                false);
+        }
+
+        internal static Transform EnsureAuraBranch(
+            Transform parentTransform,
+            Transform weaponVisualRootTransform,
+            string ownerNameForLogs)
+        {
+            if (!NadaRigCache.CacheReady)
+                return null;
+
+            if (NadaRigCache.AuraMaterial == null)
+                return null;
+
+            if (parentTransform == null ||
+                weaponVisualRootTransform == null)
+            {
+                return null;
+            }
+
+            return EnsureAuraBranchInternal(
+                parentTransform,
+                weaponVisualRootTransform,
+                ownerNameForLogs,
+                true);
+        }
+
+        internal static void RemoveDirectAuraBranch(
+            Transform localEffectsRootTransform,
+            string ownerNameForLogs)
+        {
+            if (localEffectsRootTransform == null)
+                return;
+
             Transform auraRootTransform =
                 NadaRigPaths.FindDirectChild(
                     localEffectsRootTransform,
+                    Plugin.AuraName);
+
+            if (auraRootTransform == null)
+                return;
+
+            int rootId =
+                auraRootTransform.GetInstanceID();
+
+            string rootName =
+                auraRootTransform.name;
+
+            // Destroy is deferred. Remove the old owner from the active
+            // hierarchy immediately so block reconciliation cannot find or
+            // render the direct Aura while its shells are waiting for destroy.
+            auraRootTransform
+                .gameObject
+                .SetActive(false);
+
+            auraRootTransform.SetParent(
+                null,
+                false);
+
+            Object.Destroy(
+                auraRootTransform.gameObject);
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [AuraBranchRemoved] " +
+                $"owner='{ownerNameForLogs}' " +
+                $"parent='{localEffectsRootTransform.name}' " +
+                $"root='{rootName}' " +
+                $"rootId={rootId} " +
+                $"reason='ownership-change'");
+        }
+
+        private static Transform EnsureAuraBranchInternal(
+            Transform parentTransform,
+            Transform weaponVisualRootTransform,
+            string ownerNameForLogs,
+            bool blockOwned)
+        {
+            Transform auraRootTransform =
+                NadaRigPaths.FindDirectChild(
+                    parentTransform,
                     Plugin.AuraName);
 
             bool createdAura = false;
@@ -42,7 +123,7 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             {
                 auraRootTransform =
                     NadaRigTransforms.EnsureChild(
-                        localEffectsRootTransform,
+                        parentTransform,
                         Plugin.AuraName);
 
                 if (auraRootTransform == null)
@@ -50,11 +131,23 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
                 createdAura = true;
 
-                NadaLogControl.Info(
-                    $"aura:{auraRootTransform.GetInstanceID()}",
-                    $"{Plugin.ModName}: Added Aura branch under " +
-                    $"'{NadaWeaponTargets.FullPath(localEffectsRootTransform)}' " +
-                    $"(owner='{ownerNameForLogs}').");
+                if (blockOwned)
+                {
+                    Plugin.Log.LogInfo(
+                        $"{Plugin.ModName}: [AuraBranchCreated] " +
+                        $"owner='{ownerNameForLogs}' " +
+                        $"parent='{parentTransform.name}' " +
+                        $"root='{auraRootTransform.name}' " +
+                        $"rootId={auraRootTransform.GetInstanceID()}");
+                }
+                else
+                {
+                    NadaLogControl.Info(
+                        $"aura:{auraRootTransform.GetInstanceID()}",
+                        $"{Plugin.ModName}: Added Aura branch under " +
+                        $"'{NadaWeaponTargets.FullPath(parentTransform)}' " +
+                        $"(owner='{ownerNameForLogs}').");
+                }
             }
 
             if (createdAura)
@@ -72,9 +165,11 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             }
 
             bool hasAuraShells =
-                HasAuraShells(auraRootTransform);
+                HasAuraShells(
+                    auraRootTransform);
 
-            if (createdAura || !hasAuraShells)
+            if (createdAura ||
+                !hasAuraShells)
             {
                 if (!createdAura)
                 {
@@ -101,7 +196,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 return false;
 
             NadaAuraShell[] shells =
-                auraRootTransform.GetComponentsInChildren<NadaAuraShell>(true);
+                auraRootTransform.GetComponentsInChildren<NadaAuraShell>(
+                    true);
 
             if (shells == null ||
                 shells.Length == 0)
@@ -129,7 +225,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             }
 
             foreach (Transform child in
-                     auraRootTransform.GetComponentsInChildren<Transform>(true))
+                     auraRootTransform.GetComponentsInChildren<Transform>(
+                         true))
             {
                 if (child == null ||
                     child == auraRootTransform)
@@ -141,7 +238,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                         "Aura Shell",
                         System.StringComparison.Ordinal))
                 {
-                    Object.Destroy(child.gameObject);
+                    Object.Destroy(
+                        child.gameObject);
                 }
             }
 
@@ -152,7 +250,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
 
             MeshRenderer[] meshRenderers =
                 weaponVisualRootTransform
-                    .GetComponentsInChildren<MeshRenderer>(true);
+                    .GetComponentsInChildren<MeshRenderer>(
+                        true);
 
             int created = 0;
 
@@ -167,11 +266,15 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 if (sourceTransform.name == "VFX")
                     continue;
 
-                if (sourceTransform.IsChildOf(auraRootTransform))
+                if (sourceTransform.IsChildOf(
+                        auraRootTransform))
+                {
                     continue;
+                }
 
                 if (nadaWeaponRoot != null &&
-                    sourceTransform.IsChildOf(nadaWeaponRoot))
+                    sourceTransform.IsChildOf(
+                        nadaWeaponRoot))
                 {
                     continue;
                 }
@@ -230,7 +333,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                     sourceTransform.lossyScale);
 
                 GameObject shellMeshObject =
-                    new GameObject("Aura Mesh");
+                    new GameObject(
+                        "Aura Mesh");
 
                 Transform shellMeshTransform =
                     shellMeshObject.transform;
@@ -253,7 +357,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 NadaAuraShell auraShell =
                     shellMeshObject.AddComponent<NadaAuraShell>();
 
-                auraShell.Initialize(sourceMesh);
+                auraShell.Initialize(
+                    sourceMesh);
 
                 auraShell.SetBasePivotLocalScale(
                     shellPivotTransform.localScale);
@@ -261,18 +366,22 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 MeshRenderer shellRenderer =
                     shellMeshObject.AddComponent<MeshRenderer>();
 
-                shellRenderer.enabled = true;
+                shellRenderer.enabled =
+                    true;
 
                 Material auraMaterial =
                     new Material(
                         NadaRigCache.AuraMaterial);
 
-                auraShell.SetOwnedMaterial(auraMaterial);
+                auraShell.SetOwnedMaterial(
+                    auraMaterial);
 
                 Color tintColor =
-                    auraMaterial.GetColor("_TintColor");
+                    auraMaterial.GetColor(
+                        "_TintColor");
 
-                tintColor.a = 0.05f;
+                tintColor.a =
+                    0.05f;
 
                 auraMaterial.SetColor(
                     "_TintColor",
@@ -287,7 +396,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                         sourceMesh.subMeshCount);
 
                 Material[] auraMaterials =
-                    new Material[materialCount];
+                    new Material[
+                        materialCount];
 
                 for (int i = 0;
                      i < auraMaterials.Length;
@@ -339,42 +449,48 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             material.renderQueue =
                 3500;
 
-            if (material.HasProperty("_MainTex"))
+            if (material.HasProperty(
+                    "_MainTex"))
             {
                 material.SetTexture(
                     "_MainTex",
                     Texture2D.whiteTexture);
             }
 
-            if (material.HasProperty("_EmissionMap"))
+            if (material.HasProperty(
+                    "_EmissionMap"))
             {
                 material.SetTexture(
                     "_EmissionMap",
                     Texture2D.whiteTexture);
             }
 
-            if (material.HasProperty("_MaskTex"))
+            if (material.HasProperty(
+                    "_MaskTex"))
             {
                 material.SetTexture(
                     "_MaskTex",
                     Texture2D.whiteTexture);
             }
 
-            if (material.HasProperty("_Cutoff"))
+            if (material.HasProperty(
+                    "_Cutoff"))
             {
                 material.SetFloat(
                     "_Cutoff",
                     0f);
             }
 
-            if (material.HasProperty("_ZWrite"))
+            if (material.HasProperty(
+                    "_ZWrite"))
             {
                 material.SetFloat(
                     "_ZWrite",
                     0f);
             }
 
-            if (material.HasProperty("_ZTest"))
+            if (material.HasProperty(
+                    "_ZTest"))
             {
                 material.SetFloat(
                     "_ZTest",
@@ -382,7 +498,8 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                         .CompareFunction.Always);
             }
 
-            if (material.HasProperty("_Cull"))
+            if (material.HasProperty(
+                    "_Cull"))
             {
                 material.SetFloat(
                     "_Cull",

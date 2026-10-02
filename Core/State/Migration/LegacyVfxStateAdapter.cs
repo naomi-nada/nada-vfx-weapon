@@ -15,9 +15,11 @@ namespace NADA.VFX.Weapon.Core.State.Migration
         // Deterministic IDs preserve the old effect ordering during migration:
         // Inner, Outer, Strands, Sparks, Flare, Aura.
         private const uint LegacyInnerFlamesInstanceId = 1;
+        private const uint LegacyOuterFlamesInstanceId = 2;
         private const uint LegacyStrandsInstanceId = 3;
         private const uint LegacySparksInstanceId = 4;
         private const uint LegacyFlareInstanceId = 5;
+        private const uint LegacyAuraInstanceId = 6;
 
         internal static WeaponVfxState CreateInnerFlamesPrototype(
             VfxState legacyState)
@@ -100,7 +102,92 @@ namespace NADA.VFX.Weapon.Core.State.Migration
 
             return state;
         }
-        
+
+        internal static WeaponVfxState CreateOuterFlamesPrototype(
+            VfxState legacyState)
+        {
+            var state =
+                new WeaponVfxState
+                {
+                    RigTransform =
+                        new VfxTransformState
+                        {
+                            XOffset = legacyState.RigXOffset,
+                            YOffset = legacyState.RigYOffset,
+                            ZOffset = legacyState.RigZOffset,
+
+                            XRotation = legacyState.RigXRotation,
+                            YRotation = legacyState.RigYRotation,
+                            ZRotation = legacyState.RigZRotation
+                        }
+                };
+
+            var outerFlamesBlock =
+                new VfxEffectBlock
+                {
+                    InstanceId = LegacyOuterFlamesInstanceId,
+                    TypeId = VfxEffectTypeIds.OuterFlames,
+                    Enabled = legacyState.OuterFlamesEnabled,
+
+                    Transform =
+                        new VfxTransformState
+                        {
+                            XOffset = legacyState.OuterFlamesXOffset,
+                            YOffset = legacyState.OuterFlamesYOffset,
+                            ZOffset = legacyState.OuterFlamesZOffset,
+
+                            XRotation = legacyState.OuterFlamesXRotation,
+                            YRotation = legacyState.OuterFlamesYRotation,
+                            ZRotation = legacyState.OuterFlamesZRotation
+                        },
+
+                    Settings =
+                        new OuterFlamesVfxSettings
+                        {
+                            WorldEnabled =
+                                legacyState.OuterFlamesWorldEnabled,
+
+                            BlackEnabled =
+                                legacyState.OuterFlamesBlackEnabled,
+
+                            WhiteEnabled =
+                                legacyState.OuterFlamesWhiteEnabled,
+
+                            DragEnabled =
+                                legacyState.OuterFlamesDragEnabled,
+
+                            Energy =
+                                legacyState.OuterFlamesEnergy,
+
+                            Scale =
+                                legacyState.OuterFlamesScale,
+
+                            Luminance =
+                                legacyState.OuterFlamesLuminance,
+
+                            Hue =
+                                legacyState.OuterFlamesHue,
+
+                            Lifetime =
+                                legacyState.OuterFlamesLifetime,
+
+                            SimulationSpeed =
+                                legacyState.OuterFlamesSimulationSpeed,
+
+                            Length =
+                                legacyState.OuterFlamesLength,
+
+                            Width =
+                                legacyState.OuterFlamesWidth
+                        }
+                };
+
+            state.Effects.Add(
+                outerFlamesBlock);
+
+            return state;
+        }
+
         internal static WeaponVfxState CreateStrandsPrototype(
             VfxState legacyState)
         {
@@ -297,6 +384,59 @@ namespace NADA.VFX.Weapon.Core.State.Migration
 
             state.Effects.Add(
                 flareBlock);
+
+            return state;
+        }
+
+        internal static WeaponVfxState CreateAuraPrototype(
+            VfxState legacyState)
+        {
+            var state =
+                new WeaponVfxState
+                {
+                    RigTransform =
+                        new VfxTransformState
+                        {
+                            XOffset = legacyState.RigXOffset,
+                            YOffset = legacyState.RigYOffset,
+                            ZOffset = legacyState.RigZOffset,
+
+                            XRotation = legacyState.RigXRotation,
+                            YRotation = legacyState.RigYRotation,
+                            ZRotation = legacyState.RigZRotation
+                        }
+                };
+
+            var auraBlock =
+                new VfxEffectBlock
+                {
+                    InstanceId = LegacyAuraInstanceId,
+                    TypeId = VfxEffectTypeIds.Aura,
+                    Enabled = legacyState.AuraEnabled,
+
+                    Transform =
+                        new VfxTransformState
+                        {
+                            XOffset = legacyState.AuraXOffset,
+                            YOffset = legacyState.AuraYOffset,
+                            ZOffset = legacyState.AuraZOffset,
+
+                            XRotation = legacyState.AuraXRotation,
+                            YRotation = legacyState.AuraYRotation,
+                            ZRotation = legacyState.AuraZRotation
+                        },
+
+                    Settings =
+                        new AuraVfxSettings
+                        {
+                            Scale = legacyState.AuraScale,
+                            Luminance = legacyState.AuraLuminance,
+                            Hue = legacyState.AuraHue
+                        }
+                };
+
+            state.Effects.Add(
+                auraBlock);
 
             return state;
         }

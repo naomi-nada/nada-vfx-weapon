@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Runtime.Binding;
 using UnityEngine;
 
@@ -20,6 +22,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private VfxState _resolvedState;
         private bool _hasResolvedState;
+
+        private bool _blockDragEnabled;
+        private bool _hasBlockState;
 
         private VfxState _cachedLocalState;
         private bool _hasCachedLocalState;
@@ -51,16 +56,19 @@ namespace NADA.VFX.Weapon.Modules.Motion
             global::ItemDrop.ItemData itemData)
         {
             if (_itemData == itemData &&
-                !_hasResolvedState)
+                !_hasResolvedState &&
+                !_hasBlockState)
             {
                 // The same item may have been explicitly rebound.
-                // Refresh its state without interrupting velocity tracking.
+                // Refresh its legacy state without interrupting velocity tracking.
                 InvalidateLocalStateCache();
                 return;
             }
 
             _itemData = itemData;
+
             _hasResolvedState = false;
+            _hasBlockState = false;
 
             InvalidateLocalStateCache();
             ResetVelocityTracking();
@@ -72,13 +80,75 @@ namespace NADA.VFX.Weapon.Modules.Motion
             VfxState state)
         {
             _resolvedState = state;
+
             _hasResolvedState = true;
+            _hasBlockState = false;
+
             _itemData = null;
 
             InvalidateLocalStateCache();
             ResetVelocityTracking();
 
             _hasLastDragEnabled = false;
+        }
+
+        internal bool SetBlockState(
+            VfxEffectBlock block)
+        {
+            if (block == null ||
+                block.Transform == null ||
+                block.TypeId != VfxEffectTypeIds.OuterFlames ||
+                block.Settings is not OuterFlamesVfxSettings settings)
+            {
+                bool sourceChanged =
+                    !_hasBlockState ||
+                    _blockDragEnabled;
+
+                _blockDragEnabled = false;
+                _hasBlockState = true;
+
+                _itemData = null;
+                _hasResolvedState = false;
+
+                InvalidateLocalStateCache();
+
+                if (sourceChanged)
+                {
+                    ResetVelocityTracking();
+                    _hasLastDragEnabled = false;
+                }
+
+                return false;
+            }
+
+            bool nextDragEnabled =
+                settings.DragEnabled;
+
+            bool blockSourceChanged =
+                !_hasBlockState ||
+                _blockDragEnabled != nextDragEnabled ||
+                _itemData != null ||
+                _hasResolvedState;
+
+            _blockDragEnabled =
+                nextDragEnabled;
+
+            _hasBlockState = true;
+
+            _itemData = null;
+            _hasResolvedState = false;
+
+            InvalidateLocalStateCache();
+
+            // Rebinding the same unchanged block should not keep resetting
+            // velocity history. Only a real source/drag transition does.
+            if (blockSourceChanged)
+            {
+                ResetVelocityTracking();
+                _hasLastDragEnabled = false;
+            }
+
+            return true;
         }
 
         private void Awake()
@@ -98,16 +168,13 @@ namespace NADA.VFX.Weapon.Modules.Motion
             if (_particles.Count == 0)
                 return;
 
-            VfxState state =
-                ResolveState();
-
             // Keep tracking movement even while Drag is off so turning it
             // back on doesn't start from a stale weapon position.
             Vector3 weaponVelocity =
                 CalculateSmoothedWeaponVelocity();
 
             bool dragEnabled =
-                state.OuterFlamesDragEnabled;
+                ResolveDragEnabled();
 
             if (!dragEnabled)
             {
@@ -135,11 +202,22 @@ namespace NADA.VFX.Weapon.Modules.Motion
             _hasLastDragEnabled = true;
         }
 
-        private VfxState ResolveState()
+        private bool ResolveDragEnabled()
         {
-            if (_hasResolvedState)
-                return _resolvedState;
+            if (_hasBlockState)
+                return _blockDragEnabled;
 
+            if (_hasResolvedState)
+                return _resolvedState.OuterFlamesDragEnabled;
+
+            VfxState localState =
+                ResolveLocalState();
+
+            return localState.OuterFlamesDragEnabled;
+        }
+
+        private VfxState ResolveLocalState()
+        {
             float now =
                 Time.unscaledTime;
 
@@ -149,10 +227,10 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 return _cachedLocalState;
             }
 
-            // A bound weapon's persisted settings don't need to be
+            // A bound legacy weapon's persisted settings don't need to be
             // decoded again unless the item is explicitly reconfigured.
             // Still check the binding marker so unbinding restores
-            // the editable config-driven behavior.
+            // editable config-driven behavior.
             if (_hasCachedLocalState &&
                 _cachedLocalStateIsBound &&
                 _itemData != null &&
@@ -165,7 +243,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
             }
 
             _cachedLocalState =
-                ResolveLocalState();
+                ReadLocalState();
 
             _hasCachedLocalState = true;
 
@@ -175,7 +253,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
             return _cachedLocalState;
         }
 
-        private VfxState ResolveLocalState()
+        private VfxState ReadLocalState()
         {
             _cachedLocalStateIsBound = false;
 

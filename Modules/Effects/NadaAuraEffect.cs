@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Structure;
@@ -24,7 +26,10 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private VfxState _cachedBoundState;
         private bool _hasCachedBoundState;
 
-        private VfxState _lastAppliedState;
+        private AuraRuntimeState _blockState;
+        private bool _hasBlockState;
+
+        private AuraRuntimeState _lastAppliedState;
         private bool _hasLastAppliedState;
 
         private readonly List<Renderer> _auraRenderers = new();
@@ -40,23 +45,110 @@ namespace NADA.VFX.Weapon.Modules.Effects
         private Quaternion _baseLocalRotation;
         private bool _hasBasePlacement;
 
-        public void SetItemData(global::ItemDrop.ItemData itemData)
+        private struct AuraRuntimeState
+        {
+            internal bool Enabled;
+
+            internal float Scale;
+            internal float Luminance;
+            internal float Hue;
+
+            internal float XOffset;
+            internal float YOffset;
+            internal float ZOffset;
+
+            internal float XRotation;
+            internal float YRotation;
+            internal float ZRotation;
+        }
+
+        public void SetItemData(
+            global::ItemDrop.ItemData itemData)
         {
             _itemData = itemData;
+
             _hasResolvedState = false;
+            _hasBlockState = false;
 
             // An explicit reconfiguration can update the same item.
             // Don't keep its previous bound-state snapshot.
             _hasCachedBoundState = false;
         }
 
-        public void SetResolvedState(VfxState state)
+        public void SetResolvedState(
+            VfxState state)
         {
             _resolvedState = state;
-            _hasResolvedState = true;
-            _itemData = null;
 
+            _hasResolvedState = true;
+            _hasBlockState = false;
+
+            _itemData = null;
             _hasCachedBoundState = false;
+        }
+
+        internal bool SetBlockState(
+            VfxEffectBlock block)
+        {
+            if (block == null ||
+                block.Transform == null ||
+                block.TypeId != VfxEffectTypeIds.Aura ||
+                block.Settings is not AuraVfxSettings settings)
+            {
+                // Block ownership must fail closed. Once Aura is being
+                // driven as a block, malformed state must not silently
+                // fall back to this client's ItemData or config.
+                _blockState = default;
+                _hasBlockState = true;
+
+                _itemData = null;
+                _hasResolvedState = false;
+                _hasCachedBoundState = false;
+
+                return false;
+            }
+
+            _blockState =
+                new AuraRuntimeState
+                {
+                    Enabled =
+                        block.Enabled,
+
+                    Scale =
+                        settings.Scale,
+
+                    Luminance =
+                        settings.Luminance,
+
+                    Hue =
+                        settings.Hue,
+
+                    XOffset =
+                        block.Transform.XOffset,
+
+                    YOffset =
+                        block.Transform.YOffset,
+
+                    ZOffset =
+                        block.Transform.ZOffset,
+
+                    XRotation =
+                        block.Transform.XRotation,
+
+                    YRotation =
+                        block.Transform.YRotation,
+
+                    ZRotation =
+                        block.Transform.ZRotation
+                };
+
+            _hasBlockState = true;
+
+            _itemData = null;
+            _hasResolvedState = false;
+            _hasCachedBoundState = false;
+
+            return true;
         }
 
         private void Awake()
@@ -66,12 +158,22 @@ namespace NADA.VFX.Weapon.Modules.Effects
 
             CacheBasePlacement();
 
-            InvokeRepeating(nameof(TickApply), 0f, 0.05f);
+            InvokeRepeating(
+                nameof(TickApply),
+                0f,
+                0.05f);
         }
 
         private void OnDestroy()
         {
-            try { CancelInvoke(nameof(TickApply)); } catch { }
+            try
+            {
+                CancelInvoke(
+                    nameof(TickApply));
+            }
+            catch
+            {
+            }
         }
 
         private void TickApply()
@@ -86,7 +188,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 forceApply = true;
             }
 
-            VfxState state = ResolveState();
+            AuraRuntimeState state =
+                ResolveRuntimeState();
 
             // Keep polling for live config editing, but a stable Aura doesn't
             // need its renderers, shell scale, and placement rewritten 20x/sec.
@@ -99,63 +202,65 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 return;
             }
 
-            ApplyEnabled(state.AuraEnabled);
+            ApplyEnabled(
+                state.Enabled);
 
             ApplyColorIfChanged(
-                state.AuraHue,
-                state.AuraLuminance);
+                state.Hue,
+                state.Luminance);
 
-            ApplyScale(state.AuraScale);
+            ApplyScale(
+                state.Scale);
 
             ApplyPlacement(
-                state.AuraXOffset,
-                state.AuraYOffset,
-                state.AuraZOffset,
-                state.AuraXRotation,
-                state.AuraYRotation,
-                state.AuraZRotation);
+                state.XOffset,
+                state.YOffset,
+                state.ZOffset,
+                state.XRotation,
+                state.YRotation,
+                state.ZRotation);
 
             _lastAppliedState = state;
             _hasLastAppliedState = true;
         }
 
         private static bool AuraStateEquals(
-            VfxState left,
-            VfxState right)
+            AuraRuntimeState left,
+            AuraRuntimeState right)
         {
             return
-                left.AuraEnabled ==
-                    right.AuraEnabled &&
+                left.Enabled ==
+                    right.Enabled &&
 
                 FloatEquals(
-                    left.AuraHue,
-                    right.AuraHue) &&
+                    left.Hue,
+                    right.Hue) &&
                 FloatEquals(
-                    left.AuraLuminance,
-                    right.AuraLuminance) &&
+                    left.Luminance,
+                    right.Luminance) &&
                 FloatEquals(
-                    left.AuraScale,
-                    right.AuraScale) &&
+                    left.Scale,
+                    right.Scale) &&
 
                 FloatEquals(
-                    left.AuraXOffset,
-                    right.AuraXOffset) &&
+                    left.XOffset,
+                    right.XOffset) &&
                 FloatEquals(
-                    left.AuraYOffset,
-                    right.AuraYOffset) &&
+                    left.YOffset,
+                    right.YOffset) &&
                 FloatEquals(
-                    left.AuraZOffset,
-                    right.AuraZOffset) &&
+                    left.ZOffset,
+                    right.ZOffset) &&
 
                 FloatEquals(
-                    left.AuraXRotation,
-                    right.AuraXRotation) &&
+                    left.XRotation,
+                    right.XRotation) &&
                 FloatEquals(
-                    left.AuraYRotation,
-                    right.AuraYRotation) &&
+                    left.YRotation,
+                    right.YRotation) &&
                 FloatEquals(
-                    left.AuraZRotation,
-                    right.AuraZRotation);
+                    left.ZRotation,
+                    right.ZRotation);
         }
 
         private static bool FloatEquals(
@@ -165,16 +270,25 @@ namespace NADA.VFX.Weapon.Modules.Effects
             return left.Equals(right);
         }
 
-        private VfxState ResolveState()
+        private AuraRuntimeState ResolveRuntimeState()
         {
+            if (_hasBlockState)
+                return _blockState;
+
             if (_hasResolvedState)
-                return _resolvedState;
+            {
+                return FromLegacyState(
+                    _resolvedState);
+            }
 
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
                 if (_hasCachedBoundState)
-                    return _cachedBoundState;
+                {
+                    return FromLegacyState(
+                        _cachedBoundState);
+                }
 
                 if (VfxStateIO.TryRead(
                         _itemData,
@@ -183,14 +297,53 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     _cachedBoundState = itemState;
                     _hasCachedBoundState = true;
 
-                    return itemState;
+                    return FromLegacyState(
+                        itemState);
                 }
             }
 
             // An unbound item must return to live config editing.
             _hasCachedBoundState = false;
 
-            return VfxStateIO.FromConfig();
+            return FromLegacyState(
+                VfxStateIO.FromConfig());
+        }
+
+        private static AuraRuntimeState FromLegacyState(
+            VfxState state)
+        {
+            return new AuraRuntimeState
+            {
+                Enabled =
+                    state.AuraEnabled,
+
+                Scale =
+                    state.AuraScale,
+
+                Luminance =
+                    state.AuraLuminance,
+
+                Hue =
+                    state.AuraHue,
+
+                XOffset =
+                    state.AuraXOffset,
+
+                YOffset =
+                    state.AuraYOffset,
+
+                ZOffset =
+                    state.AuraZOffset,
+
+                XRotation =
+                    state.AuraXRotation,
+
+                YRotation =
+                    state.AuraYRotation,
+
+                ZRotation =
+                    state.AuraZRotation
+            };
         }
 
         private void CacheBasePlacement()
@@ -198,8 +351,12 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (_hasBasePlacement)
                 return;
 
-            _baseLocalPosition = transform.localPosition;
-            _baseLocalRotation = transform.localRotation;
+            _baseLocalPosition =
+                transform.localPosition;
+
+            _baseLocalRotation =
+                transform.localRotation;
+
             _hasBasePlacement = true;
         }
 
@@ -216,7 +373,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 if (renderer != null &&
                     IsAuraRenderer(renderer.transform))
                 {
-                    _auraRenderers.Add(renderer);
+                    _auraRenderers.Add(
+                        renderer);
                 }
             }
 
@@ -224,20 +382,25 @@ namespace NADA.VFX.Weapon.Modules.Effects
                      GetComponentsInChildren<NadaAuraShell>(true))
             {
                 if (shell != null)
-                    _auraShells.Add(shell);
+                {
+                    _auraShells.Add(
+                        shell);
+                }
             }
 
             _hasAppliedColor = false;
         }
 
-        private void ApplyEnabled(bool enabled)
+        private void ApplyEnabled(
+            bool enabled)
         {
             foreach (Renderer renderer in _auraRenderers)
             {
                 if (renderer == null)
                     continue;
 
-                renderer.enabled = enabled;
+                renderer.enabled =
+                    enabled;
             }
         }
 
@@ -260,9 +423,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 hue,
                 luminance);
 
-            _lastAppliedHue = hue;
-            _lastAppliedLuminance = luminance;
-            _hasAppliedColor = true;
+            _lastAppliedHue =
+                hue;
+
+            _lastAppliedLuminance =
+                luminance;
+
+            _hasAppliedColor =
+                true;
         }
 
         private void ApplyColor(
@@ -270,7 +438,9 @@ namespace NADA.VFX.Weapon.Modules.Effects
             float luminance)
         {
             float targetHue =
-                NadaHueShiftUtility.SliderValueToTargetHue(hue);
+                NadaHueShiftUtility
+                    .SliderValueToTargetHue(
+                        hue);
 
             float clampedLuminance =
                 Mathf.Clamp(
@@ -279,18 +449,22 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     PluginConfig.MaxLuminance);
 
             Color tintedColor =
-                NadaLuminanceUtility.ApplyToColor(
-                    NadaHueShiftUtility.RetintColorToHue(
-                        BaseAuraColor,
-                        targetHue),
-                    clampedLuminance);
+                NadaLuminanceUtility
+                    .ApplyToColor(
+                        NadaHueShiftUtility
+                            .RetintColorToHue(
+                                BaseAuraColor,
+                                targetHue),
+                        clampedLuminance);
 
             foreach (Renderer renderer in _auraRenderers)
             {
                 if (renderer == null)
                     continue;
 
-                Material[] materials = renderer.sharedMaterials;
+                Material[] materials =
+                    renderer.sharedMaterials;
+
                 if (materials == null)
                     continue;
 
@@ -299,16 +473,19 @@ namespace NADA.VFX.Weapon.Modules.Effects
                     if (material == null)
                         continue;
 
-                    if (material.HasProperty("_TintColor"))
+                    if (material.HasProperty(
+                            "_TintColor"))
                     {
                         material.SetColor(
                             "_TintColor",
                             tintedColor);
                     }
 
-                    if (material.HasProperty("_EmissionColor"))
+                    if (material.HasProperty(
+                            "_EmissionColor"))
                     {
-                        material.EnableKeyword("_EMISSION");
+                        material.EnableKeyword(
+                            "_EMISSION");
 
                         material.SetColor(
                             "_EmissionColor",
@@ -342,7 +519,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 ClampRotation(zRotation));
         }
 
-        private void ApplyScale(float scale)
+        private void ApplyScale(
+            float scale)
         {
             float clampedScale =
                 Mathf.Clamp(
@@ -386,10 +564,14 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 Vector3.one;
 
             if (shell.UsesReadableMesh)
-                shell.ApplyScale(clampedScale);
+            {
+                shell.ApplyScale(
+                    clampedScale);
+            }
         }
 
-        private static float ClampOffset(float value)
+        private static float ClampOffset(
+            float value)
         {
             if (float.IsNaN(value) ||
                 float.IsInfinity(value))
@@ -403,7 +585,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 PluginConfig.MaxEffectOffset);
         }
 
-        private static float ClampRotation(float value)
+        private static float ClampRotation(
+            float value)
         {
             if (float.IsNaN(value) ||
                 float.IsInfinity(value))
@@ -426,7 +609,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 scale - 1f;
 
             int longAxis =
-                GetLargestAxis(boundsSize);
+                GetLargestAxis(
+                    boundsSize);
 
             Vector3 weights =
                 Vector3.one;
@@ -443,7 +627,8 @@ namespace NADA.VFX.Weapon.Modules.Effects
                 (1f + delta * weights.z));
         }
 
-        private static int GetLargestAxis(Vector3 value)
+        private static int GetLargestAxis(
+            Vector3 value)
         {
             if (value.x >= value.y &&
                 value.x >= value.z)
@@ -466,8 +651,11 @@ namespace NADA.VFX.Weapon.Modules.Effects
             if (transform == null)
                 return false;
 
-            if (transform.name == "Aura Mesh")
+            if (transform.name ==
+                "Aura Mesh")
+            {
                 return true;
+            }
 
             if (transform.name.StartsWith(
                     "Aura Shell",
@@ -479,10 +667,11 @@ namespace NADA.VFX.Weapon.Modules.Effects
             Transform parent =
                 transform.parent;
 
-            return parent != null &&
-                   parent.name.StartsWith(
-                       "Aura Shell",
-                       System.StringComparison.Ordinal);
+            return
+                parent != null &&
+                parent.name.StartsWith(
+                    "Aura Shell",
+                    System.StringComparison.Ordinal);
         }
     }
 }

@@ -55,8 +55,6 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 NadaRigTransforms.ResetLocalTransform(
                     outerFlamesTransform);
 
-                // Normalize the donor VFX once when the flame branch is created.
-                // After this, each effect owns its own simulation space.
                 NadaRigTransforms.NormalizeParticleSpacesUnder(
                     outerFlamesTransform,
                     ParticleSystemSimulationSpace.Local);
@@ -67,6 +65,71 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 outerFlamesTransform);
 
             return outerFlamesTransform;
+        }
+
+        internal static Transform EnsureOuterFlamesBranch(
+            Transform parentTransform,
+            string ownerNameForLogs)
+        {
+            if (!NadaRigCache.CacheReady)
+                return null;
+
+            if (NadaRigCache.RefRigTemplateInactive == null)
+                return null;
+
+            if (parentTransform == null)
+                return null;
+
+            Transform existing =
+                NadaRigPaths.FindDirectChild(
+                    parentTransform,
+                    Plugin.OuterFlamesName);
+
+            if (existing != null)
+                return existing;
+
+            GameObject donorObject =
+                Object.Instantiate(
+                    NadaRigCache.RefRigTemplateInactive,
+                    parentTransform,
+                    false);
+
+            donorObject.name =
+                "NADA Outer Flames Donor";
+
+            // Keep the entire donor inactive while we remove the embedded
+            // effects that belong to other logical blocks.
+            donorObject.SetActive(false);
+
+            Transform donorTransform =
+                donorObject.transform;
+
+            NadaRigTransforms.ResetLocalTransform(
+                donorTransform);
+
+            NadaRigTransforms.NormalizeParticleSpacesUnder(
+                donorTransform,
+                ParticleSystemSimulationSpace.Local);
+
+            RemoveDonorDescendant(
+                donorTransform,
+                "flare");
+
+            RemoveDonorDescendant(
+                donorTransform,
+                "fx_Torch_Basic");
+
+            donorObject.name =
+                Plugin.OuterFlamesName;
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [OuterFlamesBranchCreated] " +
+                $"owner='{ownerNameForLogs}' " +
+                $"parent='{parentTransform.name}' " +
+                $"root='{donorObject.name}' " +
+                $"rootId={donorTransform.GetInstanceID()}");
+
+            return donorTransform;
         }
 
         internal static Transform EnsureInnerFlamesBranch(
@@ -119,6 +182,7 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             if (innerFlamesTransform == null)
             {
                 donorObject.SetActive(false);
+
                 donorTransform.SetParent(
                     null,
                     false);
@@ -138,9 +202,6 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             innerFlamesTransform.name =
                 Plugin.InnerFlamesName;
 
-            // The extracted visual stays inactive until block state has
-            // reached its behavior component. This avoids one frame of
-            // donor/default flame settings during ownership handoff.
             innerFlamesTransform
                 .gameObject
                 .SetActive(false);
@@ -149,9 +210,6 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 parentTransform,
                 true);
 
-            // Destroy is deferred. Remove the temporary donor from the
-            // owned hierarchy immediately so later reconciliation in the
-            // same frame cannot rediscover it.
             donorObject.SetActive(false);
 
             donorTransform.SetParent(
@@ -169,6 +227,49 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 $"rootId={innerFlamesTransform.GetInstanceID()}");
 
             return innerFlamesTransform;
+        }
+
+        internal static void RemoveDirectOuterFlamesBranch(
+            Transform localEffectsRootTransform,
+            string ownerNameForLogs)
+        {
+            if (localEffectsRootTransform == null)
+                return;
+
+            Transform outerFlamesTransform =
+                NadaRigPaths.FindDirectChild(
+                    localEffectsRootTransform,
+                    Plugin.OuterFlamesName);
+
+            if (outerFlamesTransform == null)
+                return;
+
+            int rootId =
+                outerFlamesTransform.GetInstanceID();
+
+            string rootName =
+                outerFlamesTransform.name;
+
+            // Destroy is deferred. Remove the old owner from the active
+            // hierarchy immediately before block reconciliation begins.
+            outerFlamesTransform
+                .gameObject
+                .SetActive(false);
+
+            outerFlamesTransform.SetParent(
+                null,
+                false);
+
+            Object.Destroy(
+                outerFlamesTransform.gameObject);
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [OuterFlamesBranchRemoved] " +
+                $"owner='{ownerNameForLogs}' " +
+                $"parent='{localEffectsRootTransform.name}' " +
+                $"root='{rootName}' " +
+                $"rootId={rootId} " +
+                $"reason='ownership-change'");
         }
 
         internal static void RemoveDirectInnerFlamesBranch(
@@ -192,7 +293,6 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             string rootName =
                 innerFlamesTransform.name;
 
-            // Destroy is deferred, so make ownership disappear immediately.
             innerFlamesTransform
                 .gameObject
                 .SetActive(false);
@@ -260,6 +360,35 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                         true);
                 }
             }
+        }
+
+        private static void RemoveDonorDescendant(
+            Transform donorTransform,
+            string descendantName)
+        {
+            if (donorTransform == null)
+                return;
+
+            Transform descendant =
+                NadaRigPaths.FindDescendantByName(
+                    donorTransform,
+                    descendantName);
+
+            if (descendant == null)
+                return;
+
+            descendant
+                .gameObject
+                .SetActive(false);
+
+            // Destroy is deferred, so detach the unwanted logical effect
+            // before the donor becomes the owned Outer Flames hierarchy.
+            descendant.SetParent(
+                null,
+                false);
+
+            Object.Destroy(
+                descendant.gameObject);
         }
     }
 }

@@ -1,4 +1,6 @@
+using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Modules.Motion;
 using UnityEngine;
 
@@ -6,40 +8,6 @@ namespace NADA.VFX.Weapon.Runtime.Binding
 {
     internal static class NadaMotionBinder
     {
-        internal static void BindOrbitalsMotion(
-            Transform orbitalsFamilyRootTransform,
-            NadaOrbitalsFamily family,
-            global::ItemDrop.ItemData itemData)
-        {
-            if (orbitalsFamilyRootTransform == null)
-                return;
-
-            var orbitalsMotion =
-                GetOrAddMotion<NadaOrbitalsMotion>(
-                    orbitalsFamilyRootTransform);
-
-            orbitalsMotion.Configure(
-                family,
-                itemData);
-        }
-
-        internal static void BindOrbitalsMotion(
-            Transform orbitalsFamilyRootTransform,
-            NadaOrbitalsFamily family,
-            VfxState state)
-        {
-            if (orbitalsFamilyRootTransform == null)
-                return;
-
-            var orbitalsMotion =
-                GetOrAddMotion<NadaOrbitalsMotion>(
-                    orbitalsFamilyRootTransform);
-
-            orbitalsMotion.Configure(
-                family,
-                state);
-        }
-
         internal static void BindOrbitalsMotion(
             Transform orbitalsMotionRootTransform,
             NadaOrbitalsFamily family,
@@ -127,6 +95,29 @@ namespace NADA.VFX.Weapon.Runtime.Binding
 
             outerFlamesMotion.SetResolvedState(
                 state);
+        }
+
+        internal static void BindOuterFlamesBlockMotion(
+            Transform outerFlamesRootTransform,
+            VfxEffectBlock block)
+        {
+            if (outerFlamesRootTransform == null)
+                return;
+
+            NadaOuterFlamesMotion outerFlamesMotion =
+                GetOrAddMotion<NadaOuterFlamesMotion>(
+                    outerFlamesRootTransform);
+
+            bool accepted =
+                outerFlamesMotion.SetBlockState(
+                    block);
+
+            NadaLogControl.Info(
+                $"outer-flames-motion-block-bind:{outerFlamesRootTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [OuterFlamesMotionBlockBind] " +
+                $"root='{outerFlamesRootTransform.name}' " +
+                $"id={(block != null ? block.InstanceId.ToString() : "null")} " +
+                $"accepted={accepted}");
         }
 
         private static void BindTargetFollowInternal(
