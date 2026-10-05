@@ -12,33 +12,23 @@ namespace NADA.VFX.Weapon.Core.State.Migration
     /// </summary>
     internal static class LegacyVfxStateAdapter
     {
-        // Deterministic IDs preserve the old effect ordering during migration:
-        // Inner, Outer, Strands, Sparks, Flare, Aura.
+        // These IDs reproduce the old effect ordering during migration.
+        // They are compatibility seeds only, not permanent runtime slots and
+        // not limits on how many instances or effect types may exist.
         private const uint LegacyInnerFlamesInstanceId = 1;
         private const uint LegacyOuterFlamesInstanceId = 2;
         private const uint LegacyStrandsInstanceId = 3;
         private const uint LegacySparksInstanceId = 4;
         private const uint LegacyFlareInstanceId = 5;
         private const uint LegacyAuraInstanceId = 6;
+        private const uint LegacyOrbitalsOrbsInstanceId = 7;
 
         internal static WeaponVfxState CreateInnerFlamesPrototype(
             VfxState legacyState)
         {
             var state =
-                new WeaponVfxState
-                {
-                    RigTransform =
-                        new VfxTransformState
-                        {
-                            XOffset = legacyState.RigXOffset,
-                            YOffset = legacyState.RigYOffset,
-                            ZOffset = legacyState.RigZOffset,
-
-                            XRotation = legacyState.RigXRotation,
-                            YRotation = legacyState.RigYRotation,
-                            ZRotation = legacyState.RigZRotation
-                        }
-                };
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
 
             var innerFlamesBlock =
                 new VfxEffectBlock
@@ -107,20 +97,8 @@ namespace NADA.VFX.Weapon.Core.State.Migration
             VfxState legacyState)
         {
             var state =
-                new WeaponVfxState
-                {
-                    RigTransform =
-                        new VfxTransformState
-                        {
-                            XOffset = legacyState.RigXOffset,
-                            YOffset = legacyState.RigYOffset,
-                            ZOffset = legacyState.RigZOffset,
-
-                            XRotation = legacyState.RigXRotation,
-                            YRotation = legacyState.RigYRotation,
-                            ZRotation = legacyState.RigZRotation
-                        }
-                };
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
 
             var outerFlamesBlock =
                 new VfxEffectBlock
@@ -192,20 +170,8 @@ namespace NADA.VFX.Weapon.Core.State.Migration
             VfxState legacyState)
         {
             var state =
-                new WeaponVfxState
-                {
-                    RigTransform =
-                        new VfxTransformState
-                        {
-                            XOffset = legacyState.RigXOffset,
-                            YOffset = legacyState.RigYOffset,
-                            ZOffset = legacyState.RigZOffset,
-
-                            XRotation = legacyState.RigXRotation,
-                            YRotation = legacyState.RigYRotation,
-                            ZRotation = legacyState.RigZRotation
-                        }
-                };
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
 
             var strandsBlock =
                 new VfxEffectBlock
@@ -277,20 +243,8 @@ namespace NADA.VFX.Weapon.Core.State.Migration
             VfxState legacyState)
         {
             var state =
-                new WeaponVfxState
-                {
-                    RigTransform =
-                        new VfxTransformState
-                        {
-                            XOffset = legacyState.RigXOffset,
-                            YOffset = legacyState.RigYOffset,
-                            ZOffset = legacyState.RigZOffset,
-
-                            XRotation = legacyState.RigXRotation,
-                            YRotation = legacyState.RigYRotation,
-                            ZRotation = legacyState.RigZRotation
-                        }
-                };
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
 
             var sparksBlock =
                 new VfxEffectBlock
@@ -338,20 +292,8 @@ namespace NADA.VFX.Weapon.Core.State.Migration
             VfxState legacyState)
         {
             var state =
-                new WeaponVfxState
-                {
-                    RigTransform =
-                        new VfxTransformState
-                        {
-                            XOffset = legacyState.RigXOffset,
-                            YOffset = legacyState.RigYOffset,
-                            ZOffset = legacyState.RigZOffset,
-
-                            XRotation = legacyState.RigXRotation,
-                            YRotation = legacyState.RigYRotation,
-                            ZRotation = legacyState.RigZRotation
-                        }
-                };
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
 
             var flareBlock =
                 new VfxEffectBlock
@@ -392,20 +334,8 @@ namespace NADA.VFX.Weapon.Core.State.Migration
             VfxState legacyState)
         {
             var state =
-                new WeaponVfxState
-                {
-                    RigTransform =
-                        new VfxTransformState
-                        {
-                            XOffset = legacyState.RigXOffset,
-                            YOffset = legacyState.RigYOffset,
-                            ZOffset = legacyState.RigZOffset,
-
-                            XRotation = legacyState.RigXRotation,
-                            YRotation = legacyState.RigYRotation,
-                            ZRotation = legacyState.RigZRotation
-                        }
-                };
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
 
             var auraBlock =
                 new VfxEffectBlock
@@ -439,6 +369,120 @@ namespace NADA.VFX.Weapon.Core.State.Migration
                 auraBlock);
 
             return state;
+        }
+
+        internal static WeaponVfxState CreateOrbitalsOrbsPrototype(
+            VfxState legacyState)
+        {
+            var state =
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
+
+            var orbsBlock =
+                new VfxEffectBlock
+                {
+                    InstanceId =
+                        LegacyOrbitalsOrbsInstanceId,
+
+                    TypeId =
+                        VfxEffectTypeIds.OrbitalsOrbs,
+
+                    Enabled =
+                        legacyState.OrbitalsOrbsEnabled,
+
+                    Transform =
+                        new VfxTransformState
+                        {
+                            XOffset =
+                                legacyState.OrbitalsOrbsXOffset,
+
+                            YOffset =
+                                legacyState.OrbitalsOrbsYOffset,
+
+                            ZOffset =
+                                legacyState.OrbitalsOrbsZOffset,
+
+                            XRotation =
+                                legacyState.OrbitalsOrbsXRotation,
+
+                            YRotation =
+                                legacyState.OrbitalsOrbsYRotation,
+
+                            ZRotation =
+                                legacyState.OrbitalsOrbsZRotation
+                        },
+
+                    Settings =
+                        new OrbitalsOrbsVfxSettings
+                        {
+                            Scale =
+                                legacyState.OrbitalsOrbsScale,
+
+                            Luminance =
+                                legacyState.OrbitalsOrbsLuminance,
+
+                            Hue =
+                                legacyState.OrbitalsOrbsHue,
+
+                            Path =
+                                new OrbitalsPathVfxSettings
+                                {
+                                    SnakeEnabled =
+                                        legacyState
+                                            .OrbitalsOrbsSnakeEnabled,
+
+                                    Count =
+                                        legacyState.OrbitalsOrbsCount,
+
+                                    Speed =
+                                        legacyState.OrbitalsOrbsSpeed,
+
+                                    Spacing =
+                                        legacyState.OrbitalsOrbsSpacing,
+
+                                    Length =
+                                        legacyState.OrbitalsOrbsLength,
+
+                                    Radius =
+                                        legacyState.OrbitalsOrbsRadius,
+
+                                    Cycles =
+                                        legacyState.OrbitalsOrbsCycles,
+
+                                    Drift =
+                                        legacyState.OrbitalsOrbsDrift
+                                }
+                        }
+                };
+
+            // OrbitalsOrbsGlueEnabled is intentionally not copied here.
+            // In the legacy schema it controls coupling of dependent orbital
+            // effects to Orbs rather than Orbs' own behavior. That relationship
+            // will move with those dependent blocks when they are migrated.
+
+            state.Effects.Add(
+                orbsBlock);
+
+            return state;
+        }
+
+        private static WeaponVfxState CreateStateWithLegacyRigTransform(
+            VfxState legacyState)
+        {
+            return new WeaponVfxState
+            {
+                RigTransform =
+                    new VfxTransformState
+                    {
+                        XOffset = legacyState.RigXOffset,
+                        YOffset = legacyState.RigYOffset,
+                        ZOffset = legacyState.RigZOffset,
+
+                        XRotation = legacyState.RigXRotation,
+                        YRotation = legacyState.RigYRotation,
+                        ZRotation = legacyState.RigZRotation
+                    }
+            };
         }
     }
 }

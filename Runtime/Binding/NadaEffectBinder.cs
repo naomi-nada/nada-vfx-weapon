@@ -221,7 +221,7 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             if (orbitalsRootTransform == null)
                 return;
 
-            var orbitalsEffect =
+            NadaOrbitalsEffect orbitalsEffect =
                 GetOrAddEffect<NadaOrbitalsEffect>(
                     orbitalsRootTransform);
 
@@ -240,7 +240,7 @@ namespace NADA.VFX.Weapon.Runtime.Binding
             if (orbitalsRootTransform == null)
                 return;
 
-            var orbitalsEffect =
+            NadaOrbitalsEffect orbitalsEffect =
                 GetOrAddEffect<NadaOrbitalsEffect>(
                     orbitalsRootTransform);
 
@@ -249,6 +249,33 @@ namespace NADA.VFX.Weapon.Runtime.Binding
 
             orbitalsEffect.SetLocalOrbsRootTransform(
                 localOrbsRootTransform);
+        }
+
+        internal static void BindOrbitalsOrbsBlockEffect(
+            Transform orbitalsRootTransform,
+            Transform localOrbsRootTransform,
+            VfxEffectBlock block)
+        {
+            if (orbitalsRootTransform == null)
+                return;
+
+            NadaOrbitalsEffect orbitalsEffect =
+                GetOrAddEffect<NadaOrbitalsEffect>(
+                    orbitalsRootTransform);
+
+            orbitalsEffect.SetLocalOrbsRootTransform(
+                localOrbsRootTransform);
+
+            bool accepted =
+                orbitalsEffect.SetOrbitalsOrbsBlockState(
+                    block);
+
+            NadaLogControl.Info(
+                $"orbitals-orbs-block-bind:{orbitalsRootTransform.GetInstanceID()}",
+                $"{Plugin.ModName}: [OrbitalsOrbsBlockBind] " +
+                $"root='{orbitalsRootTransform.name}' " +
+                $"id={(block != null ? block.InstanceId.ToString() : "null")} " +
+                $"accepted={accepted}");
         }
 
         internal static void BindStrandsEffect(

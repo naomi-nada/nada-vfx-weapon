@@ -5,6 +5,8 @@ namespace NADA.VFX.Weapon.Core.State.Blocks
     /// and eventually the public API.
     ///
     /// These are schema IDs. Don't rename them just because a C# class changes.
+    /// This list can grow as new effect implementations are added; it does not
+    /// define how many instances of any effect type may exist.
     /// </summary>
     internal static class VfxEffectTypeIds
     {
@@ -14,5 +16,7 @@ namespace NADA.VFX.Weapon.Core.State.Blocks
         internal const string Sparks = "sparks";
         internal const string Flare = "flare";
         internal const string Aura = "aura";
+
+        internal const string OrbitalsOrbs = "orbitals_orbs";
     }
 }

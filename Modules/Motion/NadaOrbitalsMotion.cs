@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.Debug;
 using UnityEngine;
 
@@ -17,6 +19,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private bool _hasCachedLocalState;
         private bool _cachedLocalStateIsBound;
         private float _nextLocalStateRefreshTime;
+
+        private OrbitalsOrbsMotionRuntimeState _orbsBlockState;
+        private bool _hasOrbsBlockState;
 
         private const int MaxOrbitalsVisuals = 40;
         private const int ArcLengthSampleCount = 192;
@@ -43,6 +48,28 @@ namespace NADA.VFX.Weapon.Modules.Motion
         {
             internal Vector3 Position;
             internal Quaternion Rotation;
+        }
+
+        private struct OrbitalsOrbsMotionRuntimeState
+        {
+            internal bool Enabled;
+            internal bool SnakeEnabled;
+
+            internal float Count;
+            internal float Speed;
+            internal float Spacing;
+            internal float Length;
+            internal float Radius;
+            internal float Cycles;
+            internal float Drift;
+
+            internal float XOffset;
+            internal float YOffset;
+            internal float ZOffset;
+
+            internal float XRotation;
+            internal float YRotation;
+            internal float ZRotation;
         }
 
         private NadaOrbitalsFamily _orbitalsFamily =
@@ -74,7 +101,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private bool _lastGlueEnabled;
         private bool _hasLastGlueEnabled;
+
         private NadaOrbitalsMotion _glueSourceMotion;
+        private bool _hasExplicitGlueSourceMotion;
 
         private Vector3 _baseHeadLocalPosition;
         private Vector3 _currentLocalOffset;
@@ -95,14 +124,52 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private int _parentWorldHistoryStartIndex;
         private int _parentWorldHistoryCount;
 
+        internal bool IsFamily(
+            NadaOrbitalsFamily family)
+        {
+            return _orbitalsFamily ==
+                   family;
+        }
+
         internal void Configure(
             NadaOrbitalsFamily orbitalsFamily,
             global::ItemDrop.ItemData itemData)
         {
-            _orbitalsFamily = orbitalsFamily;
+            bool preserveOrbsBlockState =
+                orbitalsFamily ==
+                    NadaOrbitalsFamily.Orbs &&
+                _orbitalsFamily ==
+                    NadaOrbitalsFamily.Orbs &&
+                _hasOrbsBlockState &&
+                _itemData == itemData &&
+                itemData != null &&
+                VfxStateIO.IsBound(itemData);
 
-            _itemData = itemData;
-            _hasResolvedState = false;
+            if (_orbitalsFamily != orbitalsFamily)
+            {
+                _glueSourceMotion =
+                    null;
+
+                _hasExplicitGlueSourceMotion =
+                    false;
+
+                ResetOrbitStartPoint();
+            }
+
+            _orbitalsFamily =
+                orbitalsFamily;
+
+            _itemData =
+                itemData;
+
+            _hasResolvedState =
+                false;
+
+            if (!preserveOrbsBlockState)
+            {
+                _hasOrbsBlockState =
+                    false;
+            }
 
             InvalidateLocalStateCache();
         }
@@ -111,20 +178,195 @@ namespace NADA.VFX.Weapon.Modules.Motion
             NadaOrbitalsFamily orbitalsFamily,
             VfxState state)
         {
-            _orbitalsFamily = orbitalsFamily;
+            if (_orbitalsFamily != orbitalsFamily)
+            {
+                _glueSourceMotion =
+                    null;
 
-            _resolvedState = state;
-            _hasResolvedState = true;
-            _itemData = null;
+                _hasExplicitGlueSourceMotion =
+                    false;
+
+                ResetOrbitStartPoint();
+            }
+
+            _orbitalsFamily =
+                orbitalsFamily;
+
+            _resolvedState =
+                state;
+
+            _hasResolvedState =
+                true;
+
+            _itemData =
+                null;
+
+            // Remote/legacy resolved state remains authoritative until
+            // that path is explicitly migrated.
+            _hasOrbsBlockState =
+                false;
 
             InvalidateLocalStateCache();
         }
 
+        internal bool ConfigureOrbitalsOrbsBlock(
+            VfxEffectBlock block)
+        {
+            if (_orbitalsFamily !=
+                NadaOrbitalsFamily.Orbs)
+            {
+                ResetOrbitStartPoint();
+            }
+
+            _orbitalsFamily =
+                NadaOrbitalsFamily.Orbs;
+
+            _itemData =
+                null;
+
+            _hasResolvedState =
+                false;
+
+            _glueSourceMotion =
+                null;
+
+            _hasExplicitGlueSourceMotion =
+                false;
+
+            InvalidateLocalStateCache();
+
+            return SetOrbitalsOrbsBlockState(
+                block);
+        }
+
+        internal bool SetOrbitalsOrbsBlockState(
+            VfxEffectBlock block)
+        {
+            OrbitalsOrbsVfxSettings orbsSettings =
+                block?.Settings as OrbitalsOrbsVfxSettings;
+
+            bool accepted =
+                _orbitalsFamily ==
+                    NadaOrbitalsFamily.Orbs &&
+                block != null &&
+                block.Transform != null &&
+                block.TypeId ==
+                    VfxEffectTypeIds.OrbitalsOrbs &&
+                orbsSettings?.Path != null;
+
+            OrbitalsOrbsMotionRuntimeState nextState =
+                default;
+
+            if (accepted)
+            {
+                nextState =
+                    new OrbitalsOrbsMotionRuntimeState
+                    {
+                        Enabled =
+                            block.Enabled,
+
+                        SnakeEnabled =
+                            orbsSettings.Path.SnakeEnabled,
+
+                        Count =
+                            orbsSettings.Path.Count,
+
+                        Speed =
+                            orbsSettings.Path.Speed,
+
+                        Spacing =
+                            orbsSettings.Path.Spacing,
+
+                        Length =
+                            orbsSettings.Path.Length,
+
+                        Radius =
+                            orbsSettings.Path.Radius,
+
+                        Cycles =
+                            orbsSettings.Path.Cycles,
+
+                        Drift =
+                            orbsSettings.Path.Drift,
+
+                        XOffset =
+                            block.Transform.XOffset,
+
+                        YOffset =
+                            block.Transform.YOffset,
+
+                        ZOffset =
+                            block.Transform.ZOffset,
+
+                        XRotation =
+                            block.Transform.XRotation,
+
+                        YRotation =
+                            block.Transform.YRotation,
+
+                        ZRotation =
+                            block.Transform.ZRotation
+                    };
+            }
+
+            // Once Orbs motion has been handed to the block path,
+            // malformed state is still authoritative and fails closed.
+            // Do not silently fall back to local config or ItemData.
+            _orbsBlockState =
+                nextState;
+
+            _hasOrbsBlockState =
+                true;
+
+            return accepted;
+        }
+
+        internal void SetGlueSourceMotion(
+            NadaOrbitalsMotion glueSourceMotion)
+        {
+            if (_hasExplicitGlueSourceMotion &&
+                _glueSourceMotion ==
+                    glueSourceMotion)
+            {
+                return;
+            }
+
+            _glueSourceMotion =
+                glueSourceMotion;
+
+            _hasExplicitGlueSourceMotion =
+                true;
+
+            ResetOrbitStartPoint();
+        }
+
+        internal void ClearExplicitGlueSourceMotion()
+        {
+            if (!_hasExplicitGlueSourceMotion &&
+                _glueSourceMotion == null)
+            {
+                return;
+            }
+
+            _glueSourceMotion =
+                null;
+
+            _hasExplicitGlueSourceMotion =
+                false;
+
+            ResetOrbitStartPoint();
+        }
+
         private void InvalidateLocalStateCache()
         {
-            _hasCachedLocalState = false;
-            _cachedLocalStateIsBound = false;
-            _nextLocalStateRefreshTime = 0f;
+            _hasCachedLocalState =
+                false;
+
+            _cachedLocalStateIsBound =
+                false;
+
+            _nextLocalStateRefreshTime =
+                0f;
         }
 
         private VfxState ResolveState()
@@ -142,15 +384,16 @@ namespace NADA.VFX.Weapon.Modules.Motion
             }
 
             // Bound state is fixed until we're explicitly reconfigured.
-            // Keep checking the binding marker, though, so an unbind
-            // doesn't leave this component displaying an old snapshot.
+            // Keep checking the binding marker so an unbind cannot leave
+            // an old snapshot active.
             if (_hasCachedLocalState &&
                 _cachedLocalStateIsBound &&
                 _itemData != null &&
                 VfxStateIO.IsBound(_itemData))
             {
                 _nextLocalStateRefreshTime =
-                    now + LocalStateRefreshInterval;
+                    now +
+                    LocalStateRefreshInterval;
 
                 return _cachedLocalState;
             }
@@ -158,17 +401,20 @@ namespace NADA.VFX.Weapon.Modules.Motion
             _cachedLocalState =
                 ResolveLocalState();
 
-            _hasCachedLocalState = true;
+            _hasCachedLocalState =
+                true;
 
             _nextLocalStateRefreshTime =
-                now + LocalStateRefreshInterval;
+                now +
+                LocalStateRefreshInterval;
 
             return _cachedLocalState;
         }
 
         private VfxState ResolveLocalState()
         {
-            _cachedLocalStateIsBound = false;
+            _cachedLocalStateIsBound =
+                false;
 
             if (_itemData != null &&
                 VfxStateIO.IsBound(_itemData))
@@ -177,7 +423,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
                         _itemData,
                         out VfxState itemState))
                 {
-                    _cachedLocalStateIsBound = true;
+                    _cachedLocalStateIsBound =
+                        true;
 
                     return itemState;
                 }
@@ -190,8 +437,10 @@ namespace NADA.VFX.Weapon.Modules.Motion
             Transform headVisualTransform,
             Transform followerPoolRootTransform)
         {
-            if (_headVisualTransform == headVisualTransform &&
-                _followerPoolRootTransform == followerPoolRootTransform)
+            if (_headVisualTransform ==
+                    headVisualTransform &&
+                _followerPoolRootTransform ==
+                    followerPoolRootTransform)
             {
                 return;
             }
@@ -206,12 +455,14 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 headVisualTransform != null &&
                 followerPoolRootTransform != null;
 
-            _visualChainDirty = true;
+            _visualChainDirty =
+                true;
         }
 
         private void Awake()
         {
-            NadaRuntimeDiagnostics.OrbitalsMotionCreated();
+            NadaRuntimeDiagnostics
+                .OrbitalsMotionCreated();
 
             _baseHeadLocalPosition =
                 transform.localPosition;
@@ -219,7 +470,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private void OnDestroy()
         {
-            NadaRuntimeDiagnostics.OrbitalsMotionDestroyed();
+            NadaRuntimeDiagnostics
+                .OrbitalsMotionDestroyed();
         }
 
         private void LateUpdate()
@@ -227,64 +479,185 @@ namespace NADA.VFX.Weapon.Modules.Motion
             if (_visualChainDirty)
             {
                 ResolveVisualChain();
-                _visualChainDirty = false;
+
+                _visualChainDirty =
+                    false;
             }
 
             if (!_initialized)
                 return;
 
+            if (_orbitalsFamily ==
+                    NadaOrbitalsFamily.Orbs &&
+                _hasOrbsBlockState)
+            {
+                if (!_orbsBlockState.Enabled)
+                {
+                    DisableAllVisualsAndResetState();
+                    return;
+                }
+
+                ApplyOrbitalsOrbsBlockMotion(
+                    _orbsBlockState);
+
+                return;
+            }
+
             VfxState state =
                 ResolveState();
 
-            if (!ResolveFamilyEnabled(state))
+            if (!ResolveFamilyEnabled(
+                    state))
             {
                 DisableAllVisualsAndResetState();
                 return;
             }
 
-            ApplyOrbitalsMotion(state);
+            ApplyOrbitalsMotion(
+                state);
+        }
+
+        private void ApplyOrbitalsOrbsBlockMotion(
+            OrbitalsOrbsMotionRuntimeState state)
+        {
+            const bool glueEnabled =
+                false;
+
+            bool snakeSpacingEnabled =
+                state.SnakeEnabled;
+
+            UpdateGlueState(
+                glueEnabled);
+
+            int desiredFollowerCount =
+                ResolveDesiredFollowerCount(
+                    state.Count);
+
+            float radiusMultiplier =
+                ClampOrbitalsRadius(
+                    state.Radius);
+
+            float orbitLengthMultiplier =
+                ClampOrbitalsLength(
+                    state.Length);
+
+            float turnsPerOneWayPass =
+                ClampOrbitalsCycles(
+                    state.Cycles);
+
+            _currentLocalOffset =
+                new Vector3(
+                    ClampOffset(
+                        state.XOffset),
+                    ClampOffset(
+                        state.YOffset),
+                    ClampOffset(
+                        state.ZOffset));
+
+            _currentLocalRotationOffset =
+                Quaternion.Euler(
+                    ClampRotation(
+                        state.XRotation),
+                    ClampRotation(
+                        state.YRotation),
+                    ClampRotation(
+                        state.ZRotation));
+
+            EnsureArcLengthCache(
+                radiusMultiplier,
+                orbitLengthMultiplier,
+                turnsPerOneWayPass);
+
+            float historyStepPerFollower =
+                SmoothHistoryStepPerFollower(
+                    ResolveHistoryStepPerFollowerFloat(
+                        state.Spacing,
+                        snakeSpacingEnabled));
+
+            float orbitAdherence =
+                ResolveOrbitAdherenceFromDrift(
+                    state.Drift);
+
+            // Orbs do not have their own visual spin behavior.
+            _currentVisualSpinRotation =
+                Quaternion.identity;
+
+            ApplyHeadVisualEnabledState(
+                true);
+
+            ApplyFollowerVisualCount(
+                desiredFollowerCount);
+
+            AdvanceCycleProgress(
+                ClampOrbitalsSpeed(
+                    state.Speed));
+
+            float currentDistanceAlongCycle =
+                _cachedCycleLength > 0f
+                    ? _currentCycleProgress01 *
+                      _cachedCycleLength
+                    : 0f;
+
+            Vector3 currentHeadLocalPosition =
+                EvaluateHeadLocalPositionAtDistance(
+                    currentDistanceAlongCycle);
+
+            transform.localPosition =
+                currentHeadLocalPosition;
+
+            RecordParentWorldHistory();
+
+            ApplyHeadVisualPosition(
+                currentDistanceAlongCycle,
+                orbitAdherence,
+                historyStepPerFollower);
+
+            ApplyFollowerPositions(
+                desiredFollowerCount,
+                historyStepPerFollower,
+                currentDistanceAlongCycle,
+                orbitAdherence,
+                snakeSpacingEnabled);
         }
 
         private void ApplyOrbitalsMotion(
             VfxState state)
         {
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
             bool snakeSpacingEnabled =
                 ResolveSnakeSpacingEnabled(
                     state,
                     glueEnabled);
 
-            if (!_hasLastGlueEnabled ||
-                _lastGlueEnabled != glueEnabled)
-            {
-                ResetOrbitStartPoint();
-
-                _lastGlueEnabled =
-                    glueEnabled;
-
-                _hasLastGlueEnabled =
-                    true;
-            }
+            UpdateGlueState(
+                glueEnabled);
 
             int desiredFollowerCount =
-                ResolveDesiredFollowerCount(state);
+                ResolveDesiredFollowerCount(
+                    state);
 
             float radiusMultiplier =
-                ResolveRadiusMultiplier(state);
+                ResolveRadiusMultiplier(
+                    state);
 
             float orbitLengthMultiplier =
-                ResolveOrbitLengthMultiplier(state);
+                ResolveOrbitLengthMultiplier(
+                    state);
 
             float turnsPerOneWayPass =
-                ResolveTurnsPerOneWayPass(state);
+                ResolveTurnsPerOneWayPass(
+                    state);
 
             _currentLocalOffset =
-                ResolveLocalOffset(state);
+                ResolveLocalOffset(
+                    state);
 
             _currentLocalRotationOffset =
-                ResolveLocalRotationOffset(state);
+                ResolveLocalRotationOffset(
+                    state);
 
             EnsureArcLengthCache(
                 radiusMultiplier,
@@ -299,17 +672,21 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             float orbitAdherence =
                 Mathf.Clamp01(
-                    ResolveOrbitAdherence(state));
+                    ResolveOrbitAdherence(
+                        state));
 
-            AdvanceVisualSpin(state);
+            AdvanceVisualSpin(
+                state);
 
-            ApplyHeadVisualEnabledState(true);
+            ApplyHeadVisualEnabledState(
+                true);
 
             ApplyFollowerVisualCount(
                 desiredFollowerCount);
 
             AdvanceCycleProgress(
-                ResolveCycleProgressPerSecond(state));
+                ResolveCycleProgressPerSecond(
+                    state));
 
             if (glueEnabled)
             {
@@ -317,10 +694,12 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     ResolveGlueSourceMotion();
 
                 if (glueSourceMotion != null &&
-                    glueSourceMotion._hasCurrentCycleProgress01)
+                    glueSourceMotion
+                        ._hasCurrentCycleProgress01)
                 {
                     _currentCycleProgress01 =
-                        glueSourceMotion._currentCycleProgress01;
+                        glueSourceMotion
+                            ._currentCycleProgress01;
 
                     _hasCurrentCycleProgress01 =
                         true;
@@ -355,13 +734,36 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 snakeSpacingEnabled);
         }
 
+        private void UpdateGlueState(
+            bool glueEnabled)
+        {
+            if (_hasLastGlueEnabled &&
+                _lastGlueEnabled ==
+                    glueEnabled)
+            {
+                return;
+            }
+
+            ResetOrbitStartPoint();
+
+            _lastGlueEnabled =
+                glueEnabled;
+
+            _hasLastGlueEnabled =
+                true;
+        }
+
         private void AdvanceCycleProgress(
             float cycleProgressPerSecond)
         {
             if (!_hasCurrentCycleProgress01)
             {
-                _currentCycleProgress01 = 0f;
-                _hasCurrentCycleProgress01 = true;
+                _currentCycleProgress01 =
+                    0f;
+
+                _hasCurrentCycleProgress01 =
+                    true;
+
                 return;
             }
 
@@ -450,7 +852,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private void ResolveVisualChain()
         {
             _followerVisualTransforms.Clear();
-            _initialized = false;
+
+            _initialized =
+                false;
 
             if (!_configuredVisualChain ||
                 _headVisualTransform == null ||
@@ -465,11 +869,16 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 if (childTransform == null)
                     continue;
 
-                // The head owns its own slot. Followers should never quietly include it.
-                if (childTransform == _headVisualTransform ||
-                    _headVisualTransform.IsChildOf(childTransform) ||
-                    childTransform.IsChildOf(_headVisualTransform) ||
-                    childTransform.name == _headVisualTransform.name)
+                // The head owns its own slot. Followers should never
+                // quietly include it.
+                if (childTransform ==
+                        _headVisualTransform ||
+                    _headVisualTransform.IsChildOf(
+                        childTransform) ||
+                    childTransform.IsChildOf(
+                        _headVisualTransform) ||
+                    childTransform.name ==
+                        _headVisualTransform.name)
                 {
                     continue;
                 }
@@ -478,7 +887,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     childTransform);
             }
 
-            _initialized = true;
+            _initialized =
+                true;
         }
 
         private void ApplyHeadVisualEnabledState(
@@ -510,7 +920,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
                  visualIndex++)
             {
                 Transform followerVisualTransform =
-                    _followerVisualTransforms[visualIndex];
+                    _followerVisualTransforms[
+                        visualIndex];
 
                 if (followerVisualTransform == null)
                     continue;
@@ -530,7 +941,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private void DisableAllVisualsAndResetState()
         {
-            ApplyHeadVisualEnabledState(false);
+            ApplyHeadVisualEnabledState(
+                false);
 
             foreach (Transform followerVisualTransform in
                      _followerVisualTransforms)
@@ -634,8 +1046,16 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     _ => 0f
                 };
 
+            return ResolveDesiredFollowerCount(
+                normalizedCount);
+        }
+
+        private static int ResolveDesiredFollowerCount(
+            float normalizedCount)
+        {
             normalizedCount =
-                Mathf.Clamp01(normalizedCount);
+                Mathf.Clamp01(
+                    normalizedCount);
 
             int desiredTotalVisualCount =
                 1 +
@@ -657,38 +1077,48 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 return MinHistoryStepPerFollower;
 
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
-            float spacingT =
+            float spacing =
                 _orbitalsFamily switch
                 {
                     NadaOrbitalsFamily.Orbs =>
-                        ClampOrbitalsSpacing(
-                            state.OrbitalsOrbsSpacing),
+                        state.OrbitalsOrbsSpacing,
 
                     NadaOrbitalsFamily.Cores =>
                         glueEnabled
-                            ? ClampOrbitalsSpacing(
-                                state.OrbitalsOrbsSpacing)
-                            : ClampOrbitalsSpacing(
-                                state.OrbitalsCoresSpacing),
+                            ? state.OrbitalsOrbsSpacing
+                            : state.OrbitalsCoresSpacing,
 
                     NadaOrbitalsFamily.Flames =>
                         glueEnabled
-                            ? ClampOrbitalsSpacing(
-                                state.OrbitalsOrbsSpacing)
-                            : ClampOrbitalsSpacing(
-                                state.OrbitalsFlamesSpacing),
+                            ? state.OrbitalsOrbsSpacing
+                            : state.OrbitalsFlamesSpacing,
 
                     NadaOrbitalsFamily.Embers =>
                         glueEnabled
-                            ? ClampOrbitalsSpacing(
-                                state.OrbitalsOrbsSpacing)
-                            : ClampOrbitalsSpacing(
-                                state.OrbitalsEmbersSpacing),
+                            ? state.OrbitalsOrbsSpacing
+                            : state.OrbitalsEmbersSpacing,
 
                     _ => 0f
                 };
+
+            return ResolveHistoryStepPerFollowerFloat(
+                spacing,
+                false);
+        }
+
+        private static float ResolveHistoryStepPerFollowerFloat(
+            float spacing,
+            bool snakeSpacingEnabled)
+        {
+            if (snakeSpacingEnabled)
+                return MinHistoryStepPerFollower;
+
+            float spacingT =
+                ClampOrbitalsSpacing(
+                    spacing);
 
             return Mathf.Lerp(
                 MinHistoryStepPerFollower,
@@ -715,7 +1145,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
             VfxState state)
         {
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
             float value =
                 _orbitalsFamily switch
@@ -743,6 +1174,13 @@ namespace NADA.VFX.Weapon.Modules.Motion
                             .DefaultOrbitalsRadiusMultiplier
                 };
 
+            return ClampOrbitalsRadius(
+                value);
+        }
+
+        private static float ClampOrbitalsRadius(
+            float value)
+        {
             if (float.IsNaN(value) ||
                 float.IsInfinity(value))
             {
@@ -760,7 +1198,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
             VfxState state)
         {
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
             float value =
                 _orbitalsFamily switch
@@ -788,6 +1227,13 @@ namespace NADA.VFX.Weapon.Modules.Motion
                             .DefaultOrbitLengthMultiplier
                 };
 
+            return ClampOrbitalsLength(
+                value);
+        }
+
+        private static float ClampOrbitalsLength(
+            float value)
+        {
             if (float.IsNaN(value) ||
                 float.IsInfinity(value))
             {
@@ -805,7 +1251,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
             VfxState state)
         {
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
             float value =
                 _orbitalsFamily switch
@@ -833,6 +1280,13 @@ namespace NADA.VFX.Weapon.Modules.Motion
                             .DefaultTurnsPerOneWayPass
                 };
 
+            return ClampOrbitalsCycles(
+                value);
+        }
+
+        private static float ClampOrbitalsCycles(
+            float value)
+        {
             if (float.IsNaN(value) ||
                 float.IsInfinity(value))
             {
@@ -850,7 +1304,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
             VfxState state)
         {
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
             float value =
                 _orbitalsFamily switch
@@ -877,6 +1332,13 @@ namespace NADA.VFX.Weapon.Modules.Motion
                         DefaultCycleProgressPerSecond
                 };
 
+            return ClampOrbitalsSpeed(
+                value);
+        }
+
+        private static float ClampOrbitalsSpeed(
+            float value)
+        {
             if (float.IsNaN(value) ||
                 float.IsInfinity(value))
             {
@@ -893,7 +1355,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
             VfxState state)
         {
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
             float drift =
                 _orbitalsFamily switch
@@ -920,6 +1383,13 @@ namespace NADA.VFX.Weapon.Modules.Motion
                         PluginConfig.DefaultDrift
                 };
 
+            return ResolveOrbitAdherenceFromDrift(
+                drift);
+        }
+
+        private static float ResolveOrbitAdherenceFromDrift(
+            float drift)
+        {
             if (float.IsNaN(drift) ||
                 float.IsInfinity(drift))
             {
@@ -933,7 +1403,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     PluginConfig.MinDrift,
                     PluginConfig.MaxDrift);
 
-            return 1f - drift;
+            return 1f -
+                   drift;
         }
 
         private void EnsureArcLengthCache(
@@ -1021,13 +1492,16 @@ namespace NADA.VFX.Weapon.Modules.Motion
             }
 
             int lowerIndex =
-                upperIndex - 1;
+                upperIndex -
+                1;
 
             float lowerDistance =
-                _sampledCumulativeLengths[lowerIndex];
+                _sampledCumulativeLengths[
+                    lowerIndex];
 
             float upperDistance =
-                _sampledCumulativeLengths[upperIndex];
+                _sampledCumulativeLengths[
+                    upperIndex];
 
             float interpolationT =
                 Mathf.Approximately(
@@ -1041,8 +1515,10 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             Vector3 localPosition =
                 Vector3.Lerp(
-                    _sampledLocalPositions[lowerIndex],
-                    _sampledLocalPositions[upperIndex],
+                    _sampledLocalPositions[
+                        lowerIndex],
+                    _sampledLocalPositions[
+                        upperIndex],
                     interpolationT);
 
             return basePosition +
@@ -1117,7 +1593,6 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 return;
             }
 
-            // The head can lag a little, but it should not become follower zero.
             float headHistorySampleIndex =
                 Mathf.Max(
                     0.15f,
@@ -1158,17 +1633,20 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     _followerVisualTransforms.Count);
 
             for (int visibleIndex = 0;
-                 visibleIndex < availableFollowerCount;
+                 visibleIndex <
+                 availableFollowerCount;
                  visibleIndex++)
             {
                 Transform followerVisualTransform =
-                    _followerVisualTransforms[visibleIndex];
+                    _followerVisualTransforms[
+                        visibleIndex];
 
                 if (followerVisualTransform == null)
                     continue;
 
                 int followerIndex =
-                    visibleIndex + 1;
+                    visibleIndex +
+                    1;
 
                 Vector3 lockedWorldPosition =
                     EvaluateLockedFollowerWorldPosition(
@@ -1215,19 +1693,28 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         internal void ResetOrbitStartPoint()
         {
-            _currentCycleProgress01 = 0f;
-            _hasCurrentCycleProgress01 = false;
+            _currentCycleProgress01 =
+                0f;
 
-            _currentHistoryStepPerFollower = 0f;
-            _hasCurrentHistoryStepPerFollower = false;
+            _hasCurrentCycleProgress01 =
+                false;
+
+            _currentHistoryStepPerFollower =
+                0f;
+
+            _hasCurrentHistoryStepPerFollower =
+                false;
 
             ClearParentWorldHistory();
         }
 
         private void ClearParentWorldHistory()
         {
-            _parentWorldHistoryStartIndex = 0;
-            _parentWorldHistoryCount = 0;
+            _parentWorldHistoryStartIndex =
+                0;
+
+            _parentWorldHistoryCount =
+                0;
         }
 
         private void EnsureParentWorldHistoryBuffer()
@@ -1239,8 +1726,11 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 new ParentWorldPoseSample[
                     MaxParentHistorySamples];
 
-            _parentWorldHistoryStartIndex = 0;
-            _parentWorldHistoryCount = 0;
+            _parentWorldHistoryStartIndex =
+                0;
+
+            _parentWorldHistoryCount =
+                0;
         }
 
         private void RecordParentWorldHistory()
@@ -1350,15 +1840,18 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             if (sampleIndex <= 0f)
             {
-                return GetParentWorldHistorySample(0)
+                return GetParentWorldHistorySample(
+                        0)
                     .Position;
             }
 
             int lowerIndex =
-                Mathf.FloorToInt(sampleIndex);
+                Mathf.FloorToInt(
+                    sampleIndex);
 
             int upperIndex =
-                Mathf.CeilToInt(sampleIndex);
+                Mathf.CeilToInt(
+                    sampleIndex);
 
             if (lowerIndex >=
                 _parentWorldHistoryCount)
@@ -1376,7 +1869,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     .Position;
             }
 
-            if (lowerIndex == upperIndex)
+            if (lowerIndex ==
+                upperIndex)
             {
                 return GetParentWorldHistorySample(
                         lowerIndex)
@@ -1412,15 +1906,18 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             if (sampleIndex <= 0f)
             {
-                return GetParentWorldHistorySample(0)
+                return GetParentWorldHistorySample(
+                        0)
                     .Rotation;
             }
 
             int lowerIndex =
-                Mathf.FloorToInt(sampleIndex);
+                Mathf.FloorToInt(
+                    sampleIndex);
 
             int upperIndex =
-                Mathf.CeilToInt(sampleIndex);
+                Mathf.CeilToInt(
+                    sampleIndex);
 
             if (lowerIndex >=
                 _parentWorldHistoryCount)
@@ -1438,7 +1935,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     .Rotation;
             }
 
-            if (lowerIndex == upperIndex)
+            if (lowerIndex ==
+                upperIndex)
             {
                 return GetParentWorldHistorySample(
                         lowerIndex)
@@ -1467,6 +1965,15 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private NadaOrbitalsMotion ResolveGlueSourceMotion()
         {
+            // Explicit binding wins. If the explicitly bound source has been
+            // destroyed, fail closed rather than silently pairing this motion
+            // with some other Orbs instance in the hierarchy.
+            if (_hasExplicitGlueSourceMotion)
+                return _glueSourceMotion;
+
+            // Transitional legacy behavior. While all four families still
+            // occupy one shared Orbitals hierarchy, retain the existing
+            // discovery path until structural migration removes it.
             if (_glueSourceMotion != null)
                 return _glueSourceMotion;
 
@@ -1477,12 +1984,13 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 return null;
 
             foreach (NadaOrbitalsMotion motion in
-                     root.GetComponentsInChildren<NadaOrbitalsMotion>(true))
+                     root.GetComponentsInChildren<NadaOrbitalsMotion>(
+                         true))
             {
                 if (motion != null &&
                     motion != this &&
                     motion._orbitalsFamily ==
-                    NadaOrbitalsFamily.Orbs)
+                        NadaOrbitalsFamily.Orbs)
                 {
                     _glueSourceMotion =
                         motion;
@@ -1498,7 +2006,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
             VfxState state)
         {
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
             float x =
                 _orbitalsFamily switch
@@ -1576,16 +2085,20 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 };
 
             return new Vector3(
-                ClampOffset(x),
-                ClampOffset(y),
-                ClampOffset(z));
+                ClampOffset(
+                    x),
+                ClampOffset(
+                    y),
+                ClampOffset(
+                    z));
         }
 
         private Quaternion ResolveLocalRotationOffset(
             VfxState state)
         {
             bool glueEnabled =
-                ResolveGlueEnabled(state);
+                ResolveGlueEnabled(
+                    state);
 
             float x =
                 _orbitalsFamily switch
@@ -1663,9 +2176,12 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 };
 
             return Quaternion.Euler(
-                ClampRotation(x),
-                ClampRotation(y),
-                ClampRotation(z));
+                ClampRotation(
+                    x),
+                ClampRotation(
+                    y),
+                ClampRotation(
+                    z));
         }
 
         private static float ClampOffset(
