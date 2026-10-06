@@ -4,6 +4,7 @@ using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.State.Migration;
 using NADA.VFX.Weapon.Runtime.Binding;
+using NADA.VFX.Weapon.Runtime.Formation;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
@@ -409,8 +410,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (localWeaponRootTransform == null)
                 return false;
 
-            // Remote Orbs uses the same block-owned structure as local bound
-            // Orbs. Shared Orbitals still owns Cores, Flames and Embers.
             NadaOrbitalsRigAssembly
                 .EnsureLegacyOrbitalsRigWithoutOrbs(
                     localWeaponRootTransform,
@@ -1248,6 +1247,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 source,
                 innerFlamesState);
 
+            LogResolvedOrbitalsFormation(
+                context,
+                source,
+                innerFlamesState);
+
             NadaLogControl.Info(
                 $"block-prototype-state:{source}:{context.Root.GetInstanceID()}",
                 $"{Plugin.ModName}: [BlockPrototypeState] " +
@@ -1348,6 +1352,104 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"legacyCoresGlue={context.State.OrbitalsCoresGlueEnabled} " +
                 $"legacyOrbsGlue={context.State.OrbitalsOrbsGlueEnabled} " +
                 $"matchesLegacy={matchesLegacy}");
+        }
+
+        private static void LogResolvedOrbitalsFormation(
+            NadaWeaponRigContext context,
+            string source,
+            WeaponVfxState state)
+        {
+            if (context == null ||
+                context.Root == null)
+            {
+                return;
+            }
+
+            bool valid =
+                OrbitalsFormationResolver.TryResolve(
+                    state,
+                    out OrbitalsFormationResolution resolution);
+
+            if (!valid ||
+                resolution == null ||
+                !resolution.IsValid)
+            {
+                string failureReason =
+                    resolution?.FailureReason ??
+                    "unknown";
+
+                NadaLogControl.Info(
+                    $"orbitals-formation-resolve-invalid:" +
+                    $"{source}:{context.Root.GetInstanceID()}",
+                    $"{Plugin.ModName}: [OrbitalsFormationResolve] " +
+                    $"source='{source}' " +
+                    $"root='{context.Root.name}' " +
+                    $"valid=False " +
+                    $"reason='{failureReason}'");
+
+                return;
+            }
+
+            NadaLogControl.Info(
+                $"orbitals-formation-resolve:" +
+                $"{source}:{context.Root.GetInstanceID()}",
+                $"{Plugin.ModName}: [OrbitalsFormationResolve] " +
+                $"source='{source}' " +
+                $"root='{context.Root.name}' " +
+                $"valid=True " +
+                $"orbitals={resolution.OrbitalsCount} " +
+                $"leaders={resolution.LeaderCount} " +
+                $"followers={resolution.FollowerCount}");
+
+            foreach (ResolvedOrbitalsFormation entry in
+                     resolution.Entries)
+            {
+                if (entry == null)
+                    continue;
+
+                string mode =
+                    !entry.Enabled
+                        ? "disabled"
+                        : entry.IsFollower
+                            ? "follower"
+                            : entry.IsLeader
+                                ? "leader"
+                                : "independent";
+
+                string leader =
+                    entry.LeaderInstanceId.HasValue
+                        ? entry.LeaderInstanceId.Value.ToString()
+                        : "none";
+
+                NadaLogControl.Info(
+                    $"orbitals-formation-resolved:" +
+                    $"{source}:" +
+                    $"{context.Root.GetInstanceID()}:" +
+                    $"{entry.InstanceId}",
+                    $"{Plugin.ModName}: [OrbitalsFormationResolved] " +
+                    $"source='{source}' " +
+                    $"root='{context.Root.name}' " +
+                    $"id={entry.InstanceId} " +
+                    $"type='{entry.TypeId}' " +
+                    $"enabled={entry.Enabled} " +
+                    $"mode={mode} " +
+                    $"leader={leader} " +
+                    $"trajectorySource={entry.TrajectorySourceInstanceId} " +
+                    $"count={entry.OwnCount} " +
+                    $"snake={entry.EffectiveSnakeEnabled} " +
+                    $"speed={entry.EffectiveSpeed} " +
+                    $"spacing={entry.EffectiveSpacing} " +
+                    $"length={entry.EffectiveLength} " +
+                    $"radius={entry.EffectiveRadius} " +
+                    $"cycles={entry.EffectiveCycles} " +
+                    $"drift={entry.EffectiveDrift} " +
+                    $"position=({entry.EffectiveXOffset}, " +
+                    $"{entry.EffectiveYOffset}, " +
+                    $"{entry.EffectiveZOffset}) " +
+                    $"rotation=({entry.EffectiveXRotation}, " +
+                    $"{entry.EffectiveYRotation}, " +
+                    $"{entry.EffectiveZRotation})");
+            }
         }
 
         private static WeaponVfxState CreateInnerFlamesPrototypeState(
