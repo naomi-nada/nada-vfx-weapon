@@ -19,6 +19,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
         private const uint PrototypeLegacyFlareInstanceId = 5;
         private const uint PrototypeLegacyAuraInstanceId = 6;
         private const uint PrototypeLegacyOrbitalsOrbsInstanceId = 7;
+        private const uint PrototypeLegacyOrbitalsCoresInstanceId = 8;
+        private const uint PrototypeLegacyOrbitalsFlamesInstanceId = 9;
+        private const uint PrototypeLegacyOrbitalsEmbersInstanceId = 10;
 
         internal static void Run(
             NadaWeaponRigContext context)
@@ -406,9 +409,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (localWeaponRootTransform == null)
                 return false;
 
-            // 57E: remote Orbs now uses the same block-owned structure as
-            // local bound Orbs. The shared hierarchy remains only for the
-            // still-legacy Cores, Flames and Embers.
+            // Remote Orbs uses the same block-owned structure as local bound
+            // Orbs. Shared Orbitals still owns Cores, Flames and Embers.
             NadaOrbitalsRigAssembly
                 .EnsureLegacyOrbitalsRigWithoutOrbs(
                     localWeaponRootTransform,
@@ -492,8 +494,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 blockState,
                 rootObject.name);
 
-            // 57E: the remote ID-7 block now owns Orbs visual structure,
-            // motion structure and pool exactly like the local path.
             BindOrbitalsOrbsBlocks(
                 remoteEffectsRootTransform,
                 localWeaponRootTransform,
@@ -506,8 +506,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 blockState,
                 rootObject.name);
 
-            // Shared remote Orbitals behavior now owns only the remaining
-            // legacy Cores/Flames/Embers groups.
             if (catalog.OrbitalsRootTransform != null)
             {
                 NadaEffectBinder.BindOrbitalsEffect(
@@ -1171,6 +1169,21 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     context,
                     source);
 
+            WeaponVfxState orbitalsCoresState =
+                CreateOrbitalsCoresPrototypeState(
+                    context,
+                    source);
+
+            WeaponVfxState orbitalsFlamesState =
+                CreateOrbitalsFlamesPrototypeState(
+                    context,
+                    source);
+
+            WeaponVfxState orbitalsEmbersState =
+                CreateOrbitalsEmbersPrototypeState(
+                    context,
+                    source);
+
             if (innerFlamesState?.Effects == null ||
                 innerFlamesState.Effects.Count != 1 ||
                 outerFlamesState?.Effects == null ||
@@ -1184,7 +1197,13 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 auraState?.Effects == null ||
                 auraState.Effects.Count != 1 ||
                 orbitalsOrbsState?.Effects == null ||
-                orbitalsOrbsState.Effects.Count != 1)
+                orbitalsOrbsState.Effects.Count != 1 ||
+                orbitalsCoresState?.Effects == null ||
+                orbitalsCoresState.Effects.Count != 1 ||
+                orbitalsFlamesState?.Effects == null ||
+                orbitalsFlamesState.Effects.Count != 1 ||
+                orbitalsEmbersState?.Effects == null ||
+                orbitalsEmbersState.Effects.Count != 1)
             {
                 Plugin.Log.LogWarning(
                     $"{Plugin.ModName}: [BlockPrototypeState] " +
@@ -1211,6 +1230,24 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             innerFlamesState.Effects.Add(
                 orbitalsOrbsState.Effects[0]);
 
+            innerFlamesState.Effects.Add(
+                orbitalsCoresState.Effects[0]);
+
+            innerFlamesState.Effects.Add(
+                orbitalsFlamesState.Effects[0]);
+
+            innerFlamesState.Effects.Add(
+                orbitalsEmbersState.Effects[0]);
+
+            LegacyVfxStateAdapter.ApplyMigratedOrbitalsRelationships(
+                innerFlamesState,
+                context.State);
+
+            LogMigratedOrbitalsRelationships(
+                context,
+                source,
+                innerFlamesState);
+
             NadaLogControl.Info(
                 $"block-prototype-state:{source}:{context.Root.GetInstanceID()}",
                 $"{Plugin.ModName}: [BlockPrototypeState] " +
@@ -1218,9 +1255,99 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"root='{context.Root.name}' " +
                 $"effects={innerFlamesState.Effects.Count} " +
                 $"order='[1:inner_flames,2:outer_flames,3:strands," +
-                $"4:sparks,5:flare,6:aura,7:orbitals_orbs]'");
+                $"4:sparks,5:flare,6:aura,7:orbitals_orbs," +
+                $"8:orbitals_cores,9:orbitals_flames," +
+                $"10:orbitals_embers]'");
 
             return innerFlamesState;
+        }
+
+        private static void LogMigratedOrbitalsRelationships(
+            NadaWeaponRigContext context,
+            string source,
+            WeaponVfxState state)
+        {
+            if (context == null ||
+                context.Root == null ||
+                state?.Effects == null)
+            {
+                return;
+            }
+
+            OrbitalsOrbsVfxSettings orbs =
+                null;
+
+            foreach (VfxEffectBlock block in state.Effects)
+            {
+                if (block == null ||
+                    block.InstanceId !=
+                        PrototypeLegacyOrbitalsOrbsInstanceId ||
+                    block.TypeId !=
+                        VfxEffectTypeIds.OrbitalsOrbs)
+                {
+                    continue;
+                }
+
+                orbs =
+                    block.Settings as OrbitalsOrbsVfxSettings;
+
+                break;
+            }
+
+            if (orbs?.Formation == null)
+                return;
+
+            bool coresTargeted =
+                orbs.Formation.GlueTargetInstanceIds != null &&
+                orbs.Formation.GlueTargetInstanceIds.Contains(
+                    PrototypeLegacyOrbitalsCoresInstanceId);
+
+            bool flamesTargeted =
+                orbs.Formation.GlueTargetInstanceIds != null &&
+                orbs.Formation.GlueTargetInstanceIds.Contains(
+                    PrototypeLegacyOrbitalsFlamesInstanceId);
+
+            bool embersTargeted =
+                orbs.Formation.GlueTargetInstanceIds != null &&
+                orbs.Formation.GlueTargetInstanceIds.Contains(
+                    PrototypeLegacyOrbitalsEmbersInstanceId);
+
+            bool expectedLeaderEnabled =
+                context.State.OrbitalsOrbsGlueEnabled ||
+                context.State.OrbitalsCoresGlueEnabled;
+
+            bool expectedCoresTargeted =
+                context.State.OrbitalsCoresGlueEnabled;
+
+            bool expectedFlamesTargeted =
+                context.State.OrbitalsOrbsGlueEnabled;
+
+            bool expectedEmbersTargeted =
+                context.State.OrbitalsOrbsGlueEnabled;
+
+            bool matchesLegacy =
+                orbs.Formation.GlueLeaderEnabled ==
+                    expectedLeaderEnabled &&
+                coresTargeted ==
+                    expectedCoresTargeted &&
+                flamesTargeted ==
+                    expectedFlamesTargeted &&
+                embersTargeted ==
+                    expectedEmbersTargeted;
+
+            NadaLogControl.Info(
+                $"block-prototype:orbitals-glue:{source}:{context.Root.GetInstanceID()}",
+                $"{Plugin.ModName}: [OrbitalsGlueBlockPrototype] " +
+                $"source='{source}' " +
+                $"root='{context.Root.name}' " +
+                $"leaderId={PrototypeLegacyOrbitalsOrbsInstanceId} " +
+                $"leaderEnabled={orbs.Formation.GlueLeaderEnabled} " +
+                $"coresTargeted={coresTargeted} " +
+                $"flamesTargeted={flamesTargeted} " +
+                $"embersTargeted={embersTargeted} " +
+                $"legacyCoresGlue={context.State.OrbitalsCoresGlueEnabled} " +
+                $"legacyOrbsGlue={context.State.OrbitalsOrbsGlueEnabled} " +
+                $"matchesLegacy={matchesLegacy}");
         }
 
         private static WeaponVfxState CreateInnerFlamesPrototypeState(
@@ -1932,6 +2059,400 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"radius={orbs.Path.Radius} " +
                 $"cycles={orbs.Path.Cycles} " +
                 $"drift={orbs.Path.Drift} " +
+                $"position=({block.Transform.XOffset}, " +
+                $"{block.Transform.YOffset}, " +
+                $"{block.Transform.ZOffset}) " +
+                $"rotation=({block.Transform.XRotation}, " +
+                $"{block.Transform.YRotation}, " +
+                $"{block.Transform.ZRotation}) " +
+                $"matchesLegacy={matchesLegacy}");
+
+            return blockState;
+        }
+
+        private static WeaponVfxState CreateOrbitalsCoresPrototypeState(
+            NadaWeaponRigContext context,
+            string source)
+        {
+            if (context == null ||
+                context.Root == null)
+            {
+                return null;
+            }
+
+            WeaponVfxState blockState =
+                LegacyVfxStateAdapter.CreateOrbitalsCoresPrototype(
+                    context.State);
+
+            if (blockState?.Effects == null ||
+                blockState.Effects.Count != 1)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [OrbitalsCoresBlockPrototype] " +
+                    $"Cores prototype did not contain exactly one migrated effect block.");
+
+                return null;
+            }
+
+            VfxEffectBlock block =
+                blockState.Effects[0];
+
+            if (block == null ||
+                block.Transform == null ||
+                block.Settings is not OrbitalsCoresVfxSettings cores ||
+                cores.Formation?.Path == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [OrbitalsCoresBlockPrototype] " +
+                    $"Cores prototype contained invalid settings.");
+
+                return null;
+            }
+
+            VfxState legacy =
+                context.State;
+
+            OrbitalsPathVfxSettings path =
+                cores.Formation.Path;
+
+            bool matchesLegacy =
+                block.InstanceId ==
+                    PrototypeLegacyOrbitalsCoresInstanceId &&
+                block.TypeId ==
+                    VfxEffectTypeIds.OrbitalsCores &&
+                block.Enabled ==
+                    legacy.OrbitalsCoresEnabled &&
+
+                block.Transform.XOffset ==
+                    legacy.OrbitalsCoresXOffset &&
+                block.Transform.YOffset ==
+                    legacy.OrbitalsCoresYOffset &&
+                block.Transform.ZOffset ==
+                    legacy.OrbitalsCoresZOffset &&
+
+                block.Transform.XRotation ==
+                    legacy.OrbitalsCoresXRotation &&
+                block.Transform.YRotation ==
+                    legacy.OrbitalsCoresYRotation &&
+                block.Transform.ZRotation ==
+                    legacy.OrbitalsCoresZRotation &&
+
+                cores.Scale ==
+                    legacy.OrbitalsCoresScale &&
+                cores.Luminance ==
+                    legacy.OrbitalsCoresLuminance &&
+                cores.Hue ==
+                    legacy.OrbitalsCoresHue &&
+                cores.SpinEnabled ==
+                    legacy.OrbitalsCoresSpinEnabled &&
+                cores.SpinSpeed ==
+                    legacy.OrbitalsCoresSpinSpeed &&
+
+                path.SnakeEnabled ==
+                    legacy.OrbitalsCoresSnakeEnabled &&
+                path.Count ==
+                    legacy.OrbitalsCoresCount &&
+                path.Speed ==
+                    legacy.OrbitalsCoresSpeed &&
+                path.Spacing ==
+                    legacy.OrbitalsCoresSpacing &&
+                path.Length ==
+                    legacy.OrbitalsCoresLength &&
+                path.Radius ==
+                    legacy.OrbitalsCoresRadius &&
+                path.Cycles ==
+                    legacy.OrbitalsCoresCycles &&
+                path.Drift ==
+                    legacy.OrbitalsCoresDrift &&
+
+                !cores.Formation.GlueLeaderEnabled &&
+                cores.Formation.GlueTargetInstanceIds != null &&
+                cores.Formation.GlueTargetInstanceIds.Count == 0;
+
+            NadaLogControl.Info(
+                $"block-prototype:orbitals-cores:{source}:{context.Root.GetInstanceID()}",
+                $"{Plugin.ModName}: [OrbitalsCoresBlockPrototype] " +
+                $"source='{source}' " +
+                $"root='{context.Root.name}' " +
+                $"type='{block.TypeId}' " +
+                $"id={block.InstanceId} " +
+                $"enabled={block.Enabled} " +
+                $"snake={path.SnakeEnabled} " +
+                $"count={path.Count} " +
+                $"hue={cores.Hue} " +
+                $"scale={cores.Scale} " +
+                $"spin={cores.SpinEnabled} " +
+                $"spinSpeed={cores.SpinSpeed} " +
+                $"speed={path.Speed} " +
+                $"spacing={path.Spacing} " +
+                $"length={path.Length} " +
+                $"radius={path.Radius} " +
+                $"cycles={path.Cycles} " +
+                $"drift={path.Drift} " +
+                $"position=({block.Transform.XOffset}, " +
+                $"{block.Transform.YOffset}, " +
+                $"{block.Transform.ZOffset}) " +
+                $"rotation=({block.Transform.XRotation}, " +
+                $"{block.Transform.YRotation}, " +
+                $"{block.Transform.ZRotation}) " +
+                $"matchesLegacy={matchesLegacy}");
+
+            return blockState;
+        }
+
+        private static WeaponVfxState CreateOrbitalsFlamesPrototypeState(
+            NadaWeaponRigContext context,
+            string source)
+        {
+            if (context == null ||
+                context.Root == null)
+            {
+                return null;
+            }
+
+            WeaponVfxState blockState =
+                LegacyVfxStateAdapter.CreateOrbitalsFlamesPrototype(
+                    context.State);
+
+            if (blockState?.Effects == null ||
+                blockState.Effects.Count != 1)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [OrbitalsFlamesBlockPrototype] " +
+                    $"Flames prototype did not contain exactly one migrated effect block.");
+
+                return null;
+            }
+
+            VfxEffectBlock block =
+                blockState.Effects[0];
+
+            if (block == null ||
+                block.Transform == null ||
+                block.Settings is not OrbitalsFlamesVfxSettings flames ||
+                flames.Formation?.Path == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [OrbitalsFlamesBlockPrototype] " +
+                    $"Flames prototype contained invalid settings.");
+
+                return null;
+            }
+
+            VfxState legacy =
+                context.State;
+
+            OrbitalsPathVfxSettings path =
+                flames.Formation.Path;
+
+            bool matchesLegacy =
+                block.InstanceId ==
+                    PrototypeLegacyOrbitalsFlamesInstanceId &&
+                block.TypeId ==
+                    VfxEffectTypeIds.OrbitalsFlames &&
+                block.Enabled ==
+                    legacy.OrbitalsFlamesEnabled &&
+
+                block.Transform.XOffset ==
+                    legacy.OrbitalsFlamesXOffset &&
+                block.Transform.YOffset ==
+                    legacy.OrbitalsFlamesYOffset &&
+                block.Transform.ZOffset ==
+                    legacy.OrbitalsFlamesZOffset &&
+
+                block.Transform.XRotation ==
+                    legacy.OrbitalsFlamesXRotation &&
+                block.Transform.YRotation ==
+                    legacy.OrbitalsFlamesYRotation &&
+                block.Transform.ZRotation ==
+                    legacy.OrbitalsFlamesZRotation &&
+
+                flames.Energy ==
+                    legacy.OrbitalsFlamesEnergy &&
+                flames.Scale ==
+                    legacy.OrbitalsFlamesScale &&
+                flames.Luminance ==
+                    legacy.OrbitalsFlamesLuminance &&
+                flames.Hue ==
+                    legacy.OrbitalsFlamesHue &&
+                flames.Lifetime ==
+                    legacy.OrbitalsFlamesLifetime &&
+                flames.SimulationSpeed ==
+                    legacy.OrbitalsFlamesSimulationSpeed &&
+
+                !path.SnakeEnabled &&
+                path.Count ==
+                    legacy.OrbitalsFlamesCount &&
+                path.Speed ==
+                    legacy.OrbitalsFlamesSpeed &&
+                path.Spacing ==
+                    legacy.OrbitalsFlamesSpacing &&
+                path.Length ==
+                    legacy.OrbitalsFlamesLength &&
+                path.Radius ==
+                    legacy.OrbitalsFlamesRadius &&
+                path.Cycles ==
+                    legacy.OrbitalsFlamesCycles &&
+                path.Drift ==
+                    legacy.OrbitalsFlamesDrift &&
+
+                !flames.Formation.GlueLeaderEnabled &&
+                flames.Formation.GlueTargetInstanceIds != null &&
+                flames.Formation.GlueTargetInstanceIds.Count == 0;
+
+            NadaLogControl.Info(
+                $"block-prototype:orbitals-flames:{source}:{context.Root.GetInstanceID()}",
+                $"{Plugin.ModName}: [OrbitalsFlamesBlockPrototype] " +
+                $"source='{source}' " +
+                $"root='{context.Root.name}' " +
+                $"type='{block.TypeId}' " +
+                $"id={block.InstanceId} " +
+                $"enabled={block.Enabled} " +
+                $"snake={path.SnakeEnabled} " +
+                $"count={path.Count} " +
+                $"hue={flames.Hue} " +
+                $"scale={flames.Scale} " +
+                $"energy={flames.Energy} " +
+                $"lifetime={flames.Lifetime} " +
+                $"simulationSpeed={flames.SimulationSpeed} " +
+                $"speed={path.Speed} " +
+                $"spacing={path.Spacing} " +
+                $"length={path.Length} " +
+                $"radius={path.Radius} " +
+                $"cycles={path.Cycles} " +
+                $"drift={path.Drift} " +
+                $"position=({block.Transform.XOffset}, " +
+                $"{block.Transform.YOffset}, " +
+                $"{block.Transform.ZOffset}) " +
+                $"rotation=({block.Transform.XRotation}, " +
+                $"{block.Transform.YRotation}, " +
+                $"{block.Transform.ZRotation}) " +
+                $"matchesLegacy={matchesLegacy}");
+
+            return blockState;
+        }
+
+        private static WeaponVfxState CreateOrbitalsEmbersPrototypeState(
+            NadaWeaponRigContext context,
+            string source)
+        {
+            if (context == null ||
+                context.Root == null)
+            {
+                return null;
+            }
+
+            WeaponVfxState blockState =
+                LegacyVfxStateAdapter.CreateOrbitalsEmbersPrototype(
+                    context.State);
+
+            if (blockState?.Effects == null ||
+                blockState.Effects.Count != 1)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [OrbitalsEmbersBlockPrototype] " +
+                    $"Embers prototype did not contain exactly one migrated effect block.");
+
+                return null;
+            }
+
+            VfxEffectBlock block =
+                blockState.Effects[0];
+
+            if (block == null ||
+                block.Transform == null ||
+                block.Settings is not OrbitalsEmbersVfxSettings embers ||
+                embers.Formation?.Path == null)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [OrbitalsEmbersBlockPrototype] " +
+                    $"Embers prototype contained invalid settings.");
+
+                return null;
+            }
+
+            VfxState legacy =
+                context.State;
+
+            OrbitalsPathVfxSettings path =
+                embers.Formation.Path;
+
+            bool matchesLegacy =
+                block.InstanceId ==
+                    PrototypeLegacyOrbitalsEmbersInstanceId &&
+                block.TypeId ==
+                    VfxEffectTypeIds.OrbitalsEmbers &&
+                block.Enabled ==
+                    legacy.OrbitalsEmbersEnabled &&
+
+                block.Transform.XOffset ==
+                    legacy.OrbitalsEmbersXOffset &&
+                block.Transform.YOffset ==
+                    legacy.OrbitalsEmbersYOffset &&
+                block.Transform.ZOffset ==
+                    legacy.OrbitalsEmbersZOffset &&
+
+                block.Transform.XRotation ==
+                    legacy.OrbitalsEmbersXRotation &&
+                block.Transform.YRotation ==
+                    legacy.OrbitalsEmbersYRotation &&
+                block.Transform.ZRotation ==
+                    legacy.OrbitalsEmbersZRotation &&
+
+                embers.Energy ==
+                    legacy.OrbitalsEmbersEnergy &&
+                embers.Scale ==
+                    legacy.OrbitalsEmbersScale &&
+                embers.Luminance ==
+                    legacy.OrbitalsEmbersLuminance &&
+                embers.Hue ==
+                    legacy.OrbitalsEmbersHue &&
+                embers.Lifetime ==
+                    legacy.OrbitalsEmbersLifetime &&
+                embers.SimulationSpeed ==
+                    legacy.OrbitalsEmbersSimulationSpeed &&
+
+                !path.SnakeEnabled &&
+                path.Count ==
+                    legacy.OrbitalsEmbersCount &&
+                path.Speed ==
+                    legacy.OrbitalsEmbersSpeed &&
+                path.Spacing ==
+                    legacy.OrbitalsEmbersSpacing &&
+                path.Length ==
+                    legacy.OrbitalsEmbersLength &&
+                path.Radius ==
+                    legacy.OrbitalsEmbersRadius &&
+                path.Cycles ==
+                    legacy.OrbitalsEmbersCycles &&
+                path.Drift ==
+                    legacy.OrbitalsEmbersDrift &&
+
+                !embers.Formation.GlueLeaderEnabled &&
+                embers.Formation.GlueTargetInstanceIds != null &&
+                embers.Formation.GlueTargetInstanceIds.Count == 0;
+
+            NadaLogControl.Info(
+                $"block-prototype:orbitals-embers:{source}:{context.Root.GetInstanceID()}",
+                $"{Plugin.ModName}: [OrbitalsEmbersBlockPrototype] " +
+                $"source='{source}' " +
+                $"root='{context.Root.name}' " +
+                $"type='{block.TypeId}' " +
+                $"id={block.InstanceId} " +
+                $"enabled={block.Enabled} " +
+                $"snake={path.SnakeEnabled} " +
+                $"count={path.Count} " +
+                $"hue={embers.Hue} " +
+                $"scale={embers.Scale} " +
+                $"energy={embers.Energy} " +
+                $"lifetime={embers.Lifetime} " +
+                $"simulationSpeed={embers.SimulationSpeed} " +
+                $"speed={path.Speed} " +
+                $"spacing={path.Spacing} " +
+                $"length={path.Length} " +
+                $"radius={path.Radius} " +
+                $"cycles={path.Cycles} " +
+                $"drift={path.Drift} " +
                 $"position=({block.Transform.XOffset}, " +
                 $"{block.Transform.YOffset}, " +
                 $"{block.Transform.ZOffset}) " +

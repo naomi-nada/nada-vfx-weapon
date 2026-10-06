@@ -22,6 +22,9 @@ namespace NADA.VFX.Weapon.Core.State.Migration
         private const uint LegacyFlareInstanceId = 5;
         private const uint LegacyAuraInstanceId = 6;
         private const uint LegacyOrbitalsOrbsInstanceId = 7;
+        private const uint LegacyOrbitalsCoresInstanceId = 8;
+        private const uint LegacyOrbitalsFlamesInstanceId = 9;
+        private const uint LegacyOrbitalsEmbersInstanceId = 10;
 
         internal static WeaponVfxState CreateInnerFlamesPrototype(
             VfxState legacyState)
@@ -424,46 +427,497 @@ namespace NADA.VFX.Weapon.Core.State.Migration
                             Hue =
                                 legacyState.OrbitalsOrbsHue,
 
-                            Path =
-                                new OrbitalsPathVfxSettings
+                            Formation =
+                                new OrbitalsFormationVfxSettings
                                 {
-                                    SnakeEnabled =
+                                    GlueLeaderEnabled =
                                         legacyState
-                                            .OrbitalsOrbsSnakeEnabled,
+                                            .OrbitalsOrbsGlueEnabled ||
+                                        legacyState
+                                            .OrbitalsCoresGlueEnabled,
 
-                                    Count =
-                                        legacyState.OrbitalsOrbsCount,
+                                    Path =
+                                        new OrbitalsPathVfxSettings
+                                        {
+                                            SnakeEnabled =
+                                                legacyState
+                                                    .OrbitalsOrbsSnakeEnabled,
 
-                                    Speed =
-                                        legacyState.OrbitalsOrbsSpeed,
+                                            Count =
+                                                legacyState
+                                                    .OrbitalsOrbsCount,
 
-                                    Spacing =
-                                        legacyState.OrbitalsOrbsSpacing,
+                                            Speed =
+                                                legacyState
+                                                    .OrbitalsOrbsSpeed,
 
-                                    Length =
-                                        legacyState.OrbitalsOrbsLength,
+                                            Spacing =
+                                                legacyState
+                                                    .OrbitalsOrbsSpacing,
 
-                                    Radius =
-                                        legacyState.OrbitalsOrbsRadius,
+                                            Length =
+                                                legacyState
+                                                    .OrbitalsOrbsLength,
 
-                                    Cycles =
-                                        legacyState.OrbitalsOrbsCycles,
+                                            Radius =
+                                                legacyState
+                                                    .OrbitalsOrbsRadius,
 
-                                    Drift =
-                                        legacyState.OrbitalsOrbsDrift
+                                            Cycles =
+                                                legacyState
+                                                    .OrbitalsOrbsCycles,
+
+                                            Drift =
+                                                legacyState
+                                                    .OrbitalsOrbsDrift
+                                        }
                                 }
                         }
                 };
-
-            // OrbitalsOrbsGlueEnabled is intentionally not copied here.
-            // In the legacy schema it controls coupling of dependent orbital
-            // effects to Orbs rather than Orbs' own behavior. That relationship
-            // will move with those dependent blocks when they are migrated.
 
             state.Effects.Add(
                 orbsBlock);
 
             return state;
+        }
+
+        internal static WeaponVfxState CreateOrbitalsCoresPrototype(
+            VfxState legacyState)
+        {
+            var state =
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
+
+            var coresBlock =
+                new VfxEffectBlock
+                {
+                    InstanceId =
+                        LegacyOrbitalsCoresInstanceId,
+
+                    TypeId =
+                        VfxEffectTypeIds.OrbitalsCores,
+
+                    Enabled =
+                        legacyState.OrbitalsCoresEnabled,
+
+                    Transform =
+                        new VfxTransformState
+                        {
+                            XOffset =
+                                legacyState.OrbitalsCoresXOffset,
+
+                            YOffset =
+                                legacyState.OrbitalsCoresYOffset,
+
+                            ZOffset =
+                                legacyState.OrbitalsCoresZOffset,
+
+                            XRotation =
+                                legacyState.OrbitalsCoresXRotation,
+
+                            YRotation =
+                                legacyState.OrbitalsCoresYRotation,
+
+                            ZRotation =
+                                legacyState.OrbitalsCoresZRotation
+                        },
+
+                    Settings =
+                        new OrbitalsCoresVfxSettings
+                        {
+                            Scale =
+                                legacyState.OrbitalsCoresScale,
+
+                            Luminance =
+                                legacyState.OrbitalsCoresLuminance,
+
+                            Hue =
+                                legacyState.OrbitalsCoresHue,
+
+                            SpinEnabled =
+                                legacyState.OrbitalsCoresSpinEnabled,
+
+                            SpinSpeed =
+                                legacyState.OrbitalsCoresSpinSpeed,
+
+                            Formation =
+                                new OrbitalsFormationVfxSettings
+                                {
+                                    // Legacy CoresGlue means Cores follows Orbs.
+                                    // It does not make Cores a Glue leader.
+                                    GlueLeaderEnabled = false,
+
+                                    Path =
+                                        new OrbitalsPathVfxSettings
+                                        {
+                                            SnakeEnabled =
+                                                legacyState
+                                                    .OrbitalsCoresSnakeEnabled,
+
+                                            Count =
+                                                legacyState
+                                                    .OrbitalsCoresCount,
+
+                                            Speed =
+                                                legacyState
+                                                    .OrbitalsCoresSpeed,
+
+                                            Spacing =
+                                                legacyState
+                                                    .OrbitalsCoresSpacing,
+
+                                            Length =
+                                                legacyState
+                                                    .OrbitalsCoresLength,
+
+                                            Radius =
+                                                legacyState
+                                                    .OrbitalsCoresRadius,
+
+                                            Cycles =
+                                                legacyState
+                                                    .OrbitalsCoresCycles,
+
+                                            Drift =
+                                                legacyState
+                                                    .OrbitalsCoresDrift
+                                        }
+                                }
+                        }
+                };
+
+            state.Effects.Add(
+                coresBlock);
+
+            return state;
+        }
+
+        internal static WeaponVfxState CreateOrbitalsFlamesPrototype(
+            VfxState legacyState)
+        {
+            var state =
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
+
+            var flamesBlock =
+                new VfxEffectBlock
+                {
+                    InstanceId =
+                        LegacyOrbitalsFlamesInstanceId,
+
+                    TypeId =
+                        VfxEffectTypeIds.OrbitalsFlames,
+
+                    Enabled =
+                        legacyState.OrbitalsFlamesEnabled,
+
+                    Transform =
+                        new VfxTransformState
+                        {
+                            XOffset =
+                                legacyState.OrbitalsFlamesXOffset,
+
+                            YOffset =
+                                legacyState.OrbitalsFlamesYOffset,
+
+                            ZOffset =
+                                legacyState.OrbitalsFlamesZOffset,
+
+                            XRotation =
+                                legacyState.OrbitalsFlamesXRotation,
+
+                            YRotation =
+                                legacyState.OrbitalsFlamesYRotation,
+
+                            ZRotation =
+                                legacyState.OrbitalsFlamesZRotation
+                        },
+
+                    Settings =
+                        new OrbitalsFlamesVfxSettings
+                        {
+                            Energy =
+                                legacyState.OrbitalsFlamesEnergy,
+
+                            Scale =
+                                legacyState.OrbitalsFlamesScale,
+
+                            Luminance =
+                                legacyState.OrbitalsFlamesLuminance,
+
+                            Hue =
+                                legacyState.OrbitalsFlamesHue,
+
+                            Lifetime =
+                                legacyState.OrbitalsFlamesLifetime,
+
+                            SimulationSpeed =
+                                legacyState.OrbitalsFlamesSimulationSpeed,
+
+                            Formation =
+                                new OrbitalsFormationVfxSettings
+                                {
+                                    // Legacy Flames never exposed Snake or
+                                    // leader-owned Glue. Those become real
+                                    // capabilities in block state without
+                                    // inventing legacy behavior.
+                                    GlueLeaderEnabled = false,
+
+                                    Path =
+                                        new OrbitalsPathVfxSettings
+                                        {
+                                            SnakeEnabled = false,
+
+                                            Count =
+                                                legacyState
+                                                    .OrbitalsFlamesCount,
+
+                                            Speed =
+                                                legacyState
+                                                    .OrbitalsFlamesSpeed,
+
+                                            Spacing =
+                                                legacyState
+                                                    .OrbitalsFlamesSpacing,
+
+                                            Length =
+                                                legacyState
+                                                    .OrbitalsFlamesLength,
+
+                                            Radius =
+                                                legacyState
+                                                    .OrbitalsFlamesRadius,
+
+                                            Cycles =
+                                                legacyState
+                                                    .OrbitalsFlamesCycles,
+
+                                            Drift =
+                                                legacyState
+                                                    .OrbitalsFlamesDrift
+                                        }
+                                }
+                        }
+                };
+
+            state.Effects.Add(
+                flamesBlock);
+
+            return state;
+        }
+
+        internal static WeaponVfxState CreateOrbitalsEmbersPrototype(
+            VfxState legacyState)
+        {
+            var state =
+                CreateStateWithLegacyRigTransform(
+                    legacyState);
+
+            var embersBlock =
+                new VfxEffectBlock
+                {
+                    InstanceId =
+                        LegacyOrbitalsEmbersInstanceId,
+
+                    TypeId =
+                        VfxEffectTypeIds.OrbitalsEmbers,
+
+                    Enabled =
+                        legacyState.OrbitalsEmbersEnabled,
+
+                    Transform =
+                        new VfxTransformState
+                        {
+                            XOffset =
+                                legacyState.OrbitalsEmbersXOffset,
+
+                            YOffset =
+                                legacyState.OrbitalsEmbersYOffset,
+
+                            ZOffset =
+                                legacyState.OrbitalsEmbersZOffset,
+
+                            XRotation =
+                                legacyState.OrbitalsEmbersXRotation,
+
+                            YRotation =
+                                legacyState.OrbitalsEmbersYRotation,
+
+                            ZRotation =
+                                legacyState.OrbitalsEmbersZRotation
+                        },
+
+                    Settings =
+                        new OrbitalsEmbersVfxSettings
+                        {
+                            Energy =
+                                legacyState.OrbitalsEmbersEnergy,
+
+                            Scale =
+                                legacyState.OrbitalsEmbersScale,
+
+                            Luminance =
+                                legacyState.OrbitalsEmbersLuminance,
+
+                            Hue =
+                                legacyState.OrbitalsEmbersHue,
+
+                            Lifetime =
+                                legacyState.OrbitalsEmbersLifetime,
+
+                            SimulationSpeed =
+                                legacyState.OrbitalsEmbersSimulationSpeed,
+
+                            Formation =
+                                new OrbitalsFormationVfxSettings
+                                {
+                                    // Legacy Embers never exposed Snake or
+                                    // leader-owned Glue. Those become real
+                                    // capabilities in block state without
+                                    // inventing legacy behavior.
+                                    GlueLeaderEnabled = false,
+
+                                    Path =
+                                        new OrbitalsPathVfxSettings
+                                        {
+                                            SnakeEnabled = false,
+
+                                            Count =
+                                                legacyState
+                                                    .OrbitalsEmbersCount,
+
+                                            Speed =
+                                                legacyState
+                                                    .OrbitalsEmbersSpeed,
+
+                                            Spacing =
+                                                legacyState
+                                                    .OrbitalsEmbersSpacing,
+
+                                            Length =
+                                                legacyState
+                                                    .OrbitalsEmbersLength,
+
+                                            Radius =
+                                                legacyState
+                                                    .OrbitalsEmbersRadius,
+
+                                            Cycles =
+                                                legacyState
+                                                    .OrbitalsEmbersCycles,
+
+                                            Drift =
+                                                legacyState
+                                                    .OrbitalsEmbersDrift
+                                        }
+                                }
+                        }
+                };
+
+            state.Effects.Add(
+                embersBlock);
+
+            return state;
+        }
+
+        internal static void ApplyMigratedOrbitalsRelationships(
+            WeaponVfxState state,
+            VfxState legacyState)
+        {
+            if (state?.Effects == null)
+                return;
+
+            OrbitalsOrbsVfxSettings orbsSettings =
+                null;
+
+            bool hasCoresBlock =
+                false;
+
+            bool hasFlamesBlock =
+                false;
+
+            bool hasEmbersBlock =
+                false;
+
+            foreach (VfxEffectBlock block in state.Effects)
+            {
+                if (block == null)
+                    continue;
+
+                if (block.InstanceId ==
+                        LegacyOrbitalsOrbsInstanceId &&
+                    block.TypeId ==
+                        VfxEffectTypeIds.OrbitalsOrbs)
+                {
+                    orbsSettings =
+                        block.Settings as OrbitalsOrbsVfxSettings;
+                }
+
+                if (block.InstanceId ==
+                        LegacyOrbitalsCoresInstanceId &&
+                    block.TypeId ==
+                        VfxEffectTypeIds.OrbitalsCores)
+                {
+                    hasCoresBlock =
+                        true;
+                }
+
+                if (block.InstanceId ==
+                        LegacyOrbitalsFlamesInstanceId &&
+                    block.TypeId ==
+                        VfxEffectTypeIds.OrbitalsFlames)
+                {
+                    hasFlamesBlock =
+                        true;
+                }
+
+                if (block.InstanceId ==
+                        LegacyOrbitalsEmbersInstanceId &&
+                    block.TypeId ==
+                        VfxEffectTypeIds.OrbitalsEmbers)
+                {
+                    hasEmbersBlock =
+                        true;
+                }
+            }
+
+            if (orbsSettings?.Formation == null)
+                return;
+
+            orbsSettings.Formation.GlueLeaderEnabled =
+                legacyState.OrbitalsOrbsGlueEnabled ||
+                legacyState.OrbitalsCoresGlueEnabled;
+
+            orbsSettings.Formation
+                .GlueTargetInstanceIds
+                .Clear();
+
+            if (hasCoresBlock &&
+                legacyState.OrbitalsCoresGlueEnabled)
+            {
+                orbsSettings.Formation
+                    .GlueTargetInstanceIds
+                    .Add(
+                        LegacyOrbitalsCoresInstanceId);
+            }
+
+            if (hasFlamesBlock &&
+                legacyState.OrbitalsOrbsGlueEnabled)
+            {
+                orbsSettings.Formation
+                    .GlueTargetInstanceIds
+                    .Add(
+                        LegacyOrbitalsFlamesInstanceId);
+            }
+
+            if (hasEmbersBlock &&
+                legacyState.OrbitalsOrbsGlueEnabled)
+            {
+                orbsSettings.Formation
+                    .GlueTargetInstanceIds
+                    .Add(
+                        LegacyOrbitalsEmbersInstanceId);
+            }
         }
 
         private static WeaponVfxState CreateStateWithLegacyRigTransform(
