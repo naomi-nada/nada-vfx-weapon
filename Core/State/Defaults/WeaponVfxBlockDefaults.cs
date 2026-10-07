@@ -13,30 +13,33 @@ namespace NADA.VFX.Weapon.Core.State.Defaults
     /// </summary>
     internal static class WeaponVfxBlockDefaults
     {
-        private const float DefaultEnergy = 0f;
-        private const float DefaultScale = 1f;
-        private const float DefaultLuminance = 1f;
-        private const float DefaultHue = 0f;
-        private const float DefaultLifetime = 1f;
-        private const float DefaultSimulationSpeed = 1f;
+        internal const float DefaultEnergy = 0f;
+        internal const float DefaultScale = 1f;
+        internal const float DefaultLuminance = 1f;
+        internal const float DefaultHue = 0f;
+        internal const float DefaultLifetime = 1f;
+        internal const float DefaultSimulationSpeed = 1f;
 
-        private const float DefaultFlameLength = 0.80f;
-        private const float DefaultFlameWidth = 2.60f;
-        private const float DefaultSparksWidth = 1f;
+        internal const float DefaultFlameLength = 0.80f;
+        internal const float DefaultFlameWidth = 2.60f;
+        internal const float DefaultSparksWidth = 1f;
 
-        private const float DefaultAuraScale = 1.60f;
+        internal const float DefaultAuraScale = 1.60f;
 
-        private const float DefaultSpectrumSpeed = 1f;
+        internal const float DefaultSpectrumSpeed = 1f;
 
-        private const float DefaultOrbitalsCount = 0f;
-        private const float DefaultOrbitalsSpeed = 0.08f;
-        private const float DefaultOrbitalsSpacing = 0.50f;
-        private const float DefaultOrbitalsLength = 1f;
-        private const float DefaultOrbitalsRadius = 1f;
-        private const float DefaultOrbitalsCycles = 3f;
-        private const float DefaultOrbitalsDrift = 0f;
+        internal const float DefaultOrbitalsCount = 0f;
+        internal const float DefaultOrbitalsSpeed = 0.08f;
+        internal const float DefaultOrbitalsSpacing = 0.50f;
+        internal const float DefaultOrbitalsLength = 1f;
+        internal const float DefaultOrbitalsRadius = 1f;
+        internal const float DefaultOrbitalsCycles = 3f;
+        internal const float DefaultOrbitalsDrift = 0f;
 
-        private const float DefaultCoreSpinSpeed = 1f;
+        internal const float DefaultCoreSpinSpeed = 1f;
+
+        internal const float DefaultEffectOffset = 0f;
+        internal const float DefaultEffectRotation = 0f;
 
         internal static VfxEffectBlock Create(
             string typeId,
@@ -67,10 +70,34 @@ namespace NADA.VFX.Weapon.Core.State.Defaults
                     true,
 
                 Transform =
-                    new VfxTransformState(),
+                    CreateTransform(),
 
                 Settings =
                     settings
+            };
+        }
+
+        private static VfxTransformState CreateTransform()
+        {
+            return new VfxTransformState
+            {
+                XOffset =
+                    DefaultEffectOffset,
+
+                YOffset =
+                    DefaultEffectOffset,
+
+                ZOffset =
+                    DefaultEffectOffset,
+
+                XRotation =
+                    DefaultEffectRotation,
+
+                YRotation =
+                    DefaultEffectRotation,
+
+                ZRotation =
+                    DefaultEffectRotation
             };
         }
 

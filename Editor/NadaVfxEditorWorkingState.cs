@@ -186,6 +186,59 @@ namespace NADA.VFX.Weapon.Editor
             return true;
         }
 
+        internal static bool TryResetEffect(
+            uint instanceId)
+        {
+            if (!CanEdit())
+                return false;
+
+            VfxEffectBlock block =
+                FindBlock(
+                    instanceId);
+
+            if (block == null)
+                return false;
+
+            VfxEffectBlock defaultBlock =
+                WeaponVfxBlockDefaults.Create(
+                    block.TypeId,
+                    block.InstanceId);
+
+            if (defaultBlock == null ||
+                defaultBlock.Transform == null ||
+                defaultBlock.Settings == null)
+            {
+                Plugin.Log?.LogWarning(
+                    $"{Plugin.ModName}: [EditorBlockReset] " +
+                    $"could not create defaults " +
+                    $"id={block.InstanceId} " +
+                    $"type='{block.TypeId ?? "<null>"}'.");
+
+                return false;
+            }
+
+            // Reset authored modifier data without replacing the logical block.
+            //
+            // Identity, name, enabled state, and list position remain owned by
+            // the existing VfxEffectBlock. Runtime reconciliation should
+            // therefore update the existing instance rather than create a new one.
+            block.Transform =
+                defaultBlock.Transform;
+
+            block.Settings =
+                defaultBlock.Settings;
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [EditorBlockReset] " +
+                $"id={block.InstanceId} " +
+                $"type='{block.TypeId}' " +
+                $"name='{GetDisplayName(block)}' " +
+                $"enabled={block.Enabled} " +
+                $"identityPreserved=True.");
+
+            return true;
+        }
+
         internal static bool TryDuplicateEffect(
             uint sourceInstanceId,
             out VfxEffectBlock duplicate)

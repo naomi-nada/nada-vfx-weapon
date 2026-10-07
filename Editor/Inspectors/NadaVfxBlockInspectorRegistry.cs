@@ -27,6 +27,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     return NadaOuterFlamesInspector.Draw(
                         block);
 
+                case VfxEffectTypeIds.Strands:
+                    return NadaStrandsInspector.Draw(
+                        block);
+
                 case VfxEffectTypeIds.Sparks:
                     return NadaSparksInspector.Draw(
                         block);

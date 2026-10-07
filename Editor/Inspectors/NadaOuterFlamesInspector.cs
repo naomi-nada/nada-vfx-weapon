@@ -1,15 +1,10 @@
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
+using NADA.VFX.Weapon.Core.State.Defaults;
 
 namespace NADA.VFX.Weapon.Editor.Inspectors
 {
-    /// <summary>
-    /// Strongly typed editor for one Outer Flames block.
-    ///
-    /// Visual/particle behavior remains owned by NadaOuterFlamesEffect.
-    /// Drag remains motion behavior owned by NadaOuterFlamesMotion.
-    /// </summary>
     internal static class NadaOuterFlamesInspector
     {
         private const float MinEnergy = 0f;
@@ -71,7 +66,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         "Mode",
                         (int)colorMode,
                         ColorModeOptions,
-                        out int nextColorModeIndex))
+                        out int nextColorModeIndex,
+                        description:
+                            "Normal uses Hue. White and Black replace hue coloring without erasing the stored Hue value."))
                 {
                     ApplyColorMode(
                         flames,
@@ -83,10 +80,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed =
                         true;
                 }
-
-                NadaVfxEditorControls.Hint(
-                    "White and Black replace hue coloring. " +
-                    "Your Normal hue remains stored underneath.");
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
@@ -101,7 +94,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         flames.Scale,
                         PluginConfig.MinScaleMult,
                         PluginConfig.MaxScaleMult,
-                        out float scale))
+                        out float scale,
+                        description:
+                            "Changes the overall particle size of the outer flames.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultScale))
                 {
                     flames.Scale =
                         scale;
@@ -116,7 +113,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         flames.Luminance,
                         PluginConfig.MinLuminance,
                         PluginConfig.MaxLuminance,
-                        out float luminance))
+                        out float luminance,
+                        description:
+                            "Changes the brightness of the flames, materials, and lights.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultLuminance))
                 {
                     flames.Luminance =
                         luminance;
@@ -146,7 +147,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         disabledReason:
                             hueEditable
                                 ? null
-                                : hueDisabledReason))
+                                : hueDisabledReason,
+                        description:
+                            "Shifts the flame color while preserving the authored gradients.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultHue))
                 {
                     flames.Hue =
                         hue;
@@ -168,7 +173,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         flames.Energy,
                         MinEnergy,
                         MaxEnergy,
-                        out float energy))
+                        out float energy,
+                        description:
+                            "Controls particle emission intensity.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultEnergy))
                 {
                     flames.Energy =
                         energy;
@@ -183,7 +192,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         flames.Lifetime,
                         PluginConfig.MinLifetime,
                         PluginConfig.MaxLifetime,
-                        out float lifetime))
+                        out float lifetime,
+                        description:
+                            "Changes how long emitted flame particles remain alive.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultLifetime))
                 {
                     flames.Lifetime =
                         lifetime;
@@ -198,7 +211,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         flames.SimulationSpeed,
                         PluginConfig.MinSimulationSpeed,
                         PluginConfig.MaxSimulationSpeed,
-                        out float simulationSpeed))
+                        out float simulationSpeed,
+                        description:
+                            "Changes how quickly the flame particle simulation runs.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultSimulationSpeed))
                 {
                     flames.SimulationSpeed =
                         simulationSpeed;
@@ -211,7 +228,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         $"{prefix}:world-space",
                         "World Space",
                         flames.WorldEnabled,
-                        out bool worldEnabled))
+                        out bool worldEnabled,
+                        description:
+                            "When enabled, emitted particles remain in world space as the target moves."))
                 {
                     flames.WorldEnabled =
                         worldEnabled;
@@ -219,10 +238,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed =
                         true;
                 }
-
-                NadaVfxEditorControls.Hint(
-                    "Energy controls particle emission. " +
-                    "World Space lets emitted particles remain in world space as the weapon moves.");
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
@@ -237,7 +252,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         flames.Length,
                         PluginConfig.MinFlameLength,
                         PluginConfig.MaxFlameLength,
-                        out float length))
+                        out float length,
+                        description:
+                            "Changes the length of the flame emitter along the target.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultFlameLength))
                 {
                     flames.Length =
                         length;
@@ -252,7 +271,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         flames.Width,
                         PluginConfig.MinFlameWidth,
                         PluginConfig.MaxFlameWidth,
-                        out float width))
+                        out float width,
+                        description:
+                            "Changes the width of the flame emitter around the target.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultFlameWidth))
                 {
                     flames.Width =
                         width;
@@ -272,7 +295,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         $"{prefix}:drag",
                         "Drag",
                         flames.DragEnabled,
-                        out bool dragEnabled))
+                        out bool dragEnabled,
+                        description:
+                            "Makes the outer flame particles trail against target movement."))
                 {
                     flames.DragEnabled =
                         dragEnabled;
@@ -280,9 +305,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed =
                         true;
                 }
-
-                NadaVfxEditorControls.Hint(
-                    "Drag makes the flame particles trail against weapon movement.");
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
@@ -297,8 +319,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
         private static ColorMode ResolveColorMode(
             OuterFlamesVfxSettings settings)
         {
-            // Match runtime precedence without silently normalizing authored
-            // state merely because the inspector was drawn.
             if (settings.WhiteEnabled)
             {
                 return ColorMode.White;

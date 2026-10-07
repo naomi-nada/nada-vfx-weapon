@@ -13,8 +13,15 @@ namespace NADA.VFX.Weapon.Editor
 
         private const float DefaultWindowWidth = 760f;
         private const float DefaultWindowHeight = 560f;
+
+        private const float MinimumWindowWidth = 540f;
+        private const float MinimumWindowHeight = 460f;
+
         private const float EffectsPanelWidth = 220f;
         private const float BlockHeight = 30f;
+
+        private const float ResizeGripSize = 20f;
+        private const float EffectDragThreshold = 5f;
 
         private static readonly List<Texture2D> OwnedTextures =
             new();
@@ -32,6 +39,7 @@ namespace NADA.VFX.Weapon.Editor
 
         private static uint? _selectedInstanceId;
         private static uint? _renameInstanceId;
+        private static uint? _resetConfirmInstanceId;
         private static uint? _deleteConfirmInstanceId;
 
         private static string _renameBuffer =
@@ -40,10 +48,22 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _open;
         private static bool _addPickerOpen;
         private static bool _positionInitialized;
+        private static bool _targetDetailsExpanded;
 
         private static bool _cursorStateCaptured;
         private static bool _previousCursorVisible;
         private static CursorLockMode _previousCursorLockMode;
+
+        private static bool _resizing;
+        private static Vector2 _resizeStartMouseScreenPosition;
+        private static Vector2 _resizeStartSize;
+
+        private static uint? _dragCandidateInstanceId;
+        private static uint? _pendingReorderTargetInstanceId;
+
+        private static bool _effectDragActive;
+
+        private static Vector2 _effectDragStartMousePosition;
 
         private static float _nextTargetRefreshTime;
 
@@ -67,6 +87,11 @@ namespace NADA.VFX.Weapon.Editor
         private static GUIStyle _pickerStyle;
         private static GUIStyle _pickerButtonStyle;
         private static GUIStyle _readOnlyBoxStyle;
+        private static GUIStyle _compactToggleStyle;
+        private static GUIStyle _detailsButtonStyle;
+
+        internal static bool IsOpen =>
+            _open;
 
         internal static void Tick()
         {
@@ -99,11 +124,7 @@ namespace NADA.VFX.Weapon.Editor
             if (!_open)
                 return;
 
-            Cursor.visible =
-                true;
-
-            Cursor.lockState =
-                CursorLockMode.None;
+            EnforceCursorOwnership();
 
             if (Time.unscaledTime >=
                 _nextTargetRefreshTime)
@@ -126,6 +147,8 @@ namespace NADA.VFX.Weapon.Editor
                 return;
             }
 
+            EnforceCursorOwnership();
+
             EnsureStyles();
             EnsureWindowPosition();
             ClampWindowToScreen();
@@ -137,6 +160,24 @@ namespace NADA.VFX.Weapon.Editor
                     DrawWindow,
                     GUIContent.none,
                     _windowStyle);
+
+            EnforceCursorOwnership();
+        }
+
+        internal static void EnforceCursorOwnership()
+        {
+            if (!_open)
+                return;
+
+            Cursor.visible =
+                true;
+
+            if (Cursor.lockState !=
+                CursorLockMode.None)
+            {
+                Cursor.lockState =
+                    CursorLockMode.None;
+            }
         }
 
         internal static void Close()
@@ -150,6 +191,17 @@ namespace NADA.VFX.Weapon.Editor
             _addPickerOpen =
                 false;
 
+            if (_resizing &&
+                GUIUtility.hotControl != 0)
+            {
+                GUIUtility.hotControl =
+                    0;
+            }
+
+            _resizing =
+                false;
+
+            ClearEffectDrag();
             ClearTransientBlockActions();
 
             NadaWeaponEditorPreviewState
@@ -203,6 +255,8 @@ namespace NADA.VFX.Weapon.Editor
             _pickerStyle = null;
             _pickerButtonStyle = null;
             _readOnlyBoxStyle = null;
+            _compactToggleStyle = null;
+            _detailsButtonStyle = null;
         }
 
         private static void Open()
@@ -215,11 +269,7 @@ namespace NADA.VFX.Weapon.Editor
             _open =
                 true;
 
-            Cursor.visible =
-                true;
-
-            Cursor.lockState =
-                CursorLockMode.None;
+            EnforceCursorOwnership();
 
             NadaVfxEditorTargetRegistry
                 .RefreshFromRuntime();
@@ -240,6 +290,10 @@ namespace NADA.VFX.Weapon.Editor
                 _addPickerOpen =
                     false;
 
+                _targetDetailsExpanded =
+                    false;
+
+                ClearEffectDrag();
                 ClearTransientBlockActions();
             }
 
@@ -278,6 +332,9 @@ namespace NADA.VFX.Weapon.Editor
                 _addPickerOpen =
                     false;
 
+                _targetDetailsExpanded =
+                    false;
+
                 _effectsScrollPosition =
                     Vector2.zero;
 
@@ -287,6 +344,7 @@ namespace NADA.VFX.Weapon.Editor
                 _inspectorScrollPosition =
                     Vector2.zero;
 
+                ClearEffectDrag();
                 ClearTransientBlockActions();
 
                 ActivatePreview(
@@ -314,12 +372,28 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.EndHorizontal();
 
-            GUI.DragWindow(
-                new Rect(
-                    0f,
-                    0f,
-                    _windowRect.width - 44f,
-                    30f));
+            DrawResizeGrip();
+
+            NadaVfxEditorControls
+                .DrawTooltipOverlay(
+                    _windowRect.width,
+                    _windowRect.height);
+
+            if (Event.current.rawType ==
+                EventType.MouseUp)
+            {
+                ClearEffectDrag();
+            }
+
+            if (!_resizing)
+            {
+                GUI.DragWindow(
+                    new Rect(
+                        0f,
+                        0f,
+                        _windowRect.width - 44f,
+                        30f));
+            }
         }
 
         private static void DrawTitleBar()
@@ -334,7 +408,7 @@ namespace NADA.VFX.Weapon.Editor
                 8f);
 
             GUILayout.Label(
-                "BLOCK EDITOR / 0E-B",
+                "EDITOR / 0H-D",
                 _smallHeaderStyle);
 
             GUILayout.FlexibleSpace();
@@ -359,14 +433,40 @@ namespace NADA.VFX.Weapon.Editor
             GUILayout.BeginVertical(
                 _targetCardStyle);
 
+            GUILayout.BeginHorizontal();
+
+            GUILayout.Label(
+                "TARGET",
+                _sectionHeaderStyle);
+
+            GUILayout.FlexibleSpace();
+
+            if (target != null &&
+                GUILayout.Button(
+                    _targetDetailsExpanded
+                        ? "Hide Details"
+                        : "Details",
+                    _detailsButtonStyle,
+                    GUILayout.Width(82f),
+                    GUILayout.Height(20f)))
+            {
+                _targetDetailsExpanded =
+                    !_targetDetailsExpanded;
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(
+                3f);
+
             if (target == null)
             {
                 GUILayout.Label(
-                    "NO EDITABLE WEAPON",
+                    "NO EDITABLE TARGET",
                     _targetTitleStyle);
 
                 GUILayout.Label(
-                    "Equip a supported weapon with a resolved local NADA rig.",
+                    "Equip or select a supported target.",
                     _mutedStyle);
 
                 GUILayout.EndVertical();
@@ -381,61 +481,44 @@ namespace NADA.VFX.Weapon.Editor
                     : target.DisplayName;
 
             GUILayout.Label(
-                title.ToUpperInvariant(),
+                title,
                 _targetTitleStyle);
 
-            if (!string.IsNullOrWhiteSpace(
-                    target.ItemNameKey))
-            {
-                GUILayout.Label(
-                    target.ItemNameKey,
-                    _mutedStyle);
-            }
-
-            GUILayout.Space(
-                5f);
-
-            DrawInfoRow(
-                "Prefab",
-                target.PrefabName,
-                "Legacy State",
+            string bindingStatus =
                 target.IsLegacyBound
                     ? "Bound"
-                    : "Unbound");
-
-            DrawInfoRow(
-                "Source Root",
-                $"{target.SourceRootName}  #{target.SourceRootInstanceId}",
-                "Visual Root",
-                $"{target.VisualRootName}  #{target.VisualRootInstanceId}");
-
-            DrawInfoRow(
-                "Runtime Rig",
-                target.HasRuntimeRig
-                    ? $"NADA Weapon  #{target.RuntimeRigInstanceId}"
-                    : "Not Present",
-                "Editor Blocks",
-                NadaVfxEditorWorkingState
-                    .EffectCount
-                    .ToString());
-
-            GUILayout.Space(
-                3f);
+                    : "Unbound";
 
             GUILayout.Label(
-                target.RuntimeStateSource,
+                $"{bindingStatus}  ·  Live Preview",
                 _mutedStyle);
 
-            GUILayout.Label(
-                "Editor state: live preview / memory only / not persisted",
-                _mutedStyle);
-
-            if (!string.IsNullOrWhiteSpace(
-                    target.VisualRootPath))
+            if (_targetDetailsExpanded)
             {
-                GUILayout.Label(
-                    target.VisualRootPath,
-                    _mutedStyle);
+                GUILayout.Space(
+                    7f);
+
+                DrawSingleInfoRow(
+                    "Prefab",
+                    string.IsNullOrWhiteSpace(
+                        target.PrefabName)
+                        ? "Unknown"
+                        : target.PrefabName);
+
+                if (!string.IsNullOrWhiteSpace(
+                        target.ItemNameKey))
+                {
+                    DrawSingleInfoRow(
+                        "Item Key",
+                        target.ItemNameKey);
+                }
+
+                DrawSingleInfoRow(
+                    "Visual Target",
+                    string.IsNullOrWhiteSpace(
+                        target.VisualRootName)
+                        ? "Unknown"
+                        : target.VisualRootName);
             }
 
             GUILayout.EndVertical();
@@ -448,6 +531,13 @@ namespace NADA.VFX.Weapon.Editor
                 _panelStyle,
                 GUILayout.Width(EffectsPanelWidth),
                 GUILayout.ExpandHeight(true));
+
+            GUILayout.Label(
+                "EFFECTS",
+                _sectionHeaderStyle);
+
+            GUILayout.Space(
+                5f);
 
             if (_addPickerOpen)
             {
@@ -466,12 +556,8 @@ namespace NADA.VFX.Weapon.Editor
         private static void DrawEffectListPanel(
             NadaVfxEditorTarget target)
         {
-            GUILayout.Label(
-                "EFFECTS",
-                _sectionHeaderStyle);
-
-            GUILayout.Space(
-                5f);
+            _pendingReorderTargetInstanceId =
+                null;
 
             _effectsScrollPosition =
                 GUILayout.BeginScrollView(
@@ -484,7 +570,7 @@ namespace NADA.VFX.Weapon.Editor
             if (target == null)
             {
                 GUILayout.Label(
-                    "No weapon target.",
+                    "No target.",
                     _mutedStyle);
             }
             else if (state?.Effects == null ||
@@ -509,6 +595,8 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.EndScrollView();
 
+            ApplyPendingEffectReorder();
+
             GUILayout.Space(
                 6f);
 
@@ -524,6 +612,8 @@ namespace NADA.VFX.Weapon.Editor
                     _addButtonStyle,
                     GUILayout.Height(BlockHeight)))
             {
+                ClearEffectDrag();
+
                 _addPickerOpen =
                     true;
 
@@ -540,7 +630,7 @@ namespace NADA.VFX.Weapon.Editor
         {
             GUILayout.Label(
                 "ADD EFFECT",
-                _sectionHeaderStyle);
+                _smallHeaderStyle);
 
             GUILayout.Space(
                 5f);
@@ -666,8 +756,15 @@ namespace NADA.VFX.Weapon.Editor
                 _selectedInstanceId.Value ==
                 block.InstanceId;
 
+            bool draggingThisBlock =
+                _effectDragActive &&
+                _dragCandidateInstanceId.HasValue &&
+                _dragCandidateInstanceId.Value ==
+                block.InstanceId;
+
             GUIStyle style =
-                selected
+                selected ||
+                draggingThisBlock
                     ? _selectedBlockStyle
                     : _blockStyle;
 
@@ -678,22 +775,34 @@ namespace NADA.VFX.Weapon.Editor
                     GUILayout.Height(BlockHeight),
                     GUILayout.ExpandWidth(true));
 
-            if (GUI.Button(
-                    rowRect,
-                    GUIContent.none,
-                    style))
-            {
-                SelectBlock(
-                    block.InstanceId);
-            }
+            GUI.Box(
+                rowRect,
+                GUIContent.none,
+                style);
+
+            HandleEffectRowMouse(
+                block,
+                rowRect);
+
+            Rect gripRect =
+                new Rect(
+                    rowRect.x + 7f,
+                    rowRect.y + 5f,
+                    18f,
+                    rowRect.height - 10f);
+
+            GUI.Label(
+                gripRect,
+                "::",
+                _mutedStyle);
 
             Rect labelRect =
                 new Rect(
-                    rowRect.x + 10f,
+                    rowRect.x + 27f,
                     rowRect.y + 5f,
                     Mathf.Max(
                         0f,
-                        rowRect.width - 20f),
+                        rowRect.width - 35f),
                     rowRect.height - 10f);
 
             string label =
@@ -714,6 +823,187 @@ namespace NADA.VFX.Weapon.Editor
                     : _disabledBlockLabelStyle);
         }
 
+        private static void HandleEffectRowMouse(
+            VfxEffectBlock block,
+            Rect rowRect)
+        {
+            Event current =
+                Event.current;
+
+            bool mouseOver =
+                rowRect.Contains(
+                    current.mousePosition);
+
+            if (current.type ==
+                    EventType.MouseDown &&
+                current.button ==
+                    0 &&
+                mouseOver)
+            {
+                SelectBlock(
+                    block.InstanceId);
+
+                _dragCandidateInstanceId =
+                    block.InstanceId;
+
+                _effectDragStartMousePosition =
+                    current.mousePosition;
+
+                _effectDragActive =
+                    false;
+            }
+
+            if (!_dragCandidateInstanceId.HasValue ||
+                current.type !=
+                EventType.MouseDrag)
+            {
+                return;
+            }
+
+            if (!_effectDragActive)
+            {
+                float dragDistance =
+                    Vector2.Distance(
+                        _effectDragStartMousePosition,
+                        current.mousePosition);
+
+                if (dragDistance >=
+                    EffectDragThreshold)
+                {
+                    _effectDragActive =
+                        true;
+                }
+            }
+
+            if (!_effectDragActive ||
+                !mouseOver ||
+                _dragCandidateInstanceId.Value ==
+                block.InstanceId)
+            {
+                return;
+            }
+
+            _pendingReorderTargetInstanceId =
+                block.InstanceId;
+        }
+
+        private static void ApplyPendingEffectReorder()
+        {
+            if (!_effectDragActive ||
+                !_dragCandidateInstanceId.HasValue ||
+                !_pendingReorderTargetInstanceId.HasValue)
+            {
+                return;
+            }
+
+            uint draggedInstanceId =
+                _dragCandidateInstanceId.Value;
+
+            uint targetInstanceId =
+                _pendingReorderTargetInstanceId.Value;
+
+            if (draggedInstanceId ==
+                targetInstanceId)
+            {
+                return;
+            }
+
+            WeaponVfxState state =
+                NadaVfxEditorWorkingState.State;
+
+            if (state?.Effects == null)
+                return;
+
+            int draggedIndex =
+                FindEffectIndex(
+                    state,
+                    draggedInstanceId);
+
+            int targetIndex =
+                FindEffectIndex(
+                    state,
+                    targetInstanceId);
+
+            if (draggedIndex < 0 ||
+                targetIndex < 0 ||
+                draggedIndex ==
+                targetIndex)
+            {
+                return;
+            }
+
+            int direction =
+                targetIndex >
+                draggedIndex
+                    ? 1
+                    : -1;
+
+            bool moved =
+                false;
+
+            while (draggedIndex !=
+                   targetIndex)
+            {
+                if (!NadaVfxEditorWorkingState.TryMoveEffect(
+                        draggedInstanceId,
+                        direction))
+                {
+                    break;
+                }
+
+                draggedIndex +=
+                    direction;
+
+                moved =
+                    true;
+            }
+
+            if (moved)
+            {
+                RefreshPreview();
+            }
+        }
+
+        private static int FindEffectIndex(
+            WeaponVfxState state,
+            uint instanceId)
+        {
+            if (state?.Effects == null)
+                return -1;
+
+            for (int i = 0;
+                 i < state.Effects.Count;
+                 i++)
+            {
+                VfxEffectBlock block =
+                    state.Effects[i];
+
+                if (block != null &&
+                    block.InstanceId ==
+                    instanceId)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static void ClearEffectDrag()
+        {
+            _dragCandidateInstanceId =
+                null;
+
+            _pendingReorderTargetInstanceId =
+                null;
+
+            _effectDragActive =
+                false;
+
+            _effectDragStartMousePosition =
+                Vector2.zero;
+        }
+
         private static void DrawInspectorPanel()
         {
             GUILayout.BeginVertical(
@@ -721,20 +1011,20 @@ namespace NADA.VFX.Weapon.Editor
                 GUILayout.ExpandWidth(true),
                 GUILayout.ExpandHeight(true));
 
+            GUILayout.Label(
+                "EDIT",
+                _sectionHeaderStyle);
+
+            GUILayout.Space(
+                5f);
+
             VfxEffectBlock selectedBlock =
                 FindSelectedBlock();
 
             if (selectedBlock == null)
             {
                 GUILayout.Label(
-                    "SELECT AN EFFECT",
-                    _inspectorTitleStyle);
-
-                GUILayout.Space(
-                    4f);
-
-                GUILayout.Label(
-                    "Add an effect on the left, then select its block to edit it here.",
+                    "Add an effect on the left, then select it to edit.",
                     _mutedStyle);
 
                 GUILayout.EndVertical();
@@ -757,17 +1047,18 @@ namespace NADA.VFX.Weapon.Editor
                 _inspectorTitleStyle);
 
             GUILayout.Label(
-                $"{GetFriendlyTypeName(selectedBlock.TypeId)}  /  Instance #{selectedBlock.InstanceId}",
+                GetFriendlyTypeName(
+                    selectedBlock.TypeId),
                 _mutedStyle);
 
             GUILayout.Space(
-                10f);
+                7f);
 
             DrawBlockLifecycleControls(
                 selectedBlock);
 
             GUILayout.Space(
-                10f);
+                8f);
 
             bool inspectorChanged =
                 NadaVfxBlockInspectorRegistry.Draw(
@@ -778,23 +1069,6 @@ namespace NADA.VFX.Weapon.Editor
                 RefreshPreview();
             }
 
-            GUILayout.Space(
-                5f);
-
-            GUILayout.BeginVertical(
-                _readOnlyBoxStyle);
-
-            GUILayout.Label(
-                "WORKING STATE",
-                _sectionHeaderStyle);
-
-            GUILayout.Label(
-                "This block is driving the live local preview. " +
-                "The editor state is still memory-only and is not persisted yet.",
-                _mutedStyle);
-
-            GUILayout.EndVertical();
-
             GUILayout.EndScrollView();
 
             GUILayout.EndVertical();
@@ -803,15 +1077,15 @@ namespace NADA.VFX.Weapon.Editor
         private static void DrawBlockLifecycleControls(
             VfxEffectBlock block)
         {
-            GUILayout.Label(
-                "BLOCK",
-                _sectionHeaderStyle);
-
-            if (NadaVfxEditorControls.Toggle(
-                    $"block:{block.InstanceId}:enabled",
-                    "Enabled",
+            bool nextEnabled =
+                GUILayout.Toggle(
                     block.Enabled,
-                    out bool nextEnabled))
+                    "Enabled",
+                    _compactToggleStyle,
+                    GUILayout.Width(78f));
+
+            if (nextEnabled !=
+                block.Enabled)
             {
                 if (NadaVfxEditorWorkingState.TrySetEnabled(
                         block.InstanceId,
@@ -822,18 +1096,7 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             GUILayout.Space(
-                3f);
-
-            DrawSingleInfoRow(
-                "Type ID",
-                block.TypeId);
-
-            DrawSingleInfoRow(
-                "Instance ID",
-                block.InstanceId.ToString());
-
-            GUILayout.Space(
-                6f);
+                4f);
 
             if (_renameInstanceId.HasValue &&
                 _renameInstanceId.Value ==
@@ -845,6 +1108,14 @@ namespace NADA.VFX.Weapon.Editor
             else
             {
                 DrawBlockActionButtons(
+                    block);
+            }
+
+            if (_resetConfirmInstanceId.HasValue &&
+                _resetConfirmInstanceId.Value ==
+                block.InstanceId)
+            {
+                DrawResetConfirmation(
                     block);
             }
 
@@ -874,6 +1145,9 @@ namespace NADA.VFX.Weapon.Editor
                         .GetDisplayName(
                             block);
 
+                _resetConfirmInstanceId =
+                    null;
+
                 _deleteConfirmInstanceId =
                     null;
             }
@@ -893,45 +1167,22 @@ namespace NADA.VFX.Weapon.Editor
                 }
             }
 
-            bool previousEnabled =
-                GUI.enabled;
-
-            GUI.enabled =
-                previousEnabled &&
-                NadaVfxEditorWorkingState.CanMoveUp(
-                    block.InstanceId);
-
             if (GUILayout.Button(
-                    "Up",
-                    GUILayout.Width(38f)))
+                    "Reset",
+                    GUILayout.Width(50f)))
             {
-                if (NadaVfxEditorWorkingState.TryMoveEffect(
-                        block.InstanceId,
-                        -1))
-                {
-                    RefreshPreview();
-                }
+                _resetConfirmInstanceId =
+                    block.InstanceId;
+
+                _renameInstanceId =
+                    null;
+
+                _renameBuffer =
+                    string.Empty;
+
+                _deleteConfirmInstanceId =
+                    null;
             }
-
-            GUI.enabled =
-                previousEnabled &&
-                NadaVfxEditorWorkingState.CanMoveDown(
-                    block.InstanceId);
-
-            if (GUILayout.Button(
-                    "Down",
-                    GUILayout.Width(46f)))
-            {
-                if (NadaVfxEditorWorkingState.TryMoveEffect(
-                        block.InstanceId,
-                        1))
-                {
-                    RefreshPreview();
-                }
-            }
-
-            GUI.enabled =
-                previousEnabled;
 
             if (GUILayout.Button(
                     "Delete",
@@ -945,6 +1196,9 @@ namespace NADA.VFX.Weapon.Editor
 
                 _renameBuffer =
                     string.Empty;
+
+                _resetConfirmInstanceId =
+                    null;
             }
 
             GUILayout.EndHorizontal();
@@ -1006,11 +1260,53 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             GUILayout.EndHorizontal();
+        }
+
+        private static void DrawResetConfirmation(
+            VfxEffectBlock block)
+        {
+            GUILayout.Space(
+                5f);
+
+            GUILayout.BeginVertical(
+                _readOnlyBoxStyle);
 
             GUILayout.Label(
-                "Renaming changes authored metadata only. " +
-                "InstanceId and runtime identity stay unchanged.",
+                $"Reset '{NadaVfxEditorWorkingState.GetDisplayName(block)}'?",
+                _warningStyle);
+
+            GUILayout.Label(
+                "All effect modifiers and transform values return to their defaults. " +
+                "Name, Enabled state, identity, and list position stay unchanged.",
                 _mutedStyle);
+
+            GUILayout.BeginHorizontal();
+
+            if (GUILayout.Button(
+                    "Confirm Reset",
+                    GUILayout.Width(96f)))
+            {
+                if (NadaVfxEditorWorkingState.TryResetEffect(
+                        block.InstanceId))
+                {
+                    _resetConfirmInstanceId =
+                        null;
+
+                    RefreshPreview();
+                }
+            }
+
+            if (GUILayout.Button(
+                    "Cancel",
+                    GUILayout.Width(58f)))
+            {
+                _resetConfirmInstanceId =
+                    null;
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.EndVertical();
         }
 
         private static void DrawDeleteConfirmation(
@@ -1045,6 +1341,9 @@ namespace NADA.VFX.Weapon.Editor
                     _deleteConfirmInstanceId =
                         null;
 
+                    _resetConfirmInstanceId =
+                        null;
+
                     _renameInstanceId =
                         null;
 
@@ -1053,6 +1352,8 @@ namespace NADA.VFX.Weapon.Editor
 
                     _inspectorScrollPosition =
                         Vector2.zero;
+
+                    ClearEffectDrag();
 
                     RefreshPreview();
                 }
@@ -1098,6 +1399,9 @@ namespace NADA.VFX.Weapon.Editor
             _renameBuffer =
                 string.Empty;
 
+            _resetConfirmInstanceId =
+                null;
+
             _deleteConfirmInstanceId =
                 null;
         }
@@ -1113,39 +1417,6 @@ namespace NADA.VFX.Weapon.Editor
                 definition?.PickerName ??
                 typeId ??
                 "Unknown";
-        }
-
-        private static void DrawInfoRow(
-            string leftLabel,
-            string leftValue,
-            string rightLabel,
-            string rightValue)
-        {
-            GUILayout.BeginHorizontal();
-
-            GUILayout.Label(
-                leftLabel,
-                _mutedStyle,
-                GUILayout.Width(82f));
-
-            GUILayout.Label(
-                leftValue,
-                _bodyStyle,
-                GUILayout.MinWidth(170f));
-
-            GUILayout.Space(
-                12f);
-
-            GUILayout.Label(
-                rightLabel,
-                _mutedStyle,
-                GUILayout.Width(82f));
-
-            GUILayout.Label(
-                rightValue,
-                _bodyStyle);
-
-            GUILayout.EndHorizontal();
         }
 
         private static void DrawSingleInfoRow(
@@ -1177,6 +1448,7 @@ namespace NADA.VFX.Weapon.Editor
                 _selectedInstanceId =
                     null;
 
+                ClearEffectDrag();
                 ClearTransientBlockActions();
 
                 return;
@@ -1214,6 +1486,7 @@ namespace NADA.VFX.Weapon.Editor
             _selectedInstanceId =
                 firstValid?.InstanceId;
 
+            ClearEffectDrag();
             ClearTransientBlockActions();
         }
 
@@ -1242,6 +1515,114 @@ namespace NADA.VFX.Weapon.Editor
             return null;
         }
 
+        private static void DrawResizeGrip()
+        {
+            Rect gripRect =
+                new Rect(
+                    _windowRect.width -
+                    ResizeGripSize -
+                    3f,
+                    _windowRect.height -
+                    ResizeGripSize -
+                    3f,
+                    ResizeGripSize,
+                    ResizeGripSize);
+
+            Event current =
+                Event.current;
+
+            int controlId =
+                GUIUtility.GetControlID(
+                    FocusType.Passive);
+
+            EventType controlEvent =
+                current.GetTypeForControl(
+                    controlId);
+
+            switch (controlEvent)
+            {
+                case EventType.MouseDown:
+                {
+                    if (current.button != 0 ||
+                        !gripRect.Contains(
+                            current.mousePosition))
+                    {
+                        break;
+                    }
+
+                    GUIUtility.hotControl =
+                        controlId;
+
+                    _resizing =
+                        true;
+
+                    _resizeStartMouseScreenPosition =
+                        GUIUtility.GUIToScreenPoint(
+                            current.mousePosition);
+
+                    _resizeStartSize =
+                        new Vector2(
+                            _windowRect.width,
+                            _windowRect.height);
+
+                    current.Use();
+
+                    break;
+                }
+
+                case EventType.MouseDrag:
+                {
+                    if (!_resizing ||
+                        GUIUtility.hotControl !=
+                        controlId)
+                    {
+                        break;
+                    }
+
+                    Vector2 currentMouseScreenPosition =
+                        GUIUtility.GUIToScreenPoint(
+                            current.mousePosition);
+
+                    Vector2 delta =
+                        currentMouseScreenPosition -
+                        _resizeStartMouseScreenPosition;
+
+                    _windowRect.width =
+                        _resizeStartSize.x +
+                        delta.x;
+
+                    _windowRect.height =
+                        _resizeStartSize.y +
+                        delta.y;
+
+                    ClampWindowSize();
+
+                    current.Use();
+
+                    break;
+                }
+
+                case EventType.MouseUp:
+                {
+                    if (GUIUtility.hotControl !=
+                        controlId)
+                    {
+                        break;
+                    }
+
+                    _resizing =
+                        false;
+
+                    GUIUtility.hotControl =
+                        0;
+
+                    current.Use();
+
+                    break;
+                }
+            }
+        }
+
         private static void EnsureWindowPosition()
         {
             if (_positionInitialized)
@@ -1261,27 +1642,44 @@ namespace NADA.VFX.Weapon.Editor
                 true;
         }
 
-        private static void ClampWindowToScreen()
+        private static void ClampWindowSize()
         {
-            float maxWidth =
+            float maximumWidth =
                 Mathf.Max(
-                    620f,
-                    Screen.width - 40f);
+                    320f,
+                    Screen.width - 20f);
 
-            float maxHeight =
+            float maximumHeight =
                 Mathf.Max(
-                    460f,
-                    Screen.height - 80f);
+                    300f,
+                    Screen.height - 20f);
+
+            float minimumWidth =
+                Mathf.Min(
+                    MinimumWindowWidth,
+                    maximumWidth);
+
+            float minimumHeight =
+                Mathf.Min(
+                    MinimumWindowHeight,
+                    maximumHeight);
 
             _windowRect.width =
-                Mathf.Min(
-                    DefaultWindowWidth,
-                    maxWidth);
+                Mathf.Clamp(
+                    _windowRect.width,
+                    minimumWidth,
+                    maximumWidth);
 
             _windowRect.height =
-                Mathf.Min(
-                    DefaultWindowHeight,
-                    maxHeight);
+                Mathf.Clamp(
+                    _windowRect.height,
+                    minimumHeight,
+                    maximumHeight);
+        }
+
+        private static void ClampWindowToScreen()
+        {
+            ClampWindowSize();
 
             _windowRect.x =
                 Mathf.Clamp(
@@ -1482,8 +1880,8 @@ namespace NADA.VFX.Weapon.Editor
                         new RectOffset(
                             12,
                             12,
-                            9,
-                            9)
+                            8,
+                            8)
                 };
 
             _targetCardStyle.normal.background =
@@ -1681,6 +2079,38 @@ namespace NADA.VFX.Weapon.Editor
 
             _readOnlyBoxStyle.normal.background =
                 readOnlyBackground;
+
+            _compactToggleStyle =
+                new GUIStyle(
+                    GUI.skin.toggle)
+                {
+                    fontSize = 10,
+                    padding =
+                        new RectOffset(
+                            18,
+                            4,
+                            2,
+                            2)
+                };
+
+            _compactToggleStyle.normal.textColor =
+                primaryText;
+
+            _detailsButtonStyle =
+                new GUIStyle(
+                    GUI.skin.button)
+                {
+                    fontSize = 9,
+                    padding =
+                        new RectOffset(
+                            5,
+                            5,
+                            2,
+                            2)
+                };
+
+            _detailsButtonStyle.normal.textColor =
+                primaryText;
         }
 
         private static Texture2D CreateTexture(

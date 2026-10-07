@@ -4,12 +4,6 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Editor
 {
-    /// <summary>
-    /// Reusable IMGUI controls for the NADA VFX editor.
-    ///
-    /// This owns presentation and transient UI state only. It never resolves
-    /// effect behavior or owns WeaponVfxState.
-    /// </summary>
     internal static class NadaVfxEditorControls
     {
         private static readonly Dictionary<string, bool>
@@ -29,12 +23,12 @@ namespace NADA.VFX.Weapon.Editor
         private static GUIStyle _sliderLabelStyle;
         private static GUIStyle _valueFieldStyle;
         private static GUIStyle _valueStyle;
-        private static GUIStyle _hintStyle;
         private static GUIStyle _placeholderStyle;
-        private static GUIStyle _disabledReasonStyle;
         private static GUIStyle _toggleStyle;
         private static GUIStyle _segmentButtonStyle;
         private static GUIStyle _selectedSegmentButtonStyle;
+        private static GUIStyle _tooltipStyle;
+        private static GUIStyle _resetButtonStyle;
 
         internal static bool Section(
             string key,
@@ -91,12 +85,19 @@ namespace NADA.VFX.Weapon.Editor
             bool value,
             out bool nextValue,
             bool enabled = true,
-            string disabledReason = null)
+            string disabledReason = null,
+            string description = null)
         {
             EnsureStyles();
 
             nextValue =
                 value;
+
+            string tooltip =
+                GetTooltip(
+                    enabled,
+                    description,
+                    disabledReason);
 
             GUILayout.BeginVertical(
                 _modifierRowStyle);
@@ -111,7 +112,9 @@ namespace NADA.VFX.Weapon.Editor
             bool drawnValue =
                 GUILayout.Toggle(
                     value,
-                    label,
+                    new GUIContent(
+                        label,
+                        tooltip),
                     _toggleStyle);
 
             GUI.enabled =
@@ -125,15 +128,6 @@ namespace NADA.VFX.Weapon.Editor
             {
                 nextValue =
                     drawnValue;
-            }
-
-            if (!enabled &&
-                !string.IsNullOrWhiteSpace(
-                    disabledReason))
-            {
-                GUILayout.Label(
-                    disabledReason,
-                    _disabledReasonStyle);
             }
 
             GUILayout.EndVertical();
@@ -150,7 +144,9 @@ namespace NADA.VFX.Weapon.Editor
             out float nextValue,
             int decimals = 2,
             bool enabled = true,
-            string disabledReason = null)
+            string disabledReason = null,
+            string description = null,
+            float? resetValue = null)
         {
             EnsureStyles();
 
@@ -185,6 +181,12 @@ namespace NADA.VFX.Weapon.Editor
             string controlName =
                 $"NadaVfxFloat_{key}";
 
+            string tooltip =
+                GetTooltip(
+                    enabled,
+                    description,
+                    disabledReason);
+
             bool textFieldFocused =
                 string.Equals(
                     GUI.GetNameOfFocusedControl(),
@@ -211,10 +213,17 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.BeginHorizontal();
 
+            float labelWidth =
+                resetValue.HasValue
+                    ? 86f
+                    : 116f;
+
             GUILayout.Label(
-                label,
+                new GUIContent(
+                    label,
+                    tooltip),
                 _sliderLabelStyle,
-                GUILayout.Width(116f));
+                GUILayout.Width(labelWidth));
 
             bool previousEnabled =
                 GUI.enabled;
@@ -223,16 +232,33 @@ namespace NADA.VFX.Weapon.Editor
                 previousEnabled &&
                 enabled;
 
-            float sliderValue =
-                GUILayout.HorizontalSlider(
-                    safeSliderValue,
-                    minimum,
-                    maximum,
-                    GUILayout.MinWidth(100f),
+            Rect sliderRect =
+                GUILayoutUtility.GetRect(
+                    60f,
+                    18f,
+                    GUILayout.MinWidth(60f),
                     GUILayout.ExpandWidth(true));
 
+            float sliderValue =
+                GUI.HorizontalSlider(
+                    sliderRect,
+                    safeSliderValue,
+                    minimum,
+                    maximum);
+
+            if (!string.IsNullOrWhiteSpace(
+                    tooltip))
+            {
+                GUI.Label(
+                    sliderRect,
+                    new GUIContent(
+                        string.Empty,
+                        tooltip),
+                    GUIStyle.none);
+            }
+
             GUILayout.Space(
-                7f);
+                5f);
 
             GUI.SetNextControlName(
                 controlName);
@@ -242,7 +268,49 @@ namespace NADA.VFX.Weapon.Editor
                     numericBuffer ?? string.Empty,
                     14,
                     _valueFieldStyle,
-                    GUILayout.Width(66f));
+                    GUILayout.Width(
+                        resetValue.HasValue
+                            ? 54f
+                            : 66f));
+
+            bool resetClicked =
+                false;
+
+            float clampedResetValue =
+                value;
+
+            if (resetValue.HasValue)
+            {
+                GUILayout.Space(
+                    4f);
+
+                clampedResetValue =
+                    Mathf.Clamp(
+                        resetValue.Value,
+                        minimum,
+                        maximum);
+
+                bool canReset =
+                    enabled &&
+                    IsFinite(
+                        resetValue.Value) &&
+                    !Mathf.Approximately(
+                        value,
+                        clampedResetValue);
+
+                GUI.enabled =
+                    previousEnabled &&
+                    canReset;
+
+                resetClicked =
+                    GUILayout.Button(
+                        new GUIContent(
+                            "Reset",
+                            $"Reset {label} to {FormatFloat(clampedResetValue, decimals)}."),
+                        _resetButtonStyle,
+                        GUILayout.Width(42f),
+                        GUILayout.Height(20f));
+            }
 
             GUI.enabled =
                 previousEnabled;
@@ -252,10 +320,26 @@ namespace NADA.VFX.Weapon.Editor
             bool changed =
                 false;
 
-            if (enabled &&
-                !Mathf.Approximately(
-                    sliderValue,
-                    safeSliderValue))
+            if (resetClicked)
+            {
+                nextValue =
+                    clampedResetValue;
+
+                NumericBufferByKey[
+                    key] =
+                    FormatFloat(
+                        nextValue,
+                        decimals);
+
+                changed =
+                    !Mathf.Approximately(
+                        nextValue,
+                        value);
+            }
+            else if (enabled &&
+                     !Mathf.Approximately(
+                         sliderValue,
+                         safeSliderValue))
             {
                 nextValue =
                     sliderValue;
@@ -314,15 +398,6 @@ namespace NADA.VFX.Weapon.Editor
                 }
             }
 
-            if (!enabled &&
-                !string.IsNullOrWhiteSpace(
-                    disabledReason))
-            {
-                GUILayout.Label(
-                    disabledReason,
-                    _disabledReasonStyle);
-            }
-
             GUILayout.EndVertical();
 
             return changed;
@@ -335,7 +410,8 @@ namespace NADA.VFX.Weapon.Editor
             string[] options,
             out int nextSelectedIndex,
             bool enabled = true,
-            string disabledReason = null)
+            string disabledReason = null,
+            string description = null)
         {
             EnsureStyles();
 
@@ -354,6 +430,12 @@ namespace NADA.VFX.Weapon.Editor
                     0,
                     options.Length - 1);
 
+            string tooltip =
+                GetTooltip(
+                    enabled,
+                    description,
+                    disabledReason);
+
             GUILayout.BeginVertical(
                 _modifierRowStyle);
 
@@ -361,7 +443,9 @@ namespace NADA.VFX.Weapon.Editor
                     label))
             {
                 GUILayout.Label(
-                    label,
+                    new GUIContent(
+                        label,
+                        tooltip),
                     _sliderLabelStyle);
             }
 
@@ -392,7 +476,9 @@ namespace NADA.VFX.Weapon.Editor
                         : _segmentButtonStyle;
 
                 if (GUILayout.Button(
-                        option,
+                        new GUIContent(
+                            option,
+                            tooltip),
                         style,
                         GUILayout.ExpandWidth(true),
                         GUILayout.Height(24f)))
@@ -413,16 +499,6 @@ namespace NADA.VFX.Weapon.Editor
                 previousEnabled;
 
             GUILayout.EndHorizontal();
-
-            if (!enabled &&
-                !string.IsNullOrWhiteSpace(
-                    disabledReason))
-            {
-                GUILayout.Label(
-                    disabledReason,
-                    _disabledReasonStyle);
-            }
-
             GUILayout.EndVertical();
 
             return
@@ -453,7 +529,6 @@ namespace NADA.VFX.Weapon.Editor
                 _valueStyle);
 
             GUILayout.EndHorizontal();
-
             GUILayout.EndVertical();
         }
 
@@ -480,7 +555,6 @@ namespace NADA.VFX.Weapon.Editor
                 _valueStyle);
 
             GUILayout.EndHorizontal();
-
             GUILayout.EndVertical();
         }
 
@@ -507,24 +581,14 @@ namespace NADA.VFX.Weapon.Editor
                 _valueStyle);
 
             GUILayout.EndHorizontal();
-
             GUILayout.EndVertical();
         }
 
         internal static void Hint(
             string message)
         {
-            EnsureStyles();
-
-            if (string.IsNullOrWhiteSpace(
-                    message))
-            {
-                return;
-            }
-
-            GUILayout.Label(
-                message,
-                _hintStyle);
+            _ =
+                message;
         }
 
         internal static void Placeholder(
@@ -549,6 +613,94 @@ namespace NADA.VFX.Weapon.Editor
                 7f);
         }
 
+        internal static void DrawTooltipOverlay(
+            float availableWidth,
+            float availableHeight)
+        {
+            EnsureStyles();
+
+            string tooltip =
+                GUI.tooltip;
+
+            if (string.IsNullOrWhiteSpace(
+                    tooltip))
+            {
+                return;
+            }
+
+            GUIContent content =
+                new GUIContent(
+                    tooltip);
+
+            float width =
+                Mathf.Clamp(
+                    _tooltipStyle.CalcSize(
+                        content).x + 18f,
+                    180f,
+                    320f);
+
+            float height =
+                _tooltipStyle.CalcHeight(
+                    content,
+                    width) + 8f;
+
+            Vector2 mouse =
+                Event.current.mousePosition;
+
+            float x =
+                mouse.x + 14f;
+
+            float y =
+                mouse.y + 18f;
+
+            if (x + width >
+                availableWidth - 8f)
+            {
+                x =
+                    mouse.x -
+                    width -
+                    14f;
+            }
+
+            if (y + height >
+                availableHeight - 8f)
+            {
+                y =
+                    mouse.y -
+                    height -
+                    14f;
+            }
+
+            x =
+                Mathf.Clamp(
+                    x,
+                    8f,
+                    Mathf.Max(
+                        8f,
+                        availableWidth -
+                        width -
+                        8f));
+
+            y =
+                Mathf.Clamp(
+                    y,
+                    8f,
+                    Mathf.Max(
+                        8f,
+                        availableHeight -
+                        height -
+                        8f));
+
+            GUI.Box(
+                new Rect(
+                    x,
+                    y,
+                    width,
+                    height),
+                content,
+                _tooltipStyle);
+        }
+
         internal static void ResetUiState()
         {
             SectionExpandedByKey.Clear();
@@ -571,12 +723,12 @@ namespace NADA.VFX.Weapon.Editor
             _sliderLabelStyle = null;
             _valueFieldStyle = null;
             _valueStyle = null;
-            _hintStyle = null;
             _placeholderStyle = null;
-            _disabledReasonStyle = null;
             _toggleStyle = null;
             _segmentButtonStyle = null;
             _selectedSegmentButtonStyle = null;
+            _tooltipStyle = null;
+            _resetButtonStyle = null;
         }
 
         private static void EnsureStyles()
@@ -632,6 +784,14 @@ namespace NADA.VFX.Weapon.Editor
                         0.15f,
                         1f));
 
+            Texture2D tooltipBackground =
+                CreateTexture(
+                    new Color(
+                        0.055f,
+                        0.05f,
+                        0.045f,
+                        0.98f));
+
             Color primaryText =
                 new Color(
                     0.93f,
@@ -651,13 +811,6 @@ namespace NADA.VFX.Weapon.Editor
                     0.91f,
                     0.70f,
                     0.34f,
-                    1f);
-
-            Color disabledText =
-                new Color(
-                    0.50f,
-                    0.47f,
-                    0.42f,
                     1f);
 
             _sectionButtonStyle =
@@ -747,23 +900,6 @@ namespace NADA.VFX.Weapon.Editor
             _valueStyle.normal.textColor =
                 primaryText;
 
-            _hintStyle =
-                new GUIStyle(
-                    GUI.skin.label)
-                {
-                    fontSize = 9,
-                    wordWrap = true,
-                    padding =
-                        new RectOffset(
-                            4,
-                            4,
-                            2,
-                            2)
-                };
-
-            _hintStyle.normal.textColor =
-                mutedText;
-
             _placeholderStyle =
                 new GUIStyle(
                     GUI.skin.label)
@@ -780,23 +916,6 @@ namespace NADA.VFX.Weapon.Editor
 
             _placeholderStyle.normal.textColor =
                 mutedText;
-
-            _disabledReasonStyle =
-                new GUIStyle(
-                    GUI.skin.label)
-                {
-                    fontSize = 9,
-                    wordWrap = true,
-                    padding =
-                        new RectOffset(
-                            116,
-                            4,
-                            0,
-                            1)
-                };
-
-            _disabledReasonStyle.normal.textColor =
-                disabledText;
 
             _toggleStyle =
                 new GUIStyle(
@@ -854,6 +973,58 @@ namespace NADA.VFX.Weapon.Editor
 
             _selectedSegmentButtonStyle.normal.textColor =
                 primaryText;
+
+            _tooltipStyle =
+                new GUIStyle(
+                    GUI.skin.box)
+                {
+                    fontSize = 10,
+                    wordWrap = true,
+                    padding =
+                        new RectOffset(
+                            9,
+                            9,
+                            7,
+                            7)
+                };
+
+            _tooltipStyle.normal.background =
+                tooltipBackground;
+
+            _tooltipStyle.normal.textColor =
+                primaryText;
+
+            _resetButtonStyle =
+                new GUIStyle(
+                    GUI.skin.button)
+                {
+                    fontSize = 9,
+                    padding =
+                        new RectOffset(
+                            3,
+                            3,
+                            2,
+                            2)
+                };
+
+            _resetButtonStyle.normal.textColor =
+                primaryText;
+        }
+
+        private static string GetTooltip(
+            bool enabled,
+            string description,
+            string disabledReason)
+        {
+            if (!enabled &&
+                !string.IsNullOrWhiteSpace(
+                    disabledReason))
+            {
+                return disabledReason;
+            }
+
+            return description ??
+                   string.Empty;
         }
 
         private static Texture2D CreateTexture(

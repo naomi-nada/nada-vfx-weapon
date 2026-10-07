@@ -1,23 +1,15 @@
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
-using UnityEngine;
+using NADA.VFX.Weapon.Core.State.Defaults;
 
 namespace NADA.VFX.Weapon.Editor.Inspectors
 {
-    /// <summary>
-    /// Strongly typed editor for one independent Sparks block.
-    ///
-    /// State is edited directly. Runtime presentation remains owned by the
-    /// normal block reconciliation path.
-    /// </summary>
     internal static class NadaSparksInspector
     {
-        // Sparks energy is consumed by Mathf.Clamp01() in the runtime.
         private const float MinEnergy = 0f;
         private const float MaxEnergy = 1f;
 
-        // Current hue state is a normalized signed hue control.
         private const float MinHue = -1f;
         private const float MaxHue = 1f;
 
@@ -57,7 +49,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         sparks.Scale,
                         PluginConfig.MinScaleMult,
                         PluginConfig.MaxScaleMult,
-                        out float scale))
+                        out float scale,
+                        description:
+                            "Changes the overall size of the sparks.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultScale))
                 {
                     sparks.Scale =
                         scale;
@@ -72,7 +68,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         sparks.Luminance,
                         PluginConfig.MinLuminance,
                         PluginConfig.MaxLuminance,
-                        out float luminance))
+                        out float luminance,
+                        description:
+                            "Changes the brightness of the effect.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultLuminance))
                 {
                     sparks.Luminance =
                         luminance;
@@ -87,7 +87,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         sparks.Hue,
                         MinHue,
                         MaxHue,
-                        out float hue))
+                        out float hue,
+                        description:
+                            "Shifts the effect's color while preserving its authored gradients.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultHue))
                 {
                     sparks.Hue =
                         hue;
@@ -109,7 +113,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         sparks.Energy,
                         MinEnergy,
                         MaxEnergy,
-                        out float energy))
+                        out float energy,
+                        description:
+                            "Controls particle emission intensity.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultEnergy))
                 {
                     sparks.Energy =
                         energy;
@@ -124,7 +132,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         sparks.Lifetime,
                         PluginConfig.MinLifetime,
                         PluginConfig.MaxLifetime,
-                        out float lifetime))
+                        out float lifetime,
+                        description:
+                            "Changes how long emitted particles remain alive.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultLifetime))
                 {
                     sparks.Lifetime =
                         lifetime;
@@ -139,7 +151,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         sparks.SimulationSpeed,
                         PluginConfig.MinSimulationSpeed,
                         PluginConfig.MaxSimulationSpeed,
-                        out float simulationSpeed))
+                        out float simulationSpeed,
+                        description:
+                            "Changes how quickly the particle simulation runs.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultSimulationSpeed))
                 {
                     sparks.SimulationSpeed =
                         simulationSpeed;
@@ -147,9 +163,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed =
                         true;
                 }
-
-                NadaVfxEditorControls.Hint(
-                    "Energy controls particle emission intensity.");
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
@@ -164,7 +177,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         sparks.Length,
                         PluginConfig.MinFlameLength,
                         PluginConfig.MaxFlameLength,
-                        out float length))
+                        out float length,
+                        description:
+                            "Changes the length of the sparks field along the target.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultFlameLength))
                 {
                     sparks.Length =
                         length;
@@ -179,7 +196,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         sparks.Width,
                         PluginConfig.MinSparksWidth,
                         PluginConfig.MaxSparksWidth,
-                        out float width))
+                        out float width,
+                        description:
+                            "Changes the width of the sparks field around the target.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultSparksWidth))
                 {
                     sparks.Width =
                         width;

@@ -1,5 +1,6 @@
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Defaults;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Editor.Inspectors
@@ -48,7 +49,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MinEffectOffset,
                     PluginConfig.MaxEffectOffset,
                     out float xOffset,
-                    decimals: 3))
+                    decimals: 3,
+                    resetValue:
+                        WeaponVfxBlockDefaults.DefaultEffectOffset))
             {
                 block.Transform.XOffset =
                     xOffset;
@@ -64,7 +67,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MinEffectOffset,
                     PluginConfig.MaxEffectOffset,
                     out float yOffset,
-                    decimals: 3))
+                    decimals: 3,
+                    resetValue:
+                        WeaponVfxBlockDefaults.DefaultEffectOffset))
             {
                 block.Transform.YOffset =
                     yOffset;
@@ -80,7 +85,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MinEffectOffset,
                     PluginConfig.MaxEffectOffset,
                     out float zOffset,
-                    decimals: 3))
+                    decimals: 3,
+                    resetValue:
+                        WeaponVfxBlockDefaults.DefaultEffectOffset))
             {
                 block.Transform.ZOffset =
                     zOffset;
@@ -99,7 +106,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MinEffectRotation,
                     PluginConfig.MaxEffectRotation,
                     out float xRotation,
-                    decimals: 1))
+                    decimals: 1,
+                    resetValue:
+                        WeaponVfxBlockDefaults.DefaultEffectRotation))
             {
                 block.Transform.XRotation =
                     xRotation;
@@ -115,7 +124,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MinEffectRotation,
                     PluginConfig.MaxEffectRotation,
                     out float yRotation,
-                    decimals: 1))
+                    decimals: 1,
+                    resetValue:
+                        WeaponVfxBlockDefaults.DefaultEffectRotation))
             {
                 block.Transform.YRotation =
                     yRotation;
@@ -131,7 +142,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MinEffectRotation,
                     PluginConfig.MaxEffectRotation,
                     out float zRotation,
-                    decimals: 1))
+                    decimals: 1,
+                    resetValue:
+                        WeaponVfxBlockDefaults.DefaultEffectRotation))
             {
                 block.Transform.ZRotation =
                     zRotation;
