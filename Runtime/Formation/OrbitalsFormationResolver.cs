@@ -16,6 +16,10 @@ namespace NADA.VFX.Weapon.Runtime.Formation
             WeaponVfxState state,
             out OrbitalsFormationResolution resolution)
         {
+            // Temporary pre-1.0 contract verification.
+            // The runner is guarded and executes only once.
+            OrbitalsFormationResolverContractTests.RunOnce();
+
             if (state == null)
             {
                 return Fail(
@@ -45,7 +49,11 @@ namespace NADA.VFX.Weapon.Runtime.Formation
             foreach (VfxEffectBlock block in state.Effects)
             {
                 if (block == null)
-                    continue;
+                {
+                    return Fail(
+                        "null-effect-block",
+                        out resolution);
+                }
 
                 if (allBlocksByInstanceId.ContainsKey(
                         block.InstanceId))
@@ -327,11 +335,11 @@ namespace NADA.VFX.Weapon.Runtime.Formation
                         resolvedLeaderInstanceId,
                         trajectorySourceBlock.InstanceId,
 
-                        // Count always stays with the follower itself.
+                        // Count always stays with this block.
                         ownPath.Count,
 
-                        // Everything below describes the trajectory and is
-                        // therefore borrowed from the leader when glued.
+                        // The remaining path data describes trajectory and is
+                        // borrowed from the leader while glued.
                         trajectorySourcePath.SnakeEnabled,
                         trajectorySourcePath.Speed,
                         trajectorySourcePath.Spacing,

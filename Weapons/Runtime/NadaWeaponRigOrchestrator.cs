@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.State.Blocks;
@@ -7,6 +8,7 @@ using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Formation;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
+using NADA.VFX.Weapon.Modules.Motion;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
@@ -119,7 +121,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 itemData != null &&
                 VfxStateIO.IsBound(itemData);
 
-            if (hasBoundBlockState)
+            bool hasEditorPreview =
+                NadaWeaponEditorPreviewState.TryGet(
+                    itemData,
+                    out WeaponVfxState editorPreviewState);
+
+            bool useBlockRuntime =
+                hasEditorPreview ||
+                hasBoundBlockState;
+
+            if (useBlockRuntime)
             {
                 NadaOrbitalsRigAssembly
                     .EnsureLegacyOrbitalsRigWithoutOrbs(
@@ -135,7 +146,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     rootObject.name);
             }
 
-            if (hasBoundBlockState)
+            if (useBlockRuntime)
             {
                 NadaFlamesRigAssembly.RemoveDirectOuterFlamesBranch(
                     localEffectsRootTransform,
@@ -195,12 +206,25 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             WeaponVfxState blockState =
                 null;
 
-            if (hasBoundBlockState)
+            if (useBlockRuntime)
             {
                 blockState =
-                    CreateMigratedPrototypeState(
-                        context,
-                        "local");
+                    hasEditorPreview
+                        ? editorPreviewState
+                        : CreateMigratedPrototypeState(
+                            context,
+                            "local");
+
+                if (hasEditorPreview)
+                {
+                    NadaLogControl.Info(
+                        $"editor-preview-runtime:{rootObject.GetInstanceID()}:" +
+                        $"{blockState?.Effects?.Count ?? 0}",
+                        $"{Plugin.ModName}: [EditorPreviewRuntime] " +
+                        $"root='{rootObject.name}' " +
+                        $"effects={blockState?.Effects?.Count ?? 0} " +
+                        $"source='editor'");
+                }
 
                 BindInnerFlamesBlocks(
                     localEffectsRootTransform,
@@ -233,11 +257,47 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     blockState,
                     rootObject.name);
 
+                Dictionary<uint, Transform> orbitalMotionRoots =
+                    new Dictionary<uint, Transform>();
+
+                BindOrbitalsCoresBlocks(
+                    localEffectsRootTransform,
+                    localWeaponRootTransform,
+                    catalog.OrbitalsRootTransform,
+                    catalog.OrbitalsRigRootTransform,
+                    blockState,
+                    orbitalMotionRoots,
+                    rootObject.name);
+
+                BindOrbitalsFlamesBlocks(
+                    localEffectsRootTransform,
+                    localWeaponRootTransform,
+                    catalog.OrbitalsRootTransform,
+                    catalog.OrbitalsRigRootTransform,
+                    blockState,
+                    orbitalMotionRoots,
+                    rootObject.name);
+
+                BindOrbitalsEmbersBlocks(
+                    localEffectsRootTransform,
+                    localWeaponRootTransform,
+                    catalog.OrbitalsRootTransform,
+                    catalog.OrbitalsRigRootTransform,
+                    blockState,
+                    orbitalMotionRoots,
+                    rootObject.name);
+
                 BindOrbitalsOrbsBlocks(
                     localEffectsRootTransform,
                     localWeaponRootTransform,
                     catalog.OrbitalsRigRootTransform,
                     blockState,
+                    orbitalMotionRoots,
+                    rootObject.name);
+
+                BindResolvedOrbitalsTrajectorySources(
+                    blockState,
+                    orbitalMotionRoots,
                     rootObject.name);
 
                 NadaEffectInstanceAssembly.ReconcileInstanceOrder(
@@ -289,6 +349,24 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     VfxEffectTypeIds.OrbitalsOrbs,
                     rootObject.name);
 
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsCores,
+                    rootObject.name);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsFlames,
+                    rootObject.name);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsEmbers,
+                    rootObject.name);
+
                 NadaEffectBinder.BindOuterFlamesEffect(
                     catalog.OuterFlamesTransform,
                     itemData);
@@ -330,7 +408,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     catalog.OrbitalsRigRootTransform);
             }
 
-            if (hasBoundBlockState)
+            if (useBlockRuntime)
             {
                 NadaEffectBinder.BindOrbitalsEffect(
                     catalog.OrbitalsRootTransform,
@@ -493,11 +571,47 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 blockState,
                 rootObject.name);
 
+            Dictionary<uint, Transform> orbitalMotionRoots =
+                new Dictionary<uint, Transform>();
+
+            BindOrbitalsCoresBlocks(
+                remoteEffectsRootTransform,
+                localWeaponRootTransform,
+                catalog.OrbitalsRootTransform,
+                catalog.OrbitalsRigRootTransform,
+                blockState,
+                orbitalMotionRoots,
+                rootObject.name);
+
+            BindOrbitalsFlamesBlocks(
+                remoteEffectsRootTransform,
+                localWeaponRootTransform,
+                catalog.OrbitalsRootTransform,
+                catalog.OrbitalsRigRootTransform,
+                blockState,
+                orbitalMotionRoots,
+                rootObject.name);
+
+            BindOrbitalsEmbersBlocks(
+                remoteEffectsRootTransform,
+                localWeaponRootTransform,
+                catalog.OrbitalsRootTransform,
+                catalog.OrbitalsRigRootTransform,
+                blockState,
+                orbitalMotionRoots,
+                rootObject.name);
+
             BindOrbitalsOrbsBlocks(
                 remoteEffectsRootTransform,
                 localWeaponRootTransform,
                 catalog.OrbitalsRigRootTransform,
                 blockState,
+                orbitalMotionRoots,
+                rootObject.name);
+
+            BindResolvedOrbitalsTrajectorySources(
+                blockState,
+                orbitalMotionRoots,
                 rootObject.name);
 
             NadaEffectInstanceAssembly.ReconcileInstanceOrder(
@@ -922,11 +1036,532 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             }
         }
 
+        private static void BindOrbitalsCoresBlocks(
+            Transform localEffectsRootTransform,
+            Transform localWeaponRootTransform,
+            Transform legacyOrbitalsRootTransform,
+            Transform legacyOrbitalsRigRootTransform,
+            WeaponVfxState state,
+            Dictionary<uint, Transform> orbitalMotionRoots,
+            string ownerNameForLogs)
+        {
+            if (localEffectsRootTransform == null ||
+                localWeaponRootTransform == null)
+            {
+                return;
+            }
+
+            bool resolutionValid =
+                OrbitalsFormationResolver.TryResolve(
+                    state,
+                    out OrbitalsFormationResolution resolution);
+
+            if (!resolutionValid ||
+                resolution == null ||
+                !resolution.IsValid)
+            {
+                NadaOrbitalsCoresBlockStructure.RemoveLegacyRuntime(
+                    legacyOrbitalsRootTransform,
+                    legacyOrbitalsRigRootTransform,
+                    ownerNameForLogs);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsCores,
+                    ownerNameForLogs);
+
+                return;
+            }
+
+            bool hasCoresBlocks =
+                false;
+
+            foreach (ResolvedOrbitalsFormation entry in
+                     resolution.Entries)
+            {
+                if (entry != null &&
+                    entry.TypeId ==
+                        VfxEffectTypeIds.OrbitalsCores)
+                {
+                    hasCoresBlocks =
+                        true;
+
+                    break;
+                }
+            }
+
+            if (!hasCoresBlocks)
+            {
+                NadaOrbitalsCoresBlockStructure.RemoveLegacyRuntime(
+                    legacyOrbitalsRootTransform,
+                    legacyOrbitalsRigRootTransform,
+                    ownerNameForLogs);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsCores,
+                    ownerNameForLogs);
+
+                return;
+            }
+
+            NadaOrbitalsCoresBlockStructure.RemoveLegacyRuntime(
+                legacyOrbitalsRootTransform,
+                legacyOrbitalsRigRootTransform,
+                ownerNameForLogs);
+
+            NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                localEffectsRootTransform,
+                state,
+                VfxEffectTypeIds.OrbitalsCores,
+                ownerNameForLogs);
+
+            foreach (VfxEffectBlock block in
+                     state.Effects)
+            {
+                if (block == null ||
+                    block.TypeId !=
+                        VfxEffectTypeIds.OrbitalsCores)
+                {
+                    continue;
+                }
+
+                if (!resolution.TryGet(
+                        block.InstanceId,
+                        out ResolvedOrbitalsFormation resolved) ||
+                    resolved == null)
+                {
+                    continue;
+                }
+
+                NadaEffectInstance instance =
+                    NadaEffectInstanceAssembly.EnsureInstance(
+                        localEffectsRootTransform,
+                        block.InstanceId,
+                        block.TypeId,
+                        ownerNameForLogs);
+
+                if (instance == null ||
+                    !instance.IsValid)
+                {
+                    continue;
+                }
+
+                NadaOrbitalsCoresBlockStructure.Structure structure =
+                    NadaOrbitalsCoresBlockStructure.Ensure(
+                        instance.RootTransform,
+                        ownerNameForLogs);
+
+                if (!structure.IsValid)
+                {
+                    instance.RootTransform
+                        .gameObject
+                        .SetActive(false);
+
+                    continue;
+                }
+
+                bool effectAccepted =
+                    NadaOrbitalsBlockBinder.BindCoresEffect(
+                        instance.RootTransform,
+                        structure.CoresRootTransform,
+                        structure.PoolRootTransform,
+                        block);
+
+                bool motionAccepted =
+                    NadaOrbitalsBlockBinder.BindMotion(
+                        structure.MotionRootTransform,
+                        structure.HeadVisualTransform,
+                        structure.PoolRootTransform,
+                        block,
+                        resolved);
+
+                NadaMotionBinder.BindOrbitalsRigFollow(
+                    structure.RigRootTransform,
+                    localWeaponRootTransform,
+                    Vector3.zero,
+                    Quaternion.Euler(
+                        -90f,
+                        0f,
+                        0f));
+
+                bool active =
+                    effectAccepted &&
+                    motionAccepted;
+
+                instance.RootTransform
+                    .gameObject
+                    .SetActive(
+                        active);
+
+                if (active &&
+                    orbitalMotionRoots != null)
+                {
+                    orbitalMotionRoots[
+                        block.InstanceId] =
+                        structure.MotionRootTransform;
+                }
+            }
+        }
+
+        private static void BindOrbitalsFlamesBlocks(
+            Transform localEffectsRootTransform,
+            Transform localWeaponRootTransform,
+            Transform legacyOrbitalsRootTransform,
+            Transform legacyOrbitalsRigRootTransform,
+            WeaponVfxState state,
+            Dictionary<uint, Transform> orbitalMotionRoots,
+            string ownerNameForLogs)
+        {
+            if (localEffectsRootTransform == null ||
+                localWeaponRootTransform == null)
+            {
+                return;
+            }
+
+            bool resolutionValid =
+                OrbitalsFormationResolver.TryResolve(
+                    state,
+                    out OrbitalsFormationResolution resolution);
+
+            if (!resolutionValid ||
+                resolution == null ||
+                !resolution.IsValid)
+            {
+                NadaOrbitalsParticleBlockStructure.RemoveLegacyRuntime(
+                    legacyOrbitalsRootTransform,
+                    legacyOrbitalsRigRootTransform,
+                    NadaOrbitalsFamily.Flames,
+                    ownerNameForLogs);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsFlames,
+                    ownerNameForLogs);
+
+                return;
+            }
+
+            bool hasFlamesBlocks =
+                false;
+
+            foreach (ResolvedOrbitalsFormation entry in
+                     resolution.Entries)
+            {
+                if (entry != null &&
+                    entry.TypeId ==
+                        VfxEffectTypeIds.OrbitalsFlames)
+                {
+                    hasFlamesBlocks =
+                        true;
+
+                    break;
+                }
+            }
+
+            if (!hasFlamesBlocks)
+            {
+                NadaOrbitalsParticleBlockStructure.RemoveLegacyRuntime(
+                    legacyOrbitalsRootTransform,
+                    legacyOrbitalsRigRootTransform,
+                    NadaOrbitalsFamily.Flames,
+                    ownerNameForLogs);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsFlames,
+                    ownerNameForLogs);
+
+                return;
+            }
+
+            NadaOrbitalsParticleBlockStructure.RemoveLegacyRuntime(
+                legacyOrbitalsRootTransform,
+                legacyOrbitalsRigRootTransform,
+                NadaOrbitalsFamily.Flames,
+                ownerNameForLogs);
+
+            NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                localEffectsRootTransform,
+                state,
+                VfxEffectTypeIds.OrbitalsFlames,
+                ownerNameForLogs);
+
+            foreach (VfxEffectBlock block in
+                     state.Effects)
+            {
+                if (block == null ||
+                    block.TypeId !=
+                        VfxEffectTypeIds.OrbitalsFlames)
+                {
+                    continue;
+                }
+
+                if (!resolution.TryGet(
+                        block.InstanceId,
+                        out ResolvedOrbitalsFormation resolved) ||
+                    resolved == null)
+                {
+                    continue;
+                }
+
+                NadaEffectInstance instance =
+                    NadaEffectInstanceAssembly.EnsureInstance(
+                        localEffectsRootTransform,
+                        block.InstanceId,
+                        block.TypeId,
+                        ownerNameForLogs);
+
+                if (instance == null ||
+                    !instance.IsValid)
+                {
+                    continue;
+                }
+
+                NadaOrbitalsParticleBlockStructure.Structure structure =
+                    NadaOrbitalsParticleBlockStructure.Ensure(
+                        instance.RootTransform,
+                        NadaOrbitalsFamily.Flames,
+                        ownerNameForLogs);
+
+                if (!structure.IsValid)
+                {
+                    instance.RootTransform
+                        .gameObject
+                        .SetActive(false);
+
+                    continue;
+                }
+
+                bool effectAccepted =
+                    NadaOrbitalsBlockBinder.BindParticleEffect(
+                        instance.RootTransform,
+                        structure.VisualRootTransform,
+                        structure.PoolRootTransform,
+                        NadaOrbitalsFamily.Flames,
+                        block);
+
+                bool motionAccepted =
+                    NadaOrbitalsBlockBinder.BindMotion(
+                        structure.MotionRootTransform,
+                        structure.HeadVisualTransform,
+                        structure.PoolRootTransform,
+                        block,
+                        resolved);
+
+                NadaMotionBinder.BindOrbitalsRigFollow(
+                    structure.RigRootTransform,
+                    localWeaponRootTransform,
+                    Vector3.zero,
+                    Quaternion.Euler(
+                        -90f,
+                        0f,
+                        0f));
+
+                bool active =
+                    effectAccepted &&
+                    motionAccepted;
+
+                instance.RootTransform
+                    .gameObject
+                    .SetActive(
+                        active);
+
+                if (active &&
+                    orbitalMotionRoots != null)
+                {
+                    orbitalMotionRoots[
+                        block.InstanceId] =
+                        structure.MotionRootTransform;
+                }
+            }
+        }
+
+        private static void BindOrbitalsEmbersBlocks(
+            Transform localEffectsRootTransform,
+            Transform localWeaponRootTransform,
+            Transform legacyOrbitalsRootTransform,
+            Transform legacyOrbitalsRigRootTransform,
+            WeaponVfxState state,
+            Dictionary<uint, Transform> orbitalMotionRoots,
+            string ownerNameForLogs)
+        {
+            if (localEffectsRootTransform == null ||
+                localWeaponRootTransform == null)
+            {
+                return;
+            }
+
+            bool resolutionValid =
+                OrbitalsFormationResolver.TryResolve(
+                    state,
+                    out OrbitalsFormationResolution resolution);
+
+            if (!resolutionValid ||
+                resolution == null ||
+                !resolution.IsValid)
+            {
+                NadaOrbitalsParticleBlockStructure.RemoveLegacyRuntime(
+                    legacyOrbitalsRootTransform,
+                    legacyOrbitalsRigRootTransform,
+                    NadaOrbitalsFamily.Embers,
+                    ownerNameForLogs);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsEmbers,
+                    ownerNameForLogs);
+
+                return;
+            }
+
+            bool hasEmbersBlocks =
+                false;
+
+            foreach (ResolvedOrbitalsFormation entry in
+                     resolution.Entries)
+            {
+                if (entry != null &&
+                    entry.TypeId ==
+                        VfxEffectTypeIds.OrbitalsEmbers)
+                {
+                    hasEmbersBlocks =
+                        true;
+
+                    break;
+                }
+            }
+
+            if (!hasEmbersBlocks)
+            {
+                NadaOrbitalsParticleBlockStructure.RemoveLegacyRuntime(
+                    legacyOrbitalsRootTransform,
+                    legacyOrbitalsRigRootTransform,
+                    NadaOrbitalsFamily.Embers,
+                    ownerNameForLogs);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.OrbitalsEmbers,
+                    ownerNameForLogs);
+
+                return;
+            }
+
+            NadaOrbitalsParticleBlockStructure.RemoveLegacyRuntime(
+                legacyOrbitalsRootTransform,
+                legacyOrbitalsRigRootTransform,
+                NadaOrbitalsFamily.Embers,
+                ownerNameForLogs);
+
+            NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                localEffectsRootTransform,
+                state,
+                VfxEffectTypeIds.OrbitalsEmbers,
+                ownerNameForLogs);
+
+            foreach (VfxEffectBlock block in
+                     state.Effects)
+            {
+                if (block == null ||
+                    block.TypeId !=
+                        VfxEffectTypeIds.OrbitalsEmbers)
+                {
+                    continue;
+                }
+
+                if (!resolution.TryGet(
+                        block.InstanceId,
+                        out ResolvedOrbitalsFormation resolved) ||
+                    resolved == null)
+                {
+                    continue;
+                }
+
+                NadaEffectInstance instance =
+                    NadaEffectInstanceAssembly.EnsureInstance(
+                        localEffectsRootTransform,
+                        block.InstanceId,
+                        block.TypeId,
+                        ownerNameForLogs);
+
+                if (instance == null ||
+                    !instance.IsValid)
+                {
+                    continue;
+                }
+
+                NadaOrbitalsParticleBlockStructure.Structure structure =
+                    NadaOrbitalsParticleBlockStructure.Ensure(
+                        instance.RootTransform,
+                        NadaOrbitalsFamily.Embers,
+                        ownerNameForLogs);
+
+                if (!structure.IsValid)
+                {
+                    instance.RootTransform
+                        .gameObject
+                        .SetActive(false);
+
+                    continue;
+                }
+
+                bool effectAccepted =
+                    NadaOrbitalsBlockBinder.BindParticleEffect(
+                        instance.RootTransform,
+                        structure.VisualRootTransform,
+                        structure.PoolRootTransform,
+                        NadaOrbitalsFamily.Embers,
+                        block);
+
+                bool motionAccepted =
+                    NadaOrbitalsBlockBinder.BindMotion(
+                        structure.MotionRootTransform,
+                        structure.HeadVisualTransform,
+                        structure.PoolRootTransform,
+                        block,
+                        resolved);
+
+                NadaMotionBinder.BindOrbitalsRigFollow(
+                    structure.RigRootTransform,
+                    localWeaponRootTransform,
+                    Vector3.zero,
+                    Quaternion.Euler(
+                        -90f,
+                        0f,
+                        0f));
+
+                bool active =
+                    effectAccepted &&
+                    motionAccepted;
+
+                instance.RootTransform
+                    .gameObject
+                    .SetActive(
+                        active);
+
+                if (active &&
+                    orbitalMotionRoots != null)
+                {
+                    orbitalMotionRoots[
+                        block.InstanceId] =
+                        structure.MotionRootTransform;
+                }
+            }
+        }
+
         private static void BindOrbitalsOrbsBlocks(
             Transform localEffectsRootTransform,
             Transform localWeaponRootTransform,
             Transform legacyOrbitalsRigRootTransform,
             WeaponVfxState state,
+            Dictionary<uint, Transform> orbitalMotionRoots,
             string ownerNameForLogs)
         {
             if (localEffectsRootTransform == null ||
@@ -949,8 +1584,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
-            Transform legacyGlueSourceMotionRootTransform =
-                null;
+            // Block formation now owns cross-instance Glue. Any surviving
+            // transitional shared motion must not retain an explicit legacy
+            // source while block state is authoritative.
+            ClearLegacyOrbitalsGlueSources(
+                legacyOrbitalsRigRootTransform);
 
             foreach (VfxEffectBlock block in
                      state.Effects)
@@ -1013,77 +1651,101 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     .gameObject
                     .SetActive(true);
 
-                if (block.InstanceId ==
-                    PrototypeLegacyOrbitalsOrbsInstanceId)
+                if (orbitalMotionRoots != null)
                 {
-                    legacyGlueSourceMotionRootTransform =
+                    orbitalMotionRoots[
+                        block.InstanceId] =
                         structure.MotionRootTransform;
                 }
             }
-
-            if (legacyGlueSourceMotionRootTransform != null)
-            {
-                BindLegacyOrbitalsGlueSources(
-                    legacyOrbitalsRigRootTransform,
-                    legacyGlueSourceMotionRootTransform);
-            }
-            else
-            {
-                ClearLegacyOrbitalsGlueSources(
-                    legacyOrbitalsRigRootTransform);
-            }
         }
 
-        private static void BindLegacyOrbitalsGlueSources(
-            Transform legacyOrbitalsRigRootTransform,
-            Transform orbsSourceMotionRootTransform)
+        private static void BindResolvedOrbitalsTrajectorySources(
+            WeaponVfxState state,
+            Dictionary<uint, Transform> orbitalMotionRoots,
+            string ownerNameForLogs)
         {
-            if (legacyOrbitalsRigRootTransform == null ||
-                orbsSourceMotionRootTransform == null)
+            if (state == null ||
+                orbitalMotionRoots == null)
             {
                 return;
             }
 
-            Transform motionRootsTransform =
-                NadaRigPaths.FindDirectChild(
-                    legacyOrbitalsRigRootTransform,
-                    Plugin.OrbitalsMotionRootsName);
+            bool resolutionValid =
+                OrbitalsFormationResolver.TryResolve(
+                    state,
+                    out OrbitalsFormationResolution resolution);
 
-            if (motionRootsTransform == null)
+            if (!resolutionValid ||
+                resolution == null ||
+                !resolution.IsValid)
+            {
+                NadaLogControl.Info(
+                    $"orbitals-trajectory-pass-invalid:{ownerNameForLogs}",
+                    $"{Plugin.ModName}: [OrbitalsTrajectoryPass] " +
+                    $"owner='{ownerNameForLogs}' " +
+                    $"accepted=False " +
+                    $"reason='{resolution?.FailureReason ?? "invalid-resolution"}'");
+
                 return;
+            }
 
-            BindLegacyOrbitalsGlueSource(
-                motionRootsTransform,
-                Plugin.OrbitalsCoresMotionRootName,
-                orbsSourceMotionRootTransform);
+            foreach (ResolvedOrbitalsFormation entry in
+                     resolution.Entries)
+            {
+                if (entry == null)
+                    continue;
 
-            BindLegacyOrbitalsGlueSource(
-                motionRootsTransform,
-                Plugin.OrbitalsFlamesMotionRootName,
-                orbsSourceMotionRootTransform);
+                if (!orbitalMotionRoots.TryGetValue(
+                        entry.InstanceId,
+                        out Transform followerMotionRootTransform) ||
+                    followerMotionRootTransform == null)
+                {
+                    if (entry.Enabled &&
+                        entry.IsFollower)
+                    {
+                        NadaLogControl.Info(
+                            $"orbitals-trajectory-missing-follower:" +
+                            $"{ownerNameForLogs}:{entry.InstanceId}",
+                            $"{Plugin.ModName}: [OrbitalsTrajectorySourceResolve] " +
+                            $"owner='{ownerNameForLogs}' " +
+                            $"follower={entry.InstanceId} " +
+                            $"source={entry.TrajectorySourceInstanceId} " +
+                            $"accepted=False " +
+                            $"reason='missing-follower-runtime'");
+                    }
 
-            BindLegacyOrbitalsGlueSource(
-                motionRootsTransform,
-                Plugin.OrbitalsEmbersMotionRootName,
-                orbsSourceMotionRootTransform);
-        }
+                    continue;
+                }
 
-        private static void BindLegacyOrbitalsGlueSource(
-            Transform motionRootsTransform,
-            string dependentMotionRootName,
-            Transform orbsSourceMotionRootTransform)
-        {
-            Transform dependentMotionRootTransform =
-                NadaRigPaths.FindDirectChild(
-                    motionRootsTransform,
-                    dependentMotionRootName);
+                if (!entry.Enabled ||
+                    !entry.IsFollower)
+                {
+                    NadaOrbitalsBlockBinder.ClearTrajectorySource(
+                        followerMotionRootTransform);
 
-            if (dependentMotionRootTransform == null)
-                return;
+                    continue;
+                }
 
-            NadaMotionBinder.BindOrbitalsGlueSource(
-                dependentMotionRootTransform,
-                orbsSourceMotionRootTransform);
+                orbitalMotionRoots.TryGetValue(
+                    entry.TrajectorySourceInstanceId,
+                    out Transform sourceMotionRootTransform);
+
+                bool accepted =
+                    NadaOrbitalsBlockBinder.BindTrajectorySource(
+                        followerMotionRootTransform,
+                        sourceMotionRootTransform);
+
+                NadaLogControl.Info(
+                    $"orbitals-trajectory-resolve:" +
+                    $"{ownerNameForLogs}:{entry.InstanceId}",
+                    $"{Plugin.ModName}: [OrbitalsTrajectorySourceResolve] " +
+                    $"owner='{ownerNameForLogs}' " +
+                    $"follower={entry.InstanceId} " +
+                    $"source={entry.TrajectorySourceInstanceId} " +
+                    $"sourceRuntime={(sourceMotionRootTransform != null)} " +
+                    $"accepted={accepted}");
+            }
         }
 
         private static void ClearLegacyOrbitalsGlueSources(

@@ -8,7 +8,9 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Modules.Motion
 {
-    internal sealed class NadaOrbitalsMotion : MonoBehaviour
+    internal sealed class NadaOrbitalsMotion :
+        MonoBehaviour,
+        INadaOrbitalsPhaseSource
     {
         private const float LocalStateRefreshInterval = 0.05f;
 
@@ -52,6 +54,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private struct OrbitalsOrbsMotionRuntimeState
         {
+            internal uint InstanceId;
+
             internal bool Enabled;
             internal bool SnakeEnabled;
 
@@ -117,12 +121,27 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private float _currentCycleProgress01;
         private bool _hasCurrentCycleProgress01;
 
+        private int _lastCycleAdvanceFrame =
+            -1;
+
         private float _currentHistoryStepPerFollower;
         private bool _hasCurrentHistoryStepPerFollower;
 
         private ParentWorldPoseSample[] _parentWorldHistorySamples;
         private int _parentWorldHistoryStartIndex;
         private int _parentWorldHistoryCount;
+
+        uint INadaOrbitalsPhaseSource.OrbitalsInstanceId =>
+            _hasOrbsBlockState
+                ? _orbsBlockState.InstanceId
+                : 0;
+
+        bool INadaOrbitalsPhaseSource.TryGetCycleProgress01(
+            out float cycleProgress01)
+        {
+            return TryGetOwnedOrbsBlockCycleProgress01(
+                out cycleProgress01);
+        }
 
         internal bool IsFamily(
             NadaOrbitalsFamily family)
@@ -262,6 +281,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 nextState =
                     new OrbitalsOrbsMotionRuntimeState
                     {
+                        InstanceId =
+                            block.InstanceId,
+
                         Enabled =
                             block.Enabled,
 
@@ -309,6 +331,11 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     };
             }
 
+            uint previousInstanceId =
+                _hasOrbsBlockState
+                    ? _orbsBlockState.InstanceId
+                    : 0;
+
             // Once Orbs motion has been handed to the block path,
             // malformed state is still authoritative and fails closed.
             // Do not silently fall back to local config or ItemData.
@@ -317,6 +344,12 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             _hasOrbsBlockState =
                 true;
+
+            if (previousInstanceId !=
+                nextState.InstanceId)
+            {
+                ResetOrbitStartPoint();
+            }
 
             return accepted;
         }
@@ -355,6 +388,50 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 false;
 
             ResetOrbitStartPoint();
+        }
+
+        private bool TryGetOwnedOrbsBlockCycleProgress01(
+            out float cycleProgress01)
+        {
+            cycleProgress01 =
+                0f;
+
+            if (_orbitalsFamily !=
+                    NadaOrbitalsFamily.Orbs ||
+                !_hasOrbsBlockState ||
+                !_orbsBlockState.Enabled)
+            {
+                return false;
+            }
+
+            AdvanceOrbsBlockCycleProgressForCurrentFrame();
+
+            if (!_hasCurrentCycleProgress01)
+                return false;
+
+            cycleProgress01 =
+                _currentCycleProgress01;
+
+            return true;
+        }
+
+        private void AdvanceOrbsBlockCycleProgressForCurrentFrame()
+        {
+            int currentFrame =
+                Time.frameCount;
+
+            if (_lastCycleAdvanceFrame ==
+                currentFrame)
+            {
+                return;
+            }
+
+            AdvanceCycleProgress(
+                ClampOrbitalsSpeed(
+                    _orbsBlockState.Speed));
+
+            _lastCycleAdvanceFrame =
+                currentFrame;
         }
 
         private void InvalidateLocalStateCache()
@@ -588,9 +665,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
             ApplyFollowerVisualCount(
                 desiredFollowerCount);
 
-            AdvanceCycleProgress(
-                ClampOrbitalsSpeed(
-                    state.Speed));
+            AdvanceOrbsBlockCycleProgressForCurrentFrame();
 
             float currentDistanceAlongCycle =
                 _cachedCycleLength > 0f
@@ -1698,6 +1773,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             _hasCurrentCycleProgress01 =
                 false;
+
+            _lastCycleAdvanceFrame =
+                -1;
 
             _currentHistoryStepPerFollower =
                 0f;

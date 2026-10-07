@@ -1,4 +1,5 @@
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
 using UnityEngine;
 using NADA.VFX.Weapon.Modules.Motion;
 using NADA.VFX.Weapon.Runtime.Binding;
@@ -187,12 +188,18 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 return null;
 
             EnsureLegacyOrbitalsChildrenWithoutDirectOrbs(
+                localWeaponRootTransform,
                 orbitalsRootTransform,
                 ownerNameForLogs);
 
-            EnsureLocalCoresBranch(
-                localWeaponRootTransform,
-                ownerNameForLogs);
+            if (!HasBlockOwnedEffectInstance(
+                    localWeaponRootTransform,
+                    VfxEffectTypeIds.OrbitalsCores))
+            {
+                EnsureLocalCoresBranch(
+                    localWeaponRootTransform,
+                    ownerNameForLogs);
+            }
 
             Transform orbitalsRigRootTransform =
                 EnsureLocalOrbitalsRig(
@@ -253,12 +260,18 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 return null;
 
             EnsureLegacyOrbitalsChildrenWithoutDirectOrbs(
+                localWeaponRootTransform,
                 orbitalsRootTransform,
                 ownerNameForLogs);
 
-            EnsureLocalCoresBranch(
-                localWeaponRootTransform,
-                ownerNameForLogs);
+            if (!HasBlockOwnedEffectInstance(
+                    localWeaponRootTransform,
+                    VfxEffectTypeIds.OrbitalsCores))
+            {
+                EnsureLocalCoresBranch(
+                    localWeaponRootTransform,
+                    ownerNameForLogs);
+            }
 
             Transform orbitalsRigRootTransform =
                 EnsureLocalOrbitalsRig(
@@ -1091,13 +1104,66 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             }
         }
 
+        private static bool HasBlockOwnedEffectInstance(
+            Transform localWeaponRootTransform,
+            string typeId)
+        {
+            if (localWeaponRootTransform == null ||
+                string.IsNullOrEmpty(typeId))
+            {
+                return false;
+            }
+
+            Transform instancesRootTransform =
+                NadaRigPaths.FindLocalEffectInstancesRoot(
+                    localWeaponRootTransform);
+
+            if (instancesRootTransform == null)
+                return false;
+
+            foreach (Transform childTransform in
+                     instancesRootTransform)
+            {
+                if (childTransform == null)
+                    continue;
+
+                NadaEffectInstanceIdentity identity =
+                    childTransform
+                        .GetComponent<NadaEffectInstanceIdentity>();
+
+                if (identity == null)
+                    continue;
+
+                if (string.Equals(
+                        identity.TypeId,
+                        typeId,
+                        System.StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static void
             EnsureLegacyOrbitalsChildrenWithoutDirectOrbs(
+                Transform localWeaponRootTransform,
                 Transform orbitalsRootTransform,
                 string ownerNameForLogs)
         {
             if (orbitalsRootTransform == null)
                 return;
+
+            bool shouldEnsureLegacyFlames =
+                !HasBlockOwnedEffectInstance(
+                    localWeaponRootTransform,
+                    VfxEffectTypeIds.OrbitalsFlames);
+
+            bool shouldEnsureLegacyEmbers =
+                !HasBlockOwnedEffectInstance(
+                    localWeaponRootTransform,
+                    VfxEffectTypeIds.OrbitalsEmbers);
 
             Transform flamesRootTransform =
                 NadaRigPaths.FindDirectChild(
@@ -1109,8 +1175,16 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                     orbitalsRootTransform,
                     Plugin.OrbitalsEmbersName);
 
-            if (flamesRootTransform != null &&
-                embersRootTransform != null)
+            bool needsFlames =
+                shouldEnsureLegacyFlames &&
+                flamesRootTransform == null;
+
+            bool needsEmbers =
+                shouldEnsureLegacyEmbers &&
+                embersRootTransform == null;
+
+            if (!needsFlames &&
+                !needsEmbers)
             {
                 return;
             }
@@ -1133,10 +1207,36 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             StripNetworkArtifactsBeforeActivation(
                 donorObject.transform);
 
-            EnsureLocalOrbitalsChildren(
-                orbitalsRootTransform,
-                donorObject.transform,
-                ownerNameForLogs);
+            Transform donorEffectsRootTransform =
+                NadaRigPaths.FindDirectChild(
+                    donorObject.transform,
+                    "effects");
+
+            Transform donorFlameRootTransform =
+                NadaRigPaths.FindDirectChild(
+                    donorEffectsRootTransform,
+                    "flame");
+
+            if (donorFlameRootTransform != null)
+            {
+                if (needsFlames)
+                {
+                    CloneLocalOrbitalsChild(
+                        donorFlameRootTransform,
+                        orbitalsRootTransform,
+                        "flames",
+                        Plugin.OrbitalsFlamesName);
+                }
+
+                if (needsEmbers)
+                {
+                    CloneLocalOrbitalsChild(
+                        donorFlameRootTransform,
+                        orbitalsRootTransform,
+                        "embers",
+                        Plugin.OrbitalsEmbersName);
+                }
+            }
 
             donorObject.SetActive(
                 false);

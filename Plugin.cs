@@ -11,6 +11,7 @@ using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.Visuals;
+using NADA.VFX.Weapon.Editor;
 using NADA.VFX.Weapon.Modules.Motion;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Runtime;
@@ -28,7 +29,8 @@ namespace NADA.VFX.Weapon
         internal static ManualLogSource Log;
         internal static Plugin Instance;
 
-        private static readonly Harmony Harmony = new Harmony(ModGuid);
+        private static readonly Harmony Harmony =
+            new Harmony(ModGuid);
 
         internal static ConfigEntry<bool> DebugLoggingEnabled;
         internal static ConfigEntry<bool> EquipLoggingEnabled;
@@ -85,18 +87,37 @@ namespace NADA.VFX.Weapon
         internal const int MaxOrbitalsEmberVisuals = 40;
 
         // Reference rig transform
-        internal static readonly Vector3 RigLocalPosition = new Vector3(0.0f, 1.1f, 0.0f);
-        internal static readonly Vector3 RigLocalEulerAngles = new Vector3(90f, 0f, 0f);
-        internal static readonly Vector3 RigLocalScale = new Vector3(1.25f, 1.25f, 1.25f);
+        internal static readonly Vector3 RigLocalPosition =
+            new Vector3(
+                0.0f,
+                1.1f,
+                0.0f);
+
+        internal static readonly Vector3 RigLocalEulerAngles =
+            new Vector3(
+                90f,
+                0f,
+                0f);
+
+        internal static readonly Vector3 RigLocalScale =
+            new Vector3(
+                1.25f,
+                1.25f,
+                1.25f);
 
         private void Awake()
         {
             Instance = this;
             Log = Logger;
 
-            PluginConfig.Bind(Config);
+            PluginConfig.Bind(
+                Config);
 
-            Log.LogInfo($"{ModName} loaded! Version {ModVersion}");
+            NadaVfxEditorConfig.Bind(
+                Config);
+
+            Log.LogInfo(
+                $"{ModName} loaded! Version {ModVersion}");
 
             // This does not send anything.
             // It only proves the compact V2 format can round-trip every
@@ -104,23 +125,43 @@ namespace NADA.VFX.Weapon
             NadaVfxNetworkCodecV2.RunSelfTest();
             NadaVfxNetworkCodecV2CompatibilityTests.Run();
 
-            Harmony.PatchAll(Assembly.GetExecutingAssembly());
-            Log.LogInfo($"{ModName}: Applied Harmony patches.");
+            Harmony.PatchAll(
+                Assembly.GetExecutingAssembly());
 
-            StartCoroutine(NadaRigCache.CacheReferenceAssetsWhenReady());
+            Log.LogInfo(
+                $"{ModName}: Applied Harmony patches.");
+
+            StartCoroutine(
+                NadaRigCache.CacheReferenceAssetsWhenReady());
         }
 
         private void Update()
         {
+            NadaVfxEditor.Tick();
+
             if (PluginConfig.AttachHotkey.Value.IsDown())
+            {
                 NadaEquippedRigActions.TryAttachToEquipped();
+            }
 
             if (PluginConfig.BindHotkey.Value.IsDown())
+            {
                 NadaEquippedRigActions.TryBindEquipped();
+            }
 
             NadaRigVisibility.TickCharacterSelectionPreview();
 
             NadaRuntimeDiagnostics.Tick();
+        }
+
+        private void OnGUI()
+        {
+            NadaVfxEditor.Draw();
+        }
+
+        private void OnDestroy()
+        {
+            NadaVfxEditor.Shutdown();
         }
 
         internal void TryUnbindEquipped()
@@ -140,7 +181,12 @@ namespace NADA.VFX.Weapon
 
         internal void ResetOrbitalsStartPoints()
         {
-            foreach (NadaOrbitalsMotion motion in FindObjectsOfType<NadaOrbitalsMotion>(true))
+            NadaOrbitalsMotion[] motions =
+                UnityEngine.Object.FindObjectsByType<NadaOrbitalsMotion>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+
+            foreach (NadaOrbitalsMotion motion in motions)
             {
                 if (motion == null)
                     continue;
@@ -154,41 +200,61 @@ namespace NADA.VFX.Weapon
             NadaRigVisibility.RefreshDroppedItemVisibility();
         }
 
-        internal void SaveCurrentStyleFromManager(string styleName)
+        internal void SaveCurrentStyleFromManager(
+            string styleName)
         {
-            if (string.IsNullOrWhiteSpace(styleName))
+            if (string.IsNullOrWhiteSpace(
+                    styleName))
             {
-                Log.LogInfo($"{ModName}: [Style] no style name entered.");
+                Log.LogInfo(
+                    $"{ModName}: [Style] no style name entered.");
+
                 return;
             }
 
-            VfxState state = VfxStateIO.FromConfig();
+            VfxState state =
+                VfxStateIO.FromConfig();
 
-            if (!VfxStyleStore.Save(styleName, state))
+            if (!VfxStyleStore.Save(
+                    styleName,
+                    state))
             {
-                Log.LogInfo($"{ModName}: [Style] failed to save style '{styleName}'.");
+                Log.LogInfo(
+                    $"{ModName}: [Style] failed to save style '{styleName}'.");
+
                 return;
             }
 
-            PluginConfig.StyleName.Value = string.Empty;
+            PluginConfig.StyleName.Value =
+                string.Empty;
+
             Config.Save();
 
-            Log.LogInfo($"{ModName}: [Style] saved '{styleName.Trim()}'.");
+            Log.LogInfo(
+                $"{ModName}: [Style] saved '{styleName.Trim()}'.");
         }
 
-        internal void LoadStyleIntoManager(string styleName)
+        internal void LoadStyleIntoManager(
+            string styleName)
         {
-            styleName = string.IsNullOrWhiteSpace(styleName)
-                ? "Default"
-                : styleName.Trim();
+            styleName =
+                string.IsNullOrWhiteSpace(
+                    styleName)
+                    ? "Default"
+                    : styleName.Trim();
 
-            if (!VfxStyleStore.TryGet(styleName, out VfxState state))
+            if (!VfxStyleStore.TryGet(
+                    styleName,
+                    out VfxState state))
             {
-                Log.LogInfo($"{ModName}: [Style] could not find style '{styleName}'.");
+                Log.LogInfo(
+                    $"{ModName}: [Style] could not find style '{styleName}'.");
+
                 return;
             }
 
-            VfxStateIO.ApplyToConfig(state);
+            VfxStateIO.ApplyToConfig(
+                state);
 
             if (PluginConfig.LoadStyle != null &&
                 !string.Equals(
@@ -196,14 +262,16 @@ namespace NADA.VFX.Weapon
                     styleName,
                     StringComparison.OrdinalIgnoreCase))
             {
-                PluginConfig.LoadStyle.Value = styleName;
+                PluginConfig.LoadStyle.Value =
+                    styleName;
             }
 
             Config.Save();
 
             RefreshExistingEquippedRigsOnly();
 
-            Log.LogInfo($"{ModName}: [Style] loaded '{styleName}'.");
+            Log.LogInfo(
+                $"{ModName}: [Style] loaded '{styleName}'.");
         }
     }
 }

@@ -13,6 +13,12 @@ namespace NADA.VFX.Weapon.Core.State.Blocks
         // Don't use class names here; class names are implementation details.
         internal string TypeId { get; set; }
 
+        // Human-facing authored name only.
+        //
+        // Runtime identity is always InstanceId + TypeId. Renaming a block
+        // must never create, replace, or otherwise change its runtime identity.
+        internal string DisplayName { get; set; }
+
         internal bool Enabled { get; set; } = true;
 
         // Placement is common to effect instances, so it belongs here instead

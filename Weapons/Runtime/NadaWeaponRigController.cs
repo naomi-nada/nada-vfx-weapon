@@ -8,6 +8,14 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal sealed class NadaWeaponRigController
     {
+        // Read-only observation point for tools such as the editor.
+        // Runtime still owns resolving and applying the actual weapon target.
+        internal static NadaWeaponRigContext LastAppliedLocalContext
+        {
+            get;
+            private set;
+        }
+
         public bool TryApply(
             GameObject root,
             global::ItemDrop.ItemData itemData = null)
@@ -15,8 +23,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (root == null)
                 return false;
 
-            if (!NadaWeaponTargets.IsTargetOrAttachClone(root))
+            if (!NadaWeaponTargets.IsTargetOrAttachClone(
+                    root))
+            {
                 return false;
+            }
 
             Transform weaponVisualRootTransform =
                 NadaWeaponTargets.FindEquippedWeaponVisualRoot(
@@ -29,10 +40,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 weaponVisualRootTransform;
 
             itemData ??=
-                ResolveItemData(root);
+                ResolveItemData(
+                    root);
 
             VfxState state =
-                NadaWeaponStateResolver.Resolve(itemData);
+                NadaWeaponStateResolver.Resolve(
+                    itemData);
 
             return TryApplyInternal(
                 root,
@@ -49,8 +62,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (root == null)
                 return false;
 
-            if (!NadaWeaponTargets.IsTargetOrAttachClone(root))
+            if (!NadaWeaponTargets.IsTargetOrAttachClone(
+                    root))
+            {
                 return false;
+            }
 
             Transform weaponVisualRootTransform =
                 NadaWeaponTargets.FindEquippedWeaponVisualRoot(
@@ -90,14 +106,21 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             GameObject root,
             global::ItemDrop.ItemData itemData)
         {
-            if (root == null || itemData == null)
+            if (root == null ||
+                itemData == null)
+            {
                 return false;
+            }
 
-            if (!VfxStateIO.IsBound(itemData))
+            if (!VfxStateIO.IsBound(
+                    itemData))
+            {
                 return false;
+            }
 
-            // Dropped items have their own wrapper/root, so attach the rig to the actual weapon visual instead.
-            // Using the ItemDrop root here can put the rig in a completely different local coordinate space.
+            // Dropped items have their own wrapper/root, so attach the rig
+            // to the actual weapon visual instead. Using the ItemDrop root
+            // here can put the rig in a different local coordinate space.
             Transform attachTarget =
                 NadaWeaponTargets.FindDroppedWeaponVisualRoot(
                     root.transform);
@@ -127,7 +150,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return true;
 
             VfxState state =
-                NadaWeaponStateResolver.Resolve(itemData);
+                NadaWeaponStateResolver.Resolve(
+                    itemData);
 
             var context =
                 new NadaWeaponRigContext(
@@ -139,7 +163,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (!context.IsValid)
                 return false;
 
-            NadaWeaponRigOrchestrator.Run(context);
+            NadaWeaponRigOrchestrator.Run(
+                context);
 
             Transform refreshedRoot =
                 NadaRigPaths.FindDirectChild(
@@ -192,14 +217,24 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (!context.IsValid)
                 return false;
 
-            NadaWeaponRigOrchestrator.Run(context);
+            NadaWeaponRigOrchestrator.Run(
+                context);
 
             Transform refreshedRoot =
                 NadaRigPaths.FindDirectChild(
                     attachTarget,
                     Plugin.LocalWeaponRootName);
 
-            return refreshedRoot != null;
+            bool applied =
+                refreshedRoot != null;
+
+            if (applied)
+            {
+                LastAppliedLocalContext =
+                    context;
+            }
+
+            return applied;
         }
 
         private static global::ItemDrop.ItemData ResolveItemData(
