@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.State.Defaults;
@@ -10,13 +11,56 @@ namespace NADA.VFX.Weapon.Editor
     {
         private const int MaxDisplayNameLength = 64;
 
+        private sealed class EditorDraft
+        {
+            internal WeaponVfxState State { get; } =
+                new();
+
+            internal Dictionary<string, int>
+                NextNameOrdinalByTypeId { get; } =
+                    new();
+        }
+
+        private sealed class ItemDataReferenceComparer :
+            IEqualityComparer<global::ItemDrop.ItemData>
+        {
+            internal static readonly
+                ItemDataReferenceComparer Instance =
+                    new();
+
+            public bool Equals(
+                global::ItemDrop.ItemData left,
+                global::ItemDrop.ItemData right)
+            {
+                return object.ReferenceEquals(
+                    left,
+                    right);
+            }
+
+            public int GetHashCode(
+                global::ItemDrop.ItemData itemData)
+            {
+                return itemData == null
+                    ? 0
+                    : RuntimeHelpers.GetHashCode(
+                        itemData);
+            }
+        }
+
+        private static readonly Dictionary<
+            global::ItemDrop.ItemData,
+            EditorDraft>
+            DraftByItemData =
+                new(
+                    ItemDataReferenceComparer.Instance);
+
         private static global::ItemDrop.ItemData _targetItemData;
 
         private static WeaponVfxState _state =
             new();
 
-        private static readonly Dictionary<string, int>
-            NextNameOrdinalByTypeId =
+        private static Dictionary<string, int>
+            _nextNameOrdinalByTypeId =
                 new();
 
         internal static WeaponVfxState State =>
@@ -27,11 +71,11 @@ namespace NADA.VFX.Weapon.Editor
             0;
 
         /// <summary>
-        /// Makes the current equipped item the owner of this temporary editor
-        /// working state.
+        /// Selects the temporary editor draft owned by the current ItemData.
         ///
-        /// Returning true means the editor target changed and the previous
-        /// in-memory state was discarded.
+        /// Drafts are retained for the lifetime of the editor session, so
+        /// switching away from a weapon and returning to it does not discard
+        /// unsaved authoring work.
         /// </summary>
         internal static bool SynchronizeTarget(
             NadaVfxEditorTarget target)
@@ -49,17 +93,69 @@ namespace NADA.VFX.Weapon.Editor
             _targetItemData =
                 nextItemData;
 
-            ResetWorkingState();
-
-            if (_targetItemData != null)
+            if (_targetItemData == null)
             {
-                Plugin.Log?.LogInfo(
-                    $"{Plugin.ModName}: [EditorWorkingState] " +
-                    $"target changed; created empty in-memory block state " +
-                    $"for '{target?.PrefabName ?? "<unknown>"}'.");
+                _state =
+                    new WeaponVfxState();
+
+                _nextNameOrdinalByTypeId =
+                    new Dictionary<string, int>();
+
+                return true;
             }
 
+            if (DraftByItemData.TryGetValue(
+                    _targetItemData,
+                    out EditorDraft existingDraft))
+            {
+                _state =
+                    existingDraft.State;
+
+                _nextNameOrdinalByTypeId =
+                    existingDraft.NextNameOrdinalByTypeId;
+
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [EditorWorkingState] " +
+                    $"restored in-memory draft " +
+                    $"for '{target?.PrefabName ?? "<unknown>"}' " +
+                    $"effects={_state.Effects?.Count ?? 0}.");
+
+                return true;
+            }
+
+            var newDraft =
+                new EditorDraft();
+
+            DraftByItemData.Add(
+                _targetItemData,
+                newDraft);
+
+            _state =
+                newDraft.State;
+
+            _nextNameOrdinalByTypeId =
+                newDraft.NextNameOrdinalByTypeId;
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [EditorWorkingState] " +
+                $"created in-memory draft " +
+                $"for '{target?.PrefabName ?? "<unknown>"}'.");
+
             return true;
+        }
+
+        internal static void ClearDrafts()
+        {
+            DraftByItemData.Clear();
+
+            _targetItemData =
+                null;
+
+            _state =
+                new WeaponVfxState();
+
+            _nextNameOrdinalByTypeId =
+                new Dictionary<string, int>();
         }
 
         internal static bool TryAddEffect(
@@ -217,11 +313,6 @@ namespace NADA.VFX.Weapon.Editor
                 return false;
             }
 
-            // Reset authored modifier data without replacing the logical block.
-            //
-            // Identity, name, enabled state, and list position remain owned by
-            // the existing VfxEffectBlock. Runtime reconciliation should
-            // therefore update the existing instance rather than create a new one.
             block.Transform =
                 defaultBlock.Transform;
 
@@ -456,14 +547,6 @@ namespace NADA.VFX.Weapon.Editor
                 _state.Effects != null;
         }
 
-        private static void ResetWorkingState()
-        {
-            _state =
-                new WeaponVfxState();
-
-            NextNameOrdinalByTypeId.Clear();
-        }
-
         private static VfxEffectBlock FindBlock(
             uint instanceId)
         {
@@ -645,7 +728,7 @@ namespace NADA.VFX.Weapon.Editor
             int ordinal =
                 1;
 
-            if (NextNameOrdinalByTypeId.TryGetValue(
+            if (_nextNameOrdinalByTypeId.TryGetValue(
                     typeId,
                     out int nextOrdinal))
             {
@@ -653,7 +736,7 @@ namespace NADA.VFX.Weapon.Editor
                     nextOrdinal;
             }
 
-            NextNameOrdinalByTypeId[
+            _nextNameOrdinalByTypeId[
                 typeId] =
                 ordinal + 1;
 

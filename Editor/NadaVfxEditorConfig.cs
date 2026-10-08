@@ -1,62 +1,49 @@
 using BepInEx.Configuration;
-using NADA.VFX.Weapon.Core.Config;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Editor
 {
     internal static class NadaVfxEditorConfig
     {
-        internal static ConfigEntry<bool> EditingEnabled;
-        internal static ConfigEntry<KeyboardShortcut> ToggleHotkey;
+        internal static ConfigEntry<bool>
+            EditingEnabled;
+
+        internal static ConfigEntry<KeyboardShortcut>
+            ToggleHotkey;
+
+        internal static ConfigEntry<NadaVfxEditorThemePreset>
+            Theme;
 
         internal static void Bind(
             ConfigFile config)
         {
+            if (config == null)
+                return;
+
             EditingEnabled =
                 config.Bind(
-                    "EDITOR",
-                    "Enable Editing",
-                    false,
-                    new ConfigDescription(
-                        "Allow the in-game NADA VFX editor to be opened.",
-                        null,
-                        new ConfigurationManagerAttributes
-                        {
-                            Order = 10000,
-                            DispName = "Enable Editing"
-                        }));
+                    "Editor",
+                    "Editing Enabled",
+                    true,
+                    "Enables the in-game NADA VFX editor.");
 
             ToggleHotkey =
                 config.Bind(
-                    "EDITOR",
-                    "Editor Hotkey",
+                    "Editor",
+                    "Toggle Hotkey",
                     new KeyboardShortcut(
                         KeyCode.F6),
-                    new ConfigDescription(
-                        "Open or close the NADA VFX editor.",
-                        null,
-                        new ConfigurationManagerAttributes
-                        {
-                            Order = 9900,
-                            DispName = "Editor Hotkey"
-                        }));
+                    "Opens or closes the in-game NADA VFX editor.");
 
-            EditingEnabled.SettingChanged +=
-                (_, __) =>
-                {
-                    if (!EditingEnabled.Value)
-                    {
-                        NadaVfxEditor.Close();
-                    }
-
-                    config.Save();
-                };
-
-            ToggleHotkey.SettingChanged +=
-                (_, __) =>
-                {
-                    config.Save();
-                };
+            Theme =
+                config.Bind(
+                    "Editor",
+                    "Theme",
+                    NadaVfxEditorThemePreset.NadaClassic,
+                    "Editor skin. " +
+                    "Available themes: " +
+                    "NadaClassic, NadaDark, NadaVal, " +
+                    "NadaDesert, NadaWinter.");
         }
     }
 }

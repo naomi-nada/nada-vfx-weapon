@@ -35,6 +35,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     return NadaSparksInspector.Draw(
                         block);
 
+                case VfxEffectTypeIds.Flare:
+                    return NadaFlareInspector.Draw(
+                        block);
+
                 default:
                     return NadaVfxFallbackBlockInspector.Draw(
                         block);

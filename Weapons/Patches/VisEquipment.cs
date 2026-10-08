@@ -32,25 +32,16 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 typeof(global::VisEquipment),
                 "m_nview");
 
-        // v1 stored the full Base64 persistence-shaped state here.
-        //
-        // The new transport never reads or writes this key. We only keep the
-        // name around long enough to clear stale test-build payloads once.
         private const string LegacyRemoteRightPayloadKey =
             "nada.vfx.right.payload";
 
         private static readonly NadaWeaponRigController WeaponRigController =
             new();
 
-        // Migration cleanup only. Once we've successfully inspected a local
-        // player's ZDO, there is no reason to keep checking the old payload
-        // during every equipment refresh.
         private static readonly HashSet<int>
             LegacyPayloadCheckedVisEquipment =
                 new();
 
-        // A stable bound item doesn't need its entire rig rebuilt every time
-        // vanilla updates equipment. Keep separate records for each hand.
         private const float LocalVisualRecheckSeconds = 1f;
 
         private static readonly LocalApplyCache RightLocalApplyCache =
@@ -68,9 +59,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             internal Transform RigRoot;
             internal float NextVisualRecheckTime;
 
-            // An unbound item needs one cleanup check, not a hierarchy search
-            // on every equipment callback. ItemData identity matters here:
-            // two copies of the same weapon can share a vanilla item hash.
             internal global::VisEquipment LastUnboundOwner;
             internal GameObject LastUnboundInstance;
             internal global::ItemDrop.ItemData LastUnboundItemData;
@@ -101,8 +89,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 if (!IsAllowedRigOwner(
                         __instance))
                 {
-                    // Only actual remote players participate in NADA's remote
-                    // weapon state flow. NPCs have VisEquipment too.
                     if (IsRemotePlayer(
                             __instance))
                     {
@@ -201,9 +187,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 ReadRightItemHash(
                     visEquipment);
 
-            // The tracker owns remote visual-instance observation.
-            // We don't need to resolve both weapon renderer hierarchies
-            // here just to produce a diagnostic log.
             NadaVfxRemoteStateTracker
                 .ObserveRight(
                     peerId,
@@ -244,8 +227,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 !nview.IsValid() ||
                 !nview.IsOwner())
             {
-                // Don't mark it checked yet. Equipment can reach this patch
-                // before its network view is ready, so retry later.
                 return;
             }
 
@@ -288,20 +269,25 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             if (itemInstance == null ||
                 itemData == null)
             {
-                // Keep the existing behavior for incomplete equipment
-                // observations. A temporary null is not proof of an unbind.
                 applyCache?.Clear();
                 return;
             }
 
-            if (!VfxStateIO.IsBound(itemData))
+            bool isBound =
+                VfxStateIO.IsBound(
+                    itemData);
+
+            bool hasEditorPreview =
+                NadaWeaponEditorPreviewState.TryGet(
+                    itemData,
+                    out _);
+
+            if (!isBound &&
+                !hasEditorPreview)
             {
                 if (applyCache == null)
                     return;
 
-                // The item is definitively unbound. Check it once per
-                // item/visual identity, even if a transitional null already
-                // cleared our reference to the previous rig.
                 if (applyCache.LastUnboundOwner == visEquipment &&
                     applyCache.LastUnboundInstance == itemInstance &&
                     ReferenceEquals(
@@ -311,8 +297,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     return;
                 }
 
-                // Prefer the exact rig we attached. The old visual may have
-                // moved or detached while Valheim switched equipment.
                 bool removedTracked =
                     applyCache.Owner == visEquipment &&
                     NadaWeaponRigRemoval.RemoveTrackedRig(
@@ -320,8 +304,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
                 if (!removedTracked)
                 {
-                    // If the tracked reference was lost during a transition,
-                    // inspect only this equipped wrapper's current visual.
                     NadaWeaponRigRemoval.RemoveFromEquippedRoot(
                         itemInstance);
                 }
@@ -349,7 +331,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 return;
             }
 
-            // A failed attempt must not become a cached success.
             applyCache?.Clear();
 
             bool applied =
@@ -357,8 +338,11 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     itemInstance,
                     itemData);
 
-            if (!applied || applyCache == null)
+            if (!applied ||
+                applyCache == null)
+            {
                 return;
+            }
 
             Transform visualRoot =
                 NadaWeaponTargets.FindEquippedWeaponVisualRoot(
@@ -375,11 +359,20 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             if (rigRoot == null)
                 return;
 
-            applyCache.Owner = visEquipment;
-            applyCache.ItemInstance = itemInstance;
-            applyCache.ItemData = itemData;
-            applyCache.VisualRoot = visualRoot;
-            applyCache.RigRoot = rigRoot;
+            applyCache.Owner =
+                visEquipment;
+
+            applyCache.ItemInstance =
+                itemInstance;
+
+            applyCache.ItemData =
+                itemData;
+
+            applyCache.VisualRoot =
+                visualRoot;
+
+            applyCache.RigRoot =
+                rigRoot;
 
             applyCache.NextVisualRecheckTime =
                 Time.realtimeSinceStartup +
@@ -397,7 +390,9 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
             if (applyCache.Owner != visEquipment ||
                 applyCache.ItemInstance != itemInstance ||
-                !ReferenceEquals(applyCache.ItemData, itemData))
+                !ReferenceEquals(
+                    applyCache.ItemData,
+                    itemData))
             {
                 return false;
             }
@@ -414,11 +409,11 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 return false;
             }
 
-            // Don't mistake a rig on an old, detached, or hidden visual
-            // for a rig on the weapon Valheim is currently displaying.
-            if (visualRoot.parent != itemInstance.transform ||
+            if (visualRoot.parent !=
+                    itemInstance.transform ||
                 !visualRoot.gameObject.activeInHierarchy ||
-                rigRoot.parent != visualRoot ||
+                rigRoot.parent !=
+                    visualRoot ||
                 !rigRoot.gameObject.activeInHierarchy)
             {
                 return false;
@@ -427,20 +422,22 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             float now =
                 Time.realtimeSinceStartup;
 
-            if (now >= applyCache.NextVisualRecheckTime)
+            if (now >=
+                applyCache.NextVisualRecheckTime)
             {
-                // Valheim can replace a visual child while keeping the same
-                // equipment wrapper. A targeted 1Hz check catches that case
-                // without doing a renderer search on every equipment update.
                 Transform currentVisualRoot =
                     NadaWeaponTargets.FindEquippedWeaponVisualRoot(
                         itemInstance.transform);
 
-                if (currentVisualRoot != visualRoot)
+                if (currentVisualRoot !=
+                    visualRoot)
+                {
                     return false;
+                }
 
                 applyCache.NextVisualRecheckTime =
-                    now + LocalVisualRecheckSeconds;
+                    now +
+                    LocalVisualRecheckSeconds;
             }
 
             return true;

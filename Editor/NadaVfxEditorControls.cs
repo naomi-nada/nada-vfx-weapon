@@ -6,6 +6,24 @@ namespace NADA.VFX.Weapon.Editor
 {
     internal static class NadaVfxEditorControls
     {
+        private const float WideModifierLabelWidth = 88f;
+        private const float CompactModifierLabelWidth = 68f;
+
+        private const float WideNumericFieldWidth = 54f;
+        private const float CompactNumericFieldWidth = 48f;
+
+        private const float WideResetButtonWidth = 30f;
+        private const float CompactResetButtonWidth = 28f;
+
+        private const float WideAxisLabelWidth = 12f;
+        private const float CompactAxisLabelWidth = 10f;
+
+        private const float WideAxisFieldWidth = 52f;
+        private const float CompactAxisFieldWidth = 40f;
+
+        private const float WideSliderMinimumWidth = 70f;
+        private const float CompactSliderMinimumWidth = 48f;
+
         private static readonly Dictionary<string, bool>
             SectionExpandedByKey =
                 new();
@@ -18,17 +36,68 @@ namespace NADA.VFX.Weapon.Editor
             OwnedTextures =
                 new();
 
+        private static NadaVfxEditorThemePreset
+            _appliedThemePreset;
+
+        private static bool
+            _hasAppliedTheme;
+
+        private static bool
+            _compactLayout;
+
         private static GUIStyle _sectionButtonStyle;
         private static GUIStyle _modifierRowStyle;
         private static GUIStyle _sliderLabelStyle;
+        private static GUIStyle _axisLabelStyle;
         private static GUIStyle _valueFieldStyle;
         private static GUIStyle _valueStyle;
         private static GUIStyle _placeholderStyle;
         private static GUIStyle _toggleStyle;
         private static GUIStyle _segmentButtonStyle;
         private static GUIStyle _selectedSegmentButtonStyle;
-        private static GUIStyle _tooltipStyle;
         private static GUIStyle _resetButtonStyle;
+
+        private static float ModifierLabelWidth =>
+            _compactLayout
+                ? CompactModifierLabelWidth
+                : WideModifierLabelWidth;
+
+        private static float NumericFieldWidth =>
+            _compactLayout
+                ? CompactNumericFieldWidth
+                : WideNumericFieldWidth;
+
+        private static float ResetButtonWidth =>
+            _compactLayout
+                ? CompactResetButtonWidth
+                : WideResetButtonWidth;
+
+        private static float AxisLabelWidth =>
+            _compactLayout
+                ? CompactAxisLabelWidth
+                : WideAxisLabelWidth;
+
+        private static float AxisFieldWidth =>
+            _compactLayout
+                ? CompactAxisFieldWidth
+                : WideAxisFieldWidth;
+
+        private static float SliderMinimumWidth =>
+            _compactLayout
+                ? CompactSliderMinimumWidth
+                : WideSliderMinimumWidth;
+
+        private static float ComponentGap =>
+            _compactLayout
+                ? 3f
+                : 5f;
+
+        internal static void SetCompactLayout(
+            bool compact)
+        {
+            _compactLayout =
+                compact;
+        }
 
         internal static bool Section(
             string key,
@@ -59,14 +128,14 @@ namespace NADA.VFX.Weapon.Editor
 
             string marker =
                 expanded
-                    ? "[-]"
-                    : "[+]";
+                    ? "−"
+                    : "+";
 
             if (GUILayout.Button(
                     $"{marker}  {title}",
                     _sectionButtonStyle,
                     GUILayout.ExpandWidth(true),
-                    GUILayout.Height(25f)))
+                    GUILayout.Height(19f)))
             {
                 expanded =
                     !expanded;
@@ -93,14 +162,9 @@ namespace NADA.VFX.Weapon.Editor
             nextValue =
                 value;
 
-            string tooltip =
-                GetTooltip(
-                    enabled,
-                    description,
-                    disabledReason);
-
-            GUILayout.BeginVertical(
-                _modifierRowStyle);
+            GUILayout.BeginHorizontal(
+                _modifierRowStyle,
+                GUILayout.Height(20f));
 
             bool previousEnabled =
                 GUI.enabled;
@@ -112,13 +176,14 @@ namespace NADA.VFX.Weapon.Editor
             bool drawnValue =
                 GUILayout.Toggle(
                     value,
-                    new GUIContent(
-                        label,
-                        tooltip),
-                    _toggleStyle);
+                    label,
+                    _toggleStyle,
+                    GUILayout.Height(18f));
 
             GUI.enabled =
                 previousEnabled;
+
+            GUILayout.EndHorizontal();
 
             bool changed =
                 enabled &&
@@ -129,8 +194,6 @@ namespace NADA.VFX.Weapon.Editor
                 nextValue =
                     drawnValue;
             }
-
-            GUILayout.EndVertical();
 
             return changed;
         }
@@ -181,12 +244,6 @@ namespace NADA.VFX.Weapon.Editor
             string controlName =
                 $"NadaVfxFloat_{key}";
 
-            string tooltip =
-                GetTooltip(
-                    enabled,
-                    description,
-                    disabledReason);
-
             bool textFieldFocused =
                 string.Equals(
                     GUI.GetNameOfFocusedControl(),
@@ -208,22 +265,16 @@ namespace NADA.VFX.Weapon.Editor
                     numericBuffer;
             }
 
-            GUILayout.BeginVertical(
-                _modifierRowStyle);
-
-            GUILayout.BeginHorizontal();
-
-            float labelWidth =
-                resetValue.HasValue
-                    ? 86f
-                    : 116f;
+            GUILayout.BeginHorizontal(
+                _modifierRowStyle,
+                GUILayout.Height(21f));
 
             GUILayout.Label(
-                new GUIContent(
-                    label,
-                    tooltip),
+                label,
                 _sliderLabelStyle,
-                GUILayout.Width(labelWidth));
+                GUILayout.Width(
+                    ModifierLabelWidth),
+                GUILayout.Height(19f));
 
             bool previousEnabled =
                 GUI.enabled;
@@ -232,12 +283,20 @@ namespace NADA.VFX.Weapon.Editor
                 previousEnabled &&
                 enabled;
 
-            Rect sliderRect =
+            Rect sliderSlot =
                 GUILayoutUtility.GetRect(
-                    60f,
-                    18f,
-                    GUILayout.MinWidth(60f),
+                    SliderMinimumWidth,
+                    19f,
+                    GUILayout.MinWidth(
+                        SliderMinimumWidth),
                     GUILayout.ExpandWidth(true));
+
+            Rect sliderRect =
+                new Rect(
+                    sliderSlot.x,
+                    sliderSlot.y + 3f,
+                    sliderSlot.width,
+                    13f);
 
             float sliderValue =
                 GUI.HorizontalSlider(
@@ -246,32 +305,21 @@ namespace NADA.VFX.Weapon.Editor
                     minimum,
                     maximum);
 
-            if (!string.IsNullOrWhiteSpace(
-                    tooltip))
-            {
-                GUI.Label(
-                    sliderRect,
-                    new GUIContent(
-                        string.Empty,
-                        tooltip),
-                    GUIStyle.none);
-            }
-
             GUILayout.Space(
-                5f);
+                ComponentGap);
 
             GUI.SetNextControlName(
                 controlName);
 
             string typedValue =
                 GUILayout.TextField(
-                    numericBuffer ?? string.Empty,
+                    numericBuffer ??
+                    string.Empty,
                     14,
                     _valueFieldStyle,
                     GUILayout.Width(
-                        resetValue.HasValue
-                            ? 54f
-                            : 66f));
+                        NumericFieldWidth),
+                    GUILayout.Height(19f));
 
             bool resetClicked =
                 false;
@@ -282,7 +330,7 @@ namespace NADA.VFX.Weapon.Editor
             if (resetValue.HasValue)
             {
                 GUILayout.Space(
-                    4f);
+                    ComponentGap);
 
                 clampedResetValue =
                     Mathf.Clamp(
@@ -304,11 +352,10 @@ namespace NADA.VFX.Weapon.Editor
 
                 resetClicked =
                     GUILayout.Button(
-                        new GUIContent(
-                            "Reset",
-                            $"Reset {label} to {FormatFloat(clampedResetValue, decimals)}."),
+                        "↺",
                         _resetButtonStyle,
-                        GUILayout.Width(42f),
+                        GUILayout.Width(
+                            ResetButtonWidth),
                         GUILayout.Height(20f));
             }
 
@@ -398,9 +445,181 @@ namespace NADA.VFX.Weapon.Editor
                 }
             }
 
-            GUILayout.EndVertical();
-
             return changed;
+        }
+
+        internal static bool Vector3Fields(
+            string key,
+            string label,
+            float x,
+            float y,
+            float z,
+            float minimum,
+            float maximum,
+            out float nextX,
+            out float nextY,
+            out float nextZ,
+            int decimals = 3,
+            bool enabled = true,
+            string disabledReason = null,
+            string description = null,
+            float? resetValue = null)
+        {
+            EnsureStyles();
+
+            nextX =
+                x;
+
+            nextY =
+                y;
+
+            nextZ =
+                z;
+
+            if (minimum >
+                maximum)
+            {
+                float temporary =
+                    minimum;
+
+                minimum =
+                    maximum;
+
+                maximum =
+                    temporary;
+            }
+
+            GUILayout.BeginHorizontal(
+                _modifierRowStyle,
+                GUILayout.Height(21f));
+
+            GUILayout.Label(
+                label,
+                _sliderLabelStyle,
+                GUILayout.Width(
+                    ModifierLabelWidth));
+
+            bool previousEnabled =
+                GUI.enabled;
+
+            GUI.enabled =
+                previousEnabled &&
+                enabled;
+
+            bool changed =
+                false;
+
+            changed |=
+                DrawVectorComponent(
+                    $"{key}:x",
+                    "X",
+                    x,
+                    minimum,
+                    maximum,
+                    decimals,
+                    out nextX);
+
+            GUILayout.Space(
+                ComponentGap);
+
+            changed |=
+                DrawVectorComponent(
+                    $"{key}:y",
+                    "Y",
+                    y,
+                    minimum,
+                    maximum,
+                    decimals,
+                    out nextY);
+
+            GUILayout.Space(
+                ComponentGap);
+
+            changed |=
+                DrawVectorComponent(
+                    $"{key}:z",
+                    "Z",
+                    z,
+                    minimum,
+                    maximum,
+                    decimals,
+                    out nextZ);
+
+            if (resetValue.HasValue)
+            {
+                GUILayout.Space(
+                    ComponentGap);
+
+                float clampedReset =
+                    Mathf.Clamp(
+                        resetValue.Value,
+                        minimum,
+                        maximum);
+
+                bool canReset =
+                    enabled &&
+                    IsFinite(
+                        resetValue.Value) &&
+                    (!Mathf.Approximately(
+                         x,
+                         clampedReset) ||
+                     !Mathf.Approximately(
+                         y,
+                         clampedReset) ||
+                     !Mathf.Approximately(
+                         z,
+                         clampedReset));
+
+                GUI.enabled =
+                    previousEnabled &&
+                    canReset;
+
+                if (GUILayout.Button(
+                        "↺",
+                        _resetButtonStyle,
+                        GUILayout.Width(
+                            ResetButtonWidth),
+                        GUILayout.Height(20f)))
+                {
+                    nextX =
+                        clampedReset;
+
+                    nextY =
+                        clampedReset;
+
+                    nextZ =
+                        clampedReset;
+
+                    SetNumericBuffer(
+                        $"{key}:x",
+                        nextX,
+                        decimals);
+
+                    SetNumericBuffer(
+                        $"{key}:y",
+                        nextY,
+                        decimals);
+
+                    SetNumericBuffer(
+                        $"{key}:z",
+                        nextZ,
+                        decimals);
+
+                    changed =
+                        true;
+                }
+            }
+
+            GUI.enabled =
+                previousEnabled;
+
+            GUILayout.FlexibleSpace();
+
+            GUILayout.EndHorizontal();
+
+            return
+                enabled &&
+                changed;
         }
 
         internal static bool SegmentedSelector(
@@ -430,26 +649,26 @@ namespace NADA.VFX.Weapon.Editor
                     0,
                     options.Length - 1);
 
-            string tooltip =
-                GetTooltip(
-                    enabled,
-                    description,
-                    disabledReason);
+            GUILayout.BeginHorizontal(
+                _modifierRowStyle,
+                GUILayout.Height(21f));
 
-            GUILayout.BeginVertical(
-                _modifierRowStyle);
+            bool showLabel =
+                !string.IsNullOrWhiteSpace(
+                    label) &&
+                !string.Equals(
+                    label,
+                    "Mode",
+                    System.StringComparison.OrdinalIgnoreCase);
 
-            if (!string.IsNullOrWhiteSpace(
-                    label))
+            if (showLabel)
             {
                 GUILayout.Label(
-                    new GUIContent(
-                        label,
-                        tooltip),
-                    _sliderLabelStyle);
+                    label,
+                    _sliderLabelStyle,
+                    GUILayout.Width(
+                        ModifierLabelWidth));
             }
-
-            GUILayout.BeginHorizontal();
 
             bool previousEnabled =
                 GUI.enabled;
@@ -476,12 +695,10 @@ namespace NADA.VFX.Weapon.Editor
                         : _segmentButtonStyle;
 
                 if (GUILayout.Button(
-                        new GUIContent(
-                            option,
-                            tooltip),
+                        option,
                         style,
                         GUILayout.ExpandWidth(true),
-                        GUILayout.Height(24f)))
+                        GUILayout.Height(19f)))
                 {
                     if (i !=
                         safeSelectedIndex)
@@ -499,7 +716,6 @@ namespace NADA.VFX.Weapon.Editor
                 previousEnabled;
 
             GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
 
             return
                 enabled &&
@@ -512,15 +728,15 @@ namespace NADA.VFX.Weapon.Editor
         {
             EnsureStyles();
 
-            GUILayout.BeginVertical(
-                _modifierRowStyle);
-
-            GUILayout.BeginHorizontal();
+            GUILayout.BeginHorizontal(
+                _modifierRowStyle,
+                GUILayout.Height(20f));
 
             GUILayout.Label(
                 label,
                 _sliderLabelStyle,
-                GUILayout.Width(116f));
+                GUILayout.Width(
+                    ModifierLabelWidth));
 
             GUILayout.Label(
                 FormatFloat(
@@ -529,7 +745,6 @@ namespace NADA.VFX.Weapon.Editor
                 _valueStyle);
 
             GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
         }
 
         internal static void ReadOnlyBool(
@@ -538,15 +753,15 @@ namespace NADA.VFX.Weapon.Editor
         {
             EnsureStyles();
 
-            GUILayout.BeginVertical(
-                _modifierRowStyle);
-
-            GUILayout.BeginHorizontal();
+            GUILayout.BeginHorizontal(
+                _modifierRowStyle,
+                GUILayout.Height(20f));
 
             GUILayout.Label(
                 label,
                 _sliderLabelStyle,
-                GUILayout.Width(116f));
+                GUILayout.Width(
+                    ModifierLabelWidth));
 
             GUILayout.Label(
                 value
@@ -555,7 +770,6 @@ namespace NADA.VFX.Weapon.Editor
                 _valueStyle);
 
             GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
         }
 
         internal static void ReadOnlyVector3(
@@ -566,22 +780,21 @@ namespace NADA.VFX.Weapon.Editor
         {
             EnsureStyles();
 
-            GUILayout.BeginVertical(
-                _modifierRowStyle);
-
-            GUILayout.BeginHorizontal();
+            GUILayout.BeginHorizontal(
+                _modifierRowStyle,
+                GUILayout.Height(20f));
 
             GUILayout.Label(
                 label,
                 _sliderLabelStyle,
-                GUILayout.Width(116f));
+                GUILayout.Width(
+                    ModifierLabelWidth));
 
             GUILayout.Label(
                 $"X {x:0.###}   Y {y:0.###}   Z {z:0.###}",
                 _valueStyle);
 
             GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
         }
 
         internal static void Hint(
@@ -610,95 +823,18 @@ namespace NADA.VFX.Weapon.Editor
         internal static void SpaceAfterSection()
         {
             GUILayout.Space(
-                7f);
+                3f);
         }
 
         internal static void DrawTooltipOverlay(
             float availableWidth,
             float availableHeight)
         {
-            EnsureStyles();
+            _ =
+                availableWidth;
 
-            string tooltip =
-                GUI.tooltip;
-
-            if (string.IsNullOrWhiteSpace(
-                    tooltip))
-            {
-                return;
-            }
-
-            GUIContent content =
-                new GUIContent(
-                    tooltip);
-
-            float width =
-                Mathf.Clamp(
-                    _tooltipStyle.CalcSize(
-                        content).x + 18f,
-                    180f,
-                    320f);
-
-            float height =
-                _tooltipStyle.CalcHeight(
-                    content,
-                    width) + 8f;
-
-            Vector2 mouse =
-                Event.current.mousePosition;
-
-            float x =
-                mouse.x + 14f;
-
-            float y =
-                mouse.y + 18f;
-
-            if (x + width >
-                availableWidth - 8f)
-            {
-                x =
-                    mouse.x -
-                    width -
-                    14f;
-            }
-
-            if (y + height >
-                availableHeight - 8f)
-            {
-                y =
-                    mouse.y -
-                    height -
-                    14f;
-            }
-
-            x =
-                Mathf.Clamp(
-                    x,
-                    8f,
-                    Mathf.Max(
-                        8f,
-                        availableWidth -
-                        width -
-                        8f));
-
-            y =
-                Mathf.Clamp(
-                    y,
-                    8f,
-                    Mathf.Max(
-                        8f,
-                        availableHeight -
-                        height -
-                        8f));
-
-            GUI.Box(
-                new Rect(
-                    x,
-                    y,
-                    width,
-                    height),
-                content,
-                _tooltipStyle);
+            _ =
+                availableHeight;
         }
 
         internal static void ResetUiState()
@@ -706,124 +842,192 @@ namespace NADA.VFX.Weapon.Editor
             SectionExpandedByKey.Clear();
             NumericBufferByKey.Clear();
 
-            foreach (Texture2D texture in
-                     OwnedTextures)
-            {
-                if (texture == null)
-                    continue;
+            _compactLayout =
+                false;
 
-                Object.Destroy(
-                    texture);
+            ResetVisualStyles();
+        }
+
+        private static bool DrawVectorComponent(
+            string key,
+            string axisLabel,
+            float value,
+            float minimum,
+            float maximum,
+            int decimals,
+            out float nextValue)
+        {
+            nextValue =
+                value;
+
+            GUILayout.Label(
+                axisLabel,
+                _axisLabelStyle,
+                GUILayout.Width(
+                    AxisLabelWidth));
+
+            string controlName =
+                $"NadaVfxFloat_{key}";
+
+            bool textFieldFocused =
+                string.Equals(
+                    GUI.GetNameOfFocusedControl(),
+                    controlName,
+                    System.StringComparison.Ordinal);
+
+            if (!NumericBufferByKey.TryGetValue(
+                    key,
+                    out string numericBuffer) ||
+                !textFieldFocused)
+            {
+                numericBuffer =
+                    FormatFloat(
+                        value,
+                        decimals);
+
+                NumericBufferByKey[
+                    key] =
+                    numericBuffer;
             }
 
-            OwnedTextures.Clear();
+            GUI.SetNextControlName(
+                controlName);
 
-            _sectionButtonStyle = null;
-            _modifierRowStyle = null;
-            _sliderLabelStyle = null;
-            _valueFieldStyle = null;
-            _valueStyle = null;
-            _placeholderStyle = null;
-            _toggleStyle = null;
-            _segmentButtonStyle = null;
-            _selectedSegmentButtonStyle = null;
-            _tooltipStyle = null;
-            _resetButtonStyle = null;
+            string typedValue =
+                GUILayout.TextField(
+                    numericBuffer ??
+                    string.Empty,
+                    14,
+                    _valueFieldStyle,
+                    GUILayout.Width(
+                        AxisFieldWidth),
+                    GUILayout.Height(19f));
+
+            NumericBufferByKey[
+                key] =
+                    typedValue;
+
+            if (!float.TryParse(
+                    typedValue,
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture,
+                    out float parsedValue))
+            {
+                return false;
+            }
+
+            float clampedValue =
+                Mathf.Clamp(
+                    parsedValue,
+                    minimum,
+                    maximum);
+
+            if (!Mathf.Approximately(
+                    parsedValue,
+                    clampedValue))
+            {
+                NumericBufferByKey[
+                    key] =
+                    FormatFloat(
+                        clampedValue,
+                        decimals);
+            }
+
+            if (Mathf.Approximately(
+                    clampedValue,
+                    value))
+            {
+                return false;
+            }
+
+            nextValue =
+                clampedValue;
+
+            return true;
+        }
+
+        private static void SetNumericBuffer(
+            string key,
+            float value,
+            int decimals)
+        {
+            NumericBufferByKey[
+                key] =
+                    FormatFloat(
+                        value,
+                        decimals);
         }
 
         private static void EnsureStyles()
         {
-            if (_sectionButtonStyle != null)
+            NadaVfxEditorThemePreset currentPreset =
+                NadaVfxEditorThemes.CurrentPreset;
+
+            if (_sectionButtonStyle != null &&
+                _hasAppliedTheme &&
+                _appliedThemePreset ==
+                currentPreset)
+            {
                 return;
+            }
+
+            ResetVisualStyles();
+
+            _appliedThemePreset =
+                currentPreset;
+
+            _hasAppliedTheme =
+                true;
+
+            NadaVfxEditorTheme theme =
+                NadaVfxEditorThemes.Get(
+                    currentPreset);
 
             Texture2D sectionBackground =
                 CreateTexture(
-                    new Color(
-                        0.20f,
-                        0.16f,
-                        0.105f,
-                        1f));
+                    theme.PanelBackground);
 
             Texture2D sectionHoverBackground =
                 CreateTexture(
-                    new Color(
-                        0.265f,
-                        0.205f,
-                        0.12f,
-                        1f));
-
-            Texture2D modifierBackground =
-                CreateTexture(
-                    new Color(
-                        0.095f,
-                        0.083f,
-                        0.068f,
-                        0.72f));
+                    theme.ButtonHoverBackground);
 
             Texture2D segmentBackground =
                 CreateTexture(
-                    new Color(
-                        0.145f,
-                        0.125f,
-                        0.10f,
-                        1f));
+                    theme.SegmentBackground);
 
             Texture2D segmentHoverBackground =
                 CreateTexture(
-                    new Color(
-                        0.22f,
-                        0.18f,
-                        0.12f,
-                        1f));
+                    theme.SegmentHoverBackground);
 
             Texture2D selectedSegmentBackground =
                 CreateTexture(
-                    new Color(
-                        0.43f,
-                        0.315f,
-                        0.15f,
-                        1f));
+                    theme.SelectedSegmentBackground);
 
-            Texture2D tooltipBackground =
+            Texture2D resetBackground =
                 CreateTexture(
-                    new Color(
-                        0.055f,
-                        0.05f,
-                        0.045f,
-                        0.98f));
+                    theme.ResetBackground);
 
-            Color primaryText =
-                new Color(
-                    0.93f,
-                    0.90f,
-                    0.82f,
-                    1f);
-
-            Color mutedText =
-                new Color(
-                    0.63f,
-                    0.60f,
-                    0.53f,
-                    1f);
-
-            Color accentText =
-                new Color(
-                    0.91f,
-                    0.70f,
-                    0.34f,
-                    1f);
+            Texture2D resetHoverBackground =
+                CreateTexture(
+                    theme.ResetHoverBackground);
 
             _sectionButtonStyle =
                 new GUIStyle(
                     GUI.skin.button)
                 {
-                    fontSize = 10,
+                    fontSize = 9,
                     padding =
                         new RectOffset(
-                            8,
-                            8,
-                            4,
-                            4)
+                            6,
+                            6,
+                            1,
+                            1),
+                    margin =
+                        new RectOffset(
+                            0,
+                            0,
+                            1,
+                            1)
                 };
 
             _sectionButtonStyle.normal.background =
@@ -836,86 +1040,125 @@ namespace NADA.VFX.Weapon.Editor
                 sectionHoverBackground;
 
             _sectionButtonStyle.normal.textColor =
-                accentText;
+                theme.AccentSecondary;
 
             _sectionButtonStyle.hover.textColor =
-                primaryText;
+                theme.AccentTertiary;
+
+            _sectionButtonStyle.active.textColor =
+                theme.AccentTertiary;
 
             _modifierRowStyle =
                 new GUIStyle(
-                    GUI.skin.box)
+                    GUIStyle.none)
                 {
                     padding =
                         new RectOffset(
-                            7,
-                            7,
-                            5,
-                            5),
+                            2,
+                            2,
+                            1,
+                            1),
                     margin =
                         new RectOffset(
                             0,
                             0,
-                            2,
-                            2)
+                            0,
+                            0)
                 };
-
-            _modifierRowStyle.normal.background =
-                modifierBackground;
 
             _sliderLabelStyle =
                 new GUIStyle(
                     GUI.skin.label)
                 {
                     fontSize = 10,
-                    wordWrap = false
+                    wordWrap = false,
+                    clipping =
+                        TextClipping.Clip,
+                    padding =
+                        new RectOffset(
+                            2,
+                            2,
+                            2,
+                            0)
                 };
 
             _sliderLabelStyle.normal.textColor =
-                primaryText;
+                theme.PrimaryText;
+
+            _axisLabelStyle =
+                new GUIStyle(
+                    GUI.skin.label)
+                {
+                    fontSize = 9,
+                    wordWrap = false,
+                    padding =
+                        new RectOffset(
+                            0,
+                            0,
+                            2,
+                            0)
+                };
+
+            _axisLabelStyle.normal.textColor =
+                theme.MutedText;
 
             _valueFieldStyle =
                 new GUIStyle(
                     GUI.skin.textField)
                 {
-                    fontSize = 10,
+                    fontSize = 9,
+                    alignment =
+                        TextAnchor.MiddleRight,
                     padding =
                         new RectOffset(
-                            5,
-                            5,
-                            3,
-                            3)
+                            4,
+                            4,
+                            2,
+                            2)
                 };
 
             _valueFieldStyle.normal.textColor =
-                primaryText;
+                theme.PrimaryText;
+
+            _valueFieldStyle.focused.textColor =
+                theme.PrimaryText;
+
+            _valueFieldStyle.hover.textColor =
+                theme.PrimaryText;
 
             _valueStyle =
                 new GUIStyle(
                     GUI.skin.label)
                 {
                     fontSize = 10,
-                    wordWrap = false
+                    wordWrap = false,
+                    padding =
+                        new RectOffset(
+                            2,
+                            2,
+                            1,
+                            1)
                 };
 
             _valueStyle.normal.textColor =
-                primaryText;
+                theme.PrimaryText;
 
             _placeholderStyle =
                 new GUIStyle(
                     GUI.skin.label)
                 {
-                    fontSize = 10,
+                    fontSize = 9,
                     wordWrap = true,
                     padding =
                         new RectOffset(
-                            5,
-                            5,
-                            4,
-                            4)
+                            3,
+                            3,
+                            2,
+                            2)
                 };
 
             _placeholderStyle.normal.textColor =
-                mutedText;
+                theme.MutedText;
 
             _toggleStyle =
                 new GUIStyle(
@@ -925,25 +1168,28 @@ namespace NADA.VFX.Weapon.Editor
                     padding =
                         new RectOffset(
                             18,
-                            4,
                             2,
-                            2)
+                            1,
+                            1)
                 };
 
             _toggleStyle.normal.textColor =
-                primaryText;
+                theme.PrimaryText;
+
+            _toggleStyle.hover.textColor =
+                theme.PrimaryText;
 
             _segmentButtonStyle =
                 new GUIStyle(
                     GUI.skin.button)
                 {
-                    fontSize = 10,
+                    fontSize = 9,
                     padding =
                         new RectOffset(
-                            6,
-                            6,
-                            3,
-                            3)
+                            4,
+                            4,
+                            1,
+                            1)
                 };
 
             _segmentButtonStyle.normal.background =
@@ -956,7 +1202,10 @@ namespace NADA.VFX.Weapon.Editor
                 segmentHoverBackground;
 
             _segmentButtonStyle.normal.textColor =
-                primaryText;
+                theme.MutedText;
+
+            _segmentButtonStyle.hover.textColor =
+                theme.PrimaryText;
 
             _selectedSegmentButtonStyle =
                 new GUIStyle(
@@ -972,59 +1221,72 @@ namespace NADA.VFX.Weapon.Editor
                 selectedSegmentBackground;
 
             _selectedSegmentButtonStyle.normal.textColor =
-                primaryText;
+                theme.AccentTertiary;
 
-            _tooltipStyle =
-                new GUIStyle(
-                    GUI.skin.box)
-                {
-                    fontSize = 10,
-                    wordWrap = true,
-                    padding =
-                        new RectOffset(
-                            9,
-                            9,
-                            7,
-                            7)
-                };
-
-            _tooltipStyle.normal.background =
-                tooltipBackground;
-
-            _tooltipStyle.normal.textColor =
-                primaryText;
+            _selectedSegmentButtonStyle.hover.textColor =
+                theme.AccentTertiary;
 
             _resetButtonStyle =
                 new GUIStyle(
                     GUI.skin.button)
                 {
-                    fontSize = 9,
+                    fontSize = 17,
+                    fontStyle =
+                        FontStyle.Bold,
+                    alignment =
+                        TextAnchor.MiddleCenter,
                     padding =
                         new RectOffset(
-                            3,
-                            3,
-                            2,
-                            2)
+                            0,
+                            0,
+                            0,
+                            1)
                 };
 
+            _resetButtonStyle.normal.background =
+                resetBackground;
+
+            _resetButtonStyle.hover.background =
+                resetHoverBackground;
+
+            _resetButtonStyle.active.background =
+                resetHoverBackground;
+
             _resetButtonStyle.normal.textColor =
-                primaryText;
+                theme.AccentPrimary;
+
+            _resetButtonStyle.hover.textColor =
+                theme.AccentSecondary;
         }
 
-        private static string GetTooltip(
-            bool enabled,
-            string description,
-            string disabledReason)
+        private static void ResetVisualStyles()
         {
-            if (!enabled &&
-                !string.IsNullOrWhiteSpace(
-                    disabledReason))
+            foreach (Texture2D texture in
+                     OwnedTextures)
             {
-                return disabledReason;
+                if (texture == null)
+                    continue;
+
+                Object.Destroy(
+                    texture);
             }
 
-            return description ??
-                   string.Empty;
+            OwnedTextures.Clear();
+
+            _sectionButtonStyle = null;
+            _modifierRowStyle = null;
+            _sliderLabelStyle = null;
+            _axisLabelStyle = null;
+            _valueFieldStyle = null;
+            _valueStyle = null;
+            _placeholderStyle = null;
+            _toggleStyle = null;
+            _segmentButtonStyle = null;
+            _selectedSegmentButtonStyle = null;
+            _resetButtonStyle = null;
+
+            _hasAppliedTheme =
+                false;
         }
 
         private static Texture2D CreateTexture(

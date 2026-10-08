@@ -1,7 +1,6 @@
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Defaults;
-using UnityEngine;
 
 namespace NADA.VFX.Weapon.Editor.Inspectors
 {
@@ -43,7 +42,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 false;
 
             if (NadaVfxEditorControls.FloatSlider(
-                    $"block:{block.InstanceId}:position-x",
+                    $"block:{block.InstanceId}:xOffset",
                     "Position X",
                     block.Transform.XOffset,
                     PluginConfig.MinEffectOffset,
@@ -61,7 +60,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             }
 
             if (NadaVfxEditorControls.FloatSlider(
-                    $"block:{block.InstanceId}:position-y",
+                    $"block:{block.InstanceId}:yOffset",
                     "Position Y",
                     block.Transform.YOffset,
                     PluginConfig.MinEffectOffset,
@@ -79,7 +78,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             }
 
             if (NadaVfxEditorControls.FloatSlider(
-                    $"block:{block.InstanceId}:position-z",
+                    $"block:{block.InstanceId}:zOffset",
                     "Position Z",
                     block.Transform.ZOffset,
                     PluginConfig.MinEffectOffset,
@@ -96,11 +95,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     true;
             }
 
-            GUILayout.Space(
-                3f);
-
             if (NadaVfxEditorControls.FloatSlider(
-                    $"block:{block.InstanceId}:rotation-x",
+                    $"block:{block.InstanceId}:xRotation",
                     "Rotation X",
                     block.Transform.XRotation,
                     PluginConfig.MinEffectRotation,
@@ -118,7 +114,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             }
 
             if (NadaVfxEditorControls.FloatSlider(
-                    $"block:{block.InstanceId}:rotation-y",
+                    $"block:{block.InstanceId}:yRotation",
                     "Rotation Y",
                     block.Transform.YRotation,
                     PluginConfig.MinEffectRotation,
@@ -136,7 +132,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             }
 
             if (NadaVfxEditorControls.FloatSlider(
-                    $"block:{block.InstanceId}:rotation-z",
+                    $"block:{block.InstanceId}:zRotation",
                     "Rotation Z",
                     block.Transform.ZRotation,
                     PluginConfig.MinEffectRotation,

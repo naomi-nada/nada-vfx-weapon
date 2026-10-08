@@ -58,7 +58,7 @@ namespace NADA.VFX.Weapon.Editor
                 return;
             }
 
-            ReadOrbitInput();
+            ReadCameraInput();
             ApplyCameraPose();
         }
 
@@ -187,51 +187,65 @@ namespace NADA.VFX.Weapon.Editor
             return true;
         }
 
-        private static void ReadOrbitInput()
+        private static void ReadCameraInput()
         {
-            if (!Input.GetMouseButton(1))
+            bool pointerOverEditor =
+                NadaVfxEditor.IsPointerOverWindow();
+
+            // Orbit remains an explicit RMB gesture and only operates over
+            // the game view, never while interacting with editor controls.
+            if (!pointerOverEditor &&
+                Input.GetMouseButton(1))
+            {
+                float mouseX =
+                    Input.GetAxis(
+                        "Mouse X");
+
+                float mouseY =
+                    Input.GetAxis(
+                        "Mouse Y");
+
+                _yaw +=
+                    mouseX *
+                    OrbitSensitivity;
+
+                _pitch -=
+                    mouseY *
+                    OrbitSensitivity;
+
+                _pitch =
+                    Mathf.Clamp(
+                        _pitch,
+                        MinimumPitch,
+                        MaximumPitch);
+            }
+
+            // Zoom does not require RMB. Keeping it disabled while the pointer
+            // is over the editor prevents scroll views and camera zoom from
+            // responding to the same wheel input.
+            if (pointerOverEditor)
                 return;
-
-            float mouseX =
-                Input.GetAxis(
-                    "Mouse X");
-
-            float mouseY =
-                Input.GetAxis(
-                    "Mouse Y");
-
-            _yaw +=
-                mouseX *
-                OrbitSensitivity;
-
-            _pitch -=
-                mouseY *
-                OrbitSensitivity;
-
-            _pitch =
-                Mathf.Clamp(
-                    _pitch,
-                    MinimumPitch,
-                    MaximumPitch);
 
             float scroll =
                 Input.GetAxis(
                     "Mouse ScrollWheel");
 
-            if (!Mathf.Approximately(
+            if (Mathf.Approximately(
                     scroll,
                     0f))
             {
-                _distance -=
-                    scroll *
-                    ZoomSensitivity;
-
-                _distance =
-                    Mathf.Clamp(
-                        _distance,
-                        MinimumDistance,
-                        MaximumDistance);
+                return;
             }
+
+            _distance -=
+                scroll *
+                ZoomSensitivity;
+
+            _distance =
+                Mathf.Clamp(
+                    _distance,
+                    MinimumDistance,
+                    MaximumDistance);
         }
 
         private static void ApplyCameraPose()

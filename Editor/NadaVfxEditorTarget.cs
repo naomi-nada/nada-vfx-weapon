@@ -1,6 +1,5 @@
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Runtime.Structure;
-using NADA.VFX.Weapon.Weapons.Runtime;
 using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
 
@@ -9,6 +8,9 @@ namespace NADA.VFX.Weapon.Editor
     internal sealed class NadaVfxEditorTarget
     {
         internal global::ItemDrop.ItemData ItemData { get; }
+
+        internal GameObject SourceRoot { get; }
+        internal Transform VisualRoot { get; }
 
         internal string DisplayName { get; }
         internal string ItemNameKey { get; }
@@ -29,14 +31,11 @@ namespace NADA.VFX.Weapon.Editor
 
         internal NadaVfxEditorTarget(
             global::ItemDrop.ItemData itemData,
+            GameObject sourceRoot,
+            Transform visualRoot,
             string displayName,
             string itemNameKey,
             string prefabName,
-            string sourceRootName,
-            int sourceRootInstanceId,
-            string visualRootName,
-            int visualRootInstanceId,
-            string visualRootPath,
             bool hasRuntimeRig,
             int runtimeRigInstanceId,
             bool isLegacyBound,
@@ -44,6 +43,12 @@ namespace NADA.VFX.Weapon.Editor
         {
             ItemData =
                 itemData;
+
+            SourceRoot =
+                sourceRoot;
+
+            VisualRoot =
+                visualRoot;
 
             DisplayName =
                 displayName ??
@@ -58,22 +63,30 @@ namespace NADA.VFX.Weapon.Editor
                 string.Empty;
 
             SourceRootName =
-                sourceRootName ??
-                string.Empty;
+                sourceRoot != null
+                    ? sourceRoot.name
+                    : string.Empty;
 
             SourceRootInstanceId =
-                sourceRootInstanceId;
+                sourceRoot != null
+                    ? sourceRoot.GetInstanceID()
+                    : 0;
 
             VisualRootName =
-                visualRootName ??
-                string.Empty;
+                visualRoot != null
+                    ? visualRoot.name
+                    : string.Empty;
 
             VisualRootInstanceId =
-                visualRootInstanceId;
+                visualRoot != null
+                    ? visualRoot.GetInstanceID()
+                    : 0;
 
             VisualRootPath =
-                visualRootPath ??
-                string.Empty;
+                visualRoot != null
+                    ? NadaWeaponTargets.FullPath(
+                        visualRoot)
+                    : string.Empty;
 
             HasRuntimeRig =
                 hasRuntimeRig;
@@ -100,27 +113,9 @@ namespace NADA.VFX.Weapon.Editor
 
         internal static void RefreshFromRuntime()
         {
-            NadaWeaponRigContext context =
-                NadaWeaponRigController
-                    .LastAppliedLocalContext;
-
-            if (context == null ||
-                !context.IsValid ||
-                context.ItemData == null)
-            {
-                Clear();
-
-                return;
-            }
-
-            global::ItemDrop.ItemData currentEquippedItem =
-                NadaEquippedItemResolver
-                    .ResolveFirstEquippedItem();
-
-            if (currentEquippedItem == null ||
-                !object.ReferenceEquals(
-                    currentEquippedItem,
-                    context.ItemData))
+            if (!NadaEquippedWeaponTargetResolver.TryResolveFirst(
+                    out NadaEquippedWeaponTargetResolver.ResolvedTarget
+                        resolvedTarget))
             {
                 Clear();
 
@@ -128,7 +123,7 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             Capture(
-                context);
+                resolvedTarget);
         }
 
         internal static void Clear()
@@ -138,37 +133,43 @@ namespace NADA.VFX.Weapon.Editor
         }
 
         private static void Capture(
-            NadaWeaponRigContext context)
+            NadaEquippedWeaponTargetResolver.ResolvedTarget resolvedTarget)
         {
+            if (resolvedTarget == null ||
+                resolvedTarget.ItemData == null ||
+                resolvedTarget.Root == null ||
+                resolvedTarget.VisualRoot == null)
+            {
+                Clear();
+
+                return;
+            }
+
             global::ItemDrop.ItemData itemData =
-                context.ItemData;
+                resolvedTarget.ItemData;
 
             bool isLegacyBound =
                 VfxStateIO.IsBound(
                     itemData);
 
             string itemNameKey =
-                itemData?.m_shared?.m_name ??
-                "<unknown>";
+                itemData.m_shared?.m_name ??
+                string.Empty;
 
             string prefabName =
-                itemData?.m_dropPrefab != null
+                itemData.m_dropPrefab != null
                     ? itemData.m_dropPrefab.name
-                    : context.Root?.name ??
-                      "<unknown>";
+                    : resolvedTarget.Root.name;
 
             string displayName =
-                !string.IsNullOrWhiteSpace(
-                    prefabName)
-                    ? prefabName
-                    : itemNameKey;
+                ResolveDisplayName(
+                    itemNameKey,
+                    prefabName);
 
             Transform runtimeRigTransform =
-                context.WeaponVisualRoot != null
-                    ? NadaRigPaths.FindDirectChild(
-                        context.WeaponVisualRoot,
-                        Plugin.LocalWeaponRootName)
-                    : null;
+                NadaRigPaths.FindDirectChild(
+                    resolvedTarget.VisualRoot,
+                    Plugin.LocalWeaponRootName);
 
             bool hasRuntimeRig =
                 runtimeRigTransform != null;
@@ -176,36 +177,71 @@ namespace NADA.VFX.Weapon.Editor
             string runtimeStateSource =
                 isLegacyBound
                     ? "Legacy runtime: bound ItemData"
-                    : "Legacy runtime: manager defaults";
+                    : "Editor/runtime defaults: unbound ItemData";
 
             Current =
                 new NadaVfxEditorTarget(
                     itemData,
+                    resolvedTarget.Root,
+                    resolvedTarget.VisualRoot,
                     displayName,
                     itemNameKey,
                     prefabName,
-                    context.Root != null
-                        ? context.Root.name
-                        : "<none>",
-                    context.Root != null
-                        ? context.Root.GetInstanceID()
-                        : 0,
-                    context.WeaponVisualRoot != null
-                        ? context.WeaponVisualRoot.name
-                        : "<none>",
-                    context.WeaponVisualRoot != null
-                        ? context.WeaponVisualRoot.GetInstanceID()
-                        : 0,
-                    context.WeaponVisualRoot != null
-                        ? NadaWeaponTargets.FullPath(
-                            context.WeaponVisualRoot)
-                        : string.Empty,
                     hasRuntimeRig,
                     hasRuntimeRig
                         ? runtimeRigTransform.GetInstanceID()
                         : 0,
                     isLegacyBound,
                     runtimeStateSource);
+        }
+
+        private static string ResolveDisplayName(
+            string itemNameKey,
+            string prefabName)
+        {
+            if (!string.IsNullOrWhiteSpace(
+                    itemNameKey))
+            {
+                try
+                {
+                    if (Localization.instance != null)
+                    {
+                        string localized =
+                            Localization.instance.Localize(
+                                itemNameKey);
+
+                        if (!string.IsNullOrWhiteSpace(
+                                localized) &&
+                            !string.Equals(
+                                localized,
+                                itemNameKey,
+                                System.StringComparison.Ordinal))
+                        {
+                            return localized.Trim();
+                        }
+                    }
+                }
+                catch
+                {
+                    // Localization is presentation-only. Falling back to the
+                    // item's own literal name or prefab identity is safe.
+                }
+
+                if (!itemNameKey.StartsWith(
+                        "$",
+                        System.StringComparison.Ordinal))
+                {
+                    return itemNameKey.Trim();
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                    prefabName))
+            {
+                return prefabName;
+            }
+
+            return "Unknown Weapon";
         }
     }
 }
