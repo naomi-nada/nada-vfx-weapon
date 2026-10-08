@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.State.Defaults;
+using NADA.VFX.Weapon.Runtime.Formation;
 
 namespace NADA.VFX.Weapon.Editor
 {
@@ -19,6 +20,10 @@ namespace NADA.VFX.Weapon.Editor
             internal Dictionary<string, int>
                 NextNameOrdinalByTypeId { get; } =
                     new();
+
+            // Keep IDs retired for the lifetime of this weapon draft.
+            // Scanning only surviving effects would reuse a deleted ID.
+            internal uint NextInstanceId { get; set; } = 1;
         }
 
         private sealed class ItemDataReferenceComparer :
@@ -55,6 +60,8 @@ namespace NADA.VFX.Weapon.Editor
                     ItemDataReferenceComparer.Instance);
 
         private static global::ItemDrop.ItemData _targetItemData;
+
+        private static EditorDraft _activeDraft;
 
         private static WeaponVfxState _state =
             new();
@@ -95,6 +102,9 @@ namespace NADA.VFX.Weapon.Editor
 
             if (_targetItemData == null)
             {
+                _activeDraft =
+                    null;
+
                 _state =
                     new WeaponVfxState();
 
@@ -108,6 +118,9 @@ namespace NADA.VFX.Weapon.Editor
                     _targetItemData,
                     out EditorDraft existingDraft))
             {
+                _activeDraft =
+                    existingDraft;
+
                 _state =
                     existingDraft.State;
 
@@ -130,6 +143,9 @@ namespace NADA.VFX.Weapon.Editor
                 _targetItemData,
                 newDraft);
 
+            _activeDraft =
+                newDraft;
+
             _state =
                 newDraft.State;
 
@@ -149,6 +165,9 @@ namespace NADA.VFX.Weapon.Editor
             DraftByItemData.Clear();
 
             _targetItemData =
+                null;
+
+            _activeDraft =
                 null;
 
             _state =
@@ -196,6 +215,9 @@ namespace NADA.VFX.Weapon.Editor
             _state.Effects.Add(
                 created);
 
+            CommitAllocatedInstanceId(
+                instanceId);
+
             block =
                 created;
 
@@ -224,8 +246,38 @@ namespace NADA.VFX.Weapon.Editor
             if (block.Enabled == enabled)
                 return true;
 
+            // Enabling a dormant orbital leader can reactivate Glue
+            // relationships that now conflict with another active leader.
+            // Validate the proposed state before allowing the preview to
+            // consume it. Disabling always remains available.
             block.Enabled =
                 enabled;
+
+            if (enabled && IsOrbitalType(block.TypeId))
+            {
+                bool valid =
+                    OrbitalsFormationResolver.TryResolve(
+                        _state,
+                        out OrbitalsFormationResolution resolution);
+
+                if (!valid || resolution == null || !resolution.IsValid)
+                {
+                    block.Enabled =
+                        false;
+
+                    string reason =
+                        resolution?.FailureReason ??
+                        "formation-resolution-failed";
+
+                    Plugin.Log?.LogWarning(
+                        $"{Plugin.ModName}: [EditorBlockEnableRejected] " +
+                        $"id={block.InstanceId} " +
+                        $"type='{block.TypeId}' " +
+                        $"reason='{reason}'.");
+
+                    return false;
+                }
+            }
 
             Plugin.Log?.LogInfo(
                 $"{Plugin.ModName}: [EditorBlockEnabled] " +
@@ -387,6 +439,9 @@ namespace NADA.VFX.Weapon.Editor
             _state.Effects.Insert(
                 insertIndex,
                 created);
+
+            CommitAllocatedInstanceId(
+                instanceId);
 
             duplicate =
                 created;
@@ -655,6 +710,15 @@ namespace NADA.VFX.Weapon.Editor
             }
         }
 
+        private static bool IsOrbitalType(string typeId)
+        {
+            return
+                typeId == VfxEffectTypeIds.OrbitalsOrbs ||
+                typeId == VfxEffectTypeIds.OrbitalsCores ||
+                typeId == VfxEffectTypeIds.OrbitalsFlames ||
+                typeId == VfxEffectTypeIds.OrbitalsEmbers;
+        }
+
         private static OrbitalsFormationVfxSettings GetFormation(
             VfxEffectBlock block)
         {
@@ -682,36 +746,51 @@ namespace NADA.VFX.Weapon.Editor
 
         private static uint AllocateInstanceId()
         {
-            uint highest =
-                0;
-
-            foreach (VfxEffectBlock block in
-                     _state.Effects)
-            {
-                if (block == null)
-                    continue;
-
-                if (block.InstanceId >
-                    highest)
-                {
-                    highest =
-                        block.InstanceId;
-                }
-            }
-
-            if (highest ==
-                uint.MaxValue)
+            if (_activeDraft == null ||
+                _state?.Effects == null ||
+                _activeDraft.NextInstanceId == 0)
             {
                 return 0;
             }
 
             uint next =
-                highest + 1;
+                _activeDraft.NextInstanceId;
 
-            if (next == 0)
-                return 0;
+            // Allow future draft initialization from existing state without
+            // ever reusing IDs retired during this editor session.
+            foreach (VfxEffectBlock block in
+                     _state.Effects)
+            {
+                if (block == null ||
+                    block.InstanceId < next)
+                {
+                    continue;
+                }
+
+                if (block.InstanceId == uint.MaxValue)
+                    return 0;
+
+                next =
+                    block.InstanceId + 1;
+            }
 
             return next;
+        }
+
+        private static void CommitAllocatedInstanceId(
+            uint instanceId)
+        {
+            if (_activeDraft == null ||
+                instanceId == 0)
+            {
+                return;
+            }
+
+            // Zero is reserved as the exhaustion sentinel; never wrap to 1.
+            _activeDraft.NextInstanceId =
+                instanceId == uint.MaxValue
+                    ? 0
+                    : instanceId + 1;
         }
 
         private static string AllocateDisplayName(
