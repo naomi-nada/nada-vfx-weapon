@@ -110,20 +110,25 @@ namespace NADA.VFX.Weapon
             Instance = this;
             Log = Logger;
 
-            PluginConfig.Bind(
-                Config);
-
-            NadaVfxEditorConfig.Bind(
-                Config);
+            PluginConfig.Bind(Config);
+            NadaVfxEditorConfig.Bind(Config);
 
             Log.LogInfo(
                 $"{ModName} loaded! Version {ModVersion}");
 
-            // This does not send anything.
-            // It only proves the compact V2 format can round-trip every
-            // field currently present in VfxState.
+            // Test native WeaponVfxState serialization and validation.
+            NADA.VFX.Weapon.Core.Persistence
+                .WeaponVfxStateCodecContractTests.Run();
+
+            // Test the transitional legacy VfxState network codec.
             NadaVfxNetworkCodecV2.RunSelfTest();
             NadaVfxNetworkCodecV2CompatibilityTests.Run();
+            
+            NADA.VFX.Weapon.Core.Persistence
+                .WeaponVfxItemStoreContractTests.Run();
+            
+            NADA.VFX.Weapon.Weapons.Runtime
+                .NadaWeaponLocalSourceResolverContractTests.Run();
 
             Harmony.PatchAll(
                 Assembly.GetExecutingAssembly());
