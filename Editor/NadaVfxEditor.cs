@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Editor.Inspectors;
 using NADA.VFX.Weapon.Weapons.Runtime;
@@ -149,6 +150,13 @@ namespace NADA.VFX.Weapon.Editor
         internal static bool OwnsKeyboardInput =>
             _open &&
             _ownsKeyboardInput;
+
+        // Runtime input patches use this instead of opening up normal
+        // PlayerController input, which would also enable combat actions.
+        internal static bool AllowsMovementWhileEditing =>
+            _open &&
+            !_ownsKeyboardInput &&
+            NadaVfxEditorConfig.AllowMovementWhileEditing?.Value == true;
 
         private static bool IsCompactLayout =>
             _windowRect.width <
@@ -739,8 +747,8 @@ namespace NADA.VFX.Weapon.Editor
 
                 if (GUILayout.Button(
                         _themeDropdownOpen
-                            ? "Select Theme ^"
-                            : "Select Theme v",
+                            ? "Select Theme"
+                            : "Select Theme",
                         _themeOptionStyle,
                         GUILayout.Width(116f),
                         GUILayout.Height(21f)))
@@ -751,7 +759,7 @@ namespace NADA.VFX.Weapon.Editor
                 GUILayout.Space(5f);
                 GUILayout.Label(
                     "Current: " + NadaVfxEditorThemes.GetDisplayName(current),
-                    _bodyStyle,
+                    _mutedStyle,
                     GUILayout.Height(21f));
             }
 
@@ -784,7 +792,60 @@ namespace NADA.VFX.Weapon.Editor
                 GUILayout.EndHorizontal();
             }
 
+            GUILayout.Space(7f);
+            GUILayout.Label("VISIBILITY", _sectionHeaderStyle);
+            GUILayout.Space(2f);
+
+            DrawVisibilitySetting(
+                "Character Selection",
+                PluginConfig.CharacterSelectionVisibility);
+
+            DrawVisibilitySetting(
+                "Dropped Items",
+                PluginConfig.DroppedItemVisibility);
+
+            GUILayout.Space(7f);
+            GUILayout.Label("CONTROLS", _sectionHeaderStyle);
+            GUILayout.Space(2f);
+
+            DrawVisibilitySetting(
+                "Allow Movement",
+                NadaVfxEditorConfig.AllowMovementWhileEditing);
+
             GUILayout.EndVertical();
+        }
+
+        private static void DrawVisibilitySetting(
+            string label,
+            BepInEx.Configuration.ConfigEntry<bool> setting)
+        {
+            if (setting == null)
+                return;
+
+            GUILayout.BeginHorizontal(GUILayout.Height(22f));
+
+            GUILayout.Label(
+                label,
+                _bodyStyle,
+                GUILayout.Width(118f),
+                GUILayout.Height(20f));
+
+            GUILayout.Space(6f);
+
+            bool enabled = setting.Value;
+            if (GUILayout.Button(
+                    enabled ? "ON" : "OFF",
+                    _themeOptionStyle,
+                    GUILayout.Width(52f),
+                    GUILayout.Height(20f)))
+            {
+                // Use the existing config entry so its runtime change handlers
+                // remain the single owner of visibility updates.
+                setting.Value = !enabled;
+            }
+
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
         }
 
         private static void DrawEffectsStrip(

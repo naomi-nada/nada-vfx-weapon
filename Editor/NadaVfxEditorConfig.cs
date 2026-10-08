@@ -14,6 +14,9 @@ namespace NADA.VFX.Weapon.Editor
         internal static ConfigEntry<NadaVfxEditorThemePreset>
             Theme;
 
+        internal static ConfigEntry<bool>
+            AllowMovementWhileEditing;
+
         internal static void Bind(
             ConfigFile config)
         {
@@ -44,6 +47,14 @@ namespace NADA.VFX.Weapon.Editor
                     "Available themes: " +
                     "NadaClassic, NadaDark, NadaVal, " +
                     "NadaDesert, NadaWinter.");
+
+            AllowMovementWhileEditing =
+                config.Bind(
+                    "Editor",
+                    "Allow Movement While Editing",
+                    false,
+                    "Allows normal movement keys while the NADA editor is open. " +
+                    "Combat, jumping, blocking and dodging remain disabled.");
         }
     }
 }

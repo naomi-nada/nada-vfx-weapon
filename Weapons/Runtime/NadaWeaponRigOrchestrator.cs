@@ -660,7 +660,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             return true;
         }
-
+        
         private static void BindAuraBlocks(
             Transform localEffectsRootTransform,
             Transform weaponVisualRootTransform,
@@ -708,6 +708,26 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     continue;
                 }
 
+                // Don't build or leave active Aura shells when the block
+                // contains invalid data. Valid state can reactivate this
+                // same instance later.
+                if (block.Transform == null ||
+                    block.Settings is not AuraVfxSettings)
+                {
+                    instance.RootTransform
+                        .gameObject
+                        .SetActive(false);
+
+                    NadaLogControl.Info(
+                        $"aura-block-invalid:{instance.RootTransform.GetInstanceID()}",
+                        $"{Plugin.ModName}: [AuraBlockRejected] " +
+                        $"owner='{ownerNameForLogs}' " +
+                        $"id={block.InstanceId} " +
+                        $"reason='invalid-settings-or-transform'");
+
+                    continue;
+                }
+
                 Transform auraTransform =
                     NadaAuraRigAssembly.EnsureAuraBranch(
                         instance.RootTransform,
@@ -715,17 +735,24 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                         ownerNameForLogs);
 
                 if (auraTransform == null)
+                {
+                    instance.RootTransform
+                        .gameObject
+                        .SetActive(false);
+
                     continue;
+                }
 
                 NadaEffectBinder.BindAuraBlockEffect(
                     auraTransform,
                     block);
 
-                auraTransform
+                instance.RootTransform
                     .gameObject
-                    .SetActive(true);
+                    .SetActive(block.Enabled);
             }
         }
+
 
         private static void BindInnerFlamesBlocks(
             Transform localEffectsRootTransform,

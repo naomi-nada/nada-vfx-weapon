@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
+using UnityEngine;
 
 namespace NADA.VFX.Weapon.Editor.Patches
 {
@@ -50,6 +51,143 @@ namespace NADA.VFX.Weapon.Editor.Patches
                 .Tick();
 
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Optional movement preview. TakeInput stays blocked while the editor is
+    /// open; this applies ONLY movement through vanilla player controls after
+    /// the normal controller tick, leaving every gameplay action flag false.
+    /// </summary>
+    [HarmonyPatch(
+        typeof(global::PlayerController),
+        "FixedUpdate")]
+    internal static class NadaVfxEditorMovementPatch
+    {
+        private static bool _movementWasApplied;
+        private static bool _loggedThisSession;
+
+        [HarmonyPostfix]
+        private static void Postfix(
+            global::PlayerController __instance)
+        {
+            if (__instance == null ||
+                (!NadaVfxEditor.IsOpen && !_movementWasApplied))
+            {
+                return;
+            }
+
+            global::Player player =
+                __instance.GetComponent<global::Player>();
+
+            if (player == null ||
+                player != global::Player.m_localPlayer)
+            {
+                return;
+            }
+
+            if (!NadaVfxEditor.IsOpen)
+            {
+                // Only a leftover movement command needs releasing here.
+                if (_movementWasApplied)
+                    ApplyMovement(player, Vector3.zero);
+
+                _movementWasApplied = false;
+                _loggedThisSession = false;
+                return;
+            }
+
+            bool canMove =
+                NadaVfxEditor.AllowsMovementWhileEditing &&
+                !player.IsDead() &&
+                !global::InventoryGui.IsVisible() &&
+                !global::Minimap.IsOpen() &&
+                !global::Menu.IsVisible() &&
+                (global::Chat.instance == null ||
+                 !global::Chat.instance.HasFocus());
+
+            Vector3 movement =
+                canMove
+                    ? ReadMovementDirection()
+                    : Vector3.zero;
+
+            // The original TakeInput block remains active. Supply only movement
+            // using Player.SetControls, never a gameplay action flag. Explicitly
+            // send zero once when input is released to avoid a stale move dir.
+            bool moving =
+                movement.sqrMagnitude > 0.0001f;
+
+            if (!moving && !_movementWasApplied)
+                return;
+
+            ApplyMovement(player, movement);
+            _movementWasApplied = moving;
+
+            if (moving && !_loggedThisSession)
+            {
+                _loggedThisSession = true;
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [EditorMovement] movement preview active.");
+            }
+        }
+
+        private static void ApplyMovement(
+            global::Player player,
+            Vector3 movement)
+        {
+            player.SetControls(
+                movement,
+                false, // attack
+                false, // attack hold
+                false, // secondary attack
+                false, // secondary attack hold
+                false, // block
+                false, // block hold
+                false, // jump
+                false, // crouch
+                false, // run
+                false, // auto run
+                false); // dodge
+        }
+
+        private static Vector3 ReadMovementDirection()
+        {
+            float x = 0f;
+            float z = 0f;
+
+            if (global::ZInput.GetButton("Left"))
+                x -= 1f;
+            if (global::ZInput.GetButton("Right"))
+                x += 1f;
+            if (global::ZInput.GetButton("Forward"))
+                z += 1f;
+            if (global::ZInput.GetButton("Backward"))
+                z -= 1f;
+
+            if (x == 0f && z == 0f)
+                return Vector3.zero;
+
+            Camera camera =
+                Camera.main;
+
+            if (camera == null)
+                return Vector3.zero;
+
+            Vector3 forward =
+                camera.transform.forward;
+
+            Vector3 right =
+                camera.transform.right;
+
+            forward.y = 0f;
+            right.y = 0f;
+
+            forward.Normalize();
+            right.Normalize();
+
+            return Vector3.ClampMagnitude(
+                right * x + forward * z,
+                1f);
         }
     }
 
