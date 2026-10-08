@@ -43,6 +43,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     return NadaAuraInspector.Draw(
                         block);
 
+                case VfxEffectTypeIds.OrbitalsOrbs:
+                    return NadaOrbitalsOrbsInspector.Draw(
+                        block);
+
                 default:
                     return NadaVfxFallbackBlockInspector.Draw(
                         block);

@@ -307,4 +307,42 @@ namespace NADA.VFX.Weapon.Editor.Patches
                 !NadaVfxEditor.OwnsKeyboardInput;
         }
     }
+
+    /// <summary>
+    /// Prevents a key typed into NADA from sheathing or drawing the local
+    /// player's weapon, including callers that bypass the ZInput getters.
+    /// </summary>
+    [HarmonyPatch]
+    internal static class NadaVfxEditorHandItemInputPatch
+    {
+        [HarmonyPatch(
+            typeof(global::Humanoid),
+            "HideHandItems",
+            new System.Type[] { typeof(bool), typeof(bool) })]
+        [HarmonyPrefix]
+        private static bool HideHandItemsPrefix(
+            global::Humanoid __instance)
+        {
+            return AllowHandItemAction(__instance);
+        }
+
+        [HarmonyPatch(
+            typeof(global::Humanoid),
+            "ShowHandItems",
+            new System.Type[] { typeof(bool), typeof(bool) })]
+        [HarmonyPrefix]
+        private static bool ShowHandItemsPrefix(
+            global::Humanoid __instance)
+        {
+            return AllowHandItemAction(__instance);
+        }
+
+        private static bool AllowHandItemAction(
+            global::Humanoid humanoid)
+        {
+            return !NadaVfxEditor.OwnsKeyboardInput ||
+                   humanoid == null ||
+                   humanoid != global::Player.m_localPlayer;
+        }
+    }
 }

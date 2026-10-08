@@ -82,6 +82,7 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _targetDetailsExpanded;
 
         private static bool _ownsKeyboardInput;
+        private static bool _focusRenameOnNextDraw;
 
         private static bool _cursorStateCaptured;
         private static bool _previousCursorVisible;
@@ -149,13 +150,13 @@ namespace NADA.VFX.Weapon.Editor
 
         internal static bool OwnsKeyboardInput =>
             _open &&
-            _ownsKeyboardInput;
+            (_ownsKeyboardInput || _renameInstanceId.HasValue);
 
         // Runtime input patches use this instead of opening up normal
         // PlayerController input, which would also enable combat actions.
         internal static bool AllowsMovementWhileEditing =>
             _open &&
-            !_ownsKeyboardInput &&
+            !OwnsKeyboardInput &&
             NadaVfxEditorConfig.AllowMovementWhileEditing?.Value == true;
 
         private static bool IsCompactLayout =>
@@ -1595,6 +1596,9 @@ namespace NADA.VFX.Weapon.Editor
                         .GetDisplayName(
                             block);
 
+                _focusRenameOnNextDraw = true;
+                _ownsKeyboardInput = true;
+
                 _resetConfirmInstanceId =
                     null;
 
@@ -1709,6 +1713,8 @@ namespace NADA.VFX.Weapon.Editor
                         GUILayout.ExpandWidth(true),
                         GUILayout.Height(20f));
 
+                FocusRenameFieldIfRequested();
+
                 GUILayout.Space(
                     3f);
 
@@ -1742,10 +1748,24 @@ namespace NADA.VFX.Weapon.Editor
                     GUILayout.ExpandWidth(true),
                     GUILayout.Height(20f));
 
+            FocusRenameFieldIfRequested();
+
             DrawRenameActionButtons(
                 block);
 
             GUILayout.EndHorizontal();
+        }
+
+        private static void FocusRenameFieldIfRequested()
+        {
+            if (!_focusRenameOnNextDraw ||
+                Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+
+            GUI.FocusControl(RenameControlName);
+            _focusRenameOnNextDraw = false;
         }
 
         private static void DrawRenameActionButtons(
@@ -1933,6 +1953,8 @@ namespace NADA.VFX.Weapon.Editor
         {
             _renameInstanceId =
                 null;
+
+            _focusRenameOnNextDraw = false;
 
             _renameBuffer =
                 string.Empty;
