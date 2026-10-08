@@ -35,22 +35,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     "VISUAL"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:scale",
-                        "Scale",
-                        aura.Scale,
-                        PluginConfig.MinAuraScale,
-                        PluginConfig.MaxAuraScale,
-                        out float scale,
-                        description:
-                            "Expands the Aura shells around the weapon mesh.",
-                        resetValue:
-                            WeaponVfxBlockDefaults.DefaultAuraScale))
-                {
-                    aura.Scale = scale;
-                    changed = true;
-                }
-
-                if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:luminance",
                         "Luminance",
                         aura.Luminance,
@@ -79,6 +63,29 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                             WeaponVfxBlockDefaults.DefaultHue))
                 {
                     aura.Hue = hue;
+                    changed = true;
+                }
+            }
+
+            NadaVfxEditorControls.SpaceAfterSection();
+
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:shape",
+                    "SHAPE"))
+            {
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:scale",
+                        "Scale",
+                        aura.Scale,
+                        PluginConfig.MinAuraScale,
+                        PluginConfig.MaxAuraScale,
+                        out float scale,
+                        description:
+                            "Expands the Aura shells around the weapon mesh.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultAuraScale))
+                {
+                    aura.Scale = scale;
                     changed = true;
                 }
             }

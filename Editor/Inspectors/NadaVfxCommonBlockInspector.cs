@@ -1,6 +1,7 @@
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Defaults;
+using UnityEngine;
 
 namespace NADA.VFX.Weapon.Editor.Inspectors
 {
@@ -10,7 +11,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
     internal static class NadaVfxCommonBlockInspector
     {
         internal static bool DrawTransform(
-            VfxEffectBlock block)
+            VfxEffectBlock block,
+            bool editable = true)
         {
             if (block == null)
                 return false;
@@ -41,6 +43,20 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             bool changed =
                 false;
 
+            // Followers borrow their leader's transform. Keep the stored
+            // independent values visible but inactive until Glue is removed.
+            bool previousEnabled = GUI.enabled;
+            Color previousColor = GUI.color;
+            if (!editable)
+            {
+                GUI.enabled = false;
+                GUI.color = new Color(
+                    previousColor.r,
+                    previousColor.g,
+                    previousColor.b,
+                    previousColor.a * 0.78f);
+            }
+
             if (NadaVfxEditorControls.FloatSlider(
                     $"block:{block.InstanceId}:xOffset",
                     "Position X",
@@ -49,6 +65,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MaxEffectOffset,
                     out float xOffset,
                     decimals: 3,
+                    enabled: editable,
                     resetValue:
                         WeaponVfxBlockDefaults.DefaultEffectOffset))
             {
@@ -67,6 +84,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MaxEffectOffset,
                     out float yOffset,
                     decimals: 3,
+                    enabled: editable,
                     resetValue:
                         WeaponVfxBlockDefaults.DefaultEffectOffset))
             {
@@ -85,6 +103,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MaxEffectOffset,
                     out float zOffset,
                     decimals: 3,
+                    enabled: editable,
                     resetValue:
                         WeaponVfxBlockDefaults.DefaultEffectOffset))
             {
@@ -103,6 +122,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MaxEffectRotation,
                     out float xRotation,
                     decimals: 1,
+                    enabled: editable,
                     resetValue:
                         WeaponVfxBlockDefaults.DefaultEffectRotation))
             {
@@ -121,6 +141,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MaxEffectRotation,
                     out float yRotation,
                     decimals: 1,
+                    enabled: editable,
                     resetValue:
                         WeaponVfxBlockDefaults.DefaultEffectRotation))
             {
@@ -139,6 +160,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     PluginConfig.MaxEffectRotation,
                     out float zRotation,
                     decimals: 1,
+                    enabled: editable,
                     resetValue:
                         WeaponVfxBlockDefaults.DefaultEffectRotation))
             {
@@ -148,6 +170,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 changed =
                     true;
             }
+
+            GUI.enabled = previousEnabled;
+            GUI.color = previousColor;
 
             NadaVfxEditorControls.SpaceAfterSection();
 

@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.State.Blocks;
@@ -7,12 +6,21 @@ using NADA.VFX.Weapon.Runtime.Formation;
 
 namespace NADA.VFX.Weapon.Editor.Inspectors
 {
-    // Glue relationships are authored here, but the pure formation resolver
-    // remains the authority on which relationships are valid.
+    // Glue relationships are authored here; the pure formation resolver
+    // decides whether a proposed relationship graph is valid.
     internal static class NadaOrbitalsGlueInspector
     {
         private static readonly Dictionary<uint, string> RejectionByInstanceId =
             new();
+
+        internal static bool IsActiveFollower(VfxEffectBlock block)
+        {
+            WeaponVfxState state = NadaVfxEditorWorkingState.State;
+
+            return block?.Enabled == true &&
+                   state?.Effects != null &&
+                   FindActiveClaimingLeader(state, block.InstanceId) != null;
+        }
 
         internal static bool Draw(
             VfxEffectBlock block,
@@ -155,8 +163,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
                     if (!nextSelected)
                     {
-                        // Removing a claim is always allowed, even when
-                        // repairing an already-invalid saved relationship.
+                        // Allow removing a claim even while repairing
+                        // an otherwise-invalid persisted relationship.
                         formation.GlueTargetInstanceIds.RemoveAll(
                             id => id == candidate.InstanceId);
                         ClearRejection(block.InstanceId);
@@ -179,17 +187,13 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     }
                 }
 
-                // Broken references must remain visible and removable.
-                // Otherwise an imported stale ID could make Glue impossible
-                // to repair through the editor.
+                // Imported dangling IDs must remain removable in the editor.
                 var leftoverIds = new HashSet<uint>();
                 foreach (uint storedId in formation.GlueTargetInstanceIds.ToArray())
                 {
                     if (displayedIds.Contains(storedId) ||
                         !leftoverIds.Add(storedId))
-                    {
                         continue;
-                    }
 
                     if (NadaVfxEditorControls.Toggle(
                             $"{prefix}:stale:{storedId}",
@@ -216,8 +220,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             return changed;
         }
 
-        // Validate what an enabled leader would do, even if its block is
-        // currently disabled. The actual draft's Enabled value is untouched.
+        // Check dormant leader relationships as though the leader were on.
+        // Never modify the editor's real block Enabled flag to validate.
         private static bool ValidateWhenActive(
             WeaponVfxState state,
             VfxEffectBlock block,

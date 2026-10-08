@@ -34,7 +34,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         "FORMATION"))
                 {
                     NadaVfxEditorControls.Placeholder(
-                        "Formation selection and formation-specific controls will live here.");
+                        "Formation and Glue controls will appear here when this inspector is connected.");
                 }
 
                 NadaVfxEditorControls.SpaceAfterSection();
@@ -49,20 +49,16 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
                 NadaVfxEditorControls.SpaceAfterSection();
 
-                if (NadaVfxEditorControls.Section(
-                        $"{block.TypeId}:glue",
-                        "GLUE"))
-                {
-                    NadaVfxEditorControls.Placeholder(
-                        "Leader, follower, Glue Free and Glue Locked controls will live here.");
-                }
-
-                NadaVfxEditorControls.SpaceAfterSection();
             }
+
+            bool isFollower =
+                IsOrbital(block.TypeId) &&
+                NadaOrbitalsGlueInspector.IsActiveFollower(block);
 
             return
                 NadaVfxCommonBlockInspector.DrawTransform(
-                    block);
+                    block,
+                    editable: !isFollower);
         }
 
         private static bool IsOrbital(

@@ -6,51 +6,53 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Editor.Inspectors
 {
-    internal static class NadaOrbitalsOrbsInspector
+    internal static class NadaOrbitalsCoresInspector
     {
         private const float MinHue = -1f;
         private const float MaxHue = 1f;
 
         internal static bool Draw(VfxEffectBlock block)
         {
-            if (block == null || block.TypeId != VfxEffectTypeIds.OrbitalsOrbs)
+            if (block == null || block.TypeId != VfxEffectTypeIds.OrbitalsCores)
                 return false;
 
-            if (block.Settings is not OrbitalsOrbsVfxSettings orbs ||
-                orbs.Formation?.Path == null)
+            if (block.Settings is not OrbitalsCoresVfxSettings cores ||
+                cores.Formation?.Path == null)
             {
                 NadaVfxEditorControls.Placeholder(
-                    "Invalid Orbs block: expected Orbs settings with a formation path.");
+                    "Invalid Cores block: expected Cores settings with a formation path.");
                 return false;
             }
 
-            OrbitalsPathVfxSettings path = orbs.Formation.Path;
-            string prefix = $"orbitals-orbs:{block.InstanceId}";
+            OrbitalsPathVfxSettings path = cores.Formation.Path;
+            string prefix = $"orbitals-cores:{block.InstanceId}";
             bool isFollower = NadaOrbitalsGlueInspector.IsActiveFollower(block);
             bool changed = false;
 
             if (NadaVfxEditorControls.Section($"{prefix}:visual", "VISUAL"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:luminance", "Luminance", orbs.Luminance,
+                        $"{prefix}:luminance", "Luminance", cores.Luminance,
                         PluginConfig.MinLuminance, PluginConfig.MaxLuminance,
                         out float luminance,
-                        description: "Changes how brightly the orbs glow.",
+                        description: "Changes how brightly the cores glow.",
                         resetValue: WeaponVfxBlockDefaults.DefaultLuminance))
                 {
-                    orbs.Luminance = luminance;
+                    cores.Luminance = luminance;
                     changed = true;
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:hue", "Hue", orbs.Hue,
+                        $"{prefix}:hue", "Hue", cores.Hue,
                         MinHue, MaxHue, out float hue,
-                        description: "Shifts the orbs' color.",
+                        description: "Shifts the cores' color.",
                         resetValue: WeaponVfxBlockDefaults.DefaultHue))
                 {
-                    orbs.Hue = hue;
+                    cores.Hue = hue;
                     changed = true;
                 }
+
+
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
@@ -60,13 +62,13 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     "SHAPE"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:scale", "Scale", orbs.Scale,
-                        PluginConfig.MinOrbScaleMult, PluginConfig.MaxOrbScaleMult,
+                        $"{prefix}:scale", "Scale", cores.Scale,
+                        PluginConfig.MinCoreScaleMult, PluginConfig.MaxCoreScaleMult,
                         out float scale,
-                        description: "Changes the size of the orbiting orbs.",
+                        description: "Changes the size of the orbiting cores.",
                         resetValue: WeaponVfxBlockDefaults.DefaultScale))
                 {
-                    orbs.Scale = scale;
+                    cores.Scale = scale;
                     changed = true;
                 }
             }
@@ -79,7 +81,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         $"{prefix}:count", "Count", path.Count,
                         PluginConfig.MinCountNormalized, PluginConfig.MaxCountNormalized,
                         out float count,
-                        description: "Controls the number of additional orbs beyond the leading orb.",
+                        description: "Controls the number of additional cores beyond the leading core.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCount))
                 {
                     path.Count = count;
@@ -88,15 +90,14 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
                 if (NadaVfxEditorControls.Toggle(
                         $"{prefix}:snake", "Snake", path.SnakeEnabled,
-                        out bool snakeEnabled,
-                        enabled: !isFollower,
-                        description: "Makes the orbs follow in a snake formation."))
+                        out bool snakeEnabled, enabled: !isFollower,
+                        description: "Makes the cores follow in a snake formation."))
                 {
                     path.SnakeEnabled = snakeEnabled;
                     changed = true;
                 }
 
-                changed |= NadaOrbitalsGlueInspector.Draw(block, orbs.Formation);
+                changed |= NadaOrbitalsGlueInspector.Draw(block, cores.Formation);
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
@@ -115,9 +116,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:speed", "Speed", path.Speed,
                         PluginConfig.MinOrbitalsSpeed, PluginConfig.MaxOrbitalsSpeed,
-                        out float speed, decimals: 3,
-                        enabled: !isFollower,
-                        description: "Controls how quickly the orbs orbit.",
+                        out float speed, decimals: 3, enabled: !isFollower,
+                        description: "Controls how quickly the cores travel along their orbit.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpeed))
                 {
                     path.Speed = speed;
@@ -130,7 +130,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         out float spacing,
                         enabled: !isFollower && !path.SnakeEnabled,
                         disabledReason: "Spacing is locked while Snake or Glue is active.",
-                        description: "Adjusts the separation between orbiting orbs.",
+                        description: "Adjusts the separation between orbiting cores.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpacing))
                 {
                     path.Spacing = spacing;
@@ -164,7 +164,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         $"{prefix}:cycles", "Cycles", path.Cycles,
                         PluginConfig.MinOrbitalsCycles, PluginConfig.MaxOrbitalsCycles,
                         out float cycles, enabled: !isFollower,
-                        description: "Changes how many turns happen before reversing.",
+                        description: "Changes how many turns the cores make before reversing.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCycles))
                 {
                     path.Cycles = cycles;
@@ -175,7 +175,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         $"{prefix}:drift", "Drift", path.Drift,
                         PluginConfig.MinDrift, PluginConfig.MaxDrift,
                         out float drift, enabled: !isFollower,
-                        description: "Changes how freely orbs drift off their orbit path.",
+                        description: "Changes how freely the cores drift off their orbit path.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsDrift))
                 {
                     path.Drift = drift;
@@ -184,6 +184,29 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
                 GUI.enabled = wasEnabled;
                 GUI.color = previousTint;
+
+                // Spin belongs to this core even while its orbit follows a leader.
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:spin-speed", "Spin Speed", cores.SpinSpeed,
+                        PluginConfig.MinCoreSpinSpeed, PluginConfig.MaxCoreSpinSpeed,
+                        out float spinSpeed,
+                        enabled: cores.SpinEnabled,
+                        disabledReason: "Spin Speed is inactive while Spin is off.",
+                        description: "Changes how quickly the cores rotate.",
+                        resetValue: WeaponVfxBlockDefaults.DefaultCoreSpinSpeed))
+                {
+                    cores.SpinSpeed = spinSpeed;
+                    changed = true;
+                }
+
+                if (NadaVfxEditorControls.Toggle(
+                        $"{prefix}:spin", "Spin", cores.SpinEnabled,
+                        out bool spinEnabled,
+                        description: "Rotates each core while it travels along its orbit."))
+                {
+                    cores.SpinEnabled = spinEnabled;
+                    changed = true;
+                }
             }
 
             NadaVfxEditorControls.SpaceAfterSection();

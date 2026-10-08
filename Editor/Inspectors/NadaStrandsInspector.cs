@@ -46,21 +46,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     $"{prefix}:visual",
                     "VISUAL"))
             {
-                if (NadaVfxEditorControls.Toggle(
-                        $"{prefix}:spectrum",
-                        "Spectrum",
-                        strands.SpectrumEnabled,
-                        out bool spectrumEnabled,
-                        description:
-                            "Animates the effect continuously through the color spectrum."))
-                {
-                    strands.SpectrumEnabled =
-                        spectrumEnabled;
-
-                    changed =
-                        true;
-                }
-
                 if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:spectrum-speed",
                         "Spectrum Speed",
@@ -130,6 +115,21 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed =
                         true;
                 }
+                if (NadaVfxEditorControls.Toggle(
+                        $"{prefix}:spectrum",
+                        "Spectrum",
+                        strands.SpectrumEnabled,
+                        out bool spectrumEnabled,
+                        description:
+                            "Animates the effect continuously through the color spectrum."))
+                {
+                    strands.SpectrumEnabled =
+                        spectrumEnabled;
+
+                    changed =
+                        true;
+                }
+
             }
 
             NadaVfxEditorControls.SpaceAfterSection();

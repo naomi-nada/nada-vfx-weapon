@@ -44,25 +44,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     "VISUAL"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:scale",
-                        "Scale",
-                        sparks.Scale,
-                        PluginConfig.MinScaleMult,
-                        PluginConfig.MaxScaleMult,
-                        out float scale,
-                        description:
-                            "Changes the overall size of the sparks.",
-                        resetValue:
-                            WeaponVfxBlockDefaults.DefaultScale))
-                {
-                    sparks.Scale =
-                        scale;
-
-                    changed =
-                        true;
-                }
-
-                if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:luminance",
                         "Luminance",
                         sparks.Luminance,
@@ -95,6 +76,70 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 {
                     sparks.Hue =
                         hue;
+
+                    changed =
+                        true;
+                }
+            }
+
+            NadaVfxEditorControls.SpaceAfterSection();
+
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:shape",
+                    "SHAPE"))
+            {
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:scale",
+                        "Scale",
+                        sparks.Scale,
+                        PluginConfig.MinScaleMult,
+                        PluginConfig.MaxScaleMult,
+                        out float scale,
+                        description:
+                            "Changes the overall size of the sparks.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultScale))
+                {
+                    sparks.Scale =
+                        scale;
+
+                    changed =
+                        true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:length",
+                        "Length",
+                        sparks.Length,
+                        PluginConfig.MinFlameLength,
+                        PluginConfig.MaxFlameLength,
+                        out float length,
+                        description:
+                            "Changes the length of the sparks field along the target.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultFlameLength))
+                {
+                    sparks.Length =
+                        length;
+
+                    changed =
+                        true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:width",
+                        "Width",
+                        sparks.Width,
+                        PluginConfig.MinSparksWidth,
+                        PluginConfig.MaxSparksWidth,
+                        out float width,
+                        description:
+                            "Changes the width of the sparks field around the target.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultSparksWidth))
+                {
+                    sparks.Width =
+                        width;
 
                     changed =
                         true;
@@ -167,50 +212,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section(
-                    $"{prefix}:shape",
-                    "SHAPE"))
-            {
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:length",
-                        "Length",
-                        sparks.Length,
-                        PluginConfig.MinFlameLength,
-                        PluginConfig.MaxFlameLength,
-                        out float length,
-                        description:
-                            "Changes the length of the sparks field along the target.",
-                        resetValue:
-                            WeaponVfxBlockDefaults.DefaultFlameLength))
-                {
-                    sparks.Length =
-                        length;
 
-                    changed =
-                        true;
-                }
-
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:width",
-                        "Width",
-                        sparks.Width,
-                        PluginConfig.MinSparksWidth,
-                        PluginConfig.MaxSparksWidth,
-                        out float width,
-                        description:
-                            "Changes the width of the sparks field around the target.",
-                        resetValue:
-                            WeaponVfxBlockDefaults.DefaultSparksWidth))
-                {
-                    sparks.Width =
-                        width;
-
-                    changed =
-                        true;
-                }
-            }
-
-            NadaVfxEditorControls.SpaceAfterSection();
 
             changed |=
                 NadaVfxCommonBlockInspector.DrawTransform(

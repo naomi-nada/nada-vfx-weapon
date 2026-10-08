@@ -89,25 +89,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     "VISUAL"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:scale",
-                        "Scale",
-                        flames.Scale,
-                        PluginConfig.MinScaleMult,
-                        PluginConfig.MaxScaleMult,
-                        out float scale,
-                        description:
-                            "Changes the overall particle size of the flames.",
-                        resetValue:
-                            WeaponVfxBlockDefaults.DefaultScale))
-                {
-                    flames.Scale =
-                        scale;
-
-                    changed =
-                        true;
-                }
-
-                if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:luminance",
                         "Luminance",
                         flames.Luminance,
@@ -155,6 +136,70 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 {
                     flames.Hue =
                         hue;
+
+                    changed =
+                        true;
+                }
+            }
+
+            NadaVfxEditorControls.SpaceAfterSection();
+
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:shape",
+                    "SHAPE"))
+            {
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:scale",
+                        "Scale",
+                        flames.Scale,
+                        PluginConfig.MinScaleMult,
+                        PluginConfig.MaxScaleMult,
+                        out float scale,
+                        description:
+                            "Changes the overall particle size of the flames.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultScale))
+                {
+                    flames.Scale =
+                        scale;
+
+                    changed =
+                        true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:length",
+                        "Length",
+                        flames.Length,
+                        PluginConfig.MinFlameLength,
+                        PluginConfig.MaxFlameLength,
+                        out float length,
+                        description:
+                            "Changes the length of the flame emitter along the target.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultFlameLength))
+                {
+                    flames.Length =
+                        length;
+
+                    changed =
+                        true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:width",
+                        "Width",
+                        flames.Width,
+                        PluginConfig.MinFlameWidth,
+                        PluginConfig.MaxFlameWidth,
+                        out float width,
+                        description:
+                            "Changes the width of the flame emitter around the target.",
+                        resetValue:
+                            WeaponVfxBlockDefaults.DefaultFlameWidth))
+                {
+                    flames.Width =
+                        width;
 
                     changed =
                         true;
@@ -242,50 +287,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section(
-                    $"{prefix}:shape",
-                    "SHAPE"))
-            {
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:length",
-                        "Length",
-                        flames.Length,
-                        PluginConfig.MinFlameLength,
-                        PluginConfig.MaxFlameLength,
-                        out float length,
-                        description:
-                            "Changes the length of the flame emitter along the target.",
-                        resetValue:
-                            WeaponVfxBlockDefaults.DefaultFlameLength))
-                {
-                    flames.Length =
-                        length;
 
-                    changed =
-                        true;
-                }
-
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:width",
-                        "Width",
-                        flames.Width,
-                        PluginConfig.MinFlameWidth,
-                        PluginConfig.MaxFlameWidth,
-                        out float width,
-                        description:
-                            "Changes the width of the flame emitter around the target.",
-                        resetValue:
-                            WeaponVfxBlockDefaults.DefaultFlameWidth))
-                {
-                    flames.Width =
-                        width;
-
-                    changed =
-                        true;
-                }
-            }
-
-            NadaVfxEditorControls.SpaceAfterSection();
 
             changed |=
                 NadaVfxCommonBlockInspector.DrawTransform(

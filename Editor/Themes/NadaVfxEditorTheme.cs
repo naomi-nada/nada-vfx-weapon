@@ -520,100 +520,100 @@ namespace NADA.VFX.Weapon.Editor
                     NadaVfxEditorTitleVariant.PixelClassic,
 
                 WindowBackground =
-                    C(220, 228, 236, 250),
+                    C(41, 54, 71, 250),
 
                 TargetBackground =
-                    C(231, 237, 243, 249),
+                    C(56, 72, 91, 249),
 
                 PanelBackground =
-                    C(214, 223, 232, 249),
+                    C(48, 64, 83, 249),
 
                 PickerBackground =
-                    C(226, 233, 240),
+                    C(51, 66, 85),
 
                 ReadOnlyBackground =
-                    C(203, 214, 224),
+                    C(44, 58, 76),
 
                 BlockBackground =
-                    C(227, 234, 241),
+                    C(61, 80, 102),
 
                 BlockHoverBackground =
-                    C(207, 221, 235),
+                    C(76, 96, 119),
 
                 SelectedBlockBackground =
-                    C(183, 210, 235),
+                    C(81, 117, 151),
 
                 ButtonBackground =
-                    C(197, 211, 224),
+                    C(66, 84, 106),
 
                 ButtonHoverBackground =
-                    C(176, 203, 226),
+                    C(83, 110, 136),
 
                 SegmentBackground =
-                    C(226, 233, 240),
+                    C(52, 69, 88),
 
                 SegmentHoverBackground =
-                    C(201, 218, 233),
+                    C(74, 98, 121),
 
                 SelectedSegmentBackground =
-                    C(177, 208, 233),
+                    C(88, 132, 167),
 
                 ResetBackground =
-                    C(193, 213, 229),
+                    C(59, 85, 110),
 
                 ResetHoverBackground =
-                    C(166, 199, 224),
+                    C(82, 119, 148),
 
                 EffectOnBackground =
-                    C(183, 222, 205),
+                    C(45, 101, 88),
 
                 EffectOnHoverBackground =
-                    C(155, 210, 186),
+                    C(55, 126, 108),
 
                 EffectOffBackground =
-                    C(231, 196, 204),
+                    C(99, 52, 71),
 
                 EffectOffHoverBackground =
-                    C(220, 170, 181),
+                    C(124, 65, 86),
 
                 PrimaryText =
-                    C(28, 36, 48),
+                    C(235, 243, 250),
 
                 MutedText =
-                    C(82, 96, 112),
+                    C(182, 199, 217),
 
                 DimText =
-                    C(130, 140, 150),
+                    C(133, 155, 177),
 
                 AccentPrimary =
-                    C(25, 122, 164),
+                    C(127, 209, 244),
 
                 AccentSecondary =
-                    C(126, 89, 179),
+                    C(189, 164, 233),
 
                 AccentTertiary =
-                    C(63, 111, 161),
+                    C(149, 190, 227),
 
                 TargetText =
-                    C(31, 105, 153),
+                    C(167, 221, 255),
 
                 SuccessText =
-                    C(36, 128, 91),
+                    C(147, 225, 193),
 
                 OffText =
-                    C(158, 63, 84),
+                    C(241, 158, 176),
 
                 WarningText =
-                    C(168, 93, 26),
+                    C(255, 210, 152),
 
                 TitlePrimary =
-                    C(31, 91, 133),
+                    C(172, 223, 255),
 
                 TitleShadow =
-                    C(255, 255, 255, 185),
+                    C(15, 36, 58, 165),
 
                 TitleSubtitle =
-                    C(126, 89, 179)
+                    C(190, 166, 233)
             };
 
         internal static NadaVfxEditorThemePreset CurrentPreset
