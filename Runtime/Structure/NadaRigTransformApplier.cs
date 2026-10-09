@@ -1,5 +1,6 @@
-using UnityEngine;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
+using UnityEngine;
 
 namespace NADA.VFX.Weapon.Runtime.Structure
 {
@@ -10,6 +11,42 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             if (rigRoot == null)
                 return;
 
+            ApplyOffsets(
+                rigRoot,
+                state.RigXOffset,
+                state.RigYOffset,
+                state.RigZOffset,
+                state.RigXRotation,
+                state.RigYRotation,
+                state.RigZRotation);
+        }
+
+        // Native bindings and editor previews own this transform. Don't
+        // reconstruct it from config or a legacy VfxState placeholder.
+        public static void Apply(Transform rigRoot, VfxTransformState transform)
+        {
+            if (rigRoot == null || transform == null)
+                return;
+
+            ApplyOffsets(
+                rigRoot,
+                transform.XOffset,
+                transform.YOffset,
+                transform.ZOffset,
+                transform.XRotation,
+                transform.YRotation,
+                transform.ZRotation);
+        }
+
+        private static void ApplyOffsets(
+            Transform rigRoot,
+            float xOffset,
+            float yOffset,
+            float zOffset,
+            float xRotation,
+            float yRotation,
+            float zRotation)
+        {
             NadaRigAlignmentAnchor anchor =
                 rigRoot.GetComponent<NadaRigAlignmentAnchor>();
 
@@ -25,19 +62,14 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 ? anchor.BaseLocalScale
                 : Plugin.RigLocalScale;
 
-            // Start from the weapon's base alignment, then apply the saved per-item/style offsets on top.
+            // Keep the weapon's established alignment and apply only the
+            // source-owned offset/rotation on top of it.
             rigRoot.localPosition =
-                basePosition + new Vector3(
-                    state.RigXOffset,
-                    state.RigYOffset,
-                    state.RigZOffset);
+                basePosition + new Vector3(xOffset, yOffset, zOffset);
 
             rigRoot.localRotation =
                 Quaternion.Euler(baseEuler) *
-                Quaternion.Euler(
-                    state.RigXRotation,
-                    state.RigYRotation,
-                    state.RigZRotation);
+                Quaternion.Euler(xRotation, yRotation, zRotation);
 
             rigRoot.localScale = baseScale;
         }

@@ -45,6 +45,10 @@ namespace NADA.VFX.Weapon.Editor
         private static bool
             _compactLayout;
 
+        // Bound-state inspectors keep foldout navigation usable while their
+        // actual value controls remain disabled by the editor shell.
+        private static bool _readOnlyNavigation;
+
         private static GUIStyle _sectionButtonStyle;
         private static GUIStyle _modifierRowStyle;
         private static GUIStyle _sliderLabelStyle;
@@ -99,6 +103,11 @@ namespace NADA.VFX.Weapon.Editor
                 compact;
         }
 
+        internal static void SetReadOnlyNavigation(bool enabled)
+        {
+            _readOnlyNavigation = enabled;
+        }
+
         internal static bool Section(
             string key,
             string title,
@@ -131,18 +140,28 @@ namespace NADA.VFX.Weapon.Editor
                     ? "−"
                     : "+";
 
-            if (GUILayout.Button(
+            bool previousEnabled = GUI.enabled;
+            bool clicked;
+            try
+            {
+                if (_readOnlyNavigation)
+                    GUI.enabled = true;
+
+                clicked = GUILayout.Button(
                     $"{marker}  {title}",
                     _sectionButtonStyle,
                     GUILayout.ExpandWidth(true),
-                    GUILayout.Height(19f)))
+                    GUILayout.Height(19f));
+            }
+            finally
             {
-                expanded =
-                    !expanded;
+                GUI.enabled = previousEnabled;
+            }
 
-                SectionExpandedByKey[
-                    key] =
-                    expanded;
+            if (clicked)
+            {
+                expanded = !expanded;
+                SectionExpandedByKey[key] = expanded;
             }
 
             return expanded;

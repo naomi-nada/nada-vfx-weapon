@@ -4,6 +4,7 @@ using HarmonyLib;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.Network;
+using NADA.VFX.Weapon.Core.Persistence;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Runtime;
@@ -58,6 +59,15 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             internal Transform VisualRoot;
             internal Transform RigRoot;
             internal float NextVisualRecheckTime;
+            internal bool NativePayloadPresent;
+            internal string NativePayload;
+
+            // Retry invalid native data only when the item, visual or payload
+            // changes. Otherwise a bad payload can be decoded every tick.
+            internal global::VisEquipment LastInvalidNativeOwner;
+            internal global::ItemDrop.ItemData LastInvalidNativeItem;
+            internal GameObject LastInvalidNativeInstance;
+            internal string LastInvalidNativePayload;
 
             internal global::VisEquipment LastUnboundOwner;
             internal GameObject LastUnboundInstance;
@@ -71,6 +81,12 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 VisualRoot = null;
                 RigRoot = null;
                 NextVisualRecheckTime = 0f;
+                NativePayloadPresent = false;
+                NativePayload = null;
+                LastInvalidNativeOwner = null;
+                LastInvalidNativeItem = null;
+                LastInvalidNativeInstance = null;
+                LastInvalidNativePayload = null;
 
                 LastUnboundOwner = null;
                 LastUnboundInstance = null;
@@ -273,9 +289,16 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 return;
             }
 
+            string nativePayload = null;
+            bool hasNativePayload =
+                itemData.m_customData != null &&
+                itemData.m_customData.TryGetValue(
+                    WeaponVfxItemStore.PayloadKey,
+                    out nativePayload);
+
             bool isBound =
-                VfxStateIO.IsBound(
-                    itemData);
+                hasNativePayload ||
+                VfxStateIO.IsBound(itemData);
 
             bool hasEditorPreview =
                 NadaWeaponEditorPreviewState.TryGet(
@@ -322,11 +345,28 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 return;
             }
 
+            if (hasNativePayload &&
+                applyCache != null &&
+                applyCache.LastInvalidNativeOwner == visEquipment &&
+                ReferenceEquals(
+                    applyCache.LastInvalidNativeItem,
+                    itemData) &&
+                applyCache.LastInvalidNativeInstance == itemInstance &&
+                string.Equals(
+                    applyCache.LastInvalidNativePayload,
+                    nativePayload,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
             if (CanSkipLocalApply(
                     applyCache,
                     visEquipment,
                     itemInstance,
-                    itemData))
+                    itemData,
+                    hasNativePayload,
+                    nativePayload))
             {
                 return;
             }
@@ -338,11 +378,23 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     itemInstance,
                     itemData);
 
-            if (!applied ||
-                applyCache == null)
+            if (!applied)
             {
+                if (applyCache != null && hasNativePayload &&
+                    NadaWeaponLocalSourceResolver.Resolve(itemData).Kind ==
+                        NadaWeaponLocalSourceKind.InvalidNative)
+                {
+                    applyCache.LastInvalidNativeOwner = visEquipment;
+                    applyCache.LastInvalidNativeItem = itemData;
+                    applyCache.LastInvalidNativeInstance = itemInstance;
+                    applyCache.LastInvalidNativePayload = nativePayload;
+                }
+
                 return;
             }
+
+            if (applyCache == null)
+                return;
 
             Transform visualRoot =
                 NadaWeaponTargets.FindEquippedWeaponVisualRoot(
@@ -368,6 +420,9 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             applyCache.ItemData =
                 itemData;
 
+            applyCache.NativePayloadPresent = hasNativePayload;
+            applyCache.NativePayload = nativePayload;
+
             applyCache.VisualRoot =
                 visualRoot;
 
@@ -383,7 +438,9 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             LocalApplyCache applyCache,
             global::VisEquipment visEquipment,
             GameObject itemInstance,
-            global::ItemDrop.ItemData itemData)
+            global::ItemDrop.ItemData itemData,
+            bool hasNativePayload,
+            string nativePayload)
         {
             if (applyCache == null)
                 return false;
@@ -405,6 +462,17 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
             if (visualRoot == null ||
                 rigRoot == null)
+            {
+                return false;
+            }
+
+            // An in-place rebind keeps the same ItemData reference, so the
+            // payload must also participate in cache identity.
+            if (applyCache.NativePayloadPresent != hasNativePayload ||
+                !string.Equals(
+                    applyCache.NativePayload,
+                    nativePayload,
+                    StringComparison.Ordinal))
             {
                 return false;
             }

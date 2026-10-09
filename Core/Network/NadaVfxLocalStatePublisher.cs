@@ -1,5 +1,6 @@
 using System;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Weapons.Runtime;
 
 namespace NADA.VFX.Weapon.Core.Network
 {
@@ -154,9 +155,26 @@ namespace NADA.VFX.Weapon.Core.Network
                 return;
             }
 
-            bool bound =
-                VfxStateIO.IsBound(
+            NadaWeaponLocalSourceSelection source =
+                NadaWeaponLocalSourceResolver.Resolve(
                     _currentRightItem);
+
+            // V2 transport only represents legacy singleton VfxState.
+            // A native-bound item must not publish stale legacy visuals.
+            // Until native replication exists, publish an unbound V2
+            // presentation packet without modifying the weapon's ItemData.
+            bool bound =
+                source.Kind == NadaWeaponLocalSourceKind.LegacyBound;
+
+            if (source.Kind == NadaWeaponLocalSourceKind.NativeBound ||
+                source.Kind == NadaWeaponLocalSourceKind.InvalidNative)
+            {
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [NetworkNativeStateDeferred] " +
+                    $"item='{GetItemName(_currentRightItem)}' " +
+                    $"source={source.Kind} " +
+                    $"legacyV2Bound=False");
+            }
 
             VfxState state =
                 default;

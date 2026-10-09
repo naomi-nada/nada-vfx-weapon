@@ -63,9 +63,13 @@ namespace NADA.VFX.Weapon.Editor
             if (refreshedRig == null)
                 return false;
 
+            NadaWeaponLocalSourceKind sourceKind =
+                NadaWeaponLocalSourceResolver.Resolve(
+                    target.ItemData).Kind;
+
             if (!rigExistedBeforeApply &&
-                !VfxStateIO.IsBound(
-                    target.ItemData))
+                (sourceKind == NadaWeaponLocalSourceKind.Unbound ||
+                 sourceKind == NadaWeaponLocalSourceKind.EditorPreview))
             {
                 _ownedItemData =
                     target.ItemData;
@@ -81,6 +85,39 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             return true;
+        }
+
+        // After Unbind, an already-existing persistent rig becomes a
+        // temporary editor preview. Apply() only claims *new* rigs, so take
+        // ownership here before the next refresh can leave one behind.
+        internal static void AdoptUnboundRig(NadaVfxEditorTarget target)
+        {
+            if (target?.ItemData == null || target.VisualRoot == null)
+                return;
+
+            NadaWeaponLocalSourceKind source =
+                NadaWeaponLocalSourceResolver.Resolve(target.ItemData).Kind;
+            if (source != NadaWeaponLocalSourceKind.Unbound &&
+                source != NadaWeaponLocalSourceKind.EditorPreview)
+                return;
+
+            Transform rig = NadaRigPaths.FindDirectChild(
+                target.VisualRoot, Plugin.LocalWeaponRootName);
+            if (rig == null)
+                return;
+
+            if (object.ReferenceEquals(_ownedItemData, target.ItemData) &&
+                _ownedRigRoot == rig)
+                return;
+
+            ReleaseOwnedRig();
+            _ownedItemData = target.ItemData;
+            _ownedRigRoot = rig;
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [EditorPreviewRig] " +
+                $"adopted former bound rig as temporary preview " +
+                $"item='{target.ItemNameKey}' rig={rig.GetInstanceID()}.");
         }
 
         internal static void ReleaseOwnedRig()
@@ -106,9 +143,14 @@ namespace NADA.VFX.Weapon.Editor
             if (rigRoot == null)
                 return;
 
-            if (itemData != null &&
-                VfxStateIO.IsBound(
-                    itemData))
+            NadaWeaponLocalSourceKind sourceKind =
+                NadaWeaponLocalSourceResolver.Resolve(
+                    itemData).Kind;
+
+            // A successful native Bind transfers ownership of this rig.
+            // An invalid native payload must not keep a temporary rig alive.
+            if (sourceKind == NadaWeaponLocalSourceKind.NativeBound ||
+                sourceKind == NadaWeaponLocalSourceKind.LegacyBound)
             {
                 Plugin.Log?.LogInfo(
                     $"{Plugin.ModName}: [EditorPreviewRig] " +

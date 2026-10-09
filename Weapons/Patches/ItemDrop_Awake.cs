@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using HarmonyLib;
 using NADA.VFX.Weapon.Core.Config;
-using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Weapons.Runtime;
 using NADA.VFX.Weapon.Weapons.Targets;
 
 namespace NADA.VFX.Weapon.Weapons.Patches
@@ -14,16 +14,15 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         {
             try
             {
-                if (__instance == null)
+                if (__instance == null ||
+                    PluginConfig.DroppedItemVisibility?.Value != true ||
+                    Plugin.Instance == null)
+                {
                     return;
+                }
 
-                if (!PluginConfig.DroppedItemVisibility.Value)
-                    return;
-
-                if (Plugin.Instance == null)
-                    return;
-
-                Plugin.Instance.StartCoroutine(CheckDroppedItemWhenReady(__instance));
+                Plugin.Instance.StartCoroutine(
+                    CheckDroppedItemWhenReady(__instance));
             }
             catch (Exception e)
             {
@@ -38,23 +37,37 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             yield return null;
             yield return null;
 
-            if (itemDrop == null || itemDrop.gameObject == null)
+            if (itemDrop == null || itemDrop.gameObject == null ||
+                PluginConfig.DroppedItemVisibility?.Value != true)
+            {
                 yield break;
+            }
 
             global::ItemDrop.ItemData itemData = itemDrop.m_itemData;
             if (itemData == null)
                 yield break;
 
-            if (!VfxStateIO.IsBound(itemData))
+            NadaWeaponLocalSourceSelection selection =
+                NadaWeaponLocalSourceResolver.Resolve(itemData);
+
+            if (selection.Kind == NadaWeaponLocalSourceKind.InvalidNative)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [DropStateInvalid] " +
+                    $"object='{itemDrop.gameObject.name}' " +
+                    $"reason='{selection.FailureReason}'.");
                 yield break;
+            }
 
-            var controller =
-                new Runtime.NadaWeaponRigController();
+            if (selection.Kind != NadaWeaponLocalSourceKind.NativeBound &&
+                selection.Kind != NadaWeaponLocalSourceKind.LegacyBound)
+            {
+                yield break;
+            }
 
-            bool applied =
-                controller.TryApplyDroppedItem(
-                    itemDrop.gameObject,
-                    itemData);
+            var controller = new NadaWeaponRigController();
+            bool applied = controller.TryApplyDroppedItem(
+                itemDrop.gameObject, itemData);
 
             if (!applied)
             {
@@ -62,8 +75,8 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     $"{Plugin.ModName}: [DropApply FAIL] " +
                     $"object='{itemDrop.gameObject.name}' " +
                     $"item='{itemData.m_shared?.m_name}' " +
+                    $"source={selection.Kind} " +
                     $"path='{NadaWeaponTargets.FullPath(itemDrop.transform)}'");
-
                 yield break;
             }
 
@@ -71,6 +84,7 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 $"{Plugin.ModName}: [DropApply OK] " +
                 $"object='{itemDrop.gameObject.name}' " +
                 $"item='{itemData.m_shared?.m_name}' " +
+                $"source={selection.Kind} " +
                 $"path='{NadaWeaponTargets.FullPath(itemDrop.transform)}'");
         }
     }

@@ -5,6 +5,7 @@ using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.State.Defaults;
 using NADA.VFX.Weapon.Runtime.Formation;
+using NADA.VFX.Weapon.Weapons.Runtime;
 
 namespace NADA.VFX.Weapon.Editor
 {
@@ -14,7 +15,7 @@ namespace NADA.VFX.Weapon.Editor
 
         private sealed class EditorDraft
         {
-            internal WeaponVfxState State { get; } =
+            internal WeaponVfxState State { get; set; } =
                 new();
 
             internal Dictionary<string, int>
@@ -60,6 +61,9 @@ namespace NADA.VFX.Weapon.Editor
                     ItemDataReferenceComparer.Instance);
 
         private static global::ItemDrop.ItemData _targetItemData;
+        private static NadaVfxEditorTarget _lastTarget;
+        private static NadaWeaponLocalSourceKind _sourceKind;
+        private static bool _readOnly;
 
         private static EditorDraft _activeDraft;
 
@@ -72,6 +76,10 @@ namespace NADA.VFX.Weapon.Editor
 
         internal static WeaponVfxState State =>
             _state;
+
+        internal static bool IsReadOnly => _readOnly;
+        internal static NadaWeaponLocalSourceKind SourceKind => _sourceKind;
+        internal static string BoundViewError => _lastTarget?.BoundViewError;
 
         internal static int EffectCount =>
             _state?.Effects?.Count ??
@@ -90,82 +98,158 @@ namespace NADA.VFX.Weapon.Editor
             global::ItemDrop.ItemData nextItemData =
                 target?.ItemData;
 
-            if (object.ReferenceEquals(
-                    nextItemData,
-                    _targetItemData))
+            NadaWeaponLocalSourceKind nextSourceKind =
+                target?.SourceKind ?? NadaWeaponLocalSourceKind.Unbound;
+
+            bool nextReadOnly = target?.IsReadOnly == true;
+
+            bool sourceChanged =
+                !object.ReferenceEquals(nextItemData, _targetItemData) ||
+                nextReadOnly != _readOnly ||
+                (nextReadOnly && nextSourceKind != _sourceKind);
+
+            // Refreshing the registry once a second replaces the target
+            // snapshot. Don't deserialize on IMGUI Layout/Repaint events.
+            if (!sourceChanged && object.ReferenceEquals(target, _lastTarget))
+                return false;
+
+            _lastTarget = target;
+            _targetItemData = nextItemData;
+            _sourceKind = nextSourceKind;
+            _readOnly = nextReadOnly;
+
+            if (_targetItemData == null)
+            {
+                _activeDraft = null;
+                _state = new WeaponVfxState();
+                _nextNameOrdinalByTypeId = new Dictionary<string, int>();
+                return sourceChanged;
+            }
+
+            if (_readOnly)
+            {
+                // Never use the editor's unsaved draft for a bound weapon.
+                // The registry supplies a detached view of persisted state.
+                _activeDraft = null;
+                _state = target.BoundViewState ?? new WeaponVfxState();
+                _nextNameOrdinalByTypeId = new Dictionary<string, int>();
+
+                if (sourceChanged)
+                {
+                    Plugin.Log?.LogInfo(
+                        $"{Plugin.ModName}: [EditorBoundView] " +
+                        $"item='{target.PrefabName}' source={_sourceKind} " +
+                        $"effects={_state.Effects?.Count ?? 0} " +
+                        $"valid={target.BoundViewError == null}.");
+                }
+                return sourceChanged;
+            }
+
+            if (DraftByItemData.TryGetValue(
+                    _targetItemData, out EditorDraft existingDraft))
+            {
+                _activeDraft = existingDraft;
+                _state = existingDraft.State;
+                _nextNameOrdinalByTypeId = existingDraft.NextNameOrdinalByTypeId;
+
+                if (sourceChanged)
+                    Plugin.Log?.LogInfo(
+                        $"{Plugin.ModName}: [EditorWorkingState] " +
+                        $"restored in-memory draft for '{target.PrefabName}' " +
+                        $"effects={_state.Effects?.Count ?? 0}.");
+
+                return sourceChanged;
+            }
+
+            var newDraft = new EditorDraft();
+            DraftByItemData.Add(_targetItemData, newDraft);
+
+            _activeDraft = newDraft;
+            _state = newDraft.State;
+            _nextNameOrdinalByTypeId = newDraft.NextNameOrdinalByTypeId;
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [EditorWorkingState] " +
+                $"created in-memory draft for '{target.PrefabName}'.");
+
+            return sourceChanged;
+        }
+
+        // The current draft is never the persistent state. The store encodes
+        // this data before any ItemData key is changed.
+        internal static bool TryGetDraftForBinding(
+            global::ItemDrop.ItemData itemData,
+            out WeaponVfxState state,
+            out uint nextInstanceId)
+        {
+            state = null;
+            nextInstanceId = 0;
+
+            if (!object.ReferenceEquals(itemData, _targetItemData) ||
+                !CanEdit() ||
+                _activeDraft.NextInstanceId == 0)
             {
                 return false;
             }
 
-            _targetItemData =
-                nextItemData;
-
-            if (_targetItemData == null)
-            {
-                _activeDraft =
-                    null;
-
-                _state =
-                    new WeaponVfxState();
-
-                _nextNameOrdinalByTypeId =
-                    new Dictionary<string, int>();
-
-                return true;
-            }
-
-            if (DraftByItemData.TryGetValue(
-                    _targetItemData,
-                    out EditorDraft existingDraft))
-            {
-                _activeDraft =
-                    existingDraft;
-
-                _state =
-                    existingDraft.State;
-
-                _nextNameOrdinalByTypeId =
-                    existingDraft.NextNameOrdinalByTypeId;
-
-                Plugin.Log?.LogInfo(
-                    $"{Plugin.ModName}: [EditorWorkingState] " +
-                    $"restored in-memory draft " +
-                    $"for '{target?.PrefabName ?? "<unknown>"}' " +
-                    $"effects={_state.Effects?.Count ?? 0}.");
-
-                return true;
-            }
-
-            var newDraft =
-                new EditorDraft();
-
-            DraftByItemData.Add(
-                _targetItemData,
-                newDraft);
-
-            _activeDraft =
-                newDraft;
-
-            _state =
-                newDraft.State;
-
-            _nextNameOrdinalByTypeId =
-                newDraft.NextNameOrdinalByTypeId;
-
-            Plugin.Log?.LogInfo(
-                $"{Plugin.ModName}: [EditorWorkingState] " +
-                $"created in-memory draft " +
-                $"for '{target?.PrefabName ?? "<unknown>"}'.");
-
+            state = _activeDraft.State;
+            nextInstanceId = _activeDraft.NextInstanceId;
             return true;
+        }
+
+        // Called only after the old binding has been safely retired. The
+        // supplied state must already be a codec-validated, detached copy.
+        internal static void InstallUnboundDraft(
+            global::ItemDrop.ItemData itemData,
+            WeaponVfxState state,
+            uint nextInstanceId)
+        {
+            var draft = new EditorDraft
+            {
+                State = state,
+                NextInstanceId = nextInstanceId
+            };
+
+            // Keep generated names unique after importing an old save.
+            if (state?.Effects != null)
+            {
+                foreach (VfxEffectBlock block in state.Effects)
+                {
+                    if (block == null) continue;
+
+                    NadaVfxEditorEffectDefinition definition =
+                        NadaVfxEditorEffectCatalog.Find(block.TypeId);
+                    string prefix = definition?.GeneratedNameBase ?? "Effect";
+                    string name = block.DisplayName ?? string.Empty;
+                    if (!name.StartsWith(prefix, StringComparison.Ordinal))
+                        continue;
+
+                    string suffix = name.Substring(prefix.Length);
+                    if (!int.TryParse(suffix, out int ordinal) || ordinal < 1 ||
+                        ordinal == int.MaxValue)
+                        continue;
+
+                    int next = ordinal + 1;
+                    if (!draft.NextNameOrdinalByTypeId.TryGetValue(
+                            block.TypeId, out int known) || next > known)
+                        draft.NextNameOrdinalByTypeId[block.TypeId] = next;
+                }
+            }
+
+            DraftByItemData[itemData] = draft;
+            // SynchronizeTarget() changes bound inspection to the new draft
+            // on the next immediate target refresh; don't mutate read-only
+            // bound state or impersonate the runtime source here.
         }
 
         internal static void ClearDrafts()
         {
             DraftByItemData.Clear();
 
-            _targetItemData =
-                null;
+            _targetItemData = null;
+            _lastTarget = null;
+            _sourceKind = NadaWeaponLocalSourceKind.Unbound;
+            _readOnly = false;
 
             _activeDraft =
                 null;
@@ -236,6 +320,9 @@ namespace NADA.VFX.Weapon.Editor
             uint instanceId,
             bool enabled)
         {
+            if (!CanEdit())
+                return false;
+
             VfxEffectBlock block =
                 FindBlock(
                     instanceId);
@@ -292,6 +379,9 @@ namespace NADA.VFX.Weapon.Editor
             uint instanceId,
             string displayName)
         {
+            if (!CanEdit())
+                return false;
+
             VfxEffectBlock block =
                 FindBlock(
                     instanceId);
@@ -596,10 +686,20 @@ namespace NADA.VFX.Weapon.Editor
 
         private static bool CanEdit()
         {
-            return
-                _targetItemData != null &&
-                _state != null &&
-                _state.Effects != null;
+            if (_readOnly || _activeDraft == null ||
+                _targetItemData == null || _state?.Effects == null)
+            {
+                return false;
+            }
+
+            // Editing is a user action, not a per-frame operation. Check the
+            // real source again so a newly bound weapon cannot be mutated
+            // during the target registry's one-second refresh interval.
+            NadaWeaponLocalSourceKind liveSource =
+                NadaWeaponLocalSourceResolver.Resolve(_targetItemData).Kind;
+
+            return liveSource == NadaWeaponLocalSourceKind.Unbound ||
+                   liveSource == NadaWeaponLocalSourceKind.EditorPreview;
         }
 
         private static VfxEffectBlock FindBlock(

@@ -108,6 +108,10 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _settingsOpen;
         private static bool _clearAllConfirm;
 
+        private enum BindingAction { None, Bind, Unbind }
+        private static BindingAction _pendingBindingAction;
+        private static string _bindingError;
+
         private static NadaVfxEditorThemePreset
             _appliedThemePreset;
 
@@ -152,7 +156,7 @@ namespace NADA.VFX.Weapon.Editor
             _open &&
             (_ownsKeyboardInput || _renameInstanceId.HasValue);
 
-        // Runtime input patches use this instead of opening up normal
+        // Runtime input patches use this instead of opening normal
         // PlayerController input, which would also enable combat actions.
         internal static bool AllowsMovementWhileEditing =>
             _open &&
@@ -231,6 +235,7 @@ namespace NADA.VFX.Weapon.Editor
                     GUIContent.none,
                     _windowStyle);
 
+            ProcessPendingBindingAction();
             EnforceCursorOwnership();
         }
 
@@ -284,6 +289,8 @@ namespace NADA.VFX.Weapon.Editor
                 false;
             _settingsOpen = false;
             _clearAllConfirm = false;
+            _pendingBindingAction = BindingAction.None;
+            _bindingError = null;
 
             if (_resizing &&
                 GUIUtility.hotControl != 0)
@@ -357,6 +364,7 @@ namespace NADA.VFX.Weapon.Editor
 
             if (targetChanged)
             {
+                _bindingError = null;
                 _selectedInstanceId =
                     null;
 
@@ -400,6 +408,7 @@ namespace NADA.VFX.Weapon.Editor
 
             if (targetChanged)
             {
+                _bindingError = null;
                 _selectedInstanceId =
                     null;
 
@@ -458,6 +467,58 @@ namespace NADA.VFX.Weapon.Editor
                         _windowRect.width - 34f,
                         38f - ResizeEdgeThickness));
             }
+        }
+
+        private static void ProcessPendingBindingAction()
+        {
+            BindingAction requested = _pendingBindingAction;
+            _pendingBindingAction = BindingAction.None;
+            if (requested == BindingAction.None)
+                return;
+
+            // Re-resolve at the user's click. A one-second registry snapshot
+            // may no longer describe the currently equipped weapon.
+            global::ItemDrop.ItemData clickedItem =
+                NadaVfxEditorTargetRegistry.Current?.ItemData;
+            NadaVfxEditorTargetRegistry.RefreshFromRuntime();
+            NadaVfxEditorTarget liveTarget = NadaVfxEditorTargetRegistry.Current;
+            if (clickedItem == null ||
+                !object.ReferenceEquals(clickedItem, liveTarget?.ItemData))
+            {
+                _bindingError = "Equipped weapon changed. Try again.";
+                return;
+            }
+
+            bool success = requested == BindingAction.Bind
+                ? NadaVfxEditorBindingController.TryBind(liveTarget, out _bindingError)
+                : NadaVfxEditorBindingController.TryUnbind(liveTarget, out _bindingError);
+            if (!success)
+            {
+                Plugin.Log?.LogWarning(
+                    $"{Plugin.ModName}: [EditorBindingRejected] " +
+                    $"action={requested} reason='{_bindingError}'.");
+                return;
+            }
+
+            _bindingError = null;
+            _addPickerOpen = false;
+            _clearAllConfirm = false;
+            ClearEffectDrag();
+            ClearTransientBlockActions();
+
+            if (requested == BindingAction.Bind)
+            {
+                NadaWeaponEditorPreviewState.Deactivate();
+                NadaVfxEditorPreviewRigSession.ReleaseOwnedRig();
+            }
+
+            NadaVfxEditorTargetRegistry.RefreshFromRuntime();
+            NadaVfxEditorTarget refreshed = NadaVfxEditorTargetRegistry.Current;
+            NadaVfxEditorWorkingState.SynchronizeTarget(refreshed);
+            if (requested == BindingAction.Unbind)
+                ActivatePreview(refreshed);
+
+            Plugin.Instance?.RefreshExistingEquippedRigsOnly();
         }
 
         private static void DrawTitleBar()
@@ -635,9 +696,11 @@ namespace NADA.VFX.Weapon.Editor
                 6f);
 
             GUILayout.Label(
-                target.IsLegacyBound
-                    ? "Bound"
-                    : "Unbound",
+                target.SourceKind == NadaWeaponLocalSourceKind.InvalidNative
+                    ? "Invalid"
+                    : target.IsReadOnly
+                        ? "Bound"
+                        : "Unbound",
                 _targetStatusStyle,
                 GUILayout.Width(48f),
                 GUILayout.Height(18f));
@@ -658,6 +721,27 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.EndHorizontal();
 
+            GUILayout.Space(3f);
+            GUILayout.BeginHorizontal();
+            bool previousBindingButtonEnabled = GUI.enabled;
+            bool invalidNative = target.SourceKind == NadaWeaponLocalSourceKind.InvalidNative;
+            GUI.enabled = previousBindingButtonEnabled && !invalidNative;
+            if (GUILayout.Button(
+                    target.IsReadOnly ? "Unbind Weapon" : "Bind to Weapon",
+                    _headerActionButtonStyle,
+                    GUILayout.Width(120f), GUILayout.Height(21f)))
+            {
+                _pendingBindingAction = target.IsReadOnly
+                    ? BindingAction.Unbind
+                    : BindingAction.Bind;
+            }
+            GUI.enabled = previousBindingButtonEnabled;
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            if (!string.IsNullOrEmpty(_bindingError))
+                GUILayout.Label(_bindingError, _warningStyle);
+
             if (_targetDetailsExpanded)
             {
                 GUILayout.Space(
@@ -676,11 +760,24 @@ namespace NADA.VFX.Weapon.Editor
                         target.VisualRootName)
                         ? "Unknown"
                         : target.VisualRootName);
+
+                if (target.IsReadOnly &&
+                    target.BoundViewState?.RigTransform != null)
+                {
+                    VfxTransformState rig = target.BoundViewState.RigTransform;
+                    DrawSingleInfoRow(
+                        "Rig Pos",
+                        $"({rig.XOffset:0.###}, {rig.YOffset:0.###}, {rig.ZOffset:0.###})");
+                    DrawSingleInfoRow(
+                        "Rig Rot",
+                        $"({rig.XRotation:0.###}, {rig.YRotation:0.###}, {rig.ZRotation:0.###})");
+                }
             }
 
             WeaponVfxState targetState = NadaVfxEditorWorkingState.State;
             int effectCount = targetState?.Effects?.Count ?? 0;
-            if (effectCount > 0 || _clearAllConfirm)
+            if ((effectCount > 0 || _clearAllConfirm) &&
+                !NadaVfxEditorWorkingState.IsReadOnly)
             {
                 GUILayout.Space(3f);
                 GUILayout.BeginHorizontal();
@@ -866,9 +963,15 @@ namespace NADA.VFX.Weapon.Editor
             bool previousEnabled =
                 GUI.enabled;
 
+            bool readOnly = NadaVfxEditorWorkingState.IsReadOnly;
+
+            if (readOnly)
+                _addPickerOpen = false;
+
             GUI.enabled =
                 previousEnabled &&
-                target != null;
+                target != null &&
+                !readOnly;
 
             if (GUILayout.Button(
                     _addPickerOpen
@@ -891,6 +994,15 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.Space(
                 2f);
+
+            if (readOnly)
+            {
+                GUILayout.Label(
+                    target?.SourceKind == NadaWeaponLocalSourceKind.InvalidNative
+                        ? "Saved native state is invalid. Editing is disabled."
+                        : "This weapon is bound. Unbind it to add, remove, reorder, or edit effects.",
+                    _mutedStyle);
+            }
 
             DrawWrappedEffects(
                 target);
@@ -1103,6 +1215,10 @@ namespace NADA.VFX.Weapon.Editor
                     ? _effectOnStyle
                     : _effectOffStyle;
 
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled &&
+                          !NadaVfxEditorWorkingState.IsReadOnly;
+
             if (GUI.Button(
                     toggleRect,
                     block.Enabled
@@ -1117,6 +1233,8 @@ namespace NADA.VFX.Weapon.Editor
                     RefreshPreview();
                 }
             }
+
+            GUI.enabled = previousEnabled;
         }
 
         private static void DrawCompactEffectPicker(
@@ -1289,6 +1407,12 @@ namespace NADA.VFX.Weapon.Editor
                 SelectBlock(
                     block.InstanceId);
 
+                if (NadaVfxEditorWorkingState.IsReadOnly)
+                {
+                    ClearEffectDrag();
+                    return;
+                }
+
                 _dragCandidateInstanceId =
                     block.InstanceId;
 
@@ -1335,6 +1459,9 @@ namespace NADA.VFX.Weapon.Editor
 
         private static void ApplyPendingEffectReorder()
         {
+            if (NadaVfxEditorWorkingState.IsReadOnly)
+                return;
+
             if (!_effectDragActive ||
                 !_dragCandidateInstanceId.HasValue ||
                 !_pendingReorderTargetInstanceId.HasValue)
@@ -1457,9 +1584,19 @@ namespace NADA.VFX.Weapon.Editor
                 GUILayout.ExpandWidth(true),
                 GUILayout.ExpandHeight(true));
 
+            bool readOnly = NadaVfxEditorWorkingState.IsReadOnly;
+
             GUILayout.Label(
-                "EDIT",
+                readOnly ? "INSPECT (READ ONLY)" : "EDIT",
                 _sectionHeaderStyle);
+
+            if (readOnly &&
+                !string.IsNullOrEmpty(NadaVfxEditorWorkingState.BoundViewError))
+            {
+                GUILayout.Label(
+                    NadaVfxEditorWorkingState.BoundViewError,
+                    _warningStyle);
+            }
 
             GUILayout.Space(
                 2f);
@@ -1470,7 +1607,9 @@ namespace NADA.VFX.Weapon.Editor
             if (selectedBlock == null)
             {
                 GUILayout.Label(
-                    "Add an effect, then select it to edit.",
+                    readOnly
+                        ? "No saved effects to inspect."
+                        : "Add an effect, then select it to edit.",
                     _mutedStyle);
 
                 GUILayout.EndVertical();
@@ -1486,8 +1625,8 @@ namespace NADA.VFX.Weapon.Editor
             DrawSelectedEffectHeader(
                 selectedBlock);
 
-            DrawTransientBlockControls(
-                selectedBlock);
+            if (!readOnly)
+                DrawTransientBlockControls(selectedBlock);
 
             GUILayout.Space(
                 4f);
@@ -1496,14 +1635,25 @@ namespace NADA.VFX.Weapon.Editor
                 .SetCompactLayout(
                     IsCompactLayout);
 
-            bool inspectorChanged =
-                NadaVfxBlockInspectorRegistry.Draw(
-                    selectedBlock);
-
-            if (inspectorChanged)
+            // Inspectors contain direct typed setters. Disable their input,
+            // and render only a detached read-only snapshot when bound.
+            bool previousEnabled = GUI.enabled;
+            bool inspectorChanged;
+            try
             {
-                RefreshPreview();
+                NadaVfxEditorControls.SetReadOnlyNavigation(readOnly);
+                GUI.enabled = previousEnabled && !readOnly;
+                inspectorChanged =
+                    NadaVfxBlockInspectorRegistry.Draw(selectedBlock);
             }
+            finally
+            {
+                GUI.enabled = previousEnabled;
+                NadaVfxEditorControls.SetReadOnlyNavigation(false);
+            }
+
+            if (inspectorChanged && !readOnly)
+                RefreshPreview();
 
             GUILayout.EndScrollView();
 
@@ -1582,83 +1732,94 @@ namespace NADA.VFX.Weapon.Editor
         private static void DrawBlockActionButtons(
             VfxEffectBlock block)
         {
-            if (GUILayout.Button(
-                    "Rename",
-                    _headerActionButtonStyle,
-                    GUILayout.Width(54f),
-                    GUILayout.Height(23f)))
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled &&
+                          !NadaVfxEditorWorkingState.IsReadOnly;
+
+            try
             {
-                _renameInstanceId =
-                    block.InstanceId;
-
-                _renameBuffer =
-                    NadaVfxEditorWorkingState
-                        .GetDisplayName(
-                            block);
-
-                _focusRenameOnNextDraw = true;
-                _ownsKeyboardInput = true;
-
-                _resetConfirmInstanceId =
-                    null;
-
-                _deleteConfirmInstanceId =
-                    null;
-            }
-
-            if (GUILayout.Button(
-                    "Duplicate",
-                    _headerActionButtonStyle,
-                    GUILayout.Width(66f),
-                    GUILayout.Height(23f)))
-            {
-                if (NadaVfxEditorWorkingState.TryDuplicateEffect(
-                        block.InstanceId,
-                        out VfxEffectBlock duplicate))
+                if (GUILayout.Button(
+                        "Rename",
+                        _headerActionButtonStyle,
+                        GUILayout.Width(54f),
+                        GUILayout.Height(23f)))
                 {
-                    SelectBlock(
-                        duplicate.InstanceId);
+                    _renameInstanceId =
+                        block.InstanceId;
 
-                    RefreshPreview();
+                    _focusRenameOnNextDraw = true;
+                    _ownsKeyboardInput = true;
+
+                    _renameBuffer =
+                        NadaVfxEditorWorkingState
+                            .GetDisplayName(
+                                block);
+
+                    _resetConfirmInstanceId =
+                        null;
+
+                    _deleteConfirmInstanceId =
+                        null;
+                }
+
+                if (GUILayout.Button(
+                        "Duplicate",
+                        _headerActionButtonStyle,
+                        GUILayout.Width(66f),
+                        GUILayout.Height(23f)))
+                {
+                    if (NadaVfxEditorWorkingState.TryDuplicateEffect(
+                            block.InstanceId,
+                            out VfxEffectBlock duplicate))
+                    {
+                        SelectBlock(
+                            duplicate.InstanceId);
+
+                        RefreshPreview();
+                    }
+                }
+
+                if (GUILayout.Button(
+                        "Reset",
+                        _headerActionButtonStyle,
+                        GUILayout.Width(48f),
+                        GUILayout.Height(23f)))
+                {
+                    _resetConfirmInstanceId =
+                        block.InstanceId;
+
+                    _renameInstanceId =
+                        null;
+
+                    _renameBuffer =
+                        string.Empty;
+
+                    _deleteConfirmInstanceId =
+                        null;
+                }
+
+                if (GUILayout.Button(
+                        "Delete",
+                        _headerActionButtonStyle,
+                        GUILayout.Width(48f),
+                        GUILayout.Height(23f)))
+                {
+                    _deleteConfirmInstanceId =
+                        block.InstanceId;
+
+                    _renameInstanceId =
+                        null;
+
+                    _renameBuffer =
+                        string.Empty;
+
+                    _resetConfirmInstanceId =
+                        null;
                 }
             }
-
-            if (GUILayout.Button(
-                    "Reset",
-                    _headerActionButtonStyle,
-                    GUILayout.Width(48f),
-                    GUILayout.Height(23f)))
+            finally
             {
-                _resetConfirmInstanceId =
-                    block.InstanceId;
-
-                _renameInstanceId =
-                    null;
-
-                _renameBuffer =
-                    string.Empty;
-
-                _deleteConfirmInstanceId =
-                    null;
-            }
-
-            if (GUILayout.Button(
-                    "Delete",
-                    _headerActionButtonStyle,
-                    GUILayout.Width(48f),
-                    GUILayout.Height(23f)))
-            {
-                _deleteConfirmInstanceId =
-                    block.InstanceId;
-
-                _renameInstanceId =
-                    null;
-
-                _renameBuffer =
-                    string.Empty;
-
-                _resetConfirmInstanceId =
-                    null;
+                GUI.enabled = previousEnabled;
             }
         }
 
@@ -1760,9 +1921,7 @@ namespace NADA.VFX.Weapon.Editor
         {
             if (!_focusRenameOnNextDraw ||
                 Event.current.type != EventType.Repaint)
-            {
                 return;
-            }
 
             GUI.FocusControl(RenameControlName);
             _focusRenameOnNextDraw = false;
@@ -3340,6 +3499,13 @@ fontSize = 12,
         private static void ActivatePreview(
             NadaVfxEditorTarget target)
         {
+            if (NadaVfxEditorWorkingState.IsReadOnly)
+            {
+                NadaWeaponEditorPreviewState.Deactivate();
+                NadaVfxEditorPreviewRigSession.ReleaseOwnedRig();
+                return;
+            }
+
             if (!_open ||
                 target?.ItemData == null ||
                 target.SourceRoot == null ||
@@ -3391,7 +3557,7 @@ fontSize = 12,
 
         private static void RefreshPreview()
         {
-            if (!_open)
+            if (!_open || NadaVfxEditorWorkingState.IsReadOnly)
                 return;
 
             NadaVfxEditorTarget target =

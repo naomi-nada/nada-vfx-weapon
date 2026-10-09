@@ -44,6 +44,71 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             Transform weaponVisualRootTransform =
                 context.WeaponVisualRoot;
 
+            NadaWeaponLocalSourceSelection localSource =
+                NadaWeaponLocalSourceResolver.Resolve(itemData);
+
+            bool hasPersistentBinding =
+                localSource.Kind == NadaWeaponLocalSourceKind.NativeBound ||
+                localSource.Kind == NadaWeaponLocalSourceKind.LegacyBound;
+
+            bool invalidNative =
+                localSource.Kind == NadaWeaponLocalSourceKind.InvalidNative;
+
+            string nativeFailureReason = localSource.FailureReason;
+
+            if (localSource.Kind == NadaWeaponLocalSourceKind.NativeBound)
+            {
+                // The binary codec validates structure; the existing formation
+                // resolver validates cross-block Glue relationships.
+                if (localSource.State == null)
+                {
+                    invalidNative = true;
+                    nativeFailureReason = "Native state is missing.";
+                }
+                else
+                {
+                    bool formationAccepted =
+                        OrbitalsFormationResolver.TryResolve(
+                            localSource.State,
+                            out OrbitalsFormationResolution formation);
+
+                    if (!formationAccepted ||
+                        formation == null ||
+                        !formation.IsValid)
+                    {
+                        invalidNative = true;
+                        nativeFailureReason =
+                            formation?.FailureReason ??
+                            "Native orbital relationships are invalid.";
+                    }
+                }
+            }
+
+            if (invalidNative)
+            {
+                // Fail closed before any structure assembly. Destroy is
+                // deferred: deactivate first so stale effects cannot render.
+                Transform staleRig = weaponVisualRootTransform != null
+                    ? NadaRigPaths.FindDirectChild(
+                        weaponVisualRootTransform,
+                        Plugin.LocalWeaponRootName)
+                    : null;
+
+                if (staleRig != null)
+                {
+                    staleRig.gameObject.SetActive(false);
+                    NadaWeaponRigRemoval.RemoveTrackedRig(staleRig);
+                }
+
+                NadaLogControl.Info(
+                    $"native-local-invalid:{rootObject.GetInstanceID()}:{nativeFailureReason}",
+                    $"{Plugin.ModName}: [NativeLocalStateRejected] " +
+                    $"root='{rootObject.name}' " +
+                    $"reason='{nativeFailureReason ?? "invalid-native-payload"}'");
+
+                return;
+            }
+
             if (!NadaRigCache.CacheReady)
             {
                 Plugin.Log.LogInfo(
@@ -51,7 +116,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     $"root='{rootObject?.name}' " +
                     $"visual='{weaponVisualRootTransform?.name}' " +
                     $"item='{itemData?.m_shared?.m_name}' " +
-                    $"bound={VfxStateIO.IsBound(itemData)}");
+                    $"bound={hasPersistentBinding}");
 
                 return;
             }
@@ -62,12 +127,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             bool isBoundDroppedItem =
                 itemData != null &&
-                VfxStateIO.IsBound(itemData) &&
+                hasPersistentBinding &&
                 rootObject.GetComponent<global::ItemDrop>() != null;
 
             bool isBoundPreviewOrEquippedVisual =
                 itemData != null &&
-                VfxStateIO.IsBound(itemData) &&
+                hasPersistentBinding &&
                 weaponVisualRootTransform != null;
 
             if (!isEquippedTarget &&
@@ -79,7 +144,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     $"root='{rootObject?.name}' " +
                     $"visual='{weaponVisualRootTransform?.name}' " +
                     $"item='{itemData?.m_shared?.m_name}' " +
-                    $"bound={VfxStateIO.IsBound(itemData)} " +
+                    $"bound={hasPersistentBinding} " +
                     $"isEquippedTarget={isEquippedTarget} " +
                     $"isBoundDroppedItem={isBoundDroppedItem} " +
                     $"isBoundPreviewOrEquippedVisual={isBoundPreviewOrEquippedVisual}");
@@ -117,18 +182,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (localEffectsRootTransform == null)
                 return;
 
-            bool hasBoundBlockState =
-                itemData != null &&
-                VfxStateIO.IsBound(itemData);
-
             bool hasEditorPreview =
-                NadaWeaponEditorPreviewState.TryGet(
-                    itemData,
-                    out WeaponVfxState editorPreviewState);
+                localSource.Kind == NadaWeaponLocalSourceKind.EditorPreview;
 
             bool useBlockRuntime =
-                hasEditorPreview ||
-                hasBoundBlockState;
+                localSource.Kind == NadaWeaponLocalSourceKind.EditorPreview ||
+                hasPersistentBinding;
 
             if (useBlockRuntime)
             {
@@ -209,11 +268,22 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (useBlockRuntime)
             {
                 blockState =
-                    hasEditorPreview
-                        ? editorPreviewState
+                    localSource.Kind == NadaWeaponLocalSourceKind.NativeBound ||
+                    localSource.Kind == NadaWeaponLocalSourceKind.EditorPreview
+                        ? localSource.State
                         : CreateMigratedPrototypeState(
                             context,
                             "local");
+
+                if (localSource.Kind == NadaWeaponLocalSourceKind.NativeBound)
+                {
+                    NadaLogControl.Info(
+                        $"native-local-runtime:{rootObject.GetInstanceID()}",
+                        $"{Plugin.ModName}: [NativeLocalRuntime] " +
+                        $"root='{rootObject.name}' " +
+                        $"effects={blockState.Effects.Count} " +
+                        $"source='item-data'");
+                }
 
                 if (hasEditorPreview)
                 {
@@ -423,9 +493,19 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     itemData);
             }
 
-            NadaRigTransformApplier.Apply(
-                localWeaponRootTransform,
-                context.State);
+            if (localSource.Kind == NadaWeaponLocalSourceKind.NativeBound ||
+                localSource.Kind == NadaWeaponLocalSourceKind.EditorPreview)
+            {
+                NadaRigTransformApplier.Apply(
+                    localWeaponRootTransform,
+                    blockState.RigTransform);
+            }
+            else
+            {
+                NadaRigTransformApplier.Apply(
+                    localWeaponRootTransform,
+                    context.State);
+            }
 
             NadaMotionBinder.BindOrbitalsRigFollow(
                 catalog.OrbitalsRigRootTransform,

@@ -43,6 +43,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 ResolveItemData(
                     root);
 
+            // Transitional context data. The orchestrator independently
+            // selects the native block state for native-bound weapons.
             VfxState state =
                 NadaWeaponStateResolver.Resolve(
                     itemData);
@@ -112,9 +114,42 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return false;
             }
 
-            if (!VfxStateIO.IsBound(
-                    itemData))
+            NadaWeaponLocalSourceSelection source =
+                NadaWeaponLocalSourceResolver.Resolve(
+                    itemData);
+
+            // Only persisted bindings belong on dropped weapons.
+            // An invalid native payload cannot fall through to legacy.
+            if (source.Kind != NadaWeaponLocalSourceKind.NativeBound &&
+                source.Kind != NadaWeaponLocalSourceKind.LegacyBound)
             {
+                if (source.Kind == NadaWeaponLocalSourceKind.InvalidNative)
+                {
+                    Transform invalidVisual =
+                        NadaWeaponTargets.FindDroppedWeaponVisualRoot(
+                            root.transform);
+
+                    if (invalidVisual != null)
+                    {
+                        Transform staleRig =
+                            NadaRigPaths.FindDirectChild(
+                                invalidVisual,
+                                Plugin.LocalWeaponRootName);
+
+                        if (staleRig != null)
+                        {
+                            staleRig.gameObject.SetActive(false);
+                            NadaWeaponRigRemoval.RemoveTrackedRig(staleRig);
+                        }
+                    }
+
+                    NadaLogControl.Info(
+                        $"drop-native-invalid:{root.GetInstanceID()}:{source.FailureReason}",
+                        $"{Plugin.ModName}: [DropNativeStateRejected] " +
+                        $"root='{root.name}' " +
+                        $"reason='{source.FailureReason}'");
+                }
+
                 return false;
             }
 
@@ -146,8 +181,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     attachTarget,
                     Plugin.LocalWeaponRootName);
 
+            // Preserve the existing drop probe behavior for this pass.
             if (existingRoot != null)
-                return true;
+                return existingRoot.gameObject.activeSelf;
 
             VfxState state =
                 NadaWeaponStateResolver.Resolve(
@@ -171,7 +207,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     attachTarget,
                     Plugin.LocalWeaponRootName);
 
-            return refreshedRoot != null;
+            return refreshedRoot != null &&
+                   refreshedRoot.gameObject.activeSelf;
         }
 
         private static bool TryApplyInternal(
@@ -225,8 +262,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     attachTarget,
                     Plugin.LocalWeaponRootName);
 
+            // Destroy is deferred. Reject a disabled stale shell left while
+            // an invalid native binding is being retired.
             bool applied =
-                refreshedRoot != null;
+                refreshedRoot != null &&
+                refreshedRoot.gameObject.activeSelf;
 
             if (applied)
             {

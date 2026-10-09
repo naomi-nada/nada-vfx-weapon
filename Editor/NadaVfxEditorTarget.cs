@@ -1,3 +1,7 @@
+using NADA.VFX.Weapon.Runtime.Formation;
+using NADA.VFX.Weapon.Weapons.Runtime;
+using NADA.VFX.Weapon.Core.State.Migration;
+using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
@@ -27,6 +31,13 @@ namespace NADA.VFX.Weapon.Editor
         internal int RuntimeRigInstanceId { get; }
 
         internal bool IsLegacyBound { get; }
+        internal NadaWeaponLocalSourceKind SourceKind { get; }
+        internal WeaponVfxState BoundViewState { get; }
+        internal string BoundViewError { get; }
+        internal bool IsReadOnly =>
+            SourceKind == NadaWeaponLocalSourceKind.NativeBound ||
+            SourceKind == NadaWeaponLocalSourceKind.LegacyBound ||
+            SourceKind == NadaWeaponLocalSourceKind.InvalidNative;
         internal string RuntimeStateSource { get; }
 
         internal NadaVfxEditorTarget(
@@ -39,7 +50,10 @@ namespace NADA.VFX.Weapon.Editor
             bool hasRuntimeRig,
             int runtimeRigInstanceId,
             bool isLegacyBound,
-            string runtimeStateSource)
+            string runtimeStateSource,
+            NadaWeaponLocalSourceKind sourceKind,
+            WeaponVfxState boundViewState,
+            string boundViewError)
         {
             ItemData =
                 itemData;
@@ -97,6 +111,10 @@ namespace NADA.VFX.Weapon.Editor
             IsLegacyBound =
                 isLegacyBound;
 
+            SourceKind = sourceKind;
+            BoundViewState = boundViewState;
+            BoundViewError = boundViewError;
+
             RuntimeStateSource =
                 runtimeStateSource ??
                 string.Empty;
@@ -148,9 +166,50 @@ namespace NADA.VFX.Weapon.Editor
             global::ItemDrop.ItemData itemData =
                 resolvedTarget.ItemData;
 
+            NadaWeaponLocalSourceSelection source =
+                NadaWeaponLocalSourceResolver.Resolve(itemData);
+
             bool isLegacyBound =
-                VfxStateIO.IsBound(
-                    itemData);
+                source.Kind == NadaWeaponLocalSourceKind.LegacyBound;
+
+            WeaponVfxState boundViewState = null;
+            string boundViewError = null;
+
+            if (source.Kind == NadaWeaponLocalSourceKind.NativeBound)
+            {
+                // The decoded state is a detached data snapshot. It never
+                // becomes the runtime's mutable state or an editor draft.
+                boundViewState = source.State;
+
+                if (boundViewState == null ||
+                    !OrbitalsFormationResolver.TryResolve(
+                        boundViewState,
+                        out OrbitalsFormationResolution formation) ||
+                    formation == null ||
+                    !formation.IsValid)
+                {
+                    boundViewState = null;
+                    boundViewError = "Native block formation is invalid.";
+                }
+            }
+            else if (isLegacyBound)
+            {
+                if (VfxStateIO.TryRead(itemData, out VfxState legacy))
+                {
+                    boundViewState =
+                        BuildLegacyBoundView(legacy);
+                }
+                else
+                {
+                    boundViewError =
+                        "Legacy binding could not be read.";
+                }
+            }
+            else if (source.Kind == NadaWeaponLocalSourceKind.InvalidNative)
+            {
+                boundViewError = source.FailureReason ??
+                    "Native weapon state is invalid.";
+            }
 
             string itemNameKey =
                 itemData.m_shared?.m_name ??
@@ -175,9 +234,13 @@ namespace NADA.VFX.Weapon.Editor
                 runtimeRigTransform != null;
 
             string runtimeStateSource =
-                isLegacyBound
-                    ? "Legacy runtime: bound ItemData"
-                    : "Editor/runtime defaults: unbound ItemData";
+                source.Kind == NadaWeaponLocalSourceKind.NativeBound
+                    ? "Native runtime: bound ItemData"
+                    : isLegacyBound
+                        ? "Legacy runtime: bound ItemData"
+                        : source.Kind == NadaWeaponLocalSourceKind.InvalidNative
+                            ? "Invalid native binding: rendering blocked"
+                            : "Editor/runtime defaults: unbound ItemData";
 
             Current =
                 new NadaVfxEditorTarget(
@@ -192,7 +255,42 @@ namespace NADA.VFX.Weapon.Editor
                         ? runtimeRigTransform.GetInstanceID()
                         : 0,
                     isLegacyBound,
-                    runtimeStateSource);
+                    runtimeStateSource,
+                    source.Kind,
+                    boundViewState,
+                    boundViewError);
+        }
+
+        // The legacy adapter exists for migration and read-only presentation.
+        // The editor never writes this view back through legacy persistence.
+        private static WeaponVfxState BuildLegacyBoundView(VfxState legacy)
+        {
+            WeaponVfxState result =
+                LegacyVfxStateAdapter.CreateInnerFlamesPrototype(legacy);
+
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateOuterFlamesPrototype(legacy).Effects);
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateStrandsPrototype(legacy).Effects);
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateSparksPrototype(legacy).Effects);
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateFlarePrototype(legacy).Effects);
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateAuraPrototype(legacy).Effects);
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateOrbitalsOrbsPrototype(legacy).Effects);
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateOrbitalsCoresPrototype(legacy).Effects);
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateOrbitalsFlamesPrototype(legacy).Effects);
+            result.Effects.AddRange(
+                LegacyVfxStateAdapter.CreateOrbitalsEmbersPrototype(legacy).Effects);
+
+            LegacyVfxStateAdapter.ApplyMigratedOrbitalsRelationships(
+                result, legacy);
+
+            return result;
         }
 
         private static string ResolveDisplayName(
