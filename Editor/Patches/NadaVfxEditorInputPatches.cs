@@ -55,6 +55,41 @@ namespace NADA.VFX.Weapon.Editor.Patches
     }
 
     /// <summary>
+    /// The gameplay camera owns mouse capture, independently of UpdateCamera.
+    /// Do not let it re-lock/hide the pointer while the NADA editor owns input.
+    /// Outside the editor the vanilla method runs unchanged.
+    /// </summary>
+    [HarmonyPatch(typeof(global::GameCamera), "UpdateMouseCapture")]
+    internal static class NadaVfxEditorMouseCapturePatch
+    {
+        // The availability guard keeps older/different game builds from
+        // failing PatchAll if the vanilla method was renamed or removed.
+        [HarmonyPrepare]
+        private static bool Prepare()
+        {
+            bool available = AccessTools.Method(
+                typeof(global::GameCamera), "UpdateMouseCapture") != null;
+
+            if (!available)
+                Plugin.Log?.LogWarning(
+                    $"{Plugin.ModName}: [EditorMouseCapturePatch] " +
+                    "GameCamera.UpdateMouseCapture unavailable; cursor fallback only.");
+
+            return available;
+        }
+
+        [HarmonyPrefix]
+        private static bool Prefix()
+        {
+            if (!NadaVfxEditor.IsOpen)
+                return true;
+
+            NadaVfxEditor.EnforceCursorOwnership();
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Optional movement preview. TakeInput stays blocked while the editor is
     /// open; this applies ONLY movement through vanilla player controls after
     /// the normal controller tick, leaving every gameplay action flag false.

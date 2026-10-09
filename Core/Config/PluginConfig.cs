@@ -2518,7 +2518,9 @@ namespace NADA.VFX.Weapon.Core.Config
                     ShowRangeAsPercent = showRangeAsPercent,
                     IsAdvanced = isAdvanced,
                     HideSettingName = hideSettingName,
-                    Browsable = browsable,
+                    // The legacy entries still back older saved weapon state,
+                    // but are no longer an interactive user-facing settings UI.
+                    Browsable = false,
                     HideDefaultButton = hideDefaultButton
                 });
         }

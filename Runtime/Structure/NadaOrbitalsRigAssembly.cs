@@ -2,6 +2,7 @@ using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using UnityEngine;
 using NADA.VFX.Weapon.Modules.Motion;
+using NADA.VFX.Weapon.Modules.Effects;
 using NADA.VFX.Weapon.Runtime.Binding;
 
 namespace NADA.VFX.Weapon.Runtime.Structure
@@ -149,6 +150,116 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 motionRootTransform,
                 headVisualTransform,
                 poolRootTransform);
+        }
+
+        // Native blocks own their visuals, motion, and pools under Effects/Instances.
+        // Only keep the empty shared anchors needed by the transitional catalog.
+        internal static Transform EnsureNativeOrbitalsScaffold(
+            Transform localWeaponRootTransform,
+            string ownerNameForLogs)
+        {
+            if (!NadaRigCache.CacheReady ||
+                localWeaponRootTransform == null)
+            {
+                return null;
+            }
+
+            Transform effectsRoot =
+                NadaRigPaths.FindLocalEffectsRoot(
+                    localWeaponRootTransform);
+
+            if (effectsRoot == null)
+                return null;
+
+            Transform orbitalsRoot =
+                NadaRigPaths.FindDirectChild(
+                    effectsRoot,
+                    Plugin.OrbitalsName);
+
+            bool replacedLegacy =
+                HasLegacySharedOrbitalsRuntime(orbitalsRoot);
+
+            if (replacedLegacy)
+            {
+                // Destroy is deferred. Unparent the old branch immediately
+                // so subsequent passes cannot rediscover or reuse it.
+                orbitalsRoot.gameObject.SetActive(false);
+                orbitalsRoot.SetParent(null, false);
+                Object.Destroy(orbitalsRoot.gameObject);
+                orbitalsRoot = null;
+            }
+
+            bool created = orbitalsRoot == null;
+
+            if (created)
+            {
+                orbitalsRoot = NadaRigTransforms.EnsureChild(
+                    effectsRoot,
+                    Plugin.OrbitalsName);
+            }
+
+            if (orbitalsRoot == null ||
+                EnsureLocalOrbitalsRig(
+                    orbitalsRoot,
+                    ownerNameForLogs) == null)
+            {
+                return null;
+            }
+
+            if (created)
+            {
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [NativeOrbitalsScaffold] " +
+                    $"owner='{ownerNameForLogs}' " +
+                    $"replacedLegacy={replacedLegacy} " +
+                    $"rootId={orbitalsRoot.GetInstanceID()}");
+            }
+
+            return orbitalsRoot;
+        }
+
+        private static bool HasLegacySharedOrbitalsRuntime(
+            Transform orbitalsRoot)
+        {
+            if (orbitalsRoot == null)
+                return false;
+
+            if (orbitalsRoot.GetComponent<NadaOrbitalsEffect>() != null)
+                return true;
+
+            if (NadaRigPaths.FindDirectChild(
+                    orbitalsRoot, Plugin.OrbitalsOrbsName) != null ||
+                NadaRigPaths.FindDirectChild(
+                    orbitalsRoot, Plugin.OrbitalsCoresName) != null ||
+                NadaRigPaths.FindDirectChild(
+                    orbitalsRoot, Plugin.OrbitalsFlamesName) != null ||
+                NadaRigPaths.FindDirectChild(
+                    orbitalsRoot, Plugin.OrbitalsEmbersName) != null)
+            {
+                return true;
+            }
+
+            Transform rigRoot = NadaRigPaths.FindDirectChild(
+                orbitalsRoot,
+                Plugin.OrbitalsRigRootName);
+
+            if (rigRoot == null)
+                return false;
+
+            if (rigRoot.GetComponent<NadaTargetFollowMotion>() != null)
+                return true;
+
+            Transform motionRoots = NadaRigPaths.FindDirectChild(
+                rigRoot,
+                Plugin.OrbitalsMotionRootsName);
+
+            Transform poolsRoot = NadaRigPaths.FindDirectChild(
+                rigRoot,
+                Plugin.OrbitalsPoolsRootName);
+
+            return
+                (motionRoots != null && motionRoots.childCount > 0) ||
+                (poolsRoot != null && poolsRoot.childCount > 0);
         }
 
         internal static Transform

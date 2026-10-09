@@ -189,8 +189,19 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 localSource.Kind == NadaWeaponLocalSourceKind.EditorPreview ||
                 hasPersistentBinding;
 
-            if (useBlockRuntime)
+            bool hasNativeBlockSource =
+                localSource.Kind == NadaWeaponLocalSourceKind.NativeBound ||
+                localSource.Kind == NadaWeaponLocalSourceKind.EditorPreview;
+
+            if (hasNativeBlockSource)
             {
+                NadaOrbitalsRigAssembly.EnsureNativeOrbitalsScaffold(
+                    localWeaponRootTransform,
+                    rootObject.name);
+            }
+            else if (useBlockRuntime)
+            {
+                // Legacy-bound items still use the transitional adapter path.
                 NadaOrbitalsRigAssembly
                     .EnsureLegacyOrbitalsRigWithoutOrbs(
                         localWeaponRootTransform,
@@ -478,14 +489,14 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     catalog.OrbitalsRigRootTransform);
             }
 
-            if (useBlockRuntime)
+            if (useBlockRuntime && !hasNativeBlockSource)
             {
                 NadaEffectBinder.BindOrbitalsEffect(
                     catalog.OrbitalsRootTransform,
                     null,
                     itemData);
             }
-            else
+            else if (!useBlockRuntime)
             {
                 NadaEffectBinder.BindOrbitalsEffect(
                     catalog.OrbitalsRootTransform,
@@ -507,14 +518,17 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     context.State);
             }
 
-            NadaMotionBinder.BindOrbitalsRigFollow(
-                catalog.OrbitalsRigRootTransform,
-                localWeaponRootTransform,
-                Vector3.zero,
-                Quaternion.Euler(
-                    -90f,
-                    0f,
-                    0f));
+            if (!hasNativeBlockSource)
+            {
+                NadaMotionBinder.BindOrbitalsRigFollow(
+                    catalog.OrbitalsRigRootTransform,
+                    localWeaponRootTransform,
+                    Vector3.zero,
+                    Quaternion.Euler(
+                        -90f,
+                        0f,
+                        0f));
+            }
 
             NadaRigMaintenance.ApplyPickupFix(
                 rootObject);

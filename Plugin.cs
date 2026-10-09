@@ -126,6 +126,11 @@ namespace NADA.VFX.Weapon
             
             NADA.VFX.Weapon.Core.Persistence
                 .WeaponVfxItemStoreContractTests.Run();
+
+            NADA.VFX.Weapon.Core.Persistence
+                .WeaponVfxStyleCodecContractTests.Run();
+            NADA.VFX.Weapon.Core.Persistence
+                .WeaponVfxShareCodeContractTests.Run();
             
             NADA.VFX.Weapon.Weapons.Runtime
                 .NadaWeaponLocalSourceResolverContractTests.Run();
@@ -144,14 +149,15 @@ namespace NADA.VFX.Weapon
         {
             NadaVfxEditor.Tick();
 
-            if (PluginConfig.AttachHotkey.Value.IsDown())
+            // The native editor handles its own shortcuts through the same
+            // guarded path as its buttons. Legacy hotkeys must not compete.
+            if (!NadaVfxEditor.IsOpen)
             {
-                NadaEquippedRigActions.TryAttachToEquipped();
-            }
+                if (PluginConfig.AttachHotkey.Value.IsDown())
+                    NadaEquippedRigActions.TryAttachToEquipped();
 
-            if (PluginConfig.BindHotkey.Value.IsDown())
-            {
-                NadaEquippedRigActions.TryBindEquipped();
+                if (PluginConfig.BindHotkey.Value.IsDown())
+                    NadaEquippedRigActions.TryBindEquipped();
             }
 
             NadaRigVisibility.TickCharacterSelectionPreview();

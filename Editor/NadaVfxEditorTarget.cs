@@ -24,6 +24,7 @@ namespace NADA.VFX.Weapon.Editor
         internal int SourceRootInstanceId { get; }
 
         internal string VisualRootName { get; }
+        internal string VisualDisplayName { get; }
         internal int VisualRootInstanceId { get; }
         internal string VisualRootPath { get; }
 
@@ -91,6 +92,11 @@ namespace NADA.VFX.Weapon.Editor
                     ? visualRoot.name
                     : string.Empty;
 
+            // Generic wrapper names such as 'model' do not identify a skin.
+            // If a render mesh carries a useful name, show it as a mesh
+            // identity, not as a claimed transmog/prefab ID.
+            VisualDisplayName = ResolveVisualDisplayName(visualRoot);
+
             VisualRootInstanceId =
                 visualRoot != null
                     ? visualRoot.GetInstanceID()
@@ -119,6 +125,65 @@ namespace NADA.VFX.Weapon.Editor
                 runtimeStateSource ??
                 string.Empty;
         }
+
+        private static string ResolveVisualDisplayName(Transform root)
+        {
+            if (root == null)
+                return string.Empty;
+
+            string rootName = root.name ?? string.Empty;
+            if (!IsGenericVisualName(rootName))
+                return rootName;
+
+            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null ||
+                    renderer is ParticleSystemRenderer ||
+                    renderer is TrailRenderer ||
+                    renderer is LineRenderer)
+                    continue;
+
+                // The native effects live beneath their own weapon root.
+                // Ignore those renderers when identifying the original visual.
+                bool nadaOwned = false;
+                for (Transform ancestor = renderer.transform;
+                     ancestor != null && ancestor != root;
+                     ancestor = ancestor.parent)
+                {
+                    if (ancestor.name == Plugin.LocalWeaponRootName)
+                    {
+                        nadaOwned = true;
+                        break;
+                    }
+                }
+                if (nadaOwned)
+                    continue;
+
+                Mesh mesh = null;
+                if (renderer is SkinnedMeshRenderer skinned)
+                    mesh = skinned.sharedMesh;
+                else if (renderer is MeshRenderer)
+                {
+                    MeshFilter filter = renderer.GetComponent<MeshFilter>();
+                    if (filter != null)
+                        mesh = filter.sharedMesh;
+                }
+
+                string meshName = mesh != null ? mesh.name : null;
+                if (!string.IsNullOrWhiteSpace(meshName) &&
+                    !IsGenericVisualName(meshName))
+                    return rootName + " (mesh: " + meshName + ")";
+            }
+
+            // No authoritative appearance ID was available from the live
+            // hierarchy. Don't replace it with the item's original prefab ID.
+            return rootName;
+        }
+
+        private static bool IsGenericVisualName(string value) =>
+            string.Equals(value, "model", System.StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "default", System.StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "mesh", System.StringComparison.OrdinalIgnoreCase);
     }
 
     internal static class NadaVfxEditorTargetRegistry

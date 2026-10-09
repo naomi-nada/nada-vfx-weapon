@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using NADA.VFX.Weapon.Core.Config;
+using NADA.VFX.Weapon.Core.Persistence;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Editor.Inspectors;
 using NADA.VFX.Weapon.Weapons.Runtime;
@@ -32,6 +33,7 @@ namespace NADA.VFX.Weapon.Editor
         private const float BlockHeight = 26f;
         private const float EffectChipWidth = 148f;
         private const float EffectChipGap = 4f;
+        private const float EffectActionHeight = 23f;
         private const float EffectToggleWidth = 34f;
 
         private const float PickerButtonWidth = 88f;
@@ -87,6 +89,8 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _cursorStateCaptured;
         private static bool _previousCursorVisible;
         private static CursorLockMode _previousCursorLockMode;
+        private static float _cursorWindowStartTime;
+        private static int _cursorCorrectionsInWindow;
 
         private static bool _resizing;
         private static ResizeEdges _activeResizeEdges;
@@ -107,6 +111,10 @@ namespace NADA.VFX.Weapon.Editor
         private static Texture2D _wandTexture;
         private static bool _settingsOpen;
         private static bool _clearAllConfirm;
+
+        private enum ShortcutCapture { None, Toggle, Bind, Unbind }
+        private static ShortcutCapture _shortcutCapture;
+        private static string _shortcutError;
 
         private enum BindingAction { None, Bind, Unbind }
         private static BindingAction _pendingBindingAction;
@@ -139,6 +147,9 @@ namespace NADA.VFX.Weapon.Editor
         private static GUIStyle _warningStyle;
         private static GUIStyle _closeButtonStyle;
         private static GUIStyle _settingsButtonStyle;
+        private static GUIStyle _stylesButtonStyle;
+        private static GUIStyle _styleTextFieldStyle;
+        private static GUIStyle _styleTextAreaStyle;
         private static GUIStyle _themeOptionStyle;
         private static GUIStyle _addButtonStyle;
         private static GUIStyle _pickerStyle;
@@ -154,7 +165,8 @@ namespace NADA.VFX.Weapon.Editor
 
         internal static bool OwnsKeyboardInput =>
             _open &&
-            (_ownsKeyboardInput || _renameInstanceId.HasValue);
+            (_ownsKeyboardInput || _renameInstanceId.HasValue ||
+             _shortcutCapture != ShortcutCapture.None);
 
         // Runtime input patches use this instead of opening normal
         // PlayerController input, which would also enable combat actions.
@@ -183,20 +195,37 @@ namespace NADA.VFX.Weapon.Editor
                 return;
             }
 
-            if (NadaVfxEditorConfig.ToggleHotkey.Value.IsDown())
+            if (_shortcutCapture == ShortcutCapture.None &&
+                NadaVfxEditorConfig.ToggleHotkey.Value.IsDown())
             {
                 if (_open)
-                {
                     Close();
-                }
                 else
-                {
                     Open();
-                }
             }
 
             if (!_open)
                 return;
+
+            // Hotkeys share the button's deferred, target-validated action.
+            // Never fire while entering text or capturing a new shortcut.
+            if (!OwnsKeyboardInput)
+            {
+                if (NadaVfxEditorConfig.BindHotkey != null &&
+                    NadaVfxEditorConfig.BindHotkey.Value.MainKey != KeyCode.None &&
+                    NadaVfxEditorConfig.BindHotkey.Value.IsDown() &&
+                    !NadaVfxEditorWorkingState.IsReadOnly)
+                {
+                    _pendingBindingAction = BindingAction.Bind;
+                }
+                else if (NadaVfxEditorConfig.UnbindHotkey != null &&
+                         NadaVfxEditorConfig.UnbindHotkey.Value.MainKey != KeyCode.None &&
+                         NadaVfxEditorConfig.UnbindHotkey.Value.IsDown() &&
+                         NadaVfxEditorWorkingState.IsReadOnly)
+                {
+                    _pendingBindingAction = BindingAction.Unbind;
+                }
+            }
 
             EnforceCursorOwnership();
 
@@ -221,8 +250,6 @@ namespace NADA.VFX.Weapon.Editor
                 return;
             }
 
-            EnforceCursorOwnership();
-
             EnsureStyles();
             EnsureWindowPosition();
             ClampWindowToScreen();
@@ -235,8 +262,8 @@ namespace NADA.VFX.Weapon.Editor
                     GUIContent.none,
                     _windowStyle);
 
+            NadaVfxEditorStylesPanel.ProcessPendingDraftApply();
             ProcessPendingBindingAction();
-            EnforceCursorOwnership();
         }
 
         internal static void EnforceCursorOwnership()
@@ -244,15 +271,34 @@ namespace NADA.VFX.Weapon.Editor
             if (!_open)
                 return;
 
-            Cursor.visible =
-                true;
+            bool visibilityOverridden = !Cursor.visible;
+            CursorLockMode previousLock = Cursor.lockState;
+            bool lockOverridden = previousLock != CursorLockMode.None;
+            if (!visibilityOverridden && !lockOverridden)
+                return;
 
-            if (Cursor.lockState !=
-                CursorLockMode.None)
+            if (lockOverridden)
+                Cursor.lockState = CursorLockMode.None;
+            if (visibilityOverridden)
+                Cursor.visible = true;
+
+            // Repeated corrections indicate another UI path is fighting for
+            // cursor ownership. Sample only once per diagnostic window.
+            _cursorCorrectionsInWindow++;
+            if (Time.unscaledTime - _cursorWindowStartTime < 3f)
+                return;
+
+            if (_cursorCorrectionsInWindow >= 5)
             {
-                Cursor.lockState =
-                    CursorLockMode.None;
+                Plugin.Log?.LogWarning(
+                    $"{Plugin.ModName}: [EditorCursorOwnershipConflict] " +
+                    $"corrections3s={_cursorCorrectionsInWindow} " +
+                    $"visibilityOverridden={visibilityOverridden} " +
+                    $"previousLock={previousLock}");
             }
+
+            _cursorWindowStartTime = Time.unscaledTime;
+            _cursorCorrectionsInWindow = 0;
         }
 
         internal static bool IsPointerOverWindow()
@@ -289,6 +335,9 @@ namespace NADA.VFX.Weapon.Editor
                 false;
             _settingsOpen = false;
             _clearAllConfirm = false;
+            _shortcutCapture = ShortcutCapture.None;
+            _shortcutError = null;
+            NadaVfxEditorStylesPanel.Close();
             _pendingBindingAction = BindingAction.None;
             _bindingError = null;
 
@@ -342,6 +391,8 @@ namespace NADA.VFX.Weapon.Editor
                 return;
 
             CaptureCursor();
+            _cursorWindowStartTime = Time.unscaledTime;
+            _cursorCorrectionsInWindow = 0;
 
             _open =
                 true;
@@ -374,6 +425,7 @@ namespace NADA.VFX.Weapon.Editor
                 _targetDetailsExpanded =
                     false;
                 _clearAllConfirm = false;
+                NadaVfxEditorStylesPanel.OnTargetChanged();
 
                 ClearEffectDrag();
                 ClearTransientBlockActions();
@@ -393,6 +445,8 @@ namespace NADA.VFX.Weapon.Editor
         private static void DrawWindow(
             int windowId)
         {
+            // Capture before any focused text field can consume KeyDown.
+            CaptureEditorShortcut();
             DrawTitleBar();
 
             GUILayout.Space(
@@ -418,6 +472,7 @@ namespace NADA.VFX.Weapon.Editor
                 _targetDetailsExpanded =
                     false;
                 _clearAllConfirm = false;
+                NadaVfxEditorStylesPanel.OnTargetChanged();
 
                 _inspectorScrollPosition =
                     Vector2.zero;
@@ -431,6 +486,12 @@ namespace NADA.VFX.Weapon.Editor
 
             DrawTargetCard(
                 target);
+
+            if (NadaVfxEditorStylesPanel.IsOpen)
+                NadaVfxEditorStylesPanel.Draw(target,
+                    _targetCardStyle, _sectionHeaderStyle, _bodyStyle,
+                    _mutedStyle, _warningStyle, _addButtonStyle,
+                    _themeOptionStyle, _styleTextFieldStyle, _styleTextAreaStyle);
 
             if (_settingsOpen)
                 DrawEditorSettings();
@@ -503,6 +564,7 @@ namespace NADA.VFX.Weapon.Editor
             _bindingError = null;
             _addPickerOpen = false;
             _clearAllConfirm = false;
+            NadaVfxEditorStylesPanel.OnTargetChanged();
             ClearEffectDrag();
             ClearTransientBlockActions();
 
@@ -614,15 +676,26 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.FlexibleSpace();
 
-            if (GUILayout.Button(
-                    _settingsOpen
-                        ? "Hide Settings"
-                        : "Settings",
-                    _settingsButtonStyle,
-                    GUILayout.Width(84f),
-                    GUILayout.Height(20f)))
+            if (GUILayout.Button("Styles",
+                    NadaVfxEditorStylesPanel.IsOpen ? _stylesButtonStyle : _settingsButtonStyle,
+                    GUILayout.Width(70f), GUILayout.Height(20f)))
+            {
+                NadaVfxEditorStylesPanel.Toggle();
+                if (NadaVfxEditorStylesPanel.IsOpen)
+                {
+                    _settingsOpen = false;
+                    _themeDropdownOpen = false;
+                }
+            }
+            GUILayout.Space(4f);
+
+            if (GUILayout.Button("Settings",
+                    _settingsOpen ? _stylesButtonStyle : _settingsButtonStyle,
+                    GUILayout.Width(84f), GUILayout.Height(20f)))
             {
                 _settingsOpen = !_settingsOpen;
+                if (_settingsOpen && NadaVfxEditorStylesPanel.IsOpen)
+                    NadaVfxEditorStylesPanel.Toggle();
                 if (!_settingsOpen)
                     _themeDropdownOpen = false;
             }
@@ -721,27 +794,6 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(3f);
-            GUILayout.BeginHorizontal();
-            bool previousBindingButtonEnabled = GUI.enabled;
-            bool invalidNative = target.SourceKind == NadaWeaponLocalSourceKind.InvalidNative;
-            GUI.enabled = previousBindingButtonEnabled && !invalidNative;
-            if (GUILayout.Button(
-                    target.IsReadOnly ? "Unbind Weapon" : "Bind to Weapon",
-                    _headerActionButtonStyle,
-                    GUILayout.Width(120f), GUILayout.Height(21f)))
-            {
-                _pendingBindingAction = target.IsReadOnly
-                    ? BindingAction.Unbind
-                    : BindingAction.Bind;
-            }
-            GUI.enabled = previousBindingButtonEnabled;
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-
-            if (!string.IsNullOrEmpty(_bindingError))
-                GUILayout.Label(_bindingError, _warningStyle);
-
             if (_targetDetailsExpanded)
             {
                 GUILayout.Space(
@@ -756,69 +808,60 @@ namespace NADA.VFX.Weapon.Editor
 
                 DrawSingleInfoRow(
                     "Visual Root",
-                    string.IsNullOrWhiteSpace(
-                        target.VisualRootName)
+                    string.IsNullOrWhiteSpace(target.VisualDisplayName)
                         ? "Unknown"
-                        : target.VisualRootName);
-
-                if (target.IsReadOnly &&
-                    target.BoundViewState?.RigTransform != null)
-                {
-                    VfxTransformState rig = target.BoundViewState.RigTransform;
-                    DrawSingleInfoRow(
-                        "Rig Pos",
-                        $"({rig.XOffset:0.###}, {rig.YOffset:0.###}, {rig.ZOffset:0.###})");
-                    DrawSingleInfoRow(
-                        "Rig Rot",
-                        $"({rig.XRotation:0.###}, {rig.YRotation:0.###}, {rig.ZRotation:0.###})");
-                }
-            }
-
-            WeaponVfxState targetState = NadaVfxEditorWorkingState.State;
-            int effectCount = targetState?.Effects?.Count ?? 0;
-            if ((effectCount > 0 || _clearAllConfirm) &&
-                !NadaVfxEditorWorkingState.IsReadOnly)
-            {
-                GUILayout.Space(3f);
-                GUILayout.BeginHorizontal();
-                GUILayout.FlexibleSpace();
-                if (_clearAllConfirm)
-                {
-                    GUILayout.Label($"Clear all {effectCount} effects?", _warningStyle);
-                    if (GUILayout.Button("Confirm", _headerActionButtonStyle,
-                            GUILayout.Width(60f), GUILayout.Height(20f)))
-                    {
-                        // Use the editor's draft mutation path, not raw list removal.
-                        var ids = new List<uint>();
-                        if (targetState?.Effects != null)
-                            foreach (VfxEffectBlock effect in targetState.Effects)
-                                if (effect != null) ids.Add(effect.InstanceId);
-                        bool changed = false;
-                        foreach (uint id in ids)
-                            if (NadaVfxEditorWorkingState.TryDeleteEffect(id, out uint? _))
-                                changed = true;
-                        _clearAllConfirm = false;
-                        if (changed)
-                        {
-                            _selectedInstanceId = null;
-                            ClearTransientBlockActions();
-                            ClearEffectDrag();
-                            RefreshPreview();
-                        }
-                    }
-                    if (GUILayout.Button("Cancel", _detailsButtonStyle,
-                            GUILayout.Width(52f), GUILayout.Height(20f)))
-                        _clearAllConfirm = false;
-                }
-                else if (GUILayout.Button("Clear All", _detailsButtonStyle,
-                             GUILayout.Width(64f), GUILayout.Height(20f)))
-                {
-                    _clearAllConfirm = true;
-                }
-                GUILayout.EndHorizontal();
+                        : target.VisualDisplayName);
             }
 
             GUILayout.EndVertical();
+        }
+
+        private static void DrawClearAllConfirmation()
+        {
+            WeaponVfxState state = NadaVfxEditorWorkingState.State;
+            int count = state?.Effects?.Count ?? 0;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Clear all {count} effects?", _warningStyle);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Confirm", _addButtonStyle,
+                    GUILayout.Width(76f), GUILayout.Height(22f)))
+            {
+                // Use the draft mutation API so runtime reconciliation sees
+                // the same change as deleting blocks individually.
+                var ids = new List<uint>();
+                if (state?.Effects != null)
+                    foreach (VfxEffectBlock block in state.Effects)
+                        if (block != null)
+                            ids.Add(block.InstanceId);
+
+                bool changed = false;
+                foreach (uint id in ids)
+                    if (NadaVfxEditorWorkingState.TryDeleteEffect(id, out uint? _))
+                        changed = true;
+                _clearAllConfirm = false;
+                if (changed)
+                {
+                    _selectedInstanceId = null;
+                    ClearTransientBlockActions();
+                    ClearEffectDrag();
+                    RefreshPreview();
+                }
+            }
+            if (GUILayout.Button("Cancel", _addButtonStyle,
+                    GUILayout.Width(60f), GUILayout.Height(22f)))
+                _clearAllConfirm = false;
+            GUILayout.EndHorizontal();
+        }
+
+        // Called by the panel after WorkingState atomically replaces a draft.
+        internal static void OnStylesDraftReplaced()
+        {
+            _selectedInstanceId = null;
+            _inspectorScrollPosition = Vector2.zero;
+            _clearAllConfirm = false;
+            ClearTransientBlockActions();
+            ClearEffectDrag();
+            RefreshPreview();
         }
 
         private static bool _themeDropdownOpen;
@@ -910,7 +953,158 @@ namespace NADA.VFX.Weapon.Editor
                 "Allow Movement",
                 NadaVfxEditorConfig.AllowMovementWhileEditing);
 
+            GUILayout.Space(3f);
+            DrawShortcutSetting("Open / Close Editor", NadaVfxEditorConfig.ToggleHotkey,
+                ShortcutCapture.Toggle);
+            DrawShortcutSetting("Bind to Weapon", NadaVfxEditorConfig.BindHotkey,
+                ShortcutCapture.Bind);
+            DrawShortcutSetting("Unbind Weapon", NadaVfxEditorConfig.UnbindHotkey,
+                ShortcutCapture.Unbind);
+            if (!string.IsNullOrEmpty(_shortcutError))
+                GUILayout.Label(_shortcutError, _warningStyle);
+
             GUILayout.EndVertical();
+        }
+
+        private static void DrawShortcutSetting(
+            string label,
+            BepInEx.Configuration.ConfigEntry<BepInEx.Configuration.KeyboardShortcut> setting,
+            ShortcutCapture capture)
+        {
+            if (setting == null)
+                return;
+
+            GUILayout.BeginHorizontal(GUILayout.Height(22f));
+            GUILayout.Label(label, _bodyStyle,
+                GUILayout.Width(118f), GUILayout.Height(20f));
+            GUILayout.Space(6f);
+
+            bool recording = _shortcutCapture == capture;
+            string current = setting.Value.MainKey == KeyCode.None
+                ? "Set Key"
+                : setting.Value.ToString();
+            if (GUILayout.Button(recording ? "Press a key..." : current,
+                    _themeOptionStyle,
+                    GUILayout.Width(126f), GUILayout.Height(20f)))
+            {
+                _shortcutCapture = recording ? ShortcutCapture.None : capture;
+                _shortcutError = null;
+            }
+
+            GUILayout.Space(4f);
+            bool enabled = GUI.enabled;
+            bool isToggle = capture == ShortcutCapture.Toggle;
+            GUI.enabled = enabled &&
+                (isToggle || setting.Value.MainKey != KeyCode.None);
+            if (GUILayout.Button(isToggle ? "Reset" : "Clear", _themeOptionStyle,
+                    GUILayout.Width(48f), GUILayout.Height(20f)))
+            {
+                if (isToggle)
+                {
+                    var defaultKey = new BepInEx.Configuration.KeyboardShortcut(KeyCode.F6);
+                    if (MatchesShortcut(defaultKey, NadaVfxEditorConfig.BindHotkey?.Value) ||
+                        MatchesShortcut(defaultKey, NadaVfxEditorConfig.UnbindHotkey?.Value))
+                    {
+                        _shortcutError = "F6 is already assigned to another editor shortcut.";
+                    }
+                    else
+                    {
+                        setting.Value = defaultKey;
+                        _shortcutError = null;
+                    }
+                }
+                else
+                {
+                    setting.Value = BepInEx.Configuration.KeyboardShortcut.Empty;
+                    _shortcutError = null;
+                }
+                if (recording)
+                    _shortcutCapture = ShortcutCapture.None;
+            }
+            GUI.enabled = enabled;
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+        }
+
+        private static void CaptureEditorShortcut()
+        {
+            if (_shortcutCapture == ShortcutCapture.None ||
+                Event.current.type != EventType.KeyDown)
+                return;
+
+            Event current = Event.current;
+            KeyCode key = current.keyCode;
+            if (key == KeyCode.Escape)
+            {
+                _shortcutCapture = ShortcutCapture.None;
+                _shortcutError = null;
+                current.Use();
+                return;
+            }
+
+            // Modifier key presses alone are not valid shortcuts.
+            if (key == KeyCode.None || IsModifierKey(key))
+            {
+                current.Use();
+                return;
+            }
+
+            var modifiers = new List<KeyCode>();
+            if (current.shift)
+                modifiers.Add(KeyCode.LeftShift);
+            if (current.control)
+                modifiers.Add(KeyCode.LeftControl);
+            if (current.alt)
+                modifiers.Add(KeyCode.LeftAlt);
+            if (current.command)
+                modifiers.Add(KeyCode.LeftCommand);
+
+            var candidate = new BepInEx.Configuration.KeyboardShortcut(
+                key, modifiers.ToArray());
+            bool duplicate =
+                (_shortcutCapture != ShortcutCapture.Toggle &&
+                 MatchesShortcut(candidate, NadaVfxEditorConfig.ToggleHotkey?.Value)) ||
+                (_shortcutCapture != ShortcutCapture.Bind &&
+                 MatchesShortcut(candidate, NadaVfxEditorConfig.BindHotkey?.Value)) ||
+                (_shortcutCapture != ShortcutCapture.Unbind &&
+                 MatchesShortcut(candidate, NadaVfxEditorConfig.UnbindHotkey?.Value));
+
+            if (duplicate)
+            {
+                _shortcutError = "This shortcut is already used by the editor.";
+            }
+            else
+            {
+                var destination = _shortcutCapture == ShortcutCapture.Toggle
+                    ? NadaVfxEditorConfig.ToggleHotkey
+                    : _shortcutCapture == ShortcutCapture.Bind
+                        ? NadaVfxEditorConfig.BindHotkey
+                        : NadaVfxEditorConfig.UnbindHotkey;
+                if (destination != null)
+                    destination.Value = candidate;
+                _shortcutError = null;
+            }
+
+            _shortcutCapture = ShortcutCapture.None;
+            current.Use();
+        }
+
+        private static bool MatchesShortcut(
+            BepInEx.Configuration.KeyboardShortcut a,
+            BepInEx.Configuration.KeyboardShortcut? b)
+        {
+            return b.HasValue &&
+                   a.MainKey == b.Value.MainKey &&
+                   string.Equals(a.ToString(), b.Value.ToString(),
+                       StringComparison.Ordinal);
+        }
+
+        private static bool IsModifierKey(KeyCode key)
+        {
+            return key == KeyCode.LeftShift || key == KeyCode.RightShift ||
+                   key == KeyCode.LeftControl || key == KeyCode.RightControl ||
+                   key == KeyCode.LeftAlt || key == KeyCode.RightAlt ||
+                   key == KeyCode.LeftCommand || key == KeyCode.RightCommand;
         }
 
         private static void DrawVisibilitySetting(
@@ -949,72 +1143,76 @@ namespace NADA.VFX.Weapon.Editor
         private static void DrawEffectsStrip(
             NadaVfxEditorTarget target)
         {
-            GUILayout.BeginVertical(
-                _panelStyle);
-
-            GUILayout.BeginHorizontal();
-
-            GUILayout.Label(
-                "EFFECTS",
-                _sectionHeaderStyle);
-
-            GUILayout.FlexibleSpace();
-
-            bool previousEnabled =
-                GUI.enabled;
+            GUILayout.BeginVertical(_panelStyle);
 
             bool readOnly = NadaVfxEditorWorkingState.IsReadOnly;
+            bool hasTarget = target?.ItemData != null;
+            bool invalidNative = target?.SourceKind == NadaWeaponLocalSourceKind.InvalidNative;
+            bool previousEnabled = GUI.enabled;
 
             if (readOnly)
+            {
                 _addPickerOpen = false;
+                _clearAllConfirm = false;
+            }
 
-            GUI.enabled =
-                previousEnabled &&
-                target != null &&
-                !readOnly;
+            // One horizontal action row leaves all available width to the
+            // effect chips beneath it, including when the window is compact.
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("EFFECTS", _sectionHeaderStyle,
+                GUILayout.Width(52f), GUILayout.Height(EffectActionHeight));
+            GUILayout.FlexibleSpace();
 
-            if (GUILayout.Button(
-                    _addPickerOpen
-                        ? "Close Add"
-                        : "+ Add Effect",
+            GUI.enabled = previousEnabled && hasTarget && !readOnly && !invalidNative;
+            if (GUILayout.Button(_addPickerOpen ? "Close Add" : "+ Add Effect",
                     _addButtonStyle,
-                    GUILayout.Width(84f),
-                    GUILayout.Height(21f)))
+                    GUILayout.Width(88f), GUILayout.Height(EffectActionHeight)))
             {
                 ClearEffectDrag();
-
-                _addPickerOpen =
-                    !_addPickerOpen;
+                _addPickerOpen = !_addPickerOpen;
             }
 
-            GUI.enabled =
-                previousEnabled;
+            GUILayout.Space(3f);
+            GUI.enabled = previousEnabled && hasTarget && !readOnly && !invalidNative &&
+                          NadaVfxEditorWorkingState.EffectCount > 0;
+            if (GUILayout.Button("Clear All", _addButtonStyle,
+                    GUILayout.Width(74f), GUILayout.Height(EffectActionHeight)))
+                _clearAllConfirm = true;
 
+            GUILayout.Space(3f);
+            GUI.enabled = previousEnabled && hasTarget && !invalidNative;
+            if (GUILayout.Button(readOnly ? "Unbind Weapon" : "Bind to Weapon",
+                    _addButtonStyle,
+                    GUILayout.Width(106f), GUILayout.Height(EffectActionHeight)))
+            {
+                _pendingBindingAction = readOnly ? BindingAction.Unbind : BindingAction.Bind;
+            }
+
+            GUI.enabled = previousEnabled;
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(
-                2f);
-
-            if (readOnly)
-            {
-                GUILayout.Label(
-                    target?.SourceKind == NadaWeaponLocalSourceKind.InvalidNative
-                        ? "Saved native state is invalid. Editing is disabled."
-                        : "This weapon is bound. Unbind it to add, remove, reorder, or edit effects.",
+            if (readOnly && invalidNative)
+                GUILayout.Label("Saved native state is invalid. Editing is disabled.",
+                    _warningStyle);
+            else if (readOnly)
+                GUILayout.Label("This weapon is bound. Unbind it to edit effects.",
                     _mutedStyle);
-            }
 
-            DrawWrappedEffects(
-                target);
-
+            GUILayout.Space(3f);
+            DrawWrappedEffects(target);
             if (_addPickerOpen)
             {
-                GUILayout.Space(
-                    4f);
-
-                DrawCompactEffectPicker(
-                    target);
+                GUILayout.Space(4f);
+                DrawCompactEffectPicker(target);
             }
+
+            if (_clearAllConfirm && !readOnly)
+            {
+                GUILayout.Space(4f);
+                DrawClearAllConfirmation();
+            }
+            if (!string.IsNullOrEmpty(_bindingError))
+                GUILayout.Label(_bindingError, _warningStyle);
 
             GUILayout.EndVertical();
         }
@@ -1587,7 +1785,7 @@ namespace NADA.VFX.Weapon.Editor
             bool readOnly = NadaVfxEditorWorkingState.IsReadOnly;
 
             GUILayout.Label(
-                readOnly ? "INSPECT (READ ONLY)" : "EDIT",
+                readOnly ? "(READ ONLY)" : "EDIT",
                 _sectionHeaderStyle);
 
             if (readOnly &&
@@ -2147,7 +2345,8 @@ namespace NADA.VFX.Weapon.Editor
 
                 focusedControl.StartsWith(
                     NumericControlPrefix,
-                    StringComparison.Ordinal);
+                    StringComparison.Ordinal) ||
+                NadaVfxEditorStylesPanel.IsTextInputFocused(focusedControl);
         }
 
         private static string GetFriendlyTypeName(
@@ -2645,13 +2844,16 @@ namespace NADA.VFX.Weapon.Editor
                 NadaVfxEditorThemes.Get(
                     currentPreset);
 
-            Texture2D buttonBackground =
-                CreateTexture(
-                    theme.ButtonBackground);
-
-            Texture2D buttonHoverBackground =
-                CreateTexture(
-                    theme.ButtonHoverBackground);
+            // Neutral one-pixel strokes distinguish ordinary controls from
+            // active panel tabs, which retain the brighter accent outline.
+            Color32 buttonStroke = new Color32(
+                theme.MutedText.r, theme.MutedText.g, theme.MutedText.b, 110);
+            Color32 buttonHoverStroke = new Color32(
+                theme.MutedText.r, theme.MutedText.g, theme.MutedText.b, 175);
+            Texture2D roundedButtonBackground =
+                CreateRoundedOutlineTexture(theme.ButtonBackground, buttonStroke);
+            Texture2D roundedButtonHover =
+                CreateRoundedOutlineTexture(theme.ButtonHoverBackground, buttonHoverStroke);
 
             Texture2D inspectorAccentBackground =
                 CreateTexture(
@@ -2991,14 +3193,10 @@ fontSize = 12,
                             1)
                 };
 
-            _closeButtonStyle.normal.background =
-                buttonBackground;
-
-            _closeButtonStyle.hover.background =
-                buttonHoverBackground;
-
-            _closeButtonStyle.active.background =
-                buttonHoverBackground;
+            _closeButtonStyle.border = new RectOffset(7, 7, 7, 7);
+            _closeButtonStyle.normal.background = roundedButtonBackground;
+            _closeButtonStyle.hover.background = roundedButtonHover;
+            _closeButtonStyle.active.background = roundedButtonHover;
 
             _closeButtonStyle.normal.textColor =
                 theme.MutedText;
@@ -3015,6 +3213,22 @@ fontSize = 12,
 
             _settingsButtonStyle.hover.textColor =
                 theme.AccentPrimary;
+            _settingsButtonStyle.border = new RectOffset(7, 7, 7, 7);
+            _settingsButtonStyle.normal.background = roundedButtonBackground;
+            _settingsButtonStyle.hover.background = roundedButtonHover;
+            _settingsButtonStyle.active.background =
+                _settingsButtonStyle.hover.background;
+
+            // Both idle tabs use the same neutral style. The shared selected
+            // style only appears while the corresponding panel is open.
+            _stylesButtonStyle = new GUIStyle(_settingsButtonStyle);
+            _stylesButtonStyle.normal.textColor = theme.AccentPrimary;
+            _stylesButtonStyle.hover.textColor = theme.PrimaryText;
+            _stylesButtonStyle.normal.background =
+                CreateRoundedOutlineTexture(theme.ButtonBackground, theme.AccentPrimary);
+            _stylesButtonStyle.hover.background =
+                CreateRoundedOutlineTexture(theme.ButtonHoverBackground, theme.AccentPrimary);
+            _stylesButtonStyle.active.background = _stylesButtonStyle.hover.background;
 
             _themeOptionStyle =
                 new GUIStyle(_settingsButtonStyle);
@@ -3022,11 +3236,8 @@ fontSize = 12,
             _themeOptionStyle.border =
                 new RectOffset(7, 7, 7, 7);
 
-            _themeOptionStyle.normal.background =
-                CreateRoundedTexture(theme.ButtonBackground, 6f);
-
-            _themeOptionStyle.hover.background =
-                CreateRoundedTexture(theme.ButtonHoverBackground, 6f);
+            _themeOptionStyle.normal.background = roundedButtonBackground;
+            _themeOptionStyle.hover.background = roundedButtonHover;
 
             _themeOptionStyle.active.background =
                 _themeOptionStyle.hover.background;
@@ -3035,8 +3246,9 @@ fontSize = 12,
                 new GUIStyle(
                     GUI.skin.button)
                 {
-                    fontSize = 9,
-
+                    fontSize = 10,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter,
                     padding =
                         new RectOffset(
                             5,
@@ -3045,14 +3257,10 @@ fontSize = 12,
                             2)
                 };
 
-            _addButtonStyle.normal.background =
-                buttonBackground;
-
-            _addButtonStyle.hover.background =
-                buttonHoverBackground;
-
-            _addButtonStyle.active.background =
-                buttonHoverBackground;
+            _addButtonStyle.border = new RectOffset(7, 7, 7, 7);
+            _addButtonStyle.normal.background = roundedButtonBackground;
+            _addButtonStyle.hover.background = roundedButtonHover;
+            _addButtonStyle.active.background = roundedButtonHover;
 
             _addButtonStyle.normal.textColor =
                 theme.AccentPrimary;
@@ -3108,15 +3316,8 @@ fontSize = 12,
                     7,
                     7);
 
-            _pickerButtonStyle.normal.background =
-                CreateRoundedTexture(
-                    theme.ButtonBackground,
-                    6f);
-
-            _pickerButtonStyle.hover.background =
-                CreateRoundedTexture(
-                    theme.ButtonHoverBackground,
-                    6f);
+            _pickerButtonStyle.normal.background = roundedButtonBackground;
+            _pickerButtonStyle.hover.background = roundedButtonHover;
 
             _pickerButtonStyle.active.background =
                 _pickerButtonStyle.hover.background;
@@ -3165,14 +3366,10 @@ fontSize = 12,
                             1)
                 };
 
-            _detailsButtonStyle.normal.background =
-                buttonBackground;
-
-            _detailsButtonStyle.hover.background =
-                buttonHoverBackground;
-
-            _detailsButtonStyle.active.background =
-                buttonHoverBackground;
+            _detailsButtonStyle.border = new RectOffset(7, 7, 7, 7);
+            _detailsButtonStyle.normal.background = roundedButtonBackground;
+            _detailsButtonStyle.hover.background = roundedButtonHover;
+            _detailsButtonStyle.active.background = roundedButtonHover;
 
             _detailsButtonStyle.normal.textColor =
                 theme.MutedText;
@@ -3180,47 +3377,31 @@ fontSize = 12,
             _detailsButtonStyle.hover.textColor =
                 theme.TargetText;
 
-            _headerActionButtonStyle =
-                new GUIStyle(
-                    GUI.skin.button)
-                {
-                    fontSize = 10,
+            _headerActionButtonStyle = new GUIStyle(_addButtonStyle)
+            {
+                margin = new RectOffset(2, 2, 0, 0)
+            };
 
-                    fontStyle =
-                        FontStyle.Bold,
+            Texture2D inputBackground = CreateRoundedTexture(theme.PickerBackground, 6f);
+            Texture2D inputFocusedBackground =
+                CreateRoundedOutlineTexture(theme.PickerBackground, theme.AccentPrimary);
+            _styleTextFieldStyle = new GUIStyle(GUI.skin.textField);
+            _styleTextFieldStyle.border = new RectOffset(7, 7, 7, 7);
+            _styleTextFieldStyle.normal.background = inputBackground;
+            _styleTextFieldStyle.focused.background = inputFocusedBackground;
+            _styleTextFieldStyle.hover.background = inputBackground;
+            _styleTextFieldStyle.normal.textColor = theme.PrimaryText;
+            _styleTextFieldStyle.focused.textColor = theme.PrimaryText;
+            _styleTextFieldStyle.hover.textColor = theme.PrimaryText;
 
-                    alignment =
-                        TextAnchor.MiddleCenter,
-
-                    padding =
-                        new RectOffset(
-                            5,
-                            5,
-                            2,
-                            2),
-
-                    margin =
-                        new RectOffset(
-                            2,
-                            2,
-                            0,
-                            0)
-                };
-
-            _headerActionButtonStyle.normal.background =
-                buttonBackground;
-
-            _headerActionButtonStyle.hover.background =
-                buttonHoverBackground;
-
-            _headerActionButtonStyle.active.background =
-                buttonHoverBackground;
-
-            _headerActionButtonStyle.normal.textColor =
-                theme.PrimaryText;
-
-            _headerActionButtonStyle.hover.textColor =
-                theme.AccentTertiary;
+            _styleTextAreaStyle = new GUIStyle(GUI.skin.textArea);
+            _styleTextAreaStyle.border = new RectOffset(7, 7, 7, 7);
+            _styleTextAreaStyle.normal.background = inputBackground;
+            _styleTextAreaStyle.focused.background = inputFocusedBackground;
+            _styleTextAreaStyle.hover.background = inputBackground;
+            _styleTextAreaStyle.normal.textColor = theme.PrimaryText;
+            _styleTextAreaStyle.focused.textColor = theme.PrimaryText;
+            _styleTextAreaStyle.hover.textColor = theme.PrimaryText;
 
             _effectOnStyle =
                 new GUIStyle(
@@ -3414,6 +3595,9 @@ fontSize = 12,
             _warningStyle = null;
             _closeButtonStyle = null;
             _settingsButtonStyle = null;
+            _stylesButtonStyle = null;
+            _styleTextFieldStyle = null;
+            _styleTextAreaStyle = null;
             _themeOptionStyle = null;
             _addButtonStyle = null;
             _pickerStyle = null;
@@ -3456,6 +3640,53 @@ fontSize = 12,
             texture.Apply(false, true);
             OwnedTextures.Add(texture);
             return texture;
+        }
+
+        private static Texture2D CreateRoundedOutlineTexture(
+            Color32 fill, Color32 stroke)
+        {
+            const int size = 20;
+            const float radius = 6f;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "NADA Outlined Rounded UI",
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float outer = RoundedCoverage(x + .5f, y + .5f, size, radius);
+                float inner = RoundedCoverage(x - .5f, y - .5f, size - 2, radius - 1f);
+                float rim = Mathf.Clamp01(outer - inner);
+                float alpha = inner * fill.a + rim * stroke.a;
+                if (alpha <= 0f)
+                    continue;
+                // Premultiplied contribution gives a soft 1px outline.
+                float r = (inner * fill.r * fill.a + rim * stroke.r * stroke.a) / alpha;
+                float g = (inner * fill.g * fill.a + rim * stroke.g * stroke.a) / alpha;
+                float b = (inner * fill.b * fill.a + rim * stroke.b * stroke.a) / alpha;
+                pixels[y * size + x] = new Color32(
+                    (byte)Mathf.Clamp(r, 0f, 255f),
+                    (byte)Mathf.Clamp(g, 0f, 255f),
+                    (byte)Mathf.Clamp(b, 0f, 255f),
+                    (byte)Mathf.Clamp(alpha, 0f, 255f));
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            OwnedTextures.Add(texture);
+            return texture;
+        }
+
+        private static float RoundedCoverage(float x, float y, int size, float radius)
+        {
+            float dx = Mathf.Max(radius - x, 0f);
+            dx = Mathf.Max(dx, x - (size - radius));
+            float dy = Mathf.Max(radius - y, 0f);
+            dy = Mathf.Max(dy, y - (size - radius));
+            return Mathf.Clamp01(radius + .5f - Mathf.Sqrt(dx * dx + dy * dy));
         }
 
         private static Texture2D CreateTexture(

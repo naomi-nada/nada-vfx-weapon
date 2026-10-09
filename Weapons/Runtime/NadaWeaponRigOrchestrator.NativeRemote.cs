@@ -5,7 +5,6 @@ using NADA.VFX.Weapon.Runtime.Binding;
 using NADA.VFX.Weapon.Runtime.Formation;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
-using NADA.VFX.Weapon.Modules.Motion;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
@@ -66,11 +65,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (rig == null)
                 return false;
 
-            // The legacy orbital scaffold remains transitional structure only.
-            // context.State is an explicitly empty placeholder on this path;
-            // every actual effect is bound from the supplied blockState below.
-            NadaOrbitalsRigAssembly.EnsureLegacyOrbitalsRigWithoutOrbs(
-                rig, context.State, root.name);
+            // Native blocks build their own visuals, motion, and pools.
+            // Do not construct shared legacy effects or resolve legacy state.
+            NadaOrbitalsRigAssembly.EnsureNativeOrbitalsScaffold(
+                rig, root.name);
 
             Transform effects = NadaRigPaths.FindLocalEffectsRoot(rig);
             if (effects == null)
@@ -118,10 +116,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 effects, blockState, root.name);
 
             NadaRigTransformApplier.Apply(rig, blockState.RigTransform);
-            NadaMotionBinder.BindOrbitalsRigFollow(
-                catalog.OrbitalsRigRootTransform, rig, Vector3.zero,
-                Quaternion.Euler(-90f, 0f, 0f));
-
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: [RemoteNativeRigApplied] " +
                 $"root='{root.name}' visual='{visual.name}' " +

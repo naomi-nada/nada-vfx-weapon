@@ -1002,33 +1002,39 @@ namespace NADA.VFX.Weapon.Editor
                 NadaVfxEditorThemes.Get(
                     currentPreset);
 
+            Color32 subtleStroke = new Color32(
+                theme.MutedText.r, theme.MutedText.g, theme.MutedText.b, 110);
+            Color32 hoverStroke = new Color32(
+                theme.MutedText.r, theme.MutedText.g, theme.MutedText.b, 175);
+
+            // Section foldout frames should recede into the inspector,
+            // unlike the brighter strokes used on actionable controls.
+            Color32 sectionStroke = new Color32(
+                theme.WindowBackground.r,
+                theme.WindowBackground.g,
+                theme.WindowBackground.b,
+                255);
             Texture2D sectionBackground =
-                CreateTexture(
-                    theme.PanelBackground);
+                CreateRoundedTexture(theme.PanelBackground, sectionStroke);
 
             Texture2D sectionHoverBackground =
-                CreateTexture(
-                    theme.ButtonHoverBackground);
+                CreateRoundedTexture(theme.ButtonHoverBackground, sectionStroke);
 
             Texture2D segmentBackground =
-                CreateTexture(
-                    theme.SegmentBackground);
+                CreateRoundedTexture(theme.SegmentBackground, subtleStroke);
 
             Texture2D segmentHoverBackground =
-                CreateTexture(
-                    theme.SegmentHoverBackground);
+                CreateRoundedTexture(theme.SegmentHoverBackground, hoverStroke);
 
             Texture2D selectedSegmentBackground =
-                CreateTexture(
+                CreateRoundedTexture(
                     theme.SelectedSegmentBackground);
 
             Texture2D resetBackground =
-                CreateTexture(
-                    theme.ResetBackground);
+                CreateRoundedTexture(theme.ResetBackground, subtleStroke);
 
             Texture2D resetHoverBackground =
-                CreateTexture(
-                    theme.ResetHoverBackground);
+                CreateRoundedTexture(theme.ResetHoverBackground, hoverStroke);
 
             _sectionButtonStyle =
                 new GUIStyle(
@@ -1049,6 +1055,7 @@ namespace NADA.VFX.Weapon.Editor
                             1)
                 };
 
+            _sectionButtonStyle.border = new RectOffset(7, 7, 7, 7);
             _sectionButtonStyle.normal.background =
                 sectionBackground;
 
@@ -1136,6 +1143,13 @@ namespace NADA.VFX.Weapon.Editor
                             2)
                 };
 
+            // Numeric editor fields share the same rounded geometry as the
+            // shell inputs without modifying Unity's global GUI.skin.
+            _valueFieldStyle.border = new RectOffset(7, 7, 7, 7);
+            _valueFieldStyle.normal.background =
+                CreateRoundedTexture(theme.PickerBackground);
+            _valueFieldStyle.hover.background = _valueFieldStyle.normal.background;
+            _valueFieldStyle.focused.background = _valueFieldStyle.normal.background;
             _valueFieldStyle.normal.textColor =
                 theme.PrimaryText;
 
@@ -1211,6 +1225,7 @@ namespace NADA.VFX.Weapon.Editor
                             1)
                 };
 
+            _segmentButtonStyle.border = new RectOffset(7, 7, 7, 7);
             _segmentButtonStyle.normal.background =
                 segmentBackground;
 
@@ -1220,8 +1235,9 @@ namespace NADA.VFX.Weapon.Editor
             _segmentButtonStyle.active.background =
                 segmentHoverBackground;
 
+            // Unselected mode labels still need to be readable on dark themes.
             _segmentButtonStyle.normal.textColor =
-                theme.MutedText;
+                Color.Lerp(theme.MutedText, theme.PrimaryText, 0.55f);
 
             _segmentButtonStyle.hover.textColor =
                 theme.PrimaryText;
@@ -1262,6 +1278,7 @@ namespace NADA.VFX.Weapon.Editor
                             1)
                 };
 
+            _resetButtonStyle.border = new RectOffset(7, 7, 7, 7);
             _resetButtonStyle.normal.background =
                 resetBackground;
 
@@ -1308,42 +1325,62 @@ namespace NADA.VFX.Weapon.Editor
                 false;
         }
 
-        private static Texture2D CreateTexture(
-            Color color)
+        private static Texture2D CreateRoundedTexture(
+            Color32 color, Color32? outline = null)
         {
-            var texture =
-                new Texture2D(
-                    1,
-                    1,
-                    TextureFormat.RGBA32,
-                    false)
+            const int size = 20;
+            const float radius = 6f;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "NADA Editor Control Rounded UI",
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float px = x + .5f;
+                float py = y + .5f;
+                float outer = RoundedCoverage(px, py, size, radius);
+                if (!outline.HasValue)
                 {
-                    name =
-                        "NADA VFX Editor Control Runtime UI",
+                    pixels[y * size + x] = new Color32(color.r, color.g, color.b,
+                        (byte)(color.a * outer));
+                    continue;
+                }
 
-                    hideFlags =
-                        HideFlags.HideAndDontSave,
+                float inner = RoundedCoverage(px - 1f, py - 1f, size - 2f, radius - 1f);
+                float rim = Mathf.Clamp01(outer - inner);
+                Color32 stroke = outline.Value;
+                float alpha = inner * color.a + rim * stroke.a;
+                if (alpha <= 0f)
+                    continue;
+                float r = (inner * color.r * color.a + rim * stroke.r * stroke.a) / alpha;
+                float g = (inner * color.g * color.a + rim * stroke.g * stroke.a) / alpha;
+                float b = (inner * color.b * color.a + rim * stroke.b * stroke.a) / alpha;
+                pixels[y * size + x] = new Color32(
+                    (byte)Mathf.Clamp(r, 0f, 255f),
+                    (byte)Mathf.Clamp(g, 0f, 255f),
+                    (byte)Mathf.Clamp(b, 0f, 255f),
+                    (byte)Mathf.Clamp(alpha, 0f, 255f));
+            }
 
-                    filterMode =
-                        FilterMode.Point,
-
-                    wrapMode =
-                        TextureWrapMode.Clamp
-                };
-
-            texture.SetPixel(
-                0,
-                0,
-                color);
-
-            texture.Apply(
-                false,
-                true);
-
-            OwnedTextures.Add(
-                texture);
-
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            OwnedTextures.Add(texture);
             return texture;
+        }
+
+        private static float RoundedCoverage(float x, float y, float size, float radius)
+        {
+            float dx = Mathf.Max(radius - x, 0f);
+            dx = Mathf.Max(dx, x - (size - radius));
+            float dy = Mathf.Max(radius - y, 0f);
+            dy = Mathf.Max(dy, y - (size - radius));
+            return Mathf.Clamp01(radius + .5f - Mathf.Sqrt(dx * dx + dy * dy));
         }
 
         private static bool IsFinite(

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.State.Defaults;
+using NADA.VFX.Weapon.Core.Persistence;
 using NADA.VFX.Weapon.Runtime.Formation;
 using NADA.VFX.Weapon.Weapons.Runtime;
 
@@ -194,6 +195,120 @@ namespace NADA.VFX.Weapon.Editor
 
             state = _activeDraft.State;
             nextInstanceId = _activeDraft.NextInstanceId;
+            return true;
+        }
+
+        // Exports inspect the actual source at click time. A bound weapon's
+        // current draft is never authoritative; native persistence is.
+        internal static bool TryGetSnapshotForExport(
+            global::ItemDrop.ItemData itemData,
+            out WeaponVfxState state,
+            out uint nextInstanceId,
+            out string reason)
+        {
+            state = null;
+            nextInstanceId = 0;
+            reason = null;
+            if (itemData == null ||
+                !object.ReferenceEquals(itemData, _targetItemData))
+            {
+                reason = "Equipped weapon changed. Try again.";
+                return false;
+            }
+
+            NadaWeaponLocalSourceSelection live =
+                NadaWeaponLocalSourceResolver.Resolve(itemData);
+            switch (live.Kind)
+            {
+                case NadaWeaponLocalSourceKind.Unbound:
+                case NadaWeaponLocalSourceKind.EditorPreview:
+                    if (!TryGetDraftForBinding(
+                            itemData, out state, out nextInstanceId))
+                    {
+                        reason = "No editable draft for this weapon.";
+                        return false;
+                    }
+                    return true;
+
+                case NadaWeaponLocalSourceKind.NativeBound:
+                    if (!_readOnly)
+                    {
+                        reason = "Weapon binding changed. Refresh the editor.";
+                        return false;
+                    }
+                    state = live.State;
+                    nextInstanceId = live.NextInstanceId;
+                    if (state == null)
+                    {
+                        reason = "Native bound state is unavailable.";
+                        return false;
+                    }
+                    return true;
+
+                case NadaWeaponLocalSourceKind.LegacyBound:
+                    // Legacy support is inspection-only. Never copy config
+                    // state into ItemData or add another runtime source.
+                    if (!_readOnly || _lastTarget?.BoundViewError != null ||
+                        _lastTarget?.BoundViewState == null)
+                    {
+                        reason = "Legacy bound view is unavailable or invalid.";
+                        return false;
+                    }
+                    state = _lastTarget.BoundViewState;
+                    uint highest = 0;
+                    foreach (VfxEffectBlock block in state.Effects)
+                        if (block != null && block.InstanceId > highest)
+                            highest = block.InstanceId;
+                    nextInstanceId = highest == uint.MaxValue ? 0 : highest + 1;
+                    return true;
+
+                default:
+                    reason = live.FailureReason ?? "Weapon state is invalid.";
+                    return false;
+            }
+        }
+
+        // Replace only the detached, unbound draft owned by this ItemData.
+        // Encode/decode is the same validation + deep-copy boundary as binding.
+        internal static bool TryReplaceDraft(
+            global::ItemDrop.ItemData itemData,
+            WeaponVfxState incoming,
+            uint nextInstanceId,
+            out string reason)
+        {
+            reason = null;
+            if (itemData == null ||
+                !object.ReferenceEquals(itemData, _targetItemData) ||
+                !CanEdit())
+            {
+                reason = "Weapon is no longer an editable unbound target.";
+                return false;
+            }
+
+            if (!WeaponVfxStateCodec.TryEncode(
+                    incoming, nextInstanceId, out byte[] bytes, out reason) ||
+                !WeaponVfxStateCodec.TryDecode(
+                    bytes, out WeaponVfxState detached,
+                    out uint detachedCursor, out reason))
+                return false;
+
+            if (!OrbitalsFormationResolver.TryResolve(
+                    detached, out OrbitalsFormationResolution formation) ||
+                formation == null || !formation.IsValid)
+            {
+                reason = formation?.FailureReason ?? "Invalid Orbital formation.";
+                return false;
+            }
+
+            InstallUnboundDraft(itemData, detached, detachedCursor);
+            _activeDraft = DraftByItemData[itemData];
+            _state = _activeDraft.State;
+            _nextNameOrdinalByTypeId = _activeDraft.NextNameOrdinalByTypeId;
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [EditorDraftReplaced] " +
+                $"effects={_state.Effects.Count} cursor={detachedCursor} " +
+                "persisted=False.");
             return true;
         }
 
