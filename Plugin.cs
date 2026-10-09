@@ -1,6 +1,5 @@
 // Made by Naomi Nada B.F.
 // ^-^
-using System;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
@@ -9,8 +8,6 @@ using HarmonyLib;
 using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.Network;
-using NADA.VFX.Weapon.Core.State;
-using NADA.VFX.Weapon.Core.Visuals;
 using NADA.VFX.Weapon.Editor;
 using NADA.VFX.Weapon.Modules.Motion;
 using NADA.VFX.Weapon.Runtime.Structure;
@@ -149,17 +146,6 @@ namespace NADA.VFX.Weapon
         {
             NadaVfxEditor.Tick();
 
-            // The native editor handles its own shortcuts through the same
-            // guarded path as its buttons. Legacy hotkeys must not compete.
-            if (!NadaVfxEditor.IsOpen)
-            {
-                if (PluginConfig.AttachHotkey.Value.IsDown())
-                    NadaEquippedRigActions.TryAttachToEquipped();
-
-                if (PluginConfig.BindHotkey.Value.IsDown())
-                    NadaEquippedRigActions.TryBindEquipped();
-            }
-
             NadaRigVisibility.TickCharacterSelectionPreview();
 
             NadaRuntimeDiagnostics.Tick();
@@ -173,11 +159,6 @@ namespace NADA.VFX.Weapon
         private void OnDestroy()
         {
             NadaVfxEditor.Shutdown();
-        }
-
-        internal void TryUnbindEquipped()
-        {
-            NadaEquippedRigActions.TryUnbindEquipped();
         }
 
         internal void RefreshExistingEquippedRigsOnly()
@@ -211,78 +192,5 @@ namespace NADA.VFX.Weapon
             NadaRigVisibility.RefreshDroppedItemVisibility();
         }
 
-        internal void SaveCurrentStyleFromManager(
-            string styleName)
-        {
-            if (string.IsNullOrWhiteSpace(
-                    styleName))
-            {
-                Log.LogInfo(
-                    $"{ModName}: [Style] no style name entered.");
-
-                return;
-            }
-
-            VfxState state =
-                VfxStateIO.FromConfig();
-
-            if (!VfxStyleStore.Save(
-                    styleName,
-                    state))
-            {
-                Log.LogInfo(
-                    $"{ModName}: [Style] failed to save style '{styleName}'.");
-
-                return;
-            }
-
-            PluginConfig.StyleName.Value =
-                string.Empty;
-
-            Config.Save();
-
-            Log.LogInfo(
-                $"{ModName}: [Style] saved '{styleName.Trim()}'.");
-        }
-
-        internal void LoadStyleIntoManager(
-            string styleName)
-        {
-            styleName =
-                string.IsNullOrWhiteSpace(
-                    styleName)
-                    ? "Default"
-                    : styleName.Trim();
-
-            if (!VfxStyleStore.TryGet(
-                    styleName,
-                    out VfxState state))
-            {
-                Log.LogInfo(
-                    $"{ModName}: [Style] could not find style '{styleName}'.");
-
-                return;
-            }
-
-            VfxStateIO.ApplyToConfig(
-                state);
-
-            if (PluginConfig.LoadStyle != null &&
-                !string.Equals(
-                    PluginConfig.LoadStyle.Value,
-                    styleName,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                PluginConfig.LoadStyle.Value =
-                    styleName;
-            }
-
-            Config.Save();
-
-            RefreshExistingEquippedRigsOnly();
-
-            Log.LogInfo(
-                $"{ModName}: [Style] loaded '{styleName}'.");
-        }
     }
 }

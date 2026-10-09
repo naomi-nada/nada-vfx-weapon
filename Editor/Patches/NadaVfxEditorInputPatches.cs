@@ -306,6 +306,55 @@ namespace NADA.VFX.Weapon.Editor.Patches
     }
 
     /// <summary>
+    /// Some third-party radial menus read Unity's legacy Input API directly,
+    /// bypassing ZInput. While a NADA text field is focused, hide those raw
+    /// key reads from other gameplay systems too. IMGUI text entry uses Event.
+    /// Only managed getter wrappers can be patched; leave native externs alone.
+    /// </summary>
+    [HarmonyPatch]
+    internal static class NadaVfxEditorRawKeyInputPatch
+    {
+        [HarmonyTargetMethods]
+        private static IEnumerable<MethodBase> TargetMethods()
+        {
+            string[] names = { "GetKey", "GetKeyDown", "GetKeyUp" };
+            System.Type[] argumentTypes = { typeof(KeyCode), typeof(string) };
+            foreach (string name in names)
+            foreach (System.Type argumentType in argumentTypes)
+            {
+                MethodInfo method = AccessTools.Method(
+                    typeof(UnityEngine.Input), name,
+                    new[] { argumentType });
+                if (method == null)
+                    continue;
+                try
+                {
+                    if (method.GetMethodBody() == null)
+                        continue;
+                }
+                catch (System.InvalidOperationException)
+                {
+                    continue;
+                }
+                catch (System.NotSupportedException)
+                {
+                    continue;
+                }
+                yield return method;
+            }
+        }
+
+        [HarmonyPrefix]
+        private static bool Prefix(ref bool __result)
+        {
+            if (!NadaVfxEditor.OwnsKeyboardInput)
+                return true;
+            __result = false;
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Inventory has its own UI update path, so freeze that path while a NADA
     /// text field owns the keyboard. Outside text entry, inventory remains
     /// available while the editor is open.

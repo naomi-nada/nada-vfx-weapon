@@ -12,17 +12,22 @@ namespace NADA.VFX.Weapon.Weapons.Targets
     /// </summary>
     internal static class NadaEquippedWeaponTargetResolver
     {
+        internal enum Hand { Right, Left }
+
         internal sealed class ResolvedTarget
         {
             internal global::ItemDrop.ItemData ItemData { get; }
             internal GameObject Root { get; }
             internal Transform VisualRoot { get; }
+            internal Hand SelectedHand { get; }
 
             internal ResolvedTarget(
                 global::ItemDrop.ItemData itemData,
                 GameObject root,
-                Transform visualRoot)
+                Transform visualRoot,
+                Hand selectedHand)
             {
+                SelectedHand = selectedHand;
                 ItemData =
                     itemData;
 
@@ -54,6 +59,7 @@ namespace NADA.VFX.Weapon.Weapons.Targets
                     player.transform,
                     "RightHand_Attach",
                     rightItem,
+                    Hand.Right,
                     out target))
             {
                 return true;
@@ -67,6 +73,26 @@ namespace NADA.VFX.Weapon.Weapons.Targets
                 player.transform,
                 "LeftHand_Attach",
                 leftItem,
+                Hand.Left,
+                out target);
+        }
+
+        // An explicitly selected empty hand must not fall back to the other.
+        internal static bool TryResolveSelected(
+            Hand hand, out ResolvedTarget target)
+        {
+            target = null;
+            global::Player player = Player.m_localPlayer;
+            if (player == null)
+                return false;
+
+            return TryResolveHand(
+                player.transform,
+                hand == Hand.Right ? "RightHand_Attach" : "LeftHand_Attach",
+                hand == Hand.Right
+                    ? NadaEquippedItemResolver.ResolveRightHandItem()
+                    : NadaEquippedItemResolver.ResolveLeftHandItem(),
+                hand,
                 out target);
         }
 
@@ -74,6 +100,7 @@ namespace NADA.VFX.Weapon.Weapons.Targets
             Transform playerTransform,
             string attachName,
             global::ItemDrop.ItemData itemData,
+            Hand hand,
             out ResolvedTarget target)
         {
             target =
@@ -111,7 +138,8 @@ namespace NADA.VFX.Weapon.Weapons.Targets
                     new ResolvedTarget(
                         itemData,
                         child.gameObject,
-                        visualRoot);
+                        visualRoot,
+                        hand);
 
                 return true;
             }

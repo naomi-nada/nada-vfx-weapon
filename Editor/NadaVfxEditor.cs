@@ -22,8 +22,8 @@ namespace NADA.VFX.Weapon.Editor
         private const string NumericControlPrefix =
             "NadaVfxFloat_";
 
-        private const float DefaultWindowWidth = 760f;
-        private const float DefaultWindowHeight = 560f;
+        private const float DefaultWindowWidth = 660f;
+        private const float DefaultWindowHeight = 720f;
 
         private const float MinimumWindowWidth = 360f;
         private const float MinimumWindowHeight = 360f;
@@ -111,6 +111,8 @@ namespace NADA.VFX.Weapon.Editor
         private static Texture2D _wandTexture;
         private static bool _settingsOpen;
         private static bool _clearAllConfirm;
+        private static bool _pendingHandSwitch;
+        private static bool _remotePlayerListExpanded;
 
         private enum ShortcutCapture { None, Toggle, Bind, Unbind }
         private static ShortcutCapture _shortcutCapture;
@@ -136,6 +138,7 @@ namespace NADA.VFX.Weapon.Editor
         private static GUIStyle _targetStatusStyle;
         private static GUIStyle _panelStyle;
         private static GUIStyle _sectionHeaderStyle;
+        private static GUIStyle _settingsSubHeaderStyle;
         private static GUIStyle _blockStyle;
         private static GUIStyle _selectedBlockStyle;
         private static GUIStyle _blockLabelStyle;
@@ -264,6 +267,13 @@ namespace NADA.VFX.Weapon.Editor
 
             NadaVfxEditorStylesPanel.ProcessPendingDraftApply();
             ProcessPendingBindingAction();
+            if (_pendingHandSwitch)
+            {
+                _pendingHandSwitch = false;
+                NadaVfxEditorTargetRegistry.SwitchHands();
+                // SynchronizeTarget/preview transition on the next GUI draw;
+                // changing the target inside GUI.Window risks IMGUI layout errors.
+            }
         }
 
         internal static void EnforceCursorOwnership()
@@ -325,6 +335,8 @@ namespace NADA.VFX.Weapon.Editor
             if (!_open)
                 return;
 
+            SaveWindowBounds();
+
             _open =
                 false;
 
@@ -335,6 +347,7 @@ namespace NADA.VFX.Weapon.Editor
                 false;
             _settingsOpen = false;
             _clearAllConfirm = false;
+            _pendingHandSwitch = false;
             _shortcutCapture = ShortcutCapture.None;
             _shortcutError = null;
             NadaVfxEditorStylesPanel.Close();
@@ -484,9 +497,6 @@ namespace NADA.VFX.Weapon.Editor
                     target);
             }
 
-            DrawTargetCard(
-                target);
-
             if (NadaVfxEditorStylesPanel.IsOpen)
                 NadaVfxEditorStylesPanel.Draw(target,
                     _targetCardStyle, _sectionHeaderStyle, _bodyStyle,
@@ -495,6 +505,8 @@ namespace NADA.VFX.Weapon.Editor
 
             if (_settingsOpen)
                 DrawEditorSettings();
+
+            DrawTargetCard(target);
 
             GUILayout.Space(
                 5f);
@@ -562,6 +574,14 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             _bindingError = null;
+            if (global::MessageHud.instance != null)
+            {
+                global::MessageHud.instance.ShowMessage(
+                    global::MessageHud.MessageType.Center,
+                    requested == BindingAction.Bind
+                        ? "Weapon VFX bound"
+                        : "Weapon VFX unbound");
+            }
             _addPickerOpen = false;
             _clearAllConfirm = false;
             NadaVfxEditorStylesPanel.OnTargetChanged();
@@ -733,8 +753,17 @@ namespace NADA.VFX.Weapon.Editor
                     _targetTitleStyle);
 
                 GUILayout.FlexibleSpace();
+                if (!IsCompactLayout)
+                    DrawSwitchHandsButton();
 
                 GUILayout.EndHorizontal();
+                if (IsCompactLayout)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.FlexibleSpace();
+                    DrawSwitchHandsButton();
+                    GUILayout.EndHorizontal();
+                }
 
                 GUILayout.EndVertical();
 
@@ -750,7 +779,8 @@ namespace NADA.VFX.Weapon.Editor
             // Reserve space for the status and Details before measuring the name.
             // A short name never gets a large invisible layout slot.
             float availableNameWidth =
-                Mathf.Max(24f, _windowRect.width - 190f);
+                Mathf.Max(24f, _windowRect.width -
+                    (IsCompactLayout ? 185f : 304f));
 
             float measuredNameWidth =
                 _targetTitleStyle.CalcSize(
@@ -780,6 +810,12 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.FlexibleSpace();
 
+            if (!IsCompactLayout)
+            {
+                DrawSwitchHandsButton();
+                GUILayout.Space(4f);
+            }
+
             if (GUILayout.Button(
                     _targetDetailsExpanded
                         ? "Hide"
@@ -793,6 +829,13 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             GUILayout.EndHorizontal();
+            if (IsCompactLayout)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+                DrawSwitchHandsButton();
+                GUILayout.EndHorizontal();
+            }
 
             if (_targetDetailsExpanded)
             {
@@ -811,9 +854,18 @@ namespace NADA.VFX.Weapon.Editor
                     string.IsNullOrWhiteSpace(target.VisualDisplayName)
                         ? "Unknown"
                         : target.VisualDisplayName);
+
+                DrawSingleInfoRow("Hand", NadaVfxEditorTargetRegistry.HandLabel);
             }
 
             GUILayout.EndVertical();
+        }
+
+        private static void DrawSwitchHandsButton()
+        {
+            if (GUILayout.Button("Switch Hands", _detailsButtonStyle,
+                    GUILayout.Width(94f), GUILayout.Height(18f)))
+                _pendingHandSwitch = true;
         }
 
         private static void DrawClearAllConfirmation()
@@ -934,7 +986,7 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             GUILayout.Space(7f);
-            GUILayout.Label("VISIBILITY", _sectionHeaderStyle);
+            GUILayout.Label("VISIBILITY", _settingsSubHeaderStyle);
             GUILayout.Space(2f);
 
             DrawVisibilitySetting(
@@ -945,8 +997,15 @@ namespace NADA.VFX.Weapon.Editor
                 "Dropped Items",
                 PluginConfig.DroppedItemVisibility);
 
+            DrawVisibilitySetting(
+                "Multiplayer",
+                NadaVfxEditorConfig.MultiplayerVisibility);
+
+            if (NadaVfxEditorConfig.MultiplayerVisibility?.Value == true)
+                DrawRemotePlayerVisibility();
+
             GUILayout.Space(7f);
-            GUILayout.Label("CONTROLS", _sectionHeaderStyle);
+            GUILayout.Label("CONTROLS", _settingsSubHeaderStyle);
             GUILayout.Space(2f);
 
             DrawVisibilitySetting(
@@ -1105,6 +1164,56 @@ namespace NADA.VFX.Weapon.Editor
                    key == KeyCode.LeftControl || key == KeyCode.RightControl ||
                    key == KeyCode.LeftAlt || key == KeyCode.RightAlt ||
                    key == KeyCode.LeftCommand || key == KeyCode.RightCommand;
+        }
+
+        private static void DrawRemotePlayerVisibility()
+        {
+            GUILayout.BeginHorizontal(GUILayout.Height(22f));
+            GUILayout.Label("Players", _bodyStyle,
+                GUILayout.Width(118f), GUILayout.Height(20f));
+            GUILayout.Space(6f);
+            int hidden = NadaVfxRemoteStateTracker.HiddenPlayerCount;
+            string caption = _remotePlayerListExpanded
+                ? "Hide List"
+                : hidden > 0 ? $"Hide Selected ({hidden})" : "All";
+            if (GUILayout.Button(caption, _themeOptionStyle,
+                    GUILayout.Width(122f), GUILayout.Height(20f)))
+                _remotePlayerListExpanded = !_remotePlayerListExpanded;
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            if (!_remotePlayerListExpanded)
+                return;
+
+            List<NadaVfxRemoteStateTracker.RemotePlayerChoice> players =
+                NadaVfxRemoteStateTracker.GetVisiblePlayerChoices();
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(124f);
+            if (GUILayout.Button("Show All", _themeOptionStyle,
+                    GUILayout.Width(92f), GUILayout.Height(20f)))
+                NadaVfxRemoteStateTracker.ShowAllPlayers();
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            if (players.Count == 0)
+            {
+                GUILayout.Label("No other tracked players in this session.", _mutedStyle);
+                return;
+            }
+
+            foreach (var player in players)
+            {
+                GUILayout.BeginHorizontal(GUILayout.Height(21f));
+                GUILayout.Space(10f);
+                GUILayout.Label(player.DisplayName, _bodyStyle,
+                    GUILayout.Width(114f), GUILayout.Height(20f));
+                if (GUILayout.Button(player.Hidden ? "Hidden" : "Visible",
+                        _themeOptionStyle, GUILayout.Width(70f), GUILayout.Height(20f)))
+                    NadaVfxRemoteStateTracker.SetPlayerHidden(player.PeerId, !player.Hidden);
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.Label("Player choices reset when you leave the server.", _mutedStyle);
         }
 
         private static void DrawVisibilitySetting(
@@ -1785,8 +1894,8 @@ namespace NADA.VFX.Weapon.Editor
             bool readOnly = NadaVfxEditorWorkingState.IsReadOnly;
 
             GUILayout.Label(
-                readOnly ? "(READ ONLY)" : "EDIT",
-                _sectionHeaderStyle);
+                readOnly ? "READ ONLY" : "EDIT",
+                readOnly ? _mutedStyle : _sectionHeaderStyle);
 
             if (readOnly &&
                 !string.IsNullOrEmpty(NadaVfxEditorWorkingState.BoundViewError))
@@ -2229,11 +2338,12 @@ namespace NADA.VFX.Weapon.Editor
             GUILayout.BeginVertical(
                 _readOnlyBoxStyle);
 
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
             GUILayout.Label(
                 $"Delete '{NadaVfxEditorWorkingState.GetDisplayName(block)}'?",
                 _warningStyle);
-
-            GUILayout.BeginHorizontal();
+            GUILayout.Space(8f);
 
             if (GUILayout.Button(
                     "Delete",
@@ -2716,18 +2826,36 @@ namespace NADA.VFX.Weapon.Editor
             if (_positionInitialized)
                 return;
 
-            _windowRect.x =
-                Mathf.Max(
-                    20f,
-                    Screen.width -
-                    _windowRect.width -
-                    24f);
+            _windowRect.width = NadaVfxEditorConfig.WindowWidth?.Value
+                ?? DefaultWindowWidth;
+            _windowRect.height = NadaVfxEditorConfig.WindowHeight?.Value
+                ?? DefaultWindowHeight;
+            ClampWindowSize();
 
-            _windowRect.y =
-                64f;
+            int x = NadaVfxEditorConfig.WindowX?.Value ?? -1;
+            int y = NadaVfxEditorConfig.WindowY?.Value ?? -1;
+            _windowRect.x = x < 0
+                ? Mathf.Max(20f, Screen.width - _windowRect.width - 24f)
+                : x;
+            _windowRect.y = y < 0 ? 64f : y;
+            _positionInitialized = true;
+            ClampWindowToScreen();
+        }
 
-            _positionInitialized =
-                true;
+        // Persist only at close, not on every IMGUI resize or drag event.
+        private static void SaveWindowBounds()
+        {
+            if (!_positionInitialized)
+                return;
+
+            if (NadaVfxEditorConfig.WindowX != null)
+                NadaVfxEditorConfig.WindowX.Value = Mathf.RoundToInt(_windowRect.x);
+            if (NadaVfxEditorConfig.WindowY != null)
+                NadaVfxEditorConfig.WindowY.Value = Mathf.RoundToInt(_windowRect.y);
+            if (NadaVfxEditorConfig.WindowWidth != null)
+                NadaVfxEditorConfig.WindowWidth.Value = Mathf.RoundToInt(_windowRect.width);
+            if (NadaVfxEditorConfig.WindowHeight != null)
+                NadaVfxEditorConfig.WindowHeight.Value = Mathf.RoundToInt(_windowRect.height);
         }
 
         private static void ClampWindowSize()
@@ -3168,6 +3296,13 @@ fontSize = 12,
             _mutedStyle.normal.textColor =
                 theme.MutedText;
 
+            _settingsSubHeaderStyle = new GUIStyle(_sectionHeaderStyle)
+            {
+                fontSize = 9,
+                fontStyle = FontStyle.Bold
+            };
+            _settingsSubHeaderStyle.normal.textColor = theme.MutedText;
+
             _warningStyle =
                 new GUIStyle(
                     GUI.skin.label)
@@ -3584,6 +3719,7 @@ fontSize = 12,
             _targetStatusStyle = null;
             _panelStyle = null;
             _sectionHeaderStyle = null;
+            _settingsSubHeaderStyle = null;
             _blockStyle = null;
             _selectedBlockStyle = null;
             _blockLabelStyle = null;

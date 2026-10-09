@@ -188,6 +188,27 @@ namespace NADA.VFX.Weapon.Editor
 
     internal static class NadaVfxEditorTargetRegistry
     {
+        // Null uses the original right-first fallback. After a manual switch,
+        // only the chosen hand is eligible until switched again.
+        private static NadaEquippedWeaponTargetResolver.Hand? _selectedHand;
+        private static NadaEquippedWeaponTargetResolver.Hand _resolvedHand =
+            NadaEquippedWeaponTargetResolver.Hand.Right;
+
+        internal static string HandLabel =>
+            (_selectedHand ?? _resolvedHand) ==
+                NadaEquippedWeaponTargetResolver.Hand.Left ? "Left" : "Right";
+
+        internal static void SwitchHands()
+        {
+            var current = _selectedHand ?? _resolvedHand;
+            _selectedHand = current == NadaEquippedWeaponTargetResolver.Hand.Right
+                ? NadaEquippedWeaponTargetResolver.Hand.Left
+                : NadaEquippedWeaponTargetResolver.Hand.Right;
+            RefreshFromRuntime();
+            Plugin.Log?.LogInfo($"{Plugin.ModName}: [EditorTargetHand] selected={HandLabel} " +
+                $"item='{Current?.PrefabName ?? "<none>"}'.");
+        }
+
         internal static NadaVfxEditorTarget Current
         {
             get;
@@ -196,15 +217,20 @@ namespace NADA.VFX.Weapon.Editor
 
         internal static void RefreshFromRuntime()
         {
-            if (!NadaEquippedWeaponTargetResolver.TryResolveFirst(
-                    out NadaEquippedWeaponTargetResolver.ResolvedTarget
-                        resolvedTarget))
+            NadaEquippedWeaponTargetResolver.ResolvedTarget resolvedTarget;
+            bool found = _selectedHand.HasValue
+                ? NadaEquippedWeaponTargetResolver.TryResolveSelected(
+                    _selectedHand.Value, out resolvedTarget)
+                : NadaEquippedWeaponTargetResolver.TryResolveFirst(
+                    out resolvedTarget);
+            if (!found)
             {
                 Clear();
 
                 return;
             }
 
+            _resolvedHand = resolvedTarget.SelectedHand;
             Capture(
                 resolvedTarget);
         }

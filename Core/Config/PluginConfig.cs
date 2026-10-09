@@ -14,18 +14,8 @@ namespace NADA.VFX.Weapon.Core.Config
     {
         internal static ConfigEntry<bool> CharacterSelectionVisibility;
         internal static ConfigEntry<bool> DroppedItemVisibility;
-        
-        internal static ConfigEntry<KeyboardShortcut> AttachHotkey;
-        internal static ConfigEntry<KeyboardShortcut> BindHotkey;
-        internal static ConfigEntry<bool> UnbindWeapon;
 
-        internal static ConfigEntry<bool> SaveStyle;
-        internal static ConfigEntry<string> StyleName;
-        internal static ConfigEntry<string> LoadStyle;
-        
-        internal static ConfigEntry<bool> ControlsBottomSpacer;
         internal static ConfigEntry<bool> VisibilityBottomSpacer;
-        internal static ConfigEntry<bool> StylesBottomSpacer;
         internal static ConfigEntry<bool> RigTransformBottomSpacer;
         internal static ConfigEntry<bool> InnerFlamesBottomSpacer;
         internal static ConfigEntry<bool> OuterFlamesBottomSpacer;
@@ -318,8 +308,6 @@ namespace NADA.VFX.Weapon.Core.Config
         internal static void Bind(ConfigFile config)
         {
             const string visibilitySection = "VISIBILITY";
-            const string hotkeysSection = "CONTROLS";
-            const string stylesSection = "STYLES";
             const string rigTransformSection = "RIG TRANSFORM";
             const string innerFlamesSection = "INNER FLAMES";
             const string outerFlamesSection = "OUTER FLAMES";
@@ -381,103 +369,6 @@ namespace NADA.VFX.Weapon.Core.Config
             VisibilityBottomSpacer = config.Bind(
                 visibilitySection,
                 "__Visibility Bottom Spacer",
-                false,
-                OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true));
-
-            AttachHotkey = config.Bind(
-                hotkeysSection,
-                "Attach to Weapon Hotkey",
-                KeyboardShortcut.Empty,
-                OrderedDescription(
-                    "Press to attach NADA VFX to the equipped weapon.",
-                    10000,
-                    dispName: "Attach to Weapon Hotkey"));
-
-            AttachHotkey.SettingChanged += (_, __) => config.Save();
-
-            BindHotkey = config.Bind(
-                hotkeysSection,
-                "Bind to Weapon Hotkey",
-                KeyboardShortcut.Empty,
-                OrderedDescription(
-                    "Press to bind the current NADA VFX rig/settings to the equipped weapon.",
-                    9900,
-                    dispName: "Bind to Weapon Hotkey"));
-
-            BindHotkey.SettingChanged += (_, __) => config.Save();
-
-            UnbindWeapon = config.Bind(
-                hotkeysSection,
-                "Unbind Current Weapon",
-                false,
-                OrderedDescription(
-                    "Clears NADA VFX from the equipped weapon and refreshes it using current manager settings.",
-                    9800,
-                    dispName: "Unbind Current Weapon",
-                    customDrawer: ConfigurationManagerDrawers.DrawUnbindWeaponButton,
-                    hideSettingName: true,
-                    hideDefaultButton: true));
-
-            ControlsBottomSpacer = config.Bind(
-                hotkeysSection,
-                "__Controls Bottom Spacer",
-                false,
-                OrderedDescription(
-                    "",
-                    -999,
-                    customDrawer: ConfigurationManagerDrawers.DrawSectionSpacer,
-                    hideSettingName: true,
-                    hideDefaultButton: true));
-
-            StyleName = config.Bind(
-                stylesSection,
-                "Style Name",
-                string.Empty,
-                OrderedDescription(
-                    "Name used when saving the current style.",
-                    10000,
-                    dispName: "Style Name",
-                    isAdvanced: true,
-                    browsable: false));
-
-            LoadStyle = config.Bind(
-                stylesSection,
-                "Load Style",
-                "Default",
-                OrderedDescription(
-                    "Load a saved style into the manager settings.",
-                    9900,
-                    dispName: "Choose Style",
-                    customDrawer: ConfigurationManagerDrawers.DrawLoadStyleDropdown,
-                    hideDefaultButton: true));
-
-            LoadStyle.SettingChanged += (_, __) =>
-            {
-                if (Plugin.Instance != null)
-                    Plugin.Instance.LoadStyleIntoManager(LoadStyle.Value);
-
-                config.Save();
-            };
-
-            SaveStyle = config.Bind(
-                stylesSection,
-                "Save Style",
-                false,
-                OrderedDescription(
-                    "Save the current manager settings as a named style.",
-                    9800,
-                    dispName: "Save Style",
-                    customDrawer: ConfigurationManagerDrawers.DrawSaveStyleRow,
-                    hideDefaultButton: true));
-
-            StylesBottomSpacer = config.Bind(
-                stylesSection,
-                "__Styles Bottom Spacer",
                 false,
                 OrderedDescription(
                     "",

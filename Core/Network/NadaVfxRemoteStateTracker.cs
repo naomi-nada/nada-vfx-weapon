@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Editor;
 using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.State.Blocks;
@@ -34,6 +35,101 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 new();
 
         private static bool _initialized;
+
+        // Local presentation preference only. Never clear decoded network state.
+        // Peer IDs are session identifiers here, not long-lived accounts.
+        private static readonly HashSet<long> HiddenPeers = new();
+
+        internal sealed class RemotePlayerChoice
+        {
+            internal long PeerId;
+            internal string DisplayName;
+            internal bool Hidden;
+        }
+
+        internal static List<RemotePlayerChoice> GetVisiblePlayerChoices()
+        {
+            var result = new List<RemotePlayerChoice>();
+            foreach (var entry in RemoteRightStates)
+            {
+                var player = entry.Value.ObservedPlayer;
+                if (player == null)
+                    continue;
+
+                string name = player.GetPlayerName();
+                result.Add(new RemotePlayerChoice
+                {
+                    PeerId = entry.Key,
+                    DisplayName = string.IsNullOrEmpty(name) ? "Player" : name,
+                    Hidden = HiddenPeers.Contains(entry.Key)
+                });
+            }
+            result.Sort((a, b) =>
+                string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
+            return result;
+        }
+
+        internal static int HiddenPlayerCount => HiddenPeers.Count;
+
+        internal static void SetPlayerHidden(long peerId, bool hidden)
+        {
+            if (peerId == 0L || !RemoteRightStates.ContainsKey(peerId))
+                return;
+            if (hidden ? HiddenPeers.Add(peerId) : HiddenPeers.Remove(peerId))
+                RefreshPresentationVisibility();
+        }
+
+        internal static void ShowAllPlayers()
+        {
+            if (HiddenPeers.Count == 0)
+                return;
+            HiddenPeers.Clear();
+            RefreshPresentationVisibility();
+        }
+
+        private static bool MayShowRig(RemoteRightState state) =>
+            NadaVfxEditorConfig.MultiplayerVisibility?.Value != false &&
+            !HiddenPeers.Contains(state.PeerId);
+
+        private static void HideTrackedRig(RemoteRightState state)
+        {
+            // A cached root can become stale when Valheim replaces visuals.
+            // Never change the visibility of a hierarchy we no longer own.
+            if (state.AppliedRigRoot != null &&
+                state.AppliedVisualRoot != null &&
+                state.RightInstance != null &&
+                state.AppliedRigRoot.parent == state.AppliedVisualRoot &&
+                state.AppliedVisualRoot.parent == state.RightInstance.transform)
+                state.AppliedRigRoot.gameObject.SetActive(false);
+        }
+
+        internal static void RefreshPresentationVisibility()
+        {
+            foreach (RemoteRightState state in RemoteRightStates.Values)
+            {
+                if (!MayShowRig(state))
+                {
+                    HideTrackedRig(state);
+                    continue;
+                }
+
+                if (state.AppliedBound &&
+                    state.AppliedInstance == state.RightInstance &&
+                    state.AppliedItemHash != 0 &&
+                    state.AppliedItemHash == state.ObservedItemHash &&
+                    !HasNewerAdvertisedState(state, state.ObservedItemHash) &&
+                    state.AppliedRigRoot != null &&
+                    state.AppliedVisualRoot != null &&
+                    state.RightInstance != null &&
+                    state.AppliedRigRoot.parent == state.AppliedVisualRoot &&
+                    state.AppliedVisualRoot.parent == state.RightInstance.transform)
+                    state.AppliedRigRoot.gameObject.SetActive(true);
+
+                // Reapply from cached decoded state if no rig exists yet.
+                ApplyReceivedState(state);
+            }
+        }
+
 
         private sealed class RemoteRightState
         {
@@ -255,6 +351,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     ClearReceivedNativeState(remoteState);
             }
 
+            if (!MayShowRig(remoteState))
+            {
+                HideTrackedRig(remoteState);
+                return;
+            }
+
             if (rightInstance == null)
                 return;
 
@@ -344,6 +446,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 // destroyed along with the player's hierarchy.
                 RemoteRightStates.Remove(
                     peerId);
+                HiddenPeers.Remove(peerId);
 
                 bool removedRig =
                     RemoveTrackedAppliedRig(
@@ -384,6 +487,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
         private static void OnSessionReset()
         {
             RemoteRightStates.Clear();
+            HiddenPeers.Clear();
         }
 
         private static void OnStateReceived(
@@ -867,6 +971,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
+            if (!MayShowRig(remoteState))
+            {
+                HideTrackedRig(remoteState);
+                return;
+            }
+
             if (ShouldUseNative(remoteState))
             {
                 ApplyReceivedNativeState(remoteState);
@@ -1050,6 +1160,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
         private static void ApplyReceivedNativeState(RemoteRightState remote)
         {
+            if (!MayShowRig(remote))
+            {
+                HideTrackedRig(remote);
+                return;
+            }
             if (remote.RightInstance == null || remote.ObservedItemHash == 0 ||
                 !remote.HasReceivedNative ||
                 remote.NativeItemHash != remote.ObservedItemHash ||

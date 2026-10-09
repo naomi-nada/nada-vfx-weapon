@@ -1,32 +1,11 @@
-using System;
 using System.Globalization;
 using UnityEngine;
 using BepInEx.Configuration;
-using NADA.VFX.Weapon.Core.Visuals;
 
 namespace NADA.VFX.Weapon.Core.Config
 {
     internal static class ConfigurationManagerDrawers
     {
-        private const float StyleButtonWidth = 46f;
-
-        private static bool _loadStyleDropdownOpen;
-
-        internal static void DrawUnbindWeaponButton(ConfigEntryBase entry)
-        {
-            GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
-
-            GUILayout.Space(264f);
-
-            if (GUILayout.Button("Unbind Current Weapon", GUILayout.Width(230f)))
-            {
-                Plugin.Instance.TryUnbindEquipped();
-                entry.BoxedValue = false;
-            }
-
-            GUILayout.EndHorizontal();
-        }
-
         internal static void DrawEnabledCheckboxWithLabel(ConfigEntryBase entry)
         {
             bool current = (bool)entry.BoxedValue;
@@ -244,107 +223,6 @@ namespace NADA.VFX.Weapon.Core.Config
                 return range;
 
             return null;
-        }
-
-        internal static void DrawSaveStyleRow(ConfigEntryBase entry)
-        {
-            GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
-
-            string currentName = PluginConfig.StyleName?.Value ?? string.Empty;
-
-            string nextName = GUILayout.TextField(
-                currentName,
-                GUILayout.ExpandWidth(true));
-
-            if (PluginConfig.StyleName != null && nextName != currentName)
-                PluginConfig.StyleName.Value = nextName;
-
-            bool oldEnabled = GUI.enabled;
-            GUI.enabled = oldEnabled && !string.IsNullOrWhiteSpace(currentName);
-
-            if (GUILayout.Button("Save", GUILayout.Width(46f)))
-            {
-                Plugin.Instance.SaveCurrentStyleFromManager(currentName);
-                VfxStyleStore.ReloadFromDisk();
-                entry.BoxedValue = false;
-            }
-
-            GUI.enabled = oldEnabled;
-
-            GUILayout.EndHorizontal();
-        }
-
-        internal static void DrawLoadStyleDropdown(ConfigEntryBase entry)
-        {
-            string current = entry.BoxedValue as string ?? "Default";
-            if (string.IsNullOrWhiteSpace(current))
-                current = "Default";
-
-            GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
-
-            GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
-
-            if (GUILayout.Button(current, GUILayout.ExpandWidth(true)))
-            {
-                _loadStyleDropdownOpen = !_loadStyleDropdownOpen;
-            }
-
-            if (GUILayout.Button("Reset", GUILayout.Width(StyleButtonWidth)))
-            {
-                if (!string.Equals(current, "Default", StringComparison.OrdinalIgnoreCase))
-                {
-                    entry.BoxedValue = "Default";
-                    Plugin.Instance.LoadStyleIntoManager("Default");
-                }
-
-                _loadStyleDropdownOpen = false;
-            }
-
-            bool oldEnabled = GUI.enabled;
-            bool canDelete =
-                !string.Equals(current, "Default", StringComparison.OrdinalIgnoreCase);
-
-            GUI.enabled = oldEnabled && canDelete;
-
-            if (GUILayout.Button("Delete", GUILayout.Width(StyleButtonWidth)))
-            {
-                if (VfxStyleStore.Delete(current))
-                {
-                    entry.BoxedValue = "Default";
-                    Plugin.Instance.LoadStyleIntoManager("Default");
-                    VfxStyleStore.ReloadFromDisk();
-                }
-
-                _loadStyleDropdownOpen = false;
-            }
-
-            GUI.enabled = oldEnabled;
-
-            GUILayout.EndHorizontal();
-
-            if (_loadStyleDropdownOpen)
-            {
-                foreach (string styleName in VfxStyleStore.GetStyleNames())
-                {
-                    bool isCurrent =
-                        string.Equals(styleName, current, StringComparison.OrdinalIgnoreCase);
-
-                    bool isDefault =
-                        string.Equals(styleName, "Default", StringComparison.OrdinalIgnoreCase);
-
-                    if (isCurrent && !isDefault)
-                        continue;
-
-                    if (GUILayout.Button(styleName, GUILayout.ExpandWidth(true)))
-                    {
-                        entry.BoxedValue = styleName;
-                        Plugin.Instance.LoadStyleIntoManager(styleName);
-                        _loadStyleDropdownOpen = false;
-                    }
-                }
-            }
-
-            GUILayout.EndVertical();
         }
 
         internal static void DrawOrbitalsOrbsSyncButton(ConfigEntryBase entry)

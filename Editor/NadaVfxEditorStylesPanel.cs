@@ -22,6 +22,7 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _open;
         private static bool _styleDropdownOpen;
         private static string _selectedStyle = string.Empty;
+        private static bool _noneSelected;
         private static string _saveName = string.Empty;
         private static string _shareInput = string.Empty;
         private static string _message;
@@ -51,6 +52,8 @@ namespace NADA.VFX.Weapon.Editor
             _styleDropdownOpen = false;
             _confirmOverwrite = null;
             _confirmDelete = null;
+            _selectedStyle = string.Empty;
+            _noneSelected = false;
             ClearPendingImport();
             _queuedApplyState = null;
             _queuedApplyCursor = 0;
@@ -179,6 +182,15 @@ namespace NADA.VFX.Weapon.Editor
             _styleDropdownOpen = false;
             _confirmDelete = null;
             _selectedStyle = name;
+            _noneSelected = string.IsNullOrEmpty(name);
+
+            if (string.IsNullOrEmpty(name))
+            {
+                // This is a draft replacement, not a mutation of a bound item
+                // or the creation of a special saved style named "None".
+                QueueDraftApply(target, new WeaponVfxState(), 1, "None");
+                return;
+            }
 
             // Selection IS the load action. There is no hidden second button.
             if (!WeaponVfxStyleStore.TryLoad(name,
@@ -204,6 +216,9 @@ namespace NADA.VFX.Weapon.Editor
                 return;
             }
             _selectedStyle = name;
+            _noneSelected = false;
+            _saveName = string.Empty;
+            GUI.FocusControl(string.Empty);
             _message = "Saved '" + name + "' (" + state.Effects.Count + " effects).";
             Plugin.Log?.LogInfo($"{Plugin.ModName}: [EditorStyleSaved] " +
                                 $"name='{name}' effects={state.Effects.Count}.");
@@ -229,9 +244,11 @@ namespace NADA.VFX.Weapon.Editor
             GUILayout.Label("Choose Style", body, GUILayout.Width(LabelWidth));
             bool previous = GUI.enabled;
             GUI.enabled = previous && editable;
-            string caption = string.IsNullOrEmpty(_selectedStyle)
-                ? "Select a saved style  \u25be"
-                : _selectedStyle + "  \u25be";
+            string caption = _noneSelected ? "None  \u25be" :
+                string.IsNullOrEmpty(_selectedStyle)
+                    ? "Select a saved style  \u25be"
+                    : (string.Equals(_selectedStyle, "None", StringComparison.OrdinalIgnoreCase)
+                        ? "None (saved)" : _selectedStyle) + "  \u25be";
             if (GUILayout.Button(caption, dropdown, GUILayout.Height(ControlHeight),
                     GUILayout.MinWidth(120f), GUILayout.ExpandWidth(true)))
             {
@@ -252,7 +269,9 @@ namespace NADA.VFX.Weapon.Editor
             {
                 var names = WeaponVfxStyleStore.GetNames();
                 _styleListScroll = GUILayout.BeginScrollView(_styleListScroll,
-                    GUILayout.Height(Mathf.Min(116f, Math.Max(29f, (names.Count - 1) * 23f + 4f))));
+                    GUILayout.Height(Mathf.Min(116f, Math.Max(50f, names.Count * 23f + 4f))));
+                if (GUILayout.Button("None", dropdown, GUILayout.Height(21f)))
+                    ChooseStyle(target, string.Empty);
                 int choices = 0;
                 foreach (string name in names)
                 {
@@ -260,7 +279,9 @@ namespace NADA.VFX.Weapon.Editor
                     if (string.Equals(name, "Default", StringComparison.OrdinalIgnoreCase))
                         continue;
                     choices++;
-                    if (GUILayout.Button(name, dropdown, GUILayout.Height(21f)))
+                    string displayName = string.Equals(name, "None",
+                        StringComparison.OrdinalIgnoreCase) ? "None (saved)" : name;
+                    if (GUILayout.Button(displayName, dropdown, GUILayout.Height(21f)))
                         ChooseStyle(target, name);
                 }
                 if (choices == 0)
@@ -284,7 +305,10 @@ namespace NADA.VFX.Weapon.Editor
                     {
                         if (string.Equals(_selectedStyle, name,
                                 StringComparison.OrdinalIgnoreCase))
+                        {
                             _selectedStyle = string.Empty;
+                            _noneSelected = false;
+                        }
                         _message = "Deleted '" + name + "'.";
                     }
                     else
@@ -381,7 +405,12 @@ namespace NADA.VFX.Weapon.Editor
                 }
             }
             GUI.enabled = previous;
-            GUILayout.Label("Current editor state", muted);
+            Rect copyRect = GUILayoutUtility.GetLastRect();
+            bool copyHovered = copyRect.Contains(Event.current.mousePosition);
+            if (copyHovered && Event.current.type == EventType.Repaint)
+                GUI.Label(new Rect(copyRect.xMax + 6f, copyRect.y,
+                    230f, copyRect.height),
+                    "Copy the current state of the editor.", muted);
             GUILayout.EndHorizontal();
 
             GUILayout.Space(2f);
