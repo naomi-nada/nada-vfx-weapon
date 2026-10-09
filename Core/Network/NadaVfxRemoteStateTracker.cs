@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
@@ -73,6 +74,14 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             internal VfxState ReceivedState;
 
+            // Native and V2 packets share an owner's publication revision,
+            // but neither is allowed to overwrite the other format's data.
+            internal bool HasReceivedNative;
+            internal int NativeItemHash;
+            internal uint NativeRevision;
+            internal bool NativeBound;
+            internal WeaponVfxState NativeState;
+
             internal GameObject AppliedInstance;
 
             internal int AppliedInstanceId;
@@ -82,6 +91,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             internal uint AppliedRevision;
 
             internal bool AppliedBound;
+            internal bool AppliedNative;
 
             // These are the actual roots that received the remote state.
             // Their existence alone isn't enough: the visual must still
@@ -99,6 +109,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             internal int FailedApplyItemHash;
 
             internal uint FailedApplyRevision;
+            internal bool FailedApplyNative;
 
             internal float NextApplyRetryTime;
 
@@ -236,12 +247,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 }
 
                 if (remoteState.HasReceivedState &&
-                    remoteState.ReceivedItemHash !=
-                        itemHash)
-                {
-                    ClearReceivedState(
-                        remoteState);
-                }
+                    remoteState.ReceivedItemHash != itemHash)
+                    ClearReceivedState(remoteState);
+
+                if (remoteState.HasReceivedNative &&
+                    remoteState.NativeItemHash != itemHash)
+                    ClearReceivedNativeState(remoteState);
             }
 
             if (rightInstance == null)
@@ -262,13 +273,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
-            if (remoteState.HasReceivedState &&
-                remoteState.ReceivedItemHash ==
-                    itemHash)
+            if ((remoteState.HasReceivedState &&
+                 remoteState.ReceivedItemHash == itemHash) ||
+                (remoteState.HasReceivedNative &&
+                 remoteState.NativeItemHash == itemHash))
             {
-                ApplyReceivedState(
-                    remoteState);
-
+                ApplyReceivedState(remoteState);
                 return;
             }
 
@@ -360,6 +370,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             NadaVfxNetworkTransport.StateChangedReceived +=
                 OnStateChangedReceived;
+
+            NadaVfxNetworkTransport.NativeStateReceived +=
+                OnNativeStateReceived;
+
+            NadaVfxNetworkTransport.NativeStateChangedReceived +=
+                OnNativeStateChangedReceived;
 
             NadaVfxNetworkTransport.SessionReset +=
                 OnSessionReset;
@@ -521,6 +537,99 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             ApplyReceivedState(
                 remoteState);
+        }
+
+        private static void OnNativeStateReceived(
+            long sender,
+            WeaponVfxNetworkStatePacket packet)
+        {
+            if (sender == 0L || packet == null || packet.ItemHash == 0 ||
+                packet.Revision == 0 || (packet.Bound && packet.State == null))
+                return;
+
+            if (!RemoteRightStates.TryGetValue(sender, out RemoteRightState remote))
+                return;
+
+            remote.RequestAttempts = 0;
+
+            if (remote.ObservedItemHash == 0 ||
+                packet.ItemHash != remote.ObservedItemHash)
+            {
+                NadaLogControl.Info(
+                    $"remote-native-stale:{sender}:{packet.ItemHash}:{packet.Revision}",
+                    $"{Plugin.ModName}: [RemoteNativeState STALE] " +
+                    $"peer={sender} receivedHash={packet.ItemHash} " +
+                    $"visibleHash={remote.ObservedItemHash} revision={packet.Revision}");
+                return;
+            }
+
+            if (HasAdvertisedStateNewerThanPacket(
+                    remote, packet.ItemHash, packet.Revision))
+                return;
+
+            if (remote.HasReceivedNative && remote.NativeItemHash == packet.ItemHash &&
+                packet.Revision != remote.NativeRevision &&
+                !IsRevisionNewer(packet.Revision, remote.NativeRevision))
+                return;
+
+            // A newer V2 state cannot be replaced by an older native response.
+            if (remote.HasReceivedState && remote.ReceivedItemHash == packet.ItemHash &&
+                IsRevisionNewer(remote.ReceivedRevision, packet.Revision))
+                return;
+
+            RememberAdvertisedState(remote, packet.ItemHash, packet.Revision, packet.Bound);
+            remote.HasReceivedNative = true;
+            remote.NativeItemHash = packet.ItemHash;
+            remote.NativeRevision = packet.Revision;
+            remote.NativeBound = packet.Bound;
+            remote.NativeState = packet.State;
+            remote.RequestPending = false;
+            remote.RequestedItemHash = 0;
+            remote.NextRequestTime = 0f;
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [RemoteNativeStateAccepted] " +
+                $"peer={sender} hash={packet.ItemHash} revision={packet.Revision} " +
+                $"bound={packet.Bound} blocks={packet.State?.Effects?.Count ?? 0}");
+
+            ApplyReceivedState(remote);
+        }
+
+        private static void OnNativeStateChangedReceived(
+            long sender,
+            int itemHash,
+            uint revision,
+            bool bound)
+        {
+            if (sender == 0L || itemHash == 0 || revision == 0 ||
+                !RemoteRightStates.TryGetValue(sender, out RemoteRightState remote))
+                return;
+
+            if (!RememberAdvertisedState(remote, itemHash, revision, bound))
+                return;
+
+            remote.RequestAttempts = 0;
+            if (remote.ObservedItemHash != itemHash)
+                return;
+
+            if (remote.HasReceivedNative && remote.NativeItemHash == itemHash &&
+                remote.NativeRevision == revision)
+                return;
+
+            // The owner has a newer snapshot. Stop displaying the old one
+            // while waiting for the packet, regardless of the old source.
+            if (remote.AppliedBound && remote.AppliedItemHash == itemHash &&
+                IsRevisionNewer(revision, remote.AppliedRevision))
+            {
+                if (RemoveTrackedAppliedRig(remote))
+                    ClearAppliedState(remote);
+            }
+
+            remote.RequestPending = false;
+            remote.RequestedItemHash = 0;
+            remote.NextRequestTime = 0f;
+            if (remote.RightInstance != null)
+                RequestStateIfNeeded(remote, force: true);
         }
 
         private static void OnStateChangedReceived(
@@ -750,14 +859,23 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             RemoteRightState remoteState)
         {
             if (remoteState == null ||
-                !remoteState.HasReceivedState ||
                 remoteState.RightInstance == null ||
                 remoteState.ObservedItemHash == 0 ||
-                remoteState.ReceivedItemHash !=
-                    remoteState.ObservedItemHash)
+                (remoteState.ReceivedItemHash != remoteState.ObservedItemHash &&
+                 remoteState.NativeItemHash != remoteState.ObservedItemHash))
             {
                 return;
             }
+
+            if (ShouldUseNative(remoteState))
+            {
+                ApplyReceivedNativeState(remoteState);
+                return;
+            }
+
+            if (!remoteState.HasReceivedState ||
+                remoteState.ReceivedItemHash != remoteState.ObservedItemHash)
+                return;
 
             // Once we know a newer authoritative revision exists, the cached
             // state is no longer eligible to be attached to a new visual.
@@ -811,7 +929,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             // A failed build may be observed hundreds of times per second.
             // Retry the same instance/revision at most once per second, but
             // let a different weapon or a newer revision try immediately.
-            if (remoteState.FailedApplyInstanceId ==
+            if (!remoteState.FailedApplyNative &&
+                remoteState.FailedApplyInstanceId ==
                     rightInstanceId &&
                 remoteState.FailedApplyItemHash ==
                     remoteState.ReceivedItemHash &&
@@ -863,6 +982,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             if (!applied)
             {
+                remoteState.FailedApplyNative = false;
                 remoteState.FailedApplyInstanceId =
                     rightInstanceId;
 
@@ -906,6 +1026,110 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 $"hash={remoteState.ReceivedItemHash} " +
                 $"revision={remoteState.ReceivedRevision} " +
                 $"instance={rightInstanceId}");
+        }
+
+        // Native wins at an equal revision only when it is bound. This lets
+        // legacy-bound weapons keep using V2 while their native packet says
+        // unbound, and prevents the V2 compatibility unbind removing native VFX.
+        private static bool ShouldUseNative(RemoteRightState remote)
+        {
+            if (!remote.HasReceivedNative ||
+                remote.NativeItemHash != remote.ObservedItemHash)
+                return false;
+
+            if (!remote.HasReceivedState ||
+                remote.ReceivedItemHash != remote.ObservedItemHash)
+                return true;
+
+            if (IsRevisionNewer(remote.NativeRevision, remote.ReceivedRevision))
+                return true;
+            if (IsRevisionNewer(remote.ReceivedRevision, remote.NativeRevision))
+                return false;
+            return remote.NativeBound;
+        }
+
+        private static void ApplyReceivedNativeState(RemoteRightState remote)
+        {
+            if (remote.RightInstance == null || remote.ObservedItemHash == 0 ||
+                !remote.HasReceivedNative ||
+                remote.NativeItemHash != remote.ObservedItemHash ||
+                HasNewerAdvertisedState(remote, remote.NativeItemHash))
+                return;
+
+            int visualId = remote.RightInstance.GetInstanceID();
+            if (IsAppliedStateCurrent(remote, visualId))
+                return;
+
+            if (!remote.NativeBound)
+            {
+                ClearFailedApply(remote);
+                if (!RemoveTrackedAppliedRig(remote))
+                    NadaWeaponRigRemoval.RemoveFromEquippedRoot(remote.RightInstance);
+                RememberAppliedState(remote, visualId);
+                remote.AppliedNative = true;
+                remote.AppliedRevision = remote.NativeRevision;
+                remote.AppliedItemHash = remote.NativeItemHash;
+                remote.AppliedBound = false;
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [RemoteNativeStateRemoved] " +
+                    $"peer={remote.PeerId} hash={remote.NativeItemHash} " +
+                    $"revision={remote.NativeRevision}");
+                return;
+            }
+
+            if (remote.NativeState == null)
+                return;
+
+            if (remote.FailedApplyNative &&
+                remote.FailedApplyInstanceId == visualId &&
+                remote.FailedApplyItemHash == remote.NativeItemHash &&
+                remote.FailedApplyRevision == remote.NativeRevision &&
+                Time.unscaledTime < remote.NextApplyRetryTime)
+                return;
+
+            RetireObsoleteAppliedRigIfNeeded(remote);
+
+            bool applied = WeaponRigController.TryApplyResolvedBlockState(
+                remote.RightInstance, remote.NativeItemHash, remote.NativeState);
+
+            Transform visual = null;
+            Transform rig = null;
+            if (applied)
+            {
+                visual = NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                    remote.RightInstance.transform);
+                if (visual != null)
+                    rig = NadaRigPaths.FindDirectChild(
+                        visual, Plugin.LocalWeaponRootName);
+                applied = rig != null && rig.gameObject.activeSelf;
+            }
+
+            if (!applied)
+            {
+                remote.FailedApplyNative = true;
+                remote.FailedApplyInstanceId = visualId;
+                remote.FailedApplyItemHash = remote.NativeItemHash;
+                remote.FailedApplyRevision = remote.NativeRevision;
+                remote.NextApplyRetryTime = Time.unscaledTime + FailedApplyRetrySeconds;
+                NadaLogControl.Info(
+                    $"remote-native-apply-fail:{remote.PeerId}:{remote.NativeRevision}:{visualId}",
+                    $"{Plugin.ModName}: [RemoteNativeStateApply FAIL] " +
+                    $"peer={remote.PeerId} hash={remote.NativeItemHash} " +
+                    $"revision={remote.NativeRevision}");
+                return;
+            }
+
+            ClearFailedApply(remote);
+            RememberAppliedState(remote, visualId, visual, rig);
+            remote.AppliedNative = true;
+            remote.AppliedRevision = remote.NativeRevision;
+            remote.AppliedItemHash = remote.NativeItemHash;
+            remote.AppliedBound = true;
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [RemoteNativeStateApplied] " +
+                $"peer={remote.PeerId} hash={remote.NativeItemHash} " +
+                $"revision={remote.NativeRevision} " +
+                $"blocks={remote.NativeState.Effects.Count} instance={visualId}");
         }
 
         private static void RetireObsoleteAppliedRigIfNeeded(
@@ -986,28 +1210,28 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
         }
 
         private static bool HasNewerAdvertisedState(
-            RemoteRightState remoteState,
+            RemoteRightState remote,
             int itemHash)
         {
-            if (remoteState == null ||
-                !remoteState.HasAdvertisedState ||
-                remoteState.AdvertisedItemHash !=
-                    itemHash)
-            {
+            if (remote == null || !remote.HasAdvertisedState ||
+                remote.AdvertisedItemHash != itemHash)
                 return false;
-            }
 
-            if (!remoteState.HasReceivedState ||
-                remoteState.ReceivedItemHash !=
-                    itemHash)
+            bool hasRevision = false;
+            uint newest = 0;
+            if (remote.HasReceivedState && remote.ReceivedItemHash == itemHash)
             {
-                return true;
+                newest = remote.ReceivedRevision;
+                hasRevision = true;
+            }
+            if (remote.HasReceivedNative && remote.NativeItemHash == itemHash &&
+                (!hasRevision || IsRevisionNewer(remote.NativeRevision, newest)))
+            {
+                newest = remote.NativeRevision;
+                hasRevision = true;
             }
 
-            return
-                IsRevisionNewer(
-                    remoteState.AdvertisedRevision,
-                    remoteState.ReceivedRevision);
+            return !hasRevision || IsRevisionNewer(remote.AdvertisedRevision, newest);
         }
 
         private static bool HasAdvertisedStateNewerThanPacket(
@@ -1081,21 +1305,27 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             RemoteRightState remoteState,
             int rightInstanceId)
         {
+            bool usingNative = ShouldUseNative(remoteState);
+            int expectedHash = usingNative
+                ? remoteState.NativeItemHash : remoteState.ReceivedItemHash;
+            uint expectedRevision = usingNative
+                ? remoteState.NativeRevision : remoteState.ReceivedRevision;
+            bool expectedBound = usingNative
+                ? remoteState.NativeBound : remoteState.ReceivedBound;
+
             bool matchesAppliedState =
+                remoteState.AppliedNative == usingNative &&
                 remoteState.AppliedInstanceId ==
                     rightInstanceId &&
-                remoteState.AppliedItemHash ==
-                    remoteState.ReceivedItemHash &&
-                remoteState.AppliedRevision ==
-                    remoteState.ReceivedRevision &&
-                remoteState.AppliedBound ==
-                    remoteState.ReceivedBound;
+                remoteState.AppliedItemHash == expectedHash &&
+                remoteState.AppliedRevision == expectedRevision &&
+                remoteState.AppliedBound == expectedBound;
 
             if (!matchesAppliedState)
                 return false;
 
             // An unbound state has no rig to validate.
-            if (!remoteState.ReceivedBound)
+            if (!expectedBound)
                 return true;
 
             // Unity's null check also detects a destroyed GameObject even
@@ -1161,6 +1391,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             remoteState.AppliedBound =
                 remoteState.ReceivedBound;
+
+            remoteState.AppliedNative = false;
 
             remoteState.AppliedVisualRoot =
                 appliedVisualRoot;
@@ -1238,6 +1470,15 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 default;
         }
 
+        private static void ClearReceivedNativeState(RemoteRightState remote)
+        {
+            remote.HasReceivedNative = false;
+            remote.NativeItemHash = 0;
+            remote.NativeRevision = 0;
+            remote.NativeBound = false;
+            remote.NativeState = null;
+        }
+
         private static void ClearAppliedState(
             RemoteRightState remoteState)
         {
@@ -1255,6 +1496,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             remoteState.AppliedBound =
                 false;
+
+            remoteState.AppliedNative = false;
 
             remoteState.AppliedVisualRoot =
                 null;
@@ -1277,6 +1520,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             remoteState.FailedApplyRevision =
                 0;
+            remoteState.FailedApplyNative = false;
 
             remoteState.NextApplyRetryTime =
                 0f;

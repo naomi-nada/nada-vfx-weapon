@@ -90,7 +90,7 @@ namespace NADA.VFX.Weapon.Editor
             new NadaVfxEditorTheme
             {
                 DisplayName =
-                    "Nada Classic",
+                    "nada.Classic",
 
                 TitleVariant =
                     NadaVfxEditorTitleVariant.PixelClassic,
@@ -196,7 +196,7 @@ namespace NADA.VFX.Weapon.Editor
             new NadaVfxEditorTheme
             {
                 DisplayName =
-                    "Nada Dark",
+                    "nada.Dark",
 
                 TitleVariant =
                     NadaVfxEditorTitleVariant.PixelClassic,
@@ -302,7 +302,7 @@ namespace NADA.VFX.Weapon.Editor
             new NadaVfxEditorTheme
             {
                 DisplayName =
-                    "Nada Val",
+                    "nada.Heim",
 
                 TitleVariant =
                     NadaVfxEditorTitleVariant.PixelVal,
@@ -408,7 +408,7 @@ namespace NADA.VFX.Weapon.Editor
             new NadaVfxEditorTheme
             {
                 DisplayName =
-                    "Nada Desert",
+                    "nada.Desert",
 
                 TitleVariant =
                     NadaVfxEditorTitleVariant.PixelClassic,
@@ -514,7 +514,7 @@ namespace NADA.VFX.Weapon.Editor
             new NadaVfxEditorTheme
             {
                 DisplayName =
-                    "Nada Winter",
+                    "nada.Winter",
 
                 TitleVariant =
                     NadaVfxEditorTitleVariant.PixelClassic,

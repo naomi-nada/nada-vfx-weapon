@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
 {
-    internal static class NadaWeaponRigOrchestrator
+    internal static partial class NadaWeaponRigOrchestrator
     {
         private const uint PrototypeLegacyInnerFlamesInstanceId = 1;
         private const uint PrototypeLegacyOuterFlamesInstanceId = 2;

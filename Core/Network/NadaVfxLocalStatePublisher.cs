@@ -1,5 +1,6 @@
 using System;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Weapons.Runtime;
 
 namespace NADA.VFX.Weapon.Core.Network
@@ -11,6 +12,9 @@ namespace NADA.VFX.Weapon.Core.Network
         internal readonly bool Bound;
         internal readonly int RecordCount;
         internal readonly byte[] PacketBytes;
+        internal readonly bool NativeBound;
+        internal readonly int NativeBlockCount;
+        internal readonly byte[] NativePacketBytes;
         internal readonly string ItemName;
 
         internal NadaVfxLocalPublishedState(
@@ -19,6 +23,9 @@ namespace NADA.VFX.Weapon.Core.Network
             bool bound,
             int recordCount,
             byte[] packetBytes,
+            bool nativeBound,
+            int nativeBlockCount,
+            byte[] nativePacketBytes,
             string itemName)
         {
             ItemHash = itemHash;
@@ -29,6 +36,10 @@ namespace NADA.VFX.Weapon.Core.Network
             PacketBytes =
                 packetBytes ??
                 Array.Empty<byte>();
+
+            NativeBound = nativeBound;
+            NativeBlockCount = nativeBlockCount;
+            NativePacketBytes = nativePacketBytes ?? Array.Empty<byte>();
 
             ItemName =
                 itemName ??
@@ -161,20 +172,11 @@ namespace NADA.VFX.Weapon.Core.Network
 
             // V2 transport only represents legacy singleton VfxState.
             // A native-bound item must not publish stale legacy visuals.
-            // Until native replication exists, publish an unbound V2
-            // presentation packet without modifying the weapon's ItemData.
+            // Native state has its own packet; V2 remains unbound so an
+            // older receiver cannot resurrect stale legacy effects.
             bool bound =
                 source.Kind == NadaWeaponLocalSourceKind.LegacyBound;
 
-            if (source.Kind == NadaWeaponLocalSourceKind.NativeBound ||
-                source.Kind == NadaWeaponLocalSourceKind.InvalidNative)
-            {
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: [NetworkNativeStateDeferred] " +
-                    $"item='{GetItemName(_currentRightItem)}' " +
-                    $"source={source.Kind} " +
-                    $"legacyV2Bound=False");
-            }
 
             VfxState state =
                 default;
@@ -242,6 +244,71 @@ namespace NADA.VFX.Weapon.Core.Network
                 return;
             }
 
+            // Both protocols use the same revision and vanilla item hash.
+            // Transport never reads ItemData: it only ships prepared bytes.
+            bool nativeBound =
+                source.Kind == NadaWeaponLocalSourceKind.NativeBound;
+
+            WeaponVfxState nativeState =
+                nativeBound ? source.State : null;
+
+            uint nextInstanceId =
+                nativeBound ? source.NextInstanceId : 0;
+
+            byte[] nativePacketBytes;
+            if (!WeaponVfxNetworkCodec.TryEncode(
+                    _currentRightItemHash,
+                    revision,
+                    nativeBound,
+                    nativeState,
+                    nextInstanceId,
+                    out nativePacketBytes,
+                    out string nativeReason))
+            {
+                // Invalid/oversized native state must not be replaced with
+                // legacy state or partly transmitted. Publish a native unbind.
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [NetworkNativePublish FAIL-CLOSED] " +
+                    $"item='{GetItemName(_currentRightItem)}' " +
+                    $"hash={_currentRightItemHash} " +
+                    $"revision={revision} " +
+                    $"reason={nativeReason}");
+
+                nativeBound = false;
+                nativeState = null;
+
+                if (!WeaponVfxNetworkCodec.TryEncode(
+                        _currentRightItemHash,
+                        revision,
+                        false,
+                        null,
+                        0,
+                        out nativePacketBytes,
+                        out nativeReason))
+                {
+                    _currentPublishedState = null;
+                    _currentStateDirty = true;
+                    Plugin.Log.LogWarning(
+                        $"{Plugin.ModName}: [NetworkNativePublish FAIL] " +
+                        $"reason={nativeReason}");
+                    return;
+                }
+            }
+
+            if (source.Kind == NadaWeaponLocalSourceKind.InvalidNative)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [NetworkNativePublish FAIL-CLOSED] " +
+                    $"item='{GetItemName(_currentRightItem)}' " +
+                    $"hash={_currentRightItemHash} " +
+                    $"revision={revision} " +
+                    $"reason={source.FailureReason ?? "invalid-native-item-state"}");
+            }
+
+            int nativeBlockCount = nativeBound
+                ? nativeState.Effects.Count
+                : 0;
+
             string itemName =
                 GetItemName(
                     _currentRightItem);
@@ -253,6 +320,9 @@ namespace NADA.VFX.Weapon.Core.Network
                     bound,
                     packet.Records.Count,
                     packetBytes,
+                    nativeBound,
+                    nativeBlockCount,
+                    nativePacketBytes,
                     itemName);
 
             _currentStateDirty =
@@ -266,6 +336,17 @@ namespace NADA.VFX.Weapon.Core.Network
                 $"bound={bound} " +
                 $"records={packet.Records.Count} " +
                 $"bytes={packetBytes.Length} " +
+                $"reason={reason}");
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [NetworkNativeLocalState] " +
+                $"item='{itemName}' " +
+                $"hash={_currentRightItemHash} " +
+                $"revision={revision} " +
+                $"source={source.Kind} " +
+                $"bound={nativeBound} " +
+                $"blocks={nativeBlockCount} " +
+                $"bytes={nativePacketBytes.Length} " +
                 $"reason={reason}");
 
             NadaVfxNetworkTransport.NotifyLocalStateChanged(

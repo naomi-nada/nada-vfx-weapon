@@ -1,5 +1,6 @@
 using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.State;
+using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
@@ -102,6 +103,36 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             return NadaWeaponRigOrchestrator.RunRemote(
                 context,
                 metadata);
+        }
+
+        // Remote native state is already resolved by the network codec.
+        // Never manufacture an ItemData or project blocks into legacy state.
+        public bool TryApplyResolvedBlockState(
+            GameObject root,
+            int itemHash,
+            WeaponVfxState blocks)
+        {
+            if (root == null || itemHash == 0 || blocks == null ||
+                !NadaWeaponTargets.IsTargetOrAttachClone(root))
+                return false;
+
+            Transform visual = NadaWeaponTargets.FindEquippedWeaponVisualRoot(
+                root.transform);
+            if (visual == null)
+                return false;
+
+            NadaWeaponMetadata metadata =
+                NadaWeaponMetadataResolver.FromItemHash(itemHash);
+
+            // Explicitly empty transitional context: native rendering must
+            // not consume local configuration or any legacy VfxState fields.
+            var context = new NadaWeaponRigContext(
+                root, itemData: null, state: default(VfxState), visual);
+            if (!context.IsValid)
+                return false;
+
+            return NadaWeaponRigOrchestrator.RunRemoteNative(
+                context, metadata, blocks);
         }
 
         public bool TryApplyDroppedItem(

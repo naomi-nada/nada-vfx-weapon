@@ -16,6 +16,15 @@ namespace NADA.VFX.Weapon.Core.Network
         private const string StateChangedRpcName =
             "naomi.nada.vfx.weapon.state_changed_v2";
 
+        private const string NativeStateRequestRpcName =
+            "naomi.nada.vfx.weapon.state_request_native_v1";
+
+        private const string NativeStateResponseRpcName =
+            "naomi.nada.vfx.weapon.state_response_native_v1";
+
+        private const string NativeStateChangedRpcName =
+            "naomi.nada.vfx.weapon.state_changed_native_v1";
+
         private const int TransportVersion = 1;
 
         private const int MaxControlPackageBytes = 128;
@@ -24,12 +33,21 @@ namespace NADA.VFX.Weapon.Core.Network
             NadaVfxNetworkProtocol.MaxPacketBytes +
             128;
 
+        private const int MaxNativeStatePackageBytes =
+            WeaponVfxNetworkCodec.MaxPacketBytes +
+            128;
+
         private static global::ZRoutedRpc _registeredRpc;
 
         // A peer becomes interested when it asks us for weapon state.
         // We only send tiny revision notifications to those peers.
         private static readonly HashSet<long>
             InterestedPeers = new();
+
+        // Only native requesters receive native change notifications.
+        // This keeps the new RPCs separate from legacy-only peers.
+        private static readonly HashSet<long>
+            NativeInterestedPeers = new();
 
         internal static event Action<
             long,
@@ -43,6 +61,14 @@ namespace NADA.VFX.Weapon.Core.Network
             uint,
             bool>
             StateChangedReceived;
+
+        // Stage 8b validates/decodes these but deliberately has no runtime
+        // subscriber. Stage 8c will add authoritative remote reconciliation.
+        internal static event Action<long, WeaponVfxNetworkStatePacket>
+            NativeStateReceived;
+
+        internal static event Action<long, int, uint, bool>
+            NativeStateChangedReceived;
 
         internal static event Action
             SessionReset;
@@ -66,6 +92,7 @@ namespace NADA.VFX.Weapon.Core.Network
                 rpc;
 
             InterestedPeers.Clear();
+            NativeInterestedPeers.Clear();
 
             NadaVfxLocalStatePublisher
                 .ResetSession();
@@ -84,6 +111,21 @@ namespace NADA.VFX.Weapon.Core.Network
                 StateChangedRpcName,
                 new Action<long, global::ZPackage>(
                     OnStateChanged));
+
+            rpc.Register(
+                NativeStateRequestRpcName,
+                new Action<long, global::ZPackage>(
+                    OnNativeStateRequest));
+
+            rpc.Register(
+                NativeStateResponseRpcName,
+                new Action<long, global::ZPackage>(
+                    OnNativeStateResponse));
+
+            rpc.Register(
+                NativeStateChangedRpcName,
+                new Action<long, global::ZPackage>(
+                    OnNativeStateChanged));
 
             SessionReset?.Invoke();
 
@@ -133,6 +175,27 @@ namespace NADA.VFX.Weapon.Core.Network
                     StateRequestRpcName,
                     package);
 
+                // Request native state in parallel; V2 remains the fallback.
+                // A native RPC failure must not cancel a valid V2 request.
+                try
+                {
+                    var nativeRequest = new global::ZPackage();
+                    nativeRequest.Write(TransportVersion);
+                    nativeRequest.Write(itemHash);
+                    nativeRequest.Write(unchecked((int)knownRevision));
+                    rpc.InvokeRoutedRPC(
+                        targetPeerId,
+                        NativeStateRequestRpcName,
+                        nativeRequest);
+                }
+                catch (Exception nativeError)
+                {
+                    Plugin.Log.LogWarning(
+                        $"{Plugin.ModName}: [NetworkNativeStateRequest FAIL] " +
+                        $"target={targetPeerId} hash={itemHash} " +
+                        $"error={nativeError}");
+                }
+
                 Plugin.Log.LogInfo(
                     $"{Plugin.ModName}: [NetworkStateRequest] " +
                     $"target={targetPeerId} " +
@@ -166,7 +229,7 @@ namespace NADA.VFX.Weapon.Core.Network
                 !ReferenceEquals(
                     rpc,
                     _registeredRpc) ||
-                InterestedPeers.Count == 0)
+                (InterestedPeers.Count == 0 && NativeInterestedPeers.Count == 0))
             {
                 return;
             }
@@ -194,6 +257,29 @@ namespace NADA.VFX.Weapon.Core.Network
                 {
                     Plugin.Log.LogWarning(
                         $"{Plugin.ModName}: [NetworkStateChanged FAIL] " +
+                        $"target={peerId} " +
+                        $"hash={publishedState.ItemHash} " +
+                        $"revision={publishedState.Revision} " +
+                        $"error={e}");
+                }
+            }
+
+            long[] nativePeers = new long[NativeInterestedPeers.Count];
+            NativeInterestedPeers.CopyTo(nativePeers);
+
+            foreach (long peerId in nativePeers)
+            {
+                if (peerId == 0L)
+                    continue;
+
+                try
+                {
+                    SendNativeStateChanged(rpc, peerId, publishedState);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogWarning(
+                        $"{Plugin.ModName}: [NetworkNativeStateChanged FAIL] " +
                         $"target={peerId} " +
                         $"hash={publishedState.ItemHash} " +
                         $"revision={publishedState.Revision} " +
@@ -566,6 +652,212 @@ namespace NADA.VFX.Weapon.Core.Network
                 Plugin.Log.LogWarning(
                     $"{Plugin.ModName}: [NetworkStateChangedReceive FAIL] {e}");
             }
+        }
+
+        private static void OnNativeStateRequest(
+            long sender,
+            global::ZPackage package)
+        {
+            try
+            {
+                if (sender == 0L || package == null ||
+                    package.Size() <= 0 ||
+                    package.Size() > MaxControlPackageBytes)
+                    return;
+
+                int version = package.ReadInt();
+                int itemHash = package.ReadInt();
+                uint knownRevision = unchecked((uint)package.ReadInt());
+
+                if (version != TransportVersion || itemHash == 0)
+                    return;
+
+                NativeInterestedPeers.Add(sender);
+
+                if (!NadaVfxLocalStatePublisher.TryGetCurrent(
+                        out NadaVfxLocalPublishedState published) ||
+                    published.ItemHash != itemHash)
+                {
+                    Plugin.Log.LogInfo(
+                        $"{Plugin.ModName}: [NetworkNativeStateRequestDeferred] " +
+                        $"sender={sender} hash={itemHash} " +
+                        $"reason=missing-or-mismatched-local-item");
+                    return;
+                }
+
+                SendNativeStateResponse(sender, published);
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [NetworkNativeStateRequestHandled] " +
+                    $"sender={sender} hash={itemHash} " +
+                    $"knownRevision={knownRevision} " +
+                    $"sentRevision={published.Revision}");
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [NetworkNativeStateRequestReceive FAIL] {e}");
+            }
+        }
+
+        private static void SendNativeStateResponse(
+            long peerId,
+            NadaVfxLocalPublishedState published)
+        {
+            if (peerId == 0L || published == null)
+                return;
+
+            byte[] bytes = published.NativePacketBytes;
+            if (bytes == null || bytes.Length == 0 ||
+                bytes.Length > WeaponVfxNetworkCodec.MaxPacketBytes)
+                return;
+
+            global::ZRoutedRpc rpc = global::ZRoutedRpc.instance;
+            if (rpc == null || !ReferenceEquals(rpc, _registeredRpc))
+                return;
+
+            var package = new global::ZPackage();
+            package.Write(TransportVersion);
+            package.Write(bytes.Length);
+            package.Write(bytes);
+
+            rpc.InvokeRoutedRPC(peerId, NativeStateResponseRpcName, package);
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [NetworkNativeStateResponse] " +
+                $"target={peerId} hash={published.ItemHash} " +
+                $"revision={published.Revision} bound={published.NativeBound} " +
+                $"blocks={published.NativeBlockCount} bytes={bytes.Length}");
+        }
+
+        private static void OnNativeStateResponse(
+            long sender,
+            global::ZPackage package)
+        {
+            try
+            {
+                if (sender == 0L || package == null)
+                    return;
+
+                int size = package.Size();
+                if (size <= 0 || size > MaxNativeStatePackageBytes)
+                {
+                    LogNativeReject(sender, "package-size", size);
+                    return;
+                }
+
+                int version = package.ReadInt();
+                if (version != TransportVersion)
+                {
+                    LogNativeReject(sender, "transport-version", size);
+                    return;
+                }
+
+                int declaredLength = package.ReadInt();
+                if (declaredLength <= 0 ||
+                    declaredLength > WeaponVfxNetworkCodec.MaxPacketBytes)
+                {
+                    LogNativeReject(sender, "declared-length", declaredLength);
+                    return;
+                }
+
+                byte[] bytes = package.ReadByteArray();
+                if (bytes == null || bytes.Length != declaredLength ||
+                    bytes.Length > WeaponVfxNetworkCodec.MaxPacketBytes)
+                {
+                    LogNativeReject(sender, "payload-length", bytes?.Length ?? 0);
+                    return;
+                }
+
+                if (!WeaponVfxNetworkCodec.TryDecode(
+                        bytes,
+                        out WeaponVfxNetworkStatePacket packet,
+                        out string reason))
+                {
+                    Plugin.Log.LogWarning(
+                        $"{Plugin.ModName}: [NetworkNativeStateReceiveReject] " +
+                        $"sender={sender} reason={reason} bytes={bytes.Length}");
+                    return;
+                }
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [NetworkNativeStateReceive] " +
+                    $"sender={sender} hash={packet.ItemHash} " +
+                    $"revision={packet.Revision} bound={packet.Bound} " +
+                    $"blocks={(packet.Bound ? packet.State.Effects.Count : 0)} " +
+                    $"bytes={bytes.Length} mode=runtime-dispatch");
+
+                NativeStateReceived?.Invoke(sender, packet);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [NetworkNativeStateReceive FAIL] {e}");
+            }
+        }
+
+        private static void SendNativeStateChanged(
+            global::ZRoutedRpc rpc,
+            long peerId,
+            NadaVfxLocalPublishedState published)
+        {
+            if (rpc == null || published == null)
+                return;
+
+            var package = new global::ZPackage();
+            package.Write(TransportVersion);
+            package.Write(published.ItemHash);
+            package.Write(unchecked((int)published.Revision));
+            package.Write(published.NativeBound ? 1 : 0);
+
+            rpc.InvokeRoutedRPC(peerId, NativeStateChangedRpcName, package);
+
+            Plugin.Log.LogInfo(
+                $"{Plugin.ModName}: [NetworkNativeStateChanged] " +
+                $"target={peerId} hash={published.ItemHash} " +
+                $"revision={published.Revision} bound={published.NativeBound}");
+        }
+
+        private static void OnNativeStateChanged(
+            long sender,
+            global::ZPackage package)
+        {
+            try
+            {
+                if (sender == 0L || package == null ||
+                    package.Size() <= 0 ||
+                    package.Size() > MaxControlPackageBytes)
+                    return;
+
+                int version = package.ReadInt();
+                int itemHash = package.ReadInt();
+                uint revision = unchecked((uint)package.ReadInt());
+                int boundValue = package.ReadInt();
+
+                if (version != TransportVersion || itemHash == 0 ||
+                    revision == 0 || (boundValue != 0 && boundValue != 1))
+                    return;
+
+                bool bound = boundValue == 1;
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [NetworkNativeStateChangedReceive] " +
+                    $"sender={sender} hash={itemHash} " +
+                    $"revision={revision} bound={bound} mode=runtime-dispatch");
+
+                NativeStateChangedReceived?.Invoke(
+                    sender, itemHash, revision, bound);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [NetworkNativeStateChangedReceive FAIL] {e}");
+            }
+        }
+
+        private static void LogNativeReject(long sender, string reason, int size)
+        {
+            Plugin.Log.LogWarning(
+                $"{Plugin.ModName}: [NetworkNativeStateReceiveReject] " +
+                $"sender={sender} reason={reason} bytes={size}");
         }
 
         [HarmonyPatch(
