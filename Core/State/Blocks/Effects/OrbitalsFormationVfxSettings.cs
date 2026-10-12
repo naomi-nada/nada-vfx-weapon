@@ -3,19 +3,29 @@ using System.Collections.Generic;
 namespace NADA.VFX.Weapon.Core.State.Blocks.Effects
 {
     /// <summary>
+    /// Movement belongs to formation state, not the visual effect type.
+    /// Path remains the default for existing orbital blocks.
+    /// </summary>
+    internal enum OrbitalsMovementMode : byte
+    {
+        Path = 0,
+        Attached = 1
+    }
+
+    /// <summary>
     /// Pure-data formation state shared by every orbital effect instance.
     ///
-    /// Path describes this orbital's own independent formation.
+    /// Path retains this orbital's independent trajectory settings even
+    /// when the selected movement mode does not consume them.
     ///
-    /// A Glue leader may control other orbital blocks identified by stable
-    /// InstanceId. Those IDs describe logical relationships only; runtime
-    /// object references are resolved separately.
-    ///
-    /// Disabling Glue does not clear its target list, and being controlled by
-    /// another leader does not overwrite this orbital's own formation state.
+    /// Glue relationships reference stable InstanceIds, never runtime
+    /// objects. Disabling Glue does not erase its saved target list.
     /// </summary>
     internal sealed class OrbitalsFormationVfxSettings
     {
+        internal OrbitalsMovementMode MovementMode { get; set; } =
+            OrbitalsMovementMode.Path;
+
         internal OrbitalsPathVfxSettings Path { get; set; } =
             new();
 

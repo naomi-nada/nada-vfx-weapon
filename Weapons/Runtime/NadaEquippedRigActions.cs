@@ -7,84 +7,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 {
     internal static class NadaEquippedRigActions
     {
-        internal static void TryUnbindEquipped()
-        {
-            Player player =
-                Player.m_localPlayer;
-
-            if (player == null)
-                return;
-
-            Transform rightHandAttach =
-                FindDescendantByName(
-                    player.transform,
-                    "RightHand_Attach");
-
-            Transform leftHandAttach =
-                FindDescendantByName(
-                    player.transform,
-                    "LeftHand_Attach");
-
-            global::ItemDrop.ItemData rightItem =
-                NadaEquippedItemResolver.ResolveRightHandItem();
-
-            global::ItemDrop.ItemData leftItem =
-                NadaEquippedItemResolver.ResolveLeftHandItem();
-
-            bool unboundRight =
-                false;
-
-            bool unboundLeft =
-                false;
-
-            if (rightItem != null &&
-                VfxStateIO.IsBound(rightItem))
-            {
-                unboundRight =
-                    NadaWeaponBinder.Unbind(
-                        rightItem);
-            }
-
-            if (leftItem != null &&
-                leftItem != rightItem &&
-                VfxStateIO.IsBound(leftItem))
-            {
-                unboundLeft =
-                    NadaWeaponBinder.Unbind(
-                        leftItem);
-            }
-
-            if (!unboundRight &&
-                !unboundLeft)
-            {
-                Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: [Unbind] no bound equipped items found.");
-
-                return;
-            }
-
-            if (unboundRight)
-            {
-                RemoveRigsFromAttach(
-                    rightHandAttach);
-
-                // Some two-handed equipment can involve both hand
-                // attachment hierarchies even though the state belongs
-                // to one ItemData instance.
-                if (leftItem == rightItem)
-                {
-                    RemoveRigsFromAttach(
-                        leftHandAttach);
-                }
-            }
-
-            if (unboundLeft)
-            {
-                RemoveRigsFromAttach(
-                    leftHandAttach);
-            }
-        }
-
         internal static void RefreshExistingEquippedRigsOnly()
         {
             Player player =
@@ -152,9 +74,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             global::ItemDrop.ItemData leftItem =
                 NadaEquippedItemResolver.ResolveLeftHandItem();
 
-            // Legacy config refreshes only apply to genuinely unbound items.
-            // Native bindings, editor previews, and invalid native payloads
-            // must not be refreshed through this compatibility path.
+            // Config is only authoritative for an explicitly unbound item.
+            // Native bindings and editor drafts must not be refreshed from it.
             if (rightItem != null &&
                 NadaWeaponLocalSourceResolver.Resolve(rightItem).Kind ==
                     NadaWeaponLocalSourceKind.Unbound)
@@ -234,22 +155,6 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             }
 
             return false;
-        }
-
-        private static void RemoveRigsFromAttach(
-            Transform attachTransform)
-        {
-            if (attachTransform == null)
-                return;
-
-            foreach (Transform childTransform in attachTransform)
-            {
-                if (childTransform == null)
-                    continue;
-
-                NadaWeaponRigRemoval.RemoveFromEquippedRoot(
-                    childTransform.gameObject);
-            }
         }
 
         private static Transform ResolveRigAttachTarget(

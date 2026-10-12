@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
@@ -104,6 +105,31 @@ namespace NADA.VFX.Weapon.Runtime.Formation
                         out resolution);
                 }
 
+                // Movement is explicit state. Unknown values must not
+                // silently fall back to Path behavior.
+                if (formation.MovementMode !=
+                        OrbitalsMovementMode.Path &&
+                    formation.MovementMode !=
+                        OrbitalsMovementMode.Attached)
+                {
+                    return Fail(
+                        $"invalid-movement-mode:{block.InstanceId}",
+                        out resolution);
+                }
+
+                // Attached has no trajectory phase to share or consume.
+                // Reject even dormant Glue declarations so re-enabling
+                // an effect cannot create an unsupported relationship.
+                if (formation.MovementMode ==
+                        OrbitalsMovementMode.Attached &&
+                    (formation.GlueLeaderEnabled ||
+                     formation.GlueTargetInstanceIds.Count > 0))
+                {
+                    return Fail(
+                        $"attached-declares-glue:{block.InstanceId}",
+                        out resolution);
+                }
+
                 orbitalBlocksByInstanceId.Add(
                     block.InstanceId,
                     block);
@@ -114,6 +140,41 @@ namespace NADA.VFX.Weapon.Runtime.Formation
 
                 orbitalBlocksInStateOrder.Add(
                     block);
+            }
+
+            // An Attached orbital cannot be the target of a declared
+            // leader either. Check before active Glue resolution so
+            // disabled leaders cannot retain latent Attached targets.
+            foreach (VfxEffectBlock block in
+                     orbitalBlocksInStateOrder)
+            {
+                OrbitalsFormationVfxSettings formation =
+                    formationByInstanceId[
+                        block.InstanceId];
+
+                if (!formation.GlueLeaderEnabled)
+                    continue;
+
+                foreach (uint targetId in
+                         formation.GlueTargetInstanceIds)
+                {
+                    if (!formationByInstanceId.TryGetValue(
+                            targetId,
+                            out OrbitalsFormationVfxSettings targetFormation))
+                    {
+                        continue;
+                    }
+
+                    if (targetFormation.MovementMode ==
+                        OrbitalsMovementMode.Attached)
+                    {
+                        return Fail(
+                            $"attached-glue-target:" +
+                            $"leader={block.InstanceId}:" +
+                            $"target={targetId}",
+                            out resolution);
+                    }
+                }
             }
 
             // A block declaring itself a leader remains leader-shaped even

@@ -1,3 +1,4 @@
+
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
@@ -13,27 +14,46 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
         internal static bool Draw(VfxEffectBlock block)
         {
-            if (block == null || block.TypeId != VfxEffectTypeIds.OrbitalsOrbs)
+            if (block == null ||
+                block.TypeId != VfxEffectTypeIds.OrbitalsOrbs)
+            {
                 return false;
+            }
 
             if (block.Settings is not OrbitalsOrbsVfxSettings orbs ||
                 orbs.Formation?.Path == null)
             {
                 NadaVfxEditorControls.Placeholder(
                     "Invalid Orbs block: expected Orbs settings with a formation path.");
+
                 return false;
             }
 
-            OrbitalsPathVfxSettings path = orbs.Formation.Path;
-            string prefix = $"orbitals-orbs:{block.InstanceId}";
-            bool isFollower = NadaOrbitalsGlueInspector.IsActiveFollower(block);
+            OrbitalsPathVfxSettings path =
+                orbs.Formation.Path;
+
+            string prefix =
+                $"orbitals-orbs:{block.InstanceId}";
+
+            bool isFollower =
+                NadaOrbitalsGlueInspector.IsActiveFollower(block);
+
+            bool attached =
+                orbs.Formation.MovementMode ==
+                OrbitalsMovementMode.Attached;
+
             bool changed = false;
 
-            if (NadaVfxEditorControls.Section($"{prefix}:visual", "VISUAL"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:visual",
+                    "VISUAL"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:luminance", "Luminance", orbs.Luminance,
-                        PluginConfig.MinLuminance, PluginConfig.MaxLuminance,
+                        $"{prefix}:luminance",
+                        "Luminance",
+                        orbs.Luminance,
+                        PluginConfig.MinLuminance,
+                        PluginConfig.MaxLuminance,
                         out float luminance,
                         description: "Changes how brightly the orbs glow.",
                         resetValue: WeaponVfxBlockDefaults.DefaultLuminance))
@@ -43,8 +63,12 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:hue", "Hue", orbs.Hue,
-                        MinHue, MaxHue, out float hue,
+                        $"{prefix}:hue",
+                        "Hue",
+                        orbs.Hue,
+                        MinHue,
+                        MaxHue,
+                        out float hue,
                         description: "Shifts the orbs' color.",
                         resetValue: WeaponVfxBlockDefaults.DefaultHue))
                 {
@@ -60,10 +84,13 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     "SHAPE"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:scale", "Scale", orbs.Scale,
-                        PluginConfig.MinOrbScaleMult, PluginConfig.MaxOrbScaleMult,
+                        $"{prefix}:scale",
+                        "Scale",
+                        orbs.Scale,
+                        PluginConfig.MinOrbScaleMult,
+                        PluginConfig.MaxOrbScaleMult,
                         out float scale,
-                        description: "Changes the size of the orbiting orbs.",
+                        description: "Changes the size of the orbs.",
                         resetValue: WeaponVfxBlockDefaults.DefaultScale))
                 {
                     orbs.Scale = scale;
@@ -73,12 +100,18 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:formation", "FORMATION"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:formation",
+                    "FORMATION"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:count", "Count", path.Count,
-                        PluginConfig.MinCountNormalized, PluginConfig.MaxCountNormalized,
+                        $"{prefix}:count",
+                        "Count",
+                        path.Count,
+                        PluginConfig.MinCountNormalized,
+                        PluginConfig.MaxCountNormalized,
                         out float count,
+                        enabled: !attached,
                         description: "Controls the number of additional orbs beyond the leading orb.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCount))
                 {
@@ -87,36 +120,92 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.Toggle(
-                        $"{prefix}:snake", "Snake", path.SnakeEnabled,
+                        $"{prefix}:snake",
+                        "Snake",
+                        path.SnakeEnabled,
                         out bool snakeEnabled,
-                        enabled: !isFollower,
+                        enabled: !isFollower && !attached,
                         description: "Makes the orbs follow in a snake formation."))
                 {
                     path.SnakeEnabled = snakeEnabled;
                     changed = true;
                 }
 
-                changed |= NadaOrbitalsGlueInspector.Draw(block, orbs.Formation);
+                if (!attached)
+                {
+                    changed |= NadaOrbitalsGlueInspector.Draw(
+                        block,
+                        orbs.Formation);
+                }
+                else
+                {
+                    NadaVfxEditorControls.Placeholder(
+                        "Attached uses one orb. Saved Path settings are preserved.");
+                }
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:motion", "MOTION"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:motion",
+                    "MOTION"))
             {
+                // Attached is only available when this block has no
+                // declared Glue ownership or membership, including
+                // dormant relationships on disabled leaders.
+                bool canAttach =
+                    attached ||
+                    !NadaOrbitalsGlueInspector.HasDeclaredGlueParticipation(
+                        block);
+
+                if (NadaVfxEditorControls.Toggle(
+                        $"{prefix}:attached",
+                        "Attached",
+                        attached,
+                        out bool nextAttached,
+                        enabled: canAttach,
+                        description: "Fixes one orb to the weapon instead of moving it along an orbital path."))
+                {
+                    orbs.Formation.MovementMode =
+                        nextAttached
+                            ? OrbitalsMovementMode.Attached
+                            : OrbitalsMovementMode.Path;
+
+                    attached = nextAttached;
+                    changed = true;
+                }
+
+                if (!canAttach)
+                {
+                    NadaVfxEditorControls.Placeholder(
+                        "Remove this orbital's Glue relationships before enabling Attached.");
+                }
+
                 bool wasEnabled = GUI.enabled;
                 Color previousTint = GUI.color;
-                if (isFollower)
+
+                // Followers inherit their leader's path.
+                // Attached ignores path movement entirely.
+                if (isFollower || attached)
                 {
                     GUI.enabled = false;
-                    GUI.color = new Color(previousTint.r, previousTint.g,
-                        previousTint.b, previousTint.a * 0.78f);
+
+                    GUI.color = new Color(
+                        previousTint.r,
+                        previousTint.g,
+                        previousTint.b,
+                        previousTint.a * 0.78f);
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:speed", "Speed", path.Speed,
-                        PluginConfig.MinOrbitalsSpeed, PluginConfig.MaxOrbitalsSpeed,
-                        out float speed, decimals: 3,
-                        enabled: !isFollower,
+                        $"{prefix}:speed",
+                        "Speed",
+                        path.Speed,
+                        PluginConfig.MinOrbitalsSpeed,
+                        PluginConfig.MaxOrbitalsSpeed,
+                        out float speed,
+                        decimals: 3,
+                        enabled: !isFollower && !attached,
                         description: "Controls how quickly the orbs orbit.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpeed))
                 {
@@ -125,11 +214,16 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:spacing", "Spacing", path.Spacing,
-                        PluginConfig.MinOrbitalsSpacing, PluginConfig.MaxOrbitalsSpacing,
+                        $"{prefix}:spacing",
+                        "Spacing",
+                        path.Spacing,
+                        PluginConfig.MinOrbitalsSpacing,
+                        PluginConfig.MaxOrbitalsSpacing,
                         out float spacing,
-                        enabled: !isFollower && !path.SnakeEnabled,
-                        disabledReason: "Spacing is locked while Snake or Glue is active.",
+                        enabled: !isFollower &&
+                                 !attached &&
+                                 !path.SnakeEnabled,
+                        disabledReason: "Spacing is locked while Snake, Glue, or Attached is active.",
                         description: "Adjusts the separation between orbiting orbs.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpacing))
                 {
@@ -138,9 +232,13 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:length", "Length", path.Length,
-                        PluginConfig.MinOrbitalsLength, PluginConfig.MaxOrbitalsLength,
-                        out float length, enabled: !isFollower,
+                        $"{prefix}:length",
+                        "Length",
+                        path.Length,
+                        PluginConfig.MinOrbitalsLength,
+                        PluginConfig.MaxOrbitalsLength,
+                        out float length,
+                        enabled: !isFollower && !attached,
                         description: "Changes how far the orbit travels along the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsLength))
                 {
@@ -149,10 +247,13 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:radius", "Radius", path.Radius,
+                        $"{prefix}:radius",
+                        "Radius",
+                        path.Radius,
                         PluginConfig.MinOrbitalsRadiusMultiplier,
                         PluginConfig.MaxOrbitalsRadiusMultiplier,
-                        out float radius, enabled: !isFollower,
+                        out float radius,
+                        enabled: !isFollower && !attached,
                         description: "Changes how wide the orbit wraps around the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsRadius))
                 {
@@ -161,9 +262,13 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:cycles", "Cycles", path.Cycles,
-                        PluginConfig.MinOrbitalsCycles, PluginConfig.MaxOrbitalsCycles,
-                        out float cycles, enabled: !isFollower,
+                        $"{prefix}:cycles",
+                        "Cycles",
+                        path.Cycles,
+                        PluginConfig.MinOrbitalsCycles,
+                        PluginConfig.MaxOrbitalsCycles,
+                        out float cycles,
+                        enabled: !isFollower && !attached,
                         description: "Changes how many turns happen before reversing.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCycles))
                 {
@@ -172,10 +277,14 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:drift", "Drift", path.Drift,
-                        PluginConfig.MinDrift, PluginConfig.MaxDrift,
-                        out float drift, enabled: !isFollower,
-                        description: "Changes how freely orbs drift off their orbit path.",
+                        $"{prefix}:drift",
+                        "Drift",
+                        path.Drift,
+                        PluginConfig.MinDrift,
+                        PluginConfig.MaxDrift,
+                        out float drift,
+                        enabled: !isFollower && !attached,
+                        description: "Changes how freely the orbs drift off their orbital path.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsDrift))
                 {
                     path.Drift = drift;
@@ -187,8 +296,13 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
+
+            // Attached still uses the block's normal position/rotation.
+            // An active Glue follower remains controlled by its leader.
             changed |= NadaVfxCommonBlockInspector.DrawTransform(
-                block, editable: !isFollower);
+                block,
+                editable: !isFollower);
+
             return changed;
         }
     }

@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,11 +17,13 @@ namespace NADA.VFX.Weapon.Core.Persistence
     internal static class WeaponVfxStateCodec
     {
         private const uint Magic = 0x3244564E; // "NVD2" little-endian
-        private const ushort FormatVersion = 1;
+        private const ushort FormatVersion = 2;
+        private const ushort OldestReadableFormatVersion = 1;
         private const int MaxPayloadBytes = 65536;
         private const int MaxEffects = 128;
         private const int MaxNameCharacters = 64;
         private const int MaxNameBytes = 256;
+
         private static readonly UTF8Encoding StrictUtf8 =
             new UTF8Encoding(false, true);
 
@@ -32,9 +35,11 @@ namespace NADA.VFX.Weapon.Core.Persistence
         {
             bytes = null;
             reason = null;
+
             try
             {
                 ValidateState(state, nextInstanceId);
+
                 using (var stream = new MemoryStream())
                 {
                     using (var writer = new BinaryWriter(
@@ -44,24 +49,33 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         writer.Write(FormatVersion);
                         writer.Write(state.SchemaVersion);
                         writer.Write(nextInstanceId);
+
                         WriteTransform(writer, state.RigTransform);
+
                         writer.Write((ushort)state.Effects.Count);
+
                         foreach (VfxEffectBlock block in state.Effects)
                         {
                             writer.Write(block.InstanceId);
                             writer.Write(GetTypeCode(block.TypeId));
                             WriteBool(writer, block.Enabled);
                             WriteBool(writer, block.DisplayName != null);
+
                             if (block.DisplayName != null)
                                 WriteName(writer, block.DisplayName);
+
                             WriteTransform(writer, block.Transform);
                             WriteSettings(writer, block);
                         }
                     }
+
                     if (stream.Length > MaxPayloadBytes)
-                        throw new InvalidDataException("Payload exceeds size limit.");
+                        throw new InvalidDataException(
+                            "Payload exceeds size limit.");
+
                     bytes = stream.ToArray();
                 }
+
                 return true;
             }
             catch (Exception ex) when (IsCodecFailure(ex))
@@ -80,27 +94,52 @@ namespace NADA.VFX.Weapon.Core.Persistence
             state = null;
             nextInstanceId = 0;
             reason = null;
+
             try
             {
-                if (bytes == null || bytes.Length == 0 ||
+                if (bytes == null ||
+                    bytes.Length == 0 ||
                     bytes.Length > MaxPayloadBytes)
-                    throw new InvalidDataException("Empty or oversized payload.");
+                {
+                    throw new InvalidDataException(
+                        "Empty or oversized payload.");
+                }
 
                 WeaponVfxState decoded;
                 uint decodedCursor;
-                using (var stream = new MemoryStream(bytes, writable: false))
+
+                using (var stream = new MemoryStream(
+                           bytes, writable: false))
                 using (var reader = new BinaryReader(
                            stream, Encoding.UTF8, leaveOpen: true))
                 {
                     if (reader.ReadUInt32() != Magic)
-                        throw new InvalidDataException("Invalid native-state magic.");
-                    if (reader.ReadUInt16() != FormatVersion)
-                        throw new InvalidDataException("Unsupported native-state format.");
-                    int schemaVersion = reader.ReadInt32();
-                    if (schemaVersion != WeaponVfxState.CurrentSchemaVersion)
-                        throw new InvalidDataException("Unsupported block schema version.");
+                        throw new InvalidDataException(
+                            "Invalid native-state magic.");
+
+                    ushort payloadFormatVersion =
+                        reader.ReadUInt16();
+
+                    if (payloadFormatVersion <
+                            OldestReadableFormatVersion ||
+                        payloadFormatVersion > FormatVersion)
+                    {
+                        throw new InvalidDataException(
+                            "Unsupported native-state format.");
+                    }
+
+                    int schemaVersion =
+                        reader.ReadInt32();
+
+                    if (schemaVersion !=
+                        WeaponVfxState.CurrentSchemaVersion)
+                    {
+                        throw new InvalidDataException(
+                            "Unsupported block schema version.");
+                    }
 
                     decodedCursor = reader.ReadUInt32();
+
                     decoded = new WeaponVfxState
                     {
                         SchemaVersion = schemaVersion,
@@ -109,34 +148,58 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     };
 
                     int count = reader.ReadUInt16();
+
                     if (count > MaxEffects)
-                        throw new InvalidDataException("Too many effect blocks.");
+                        throw new InvalidDataException(
+                            "Too many effect blocks.");
+
                     for (int index = 0; index < count; index++)
                     {
-                        uint instanceId = reader.ReadUInt32();
-                        string typeId = GetTypeId(reader.ReadByte());
-                        bool enabled = ReadBool(reader);
-                        string displayName = ReadBool(reader)
-                            ? ReadName(reader)
-                            : null;
-                        VfxTransformState transform = ReadTransform(reader);
-                        VfxEffectSettings settings = ReadSettings(reader, typeId);
-                        decoded.Effects.Add(new VfxEffectBlock
-                        {
-                            InstanceId = instanceId,
-                            TypeId = typeId,
-                            Enabled = enabled,
-                            DisplayName = displayName,
-                            Transform = transform,
-                            Settings = settings
-                        });
+                        uint instanceId =
+                            reader.ReadUInt32();
+
+                        string typeId =
+                            GetTypeId(reader.ReadByte());
+
+                        bool enabled =
+                            ReadBool(reader);
+
+                        string displayName =
+                            ReadBool(reader)
+                                ? ReadName(reader)
+                                : null;
+
+                        VfxTransformState transform =
+                            ReadTransform(reader);
+
+                        VfxEffectSettings settings =
+                            ReadSettings(
+                                reader,
+                                typeId,
+                                payloadFormatVersion);
+
+                        decoded.Effects.Add(
+                            new VfxEffectBlock
+                            {
+                                InstanceId = instanceId,
+                                TypeId = typeId,
+                                Enabled = enabled,
+                                DisplayName = displayName,
+                                Transform = transform,
+                                Settings = settings
+                            });
                     }
+
                     if (stream.Position != stream.Length)
-                        throw new InvalidDataException("Trailing payload data.");
+                        throw new InvalidDataException(
+                            "Trailing payload data.");
                 }
+
                 ValidateState(decoded, decodedCursor);
+
                 state = decoded;
                 nextInstanceId = decodedCursor;
+
                 return true;
             }
             catch (Exception ex) when (IsCodecFailure(ex))
@@ -155,88 +218,160 @@ namespace NADA.VFX.Weapon.Core.Persistence
                    error is DecoderFallbackException;
         }
 
-        private static void ValidateState(WeaponVfxState state, uint nextInstanceId)
+        private static void ValidateState(
+            WeaponVfxState state,
+            uint nextInstanceId)
         {
-            if (state == null || state.SchemaVersion != WeaponVfxState.CurrentSchemaVersion ||
-                state.Effects == null || state.RigTransform == null)
-                throw new InvalidDataException("Missing state or unsupported schema.");
+            if (state == null ||
+                state.SchemaVersion !=
+                    WeaponVfxState.CurrentSchemaVersion ||
+                state.Effects == null ||
+                state.RigTransform == null)
+            {
+                throw new InvalidDataException(
+                    "Missing state or unsupported schema.");
+            }
+
             if (state.Effects.Count > MaxEffects)
-                throw new InvalidDataException("Too many effect blocks.");
+                throw new InvalidDataException(
+                    "Too many effect blocks.");
+
             ValidateTransform(state.RigTransform);
+
             var ids = new HashSet<uint>();
             uint maxId = 0;
+
             foreach (VfxEffectBlock block in state.Effects)
             {
-                if (block == null || block.InstanceId == 0 ||
+                if (block == null ||
+                    block.InstanceId == 0 ||
                     !ids.Add(block.InstanceId))
-                    throw new InvalidDataException("Null block, zero ID, or duplicate instance ID.");
+                {
+                    throw new InvalidDataException(
+                        "Null block, zero ID, or duplicate instance ID.");
+                }
+
                 GetTypeCode(block.TypeId);
-                if (block.Transform == null || block.Settings == null)
-                    throw new InvalidDataException("Missing block transform or settings.");
-                if ((block.DisplayName ?? "").Length > MaxNameCharacters)
-                    throw new InvalidDataException("Display name exceeds length limit.");
+
+                if (block.Transform == null ||
+                    block.Settings == null)
+                {
+                    throw new InvalidDataException(
+                        "Missing block transform or settings.");
+                }
+
+                if ((block.DisplayName ?? "").Length >
+                    MaxNameCharacters)
+                {
+                    throw new InvalidDataException(
+                        "Display name exceeds length limit.");
+                }
+
                 ValidateTransform(block.Transform);
                 ValidateSettings(block);
+
                 if (block.InstanceId > maxId)
                     maxId = block.InstanceId;
             }
+
             if (maxId == uint.MaxValue)
             {
                 if (nextInstanceId != 0)
-                    throw new InvalidDataException("Exhausted ID cursor must be zero.");
+                    throw new InvalidDataException(
+                        "Exhausted ID cursor must be zero.");
             }
-            else if (nextInstanceId == 0 || nextInstanceId <= maxId)
+            else if (nextInstanceId == 0 ||
+                     nextInstanceId <= maxId)
             {
-                throw new InvalidDataException("NextInstanceId must exceed all allocated IDs.");
+                throw new InvalidDataException(
+                    "NextInstanceId must exceed all allocated IDs.");
             }
 
-            // These are referential checks, not an alternative orbital resolver.
-            // The existing OrbitalsFormationResolver still owns formation semantics.
+            // Referential checks only. The formation resolver still owns
+            // Glue relationship semantics.
             foreach (VfxEffectBlock block in state.Effects)
             {
-                OrbitalsFormationVfxSettings formation = GetFormation(block.Settings);
+                OrbitalsFormationVfxSettings formation =
+                    GetFormation(block.Settings);
+
                 if (formation == null)
                     continue;
+
                 var localTargets = new HashSet<uint>();
-                foreach (uint target in formation.GlueTargetInstanceIds)
+
+                foreach (uint target in
+                         formation.GlueTargetInstanceIds)
                 {
-                    if (target == 0 || target == block.InstanceId ||
-                        !ids.Contains(target) || !localTargets.Add(target))
-                        throw new InvalidDataException("Invalid Glue target instance ID.");
-                    VfxEffectBlock targetBlock = state.Effects.Find(b => b.InstanceId == target);
+                    if (target == 0 ||
+                        target == block.InstanceId ||
+                        !ids.Contains(target) ||
+                        !localTargets.Add(target))
+                    {
+                        throw new InvalidDataException(
+                            "Invalid Glue target instance ID.");
+                    }
+
+                    VfxEffectBlock targetBlock =
+                        state.Effects.Find(
+                            b => b.InstanceId == target);
+
                     if (GetFormation(targetBlock.Settings) == null)
-                        throw new InvalidDataException("Glue target is not orbital.");
+                        throw new InvalidDataException(
+                            "Glue target is not orbital.");
                 }
             }
         }
 
-        private static void WriteBool(BinaryWriter writer, bool value) =>
+        private static void WriteBool(
+            BinaryWriter writer,
+            bool value)
+        {
             writer.Write((byte)(value ? 1 : 0));
+        }
 
         private static bool ReadBool(BinaryReader reader)
         {
             byte value = reader.ReadByte();
+
             if (value > 1)
-                throw new InvalidDataException("Invalid Boolean value.");
+                throw new InvalidDataException(
+                    "Invalid Boolean value.");
+
             return value == 1;
         }
 
-        private static void WriteFinite(BinaryWriter writer, float value)
+        private static void WriteFinite(
+            BinaryWriter writer,
+            float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
-                throw new InvalidDataException("Non-finite setting.");
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
+                throw new InvalidDataException(
+                    "Non-finite setting.");
+            }
+
             writer.Write(value);
         }
 
-        private static float ReadFinite(BinaryReader reader)
+        private static float ReadFinite(
+            BinaryReader reader)
         {
             float value = reader.ReadSingle();
-            if (float.IsNaN(value) || float.IsInfinity(value))
-                throw new InvalidDataException("Non-finite setting.");
+
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
+                throw new InvalidDataException(
+                    "Non-finite setting.");
+            }
+
             return value;
         }
 
-        private static void WriteTransform(BinaryWriter writer, VfxTransformState transform)
+        private static void WriteTransform(
+            BinaryWriter writer,
+            VfxTransformState transform)
         {
             WriteFinite(writer, transform.XOffset);
             WriteFinite(writer, transform.YOffset);
@@ -246,8 +381,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
             WriteFinite(writer, transform.ZRotation);
         }
 
-        private static VfxTransformState ReadTransform(BinaryReader reader) =>
-            new VfxTransformState
+        private static VfxTransformState ReadTransform(
+            BinaryReader reader)
+        {
+            return new VfxTransformState
             {
                 XOffset = ReadFinite(reader),
                 YOffset = ReadFinite(reader),
@@ -256,8 +393,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                 YRotation = ReadFinite(reader),
                 ZRotation = ReadFinite(reader)
             };
+        }
 
-        private static void ValidateTransform(VfxTransformState value)
+        private static void ValidateTransform(
+            VfxTransformState value)
         {
             RequireFinite(value.XOffset);
             RequireFinite(value.YOffset);
@@ -269,18 +408,30 @@ namespace NADA.VFX.Weapon.Core.Persistence
 
         private static void RequireFinite(float value)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value))
-                throw new InvalidDataException("Non-finite setting.");
+            if (float.IsNaN(value) ||
+                float.IsInfinity(value))
+            {
+                throw new InvalidDataException(
+                    "Non-finite setting.");
+            }
         }
 
-        private static void WriteName(BinaryWriter writer, string name)
+        private static void WriteName(
+            BinaryWriter writer,
+            string name)
         {
-            name = name ?? string.Empty;
+            name ??= string.Empty;
+
             if (name.Length > MaxNameCharacters)
-                throw new InvalidDataException("Display name exceeds length limit.");
+                throw new InvalidDataException(
+                    "Display name exceeds length limit.");
+
             byte[] encoded = StrictUtf8.GetBytes(name);
+
             if (encoded.Length > MaxNameBytes)
-                throw new InvalidDataException("Display name exceeds byte limit.");
+                throw new InvalidDataException(
+                    "Display name exceeds byte limit.");
+
             writer.Write((ushort)encoded.Length);
             writer.Write(encoded);
         }
@@ -288,36 +439,62 @@ namespace NADA.VFX.Weapon.Core.Persistence
         private static string ReadName(BinaryReader reader)
         {
             int byteCount = reader.ReadUInt16();
+
             if (byteCount > MaxNameBytes)
-                throw new InvalidDataException("Display name exceeds byte limit.");
+                throw new InvalidDataException(
+                    "Display name exceeds byte limit.");
+
             byte[] value = reader.ReadBytes(byteCount);
+
             if (value.Length != byteCount)
-                throw new EndOfStreamException("Truncated display name.");
+                throw new EndOfStreamException(
+                    "Truncated display name.");
+
             string decoded = StrictUtf8.GetString(value);
+
             if (decoded.Length > MaxNameCharacters)
-                throw new InvalidDataException("Display name exceeds length limit.");
+                throw new InvalidDataException(
+                    "Display name exceeds length limit.");
+
             return decoded;
         }
 
-        private static OrbitalsFormationVfxSettings GetFormation(VfxEffectSettings settings)
+        private static OrbitalsFormationVfxSettings GetFormation(
+            VfxEffectSettings settings)
         {
             switch (settings)
             {
-                case OrbitalsOrbsVfxSettings orbs: return orbs.Formation;
-                case OrbitalsCoresVfxSettings cores: return cores.Formation;
-                case OrbitalsFlamesVfxSettings flames: return flames.Formation;
-                case OrbitalsEmbersVfxSettings embers: return embers.Formation;
-                default: return null;
+                case OrbitalsOrbsVfxSettings orbs:
+                    return orbs.Formation;
+
+                case OrbitalsCoresVfxSettings cores:
+                    return cores.Formation;
+
+                case OrbitalsFlamesVfxSettings flames:
+                    return flames.Formation;
+
+                case OrbitalsEmbersVfxSettings embers:
+                    return embers.Formation;
+
+                default:
+                    return null;
             }
         }
 
-        private static void WriteFormation(BinaryWriter writer, OrbitalsFormationVfxSettings formation)
+        private static void WriteFormation(
+            BinaryWriter writer,
+            OrbitalsFormationVfxSettings formation)
         {
             WriteBool(writer, formation.GlueLeaderEnabled);
-            writer.Write((ushort)formation.GlueTargetInstanceIds.Count);
+
+            writer.Write(
+                (ushort)formation.GlueTargetInstanceIds.Count);
+
             foreach (uint id in formation.GlueTargetInstanceIds)
                 writer.Write(id);
+
             OrbitalsPathVfxSettings p = formation.Path;
+
             WriteBool(writer, p.SnakeEnabled);
             WriteFinite(writer, p.Count);
             WriteFinite(writer, p.Speed);
@@ -326,22 +503,30 @@ namespace NADA.VFX.Weapon.Core.Persistence
             WriteFinite(writer, p.Radius);
             WriteFinite(writer, p.Cycles);
             WriteFinite(writer, p.Drift);
+
+            // Introduced in native-state format 2.
+            writer.Write((byte)formation.MovementMode);
         }
 
-        private static OrbitalsFormationVfxSettings ReadFormation(BinaryReader reader)
+        private static OrbitalsFormationVfxSettings ReadFormation(
+            BinaryReader reader,
+            ushort payloadFormatVersion)
         {
             bool leaderEnabled = ReadBool(reader);
+
             int targetCount = reader.ReadUInt16();
+
             if (targetCount > MaxEffects)
-                throw new InvalidDataException("Too many Glue targets.");
+                throw new InvalidDataException(
+                    "Too many Glue targets.");
+
             var targets = new List<uint>(targetCount);
+
             for (int i = 0; i < targetCount; i++)
                 targets.Add(reader.ReadUInt32());
-            return new OrbitalsFormationVfxSettings
-            {
-                GlueLeaderEnabled = leaderEnabled,
-                GlueTargetInstanceIds = targets,
-                Path = new OrbitalsPathVfxSettings
+
+            OrbitalsPathVfxSettings path =
+                new OrbitalsPathVfxSettings
                 {
                     SnakeEnabled = ReadBool(reader),
                     Count = ReadFinite(reader),
@@ -351,16 +536,59 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     Radius = ReadFinite(reader),
                     Cycles = ReadFinite(reader),
                     Drift = ReadFinite(reader)
+                };
+
+            // Version 1 had no movement byte. Every old orbital therefore
+            // loads in its original Path mode.
+            OrbitalsMovementMode movementMode =
+                OrbitalsMovementMode.Path;
+
+            if (payloadFormatVersion >= 2)
+            {
+                byte wireMode = reader.ReadByte();
+
+                if (wireMode >
+                    (byte)OrbitalsMovementMode.Attached)
+                {
+                    throw new InvalidDataException(
+                        "Unknown orbital movement mode.");
                 }
+
+                movementMode =
+                    (OrbitalsMovementMode)wireMode;
+            }
+
+            return new OrbitalsFormationVfxSettings
+            {
+                MovementMode = movementMode,
+                GlueLeaderEnabled = leaderEnabled,
+                GlueTargetInstanceIds = targets,
+                Path = path
             };
         }
 
-        private static void ValidateFormation(OrbitalsFormationVfxSettings formation)
+        private static void ValidateFormation(
+            OrbitalsFormationVfxSettings formation)
         {
-            if (formation?.Path == null || formation.GlueTargetInstanceIds == null ||
+            if (formation?.Path == null ||
+                formation.GlueTargetInstanceIds == null ||
                 formation.GlueTargetInstanceIds.Count > MaxEffects)
-                throw new InvalidDataException("Invalid orbital formation.");
+            {
+                throw new InvalidDataException(
+                    "Invalid orbital formation.");
+            }
+
+            if (formation.MovementMode !=
+                    OrbitalsMovementMode.Path &&
+                formation.MovementMode !=
+                    OrbitalsMovementMode.Attached)
+            {
+                throw new InvalidDataException(
+                    "Unknown orbital movement mode.");
+            }
+
             OrbitalsPathVfxSettings p = formation.Path;
+
             RequireFinite(p.Count);
             RequireFinite(p.Speed);
             RequireFinite(p.Spacing);
@@ -370,7 +598,7 @@ namespace NADA.VFX.Weapon.Core.Persistence
             RequireFinite(p.Drift);
         }
 
-        // Wire IDs are stable protocol values, independent of C# class names.
+        // Wire IDs remain independent of C# class names.
         private static byte GetTypeCode(string typeId)
         {
             switch (typeId)
@@ -385,7 +613,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                 case VfxEffectTypeIds.OrbitalsCores: return 8;
                 case VfxEffectTypeIds.OrbitalsFlames: return 9;
                 case VfxEffectTypeIds.OrbitalsEmbers: return 10;
-                default: throw new InvalidDataException("Unknown effect type.");
+
+                default:
+                    throw new InvalidDataException(
+                        "Unknown effect type.");
             }
         }
 
@@ -403,17 +634,22 @@ namespace NADA.VFX.Weapon.Core.Persistence
                 case 8: return VfxEffectTypeIds.OrbitalsCores;
                 case 9: return VfxEffectTypeIds.OrbitalsFlames;
                 case 10: return VfxEffectTypeIds.OrbitalsEmbers;
-                default: throw new InvalidDataException("Unknown effect wire ID.");
+
+                default:
+                    throw new InvalidDataException(
+                        "Unknown effect wire ID.");
             }
         }
 
-        private static void WriteSettings(BinaryWriter writer, VfxEffectBlock block)
+        private static void WriteSettings(
+            BinaryWriter writer,
+            VfxEffectBlock block)
         {
             switch (block.TypeId)
             {
                 case VfxEffectTypeIds.InnerFlames:
                 {
-                    var s = ( InnerFlamesVfxSettings )block.Settings;
+                    var s = (InnerFlamesVfxSettings)block.Settings;
                     WriteBool(writer, s.WorldEnabled);
                     WriteBool(writer, s.BlackEnabled);
                     WriteBool(writer, s.WhiteEnabled);
@@ -427,9 +663,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     WriteFinite(writer, s.Width);
                     return;
                 }
+
                 case VfxEffectTypeIds.OuterFlames:
                 {
-                    var s = ( OuterFlamesVfxSettings )block.Settings;
+                    var s = (OuterFlamesVfxSettings)block.Settings;
                     WriteBool(writer, s.WorldEnabled);
                     WriteBool(writer, s.BlackEnabled);
                     WriteBool(writer, s.WhiteEnabled);
@@ -444,9 +681,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     WriteFinite(writer, s.Width);
                     return;
                 }
+
                 case VfxEffectTypeIds.Strands:
                 {
-                    var s = ( StrandsVfxSettings )block.Settings;
+                    var s = (StrandsVfxSettings)block.Settings;
                     WriteBool(writer, s.SpectrumEnabled);
                     WriteFinite(writer, s.Energy);
                     WriteFinite(writer, s.ScaleWhole);
@@ -461,9 +699,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     WriteFinite(writer, s.Drift);
                     return;
                 }
+
                 case VfxEffectTypeIds.Sparks:
                 {
-                    var s = ( SparksVfxSettings )block.Settings;
+                    var s = (SparksVfxSettings)block.Settings;
                     WriteFinite(writer, s.Energy);
                     WriteFinite(writer, s.Scale);
                     WriteFinite(writer, s.Luminance);
@@ -474,34 +713,38 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     WriteFinite(writer, s.Width);
                     return;
                 }
+
                 case VfxEffectTypeIds.Flare:
                 {
-                    var s = ( FlareVfxSettings )block.Settings;
+                    var s = (FlareVfxSettings)block.Settings;
                     WriteFinite(writer, s.Scale);
                     WriteFinite(writer, s.Luminance);
                     WriteFinite(writer, s.Hue);
                     return;
                 }
+
                 case VfxEffectTypeIds.Aura:
                 {
-                    var s = ( AuraVfxSettings )block.Settings;
+                    var s = (AuraVfxSettings)block.Settings;
                     WriteFinite(writer, s.Scale);
                     WriteFinite(writer, s.Luminance);
                     WriteFinite(writer, s.Hue);
                     return;
                 }
+
                 case VfxEffectTypeIds.OrbitalsOrbs:
                 {
-                    var s = ( OrbitalsOrbsVfxSettings )block.Settings;
+                    var s = (OrbitalsOrbsVfxSettings)block.Settings;
                     WriteFinite(writer, s.Scale);
                     WriteFinite(writer, s.Luminance);
                     WriteFinite(writer, s.Hue);
                     WriteFormation(writer, s.Formation);
                     return;
                 }
+
                 case VfxEffectTypeIds.OrbitalsCores:
                 {
-                    var s = ( OrbitalsCoresVfxSettings )block.Settings;
+                    var s = (OrbitalsCoresVfxSettings)block.Settings;
                     WriteFinite(writer, s.Scale);
                     WriteFinite(writer, s.Luminance);
                     WriteFinite(writer, s.Hue);
@@ -510,9 +753,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     WriteFormation(writer, s.Formation);
                     return;
                 }
+
                 case VfxEffectTypeIds.OrbitalsFlames:
                 {
-                    var s = ( OrbitalsFlamesVfxSettings )block.Settings;
+                    var s = (OrbitalsFlamesVfxSettings)block.Settings;
                     WriteFinite(writer, s.Energy);
                     WriteFinite(writer, s.Scale);
                     WriteFinite(writer, s.Luminance);
@@ -522,9 +766,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     WriteFormation(writer, s.Formation);
                     return;
                 }
+
                 case VfxEffectTypeIds.OrbitalsEmbers:
                 {
-                    var s = ( OrbitalsEmbersVfxSettings )block.Settings;
+                    var s = (OrbitalsEmbersVfxSettings)block.Settings;
                     WriteFinite(writer, s.Energy);
                     WriteFinite(writer, s.Scale);
                     WriteFinite(writer, s.Luminance);
@@ -534,11 +779,17 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     WriteFormation(writer, s.Formation);
                     return;
                 }
-                default: throw new InvalidDataException("Unknown settings type.");
+
+                default:
+                    throw new InvalidDataException(
+                        "Unknown settings type.");
             }
         }
 
-        private static VfxEffectSettings ReadSettings(BinaryReader reader, string typeId)
+        private static VfxEffectSettings ReadSettings(
+            BinaryReader reader,
+            string typeId,
+            ushort payloadFormatVersion)
         {
             switch (typeId)
             {
@@ -555,8 +806,9 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         Lifetime = ReadFinite(reader),
                         SimulationSpeed = ReadFinite(reader),
                         Length = ReadFinite(reader),
-                        Width = ReadFinite(reader),
+                        Width = ReadFinite(reader)
                     };
+
                 case VfxEffectTypeIds.OuterFlames:
                     return new OuterFlamesVfxSettings
                     {
@@ -571,8 +823,9 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         Lifetime = ReadFinite(reader),
                         SimulationSpeed = ReadFinite(reader),
                         Length = ReadFinite(reader),
-                        Width = ReadFinite(reader),
+                        Width = ReadFinite(reader)
                     };
+
                 case VfxEffectTypeIds.Strands:
                     return new StrandsVfxSettings
                     {
@@ -587,8 +840,9 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         SpectrumSpeed = ReadFinite(reader),
                         Speed = ReadFinite(reader),
                         Radius = ReadFinite(reader),
-                        Drift = ReadFinite(reader),
+                        Drift = ReadFinite(reader)
                     };
+
                 case VfxEffectTypeIds.Sparks:
                     return new SparksVfxSettings
                     {
@@ -599,30 +853,35 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         Lifetime = ReadFinite(reader),
                         SimulationSpeed = ReadFinite(reader),
                         Length = ReadFinite(reader),
-                        Width = ReadFinite(reader),
+                        Width = ReadFinite(reader)
                     };
+
                 case VfxEffectTypeIds.Flare:
                     return new FlareVfxSettings
                     {
                         Scale = ReadFinite(reader),
                         Luminance = ReadFinite(reader),
-                        Hue = ReadFinite(reader),
+                        Hue = ReadFinite(reader)
                     };
+
                 case VfxEffectTypeIds.Aura:
                     return new AuraVfxSettings
                     {
                         Scale = ReadFinite(reader),
                         Luminance = ReadFinite(reader),
-                        Hue = ReadFinite(reader),
+                        Hue = ReadFinite(reader)
                     };
+
                 case VfxEffectTypeIds.OrbitalsOrbs:
                     return new OrbitalsOrbsVfxSettings
                     {
                         Scale = ReadFinite(reader),
                         Luminance = ReadFinite(reader),
                         Hue = ReadFinite(reader),
-                        Formation = ReadFormation(reader),
+                        Formation = ReadFormation(
+                            reader, payloadFormatVersion)
                     };
+
                 case VfxEffectTypeIds.OrbitalsCores:
                     return new OrbitalsCoresVfxSettings
                     {
@@ -631,8 +890,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         Hue = ReadFinite(reader),
                         SpinEnabled = ReadBool(reader),
                         SpinSpeed = ReadFinite(reader),
-                        Formation = ReadFormation(reader),
+                        Formation = ReadFormation(
+                            reader, payloadFormatVersion)
                     };
+
                 case VfxEffectTypeIds.OrbitalsFlames:
                     return new OrbitalsFlamesVfxSettings
                     {
@@ -642,8 +903,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         Hue = ReadFinite(reader),
                         Lifetime = ReadFinite(reader),
                         SimulationSpeed = ReadFinite(reader),
-                        Formation = ReadFormation(reader),
+                        Formation = ReadFormation(
+                            reader, payloadFormatVersion)
                     };
+
                 case VfxEffectTypeIds.OrbitalsEmbers:
                     return new OrbitalsEmbersVfxSettings
                     {
@@ -653,20 +916,27 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         Hue = ReadFinite(reader),
                         Lifetime = ReadFinite(reader),
                         SimulationSpeed = ReadFinite(reader),
-                        Formation = ReadFormation(reader),
+                        Formation = ReadFormation(
+                            reader, payloadFormatVersion)
                     };
-                default: throw new InvalidDataException("Unknown settings type.");
+
+                default:
+                    throw new InvalidDataException(
+                        "Unknown settings type.");
             }
         }
 
-        private static void ValidateSettings(VfxEffectBlock block)
+        private static void ValidateSettings(
+            VfxEffectBlock block)
         {
             switch (block.TypeId)
             {
                 case VfxEffectTypeIds.InnerFlames:
                 {
                     if (!(block.Settings is InnerFlamesVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Energy);
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
@@ -677,10 +947,13 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     RequireFinite(s.Width);
                     return;
                 }
+
                 case VfxEffectTypeIds.OuterFlames:
                 {
                     if (!(block.Settings is OuterFlamesVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Energy);
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
@@ -691,10 +964,13 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     RequireFinite(s.Width);
                     return;
                 }
+
                 case VfxEffectTypeIds.Strands:
                 {
                     if (!(block.Settings is StrandsVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Energy);
                     RequireFinite(s.ScaleWhole);
                     RequireFinite(s.ScaleParts);
@@ -708,10 +984,13 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     RequireFinite(s.Drift);
                     return;
                 }
+
                 case VfxEffectTypeIds.Sparks:
                 {
                     if (!(block.Settings is SparksVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Energy);
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
@@ -722,38 +1001,50 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     RequireFinite(s.Width);
                     return;
                 }
+
                 case VfxEffectTypeIds.Flare:
                 {
                     if (!(block.Settings is FlareVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
                     RequireFinite(s.Hue);
                     return;
                 }
+
                 case VfxEffectTypeIds.Aura:
                 {
                     if (!(block.Settings is AuraVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
                     RequireFinite(s.Hue);
                     return;
                 }
+
                 case VfxEffectTypeIds.OrbitalsOrbs:
                 {
                     if (!(block.Settings is OrbitalsOrbsVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
                     RequireFinite(s.Hue);
                     ValidateFormation(s.Formation);
                     return;
                 }
+
                 case VfxEffectTypeIds.OrbitalsCores:
                 {
                     if (!(block.Settings is OrbitalsCoresVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
                     RequireFinite(s.Hue);
@@ -761,10 +1052,13 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     ValidateFormation(s.Formation);
                     return;
                 }
+
                 case VfxEffectTypeIds.OrbitalsFlames:
                 {
                     if (!(block.Settings is OrbitalsFlamesVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Energy);
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
@@ -774,10 +1068,13 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     ValidateFormation(s.Formation);
                     return;
                 }
+
                 case VfxEffectTypeIds.OrbitalsEmbers:
                 {
                     if (!(block.Settings is OrbitalsEmbersVfxSettings s))
-                        throw new InvalidDataException("Settings/type mismatch.");
+                        throw new InvalidDataException(
+                            "Settings/type mismatch.");
+
                     RequireFinite(s.Energy);
                     RequireFinite(s.Scale);
                     RequireFinite(s.Luminance);
@@ -787,7 +1084,10 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     ValidateFormation(s.Formation);
                     return;
                 }
-                default: throw new InvalidDataException("Unknown settings type.");
+
+                default:
+                    throw new InvalidDataException(
+                        "Unknown settings type.");
             }
         }
     }

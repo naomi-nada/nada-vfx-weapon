@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.State.Blocks;
@@ -20,6 +21,49 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             return block?.Enabled == true &&
                    state?.Effects != null &&
                    FindActiveClaimingLeader(state, block.InstanceId) != null;
+        }
+
+        // Check declared relationships, not just active followers.
+        // Attached cannot retain dormant Glue relationships that might
+        // become active when another block is enabled.
+        internal static bool HasDeclaredGlueParticipation(
+            VfxEffectBlock block)
+        {
+            WeaponVfxState state = NadaVfxEditorWorkingState.State;
+
+            if (block == null || state?.Effects == null)
+                return true;
+
+            OrbitalsFormationVfxSettings own = GetFormation(block);
+
+            if (own?.GlueTargetInstanceIds == null ||
+                own.GlueLeaderEnabled ||
+                own.GlueTargetInstanceIds.Count > 0)
+            {
+                return true;
+            }
+
+            foreach (VfxEffectBlock candidate in state.Effects)
+            {
+                if (candidate == null ||
+                    candidate.InstanceId == block.InstanceId)
+                {
+                    continue;
+                }
+
+                OrbitalsFormationVfxSettings candidateFormation =
+                    GetFormation(candidate);
+
+                if (candidateFormation?.GlueLeaderEnabled == true &&
+                    candidateFormation.GlueTargetInstanceIds != null &&
+                    candidateFormation.GlueTargetInstanceIds.Contains(
+                        block.InstanceId))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         internal static bool Draw(
@@ -54,8 +98,12 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         : $"Saved as a target of {leaderName} (#{claimingLeader.InstanceId}); inactive while this block is off.");
             }
 
+            // Allow removing invalid Glue while Attached, but never
+            // creating a new leader in that movement mode.
             bool mayChangeLeader =
-                claimingLeader == null || formation.GlueLeaderEnabled;
+                (claimingLeader == null || formation.GlueLeaderEnabled) &&
+                (formation.MovementMode == OrbitalsMovementMode.Path ||
+                 formation.GlueLeaderEnabled);
 
             if (NadaVfxEditorControls.Toggle(
                     $"{prefix}:leader",
@@ -135,21 +183,39 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         candidateFormation?.Path != null &&
                         candidateFormation.GlueTargetInstanceIds != null &&
                         !candidateFormation.GlueLeaderEnabled &&
+                        candidateFormation.MovementMode ==
+                            OrbitalsMovementMode.Path &&
                         otherLeader == null;
 
                     string label =
                         $"{NadaVfxEditorWorkingState.GetDisplayName(candidate)} (#{candidate.InstanceId})";
 
-                    if (!selected && candidateFormation?.GlueLeaderEnabled == true)
+                    if (!selected &&
+                        candidateFormation?.MovementMode ==
+                            OrbitalsMovementMode.Attached)
+                    {
+                        label += " - attached";
+                    }
+                    else if (!selected &&
+                             candidateFormation?.GlueLeaderEnabled == true)
+                    {
                         label += " - leader";
+                    }
                     else if (!selected && otherLeader != null)
+                    {
                         label += $" - follows #{otherLeader.InstanceId}";
-                    else if (!selected && (candidate.Transform == null ||
-                                           candidateFormation?.Path == null ||
-                                           candidateFormation.GlueTargetInstanceIds == null))
+                    }
+                    else if (!selected &&
+                             (candidate.Transform == null ||
+                              candidateFormation?.Path == null ||
+                              candidateFormation.GlueTargetInstanceIds == null))
+                    {
                         label += " - invalid block";
+                    }
                     else if (!candidate.Enabled)
+                    {
                         label += " - off";
+                    }
 
                     if (!NadaVfxEditorControls.Toggle(
                             $"{prefix}:target:{candidate.InstanceId}",
@@ -167,6 +233,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         // an otherwise-invalid persisted relationship.
                         formation.GlueTargetInstanceIds.RemoveAll(
                             id => id == candidate.InstanceId);
+
                         ClearRejection(block.InstanceId);
                         changed = true;
                         continue;
@@ -174,7 +241,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
                     formation.GlueTargetInstanceIds.Add(candidate.InstanceId);
 
-                    if (ValidateWhenActive(state, block, out string targetReason))
+                    if (ValidateWhenActive(
+                            state, block, out string targetReason))
                     {
                         ClearRejection(block.InstanceId);
                         changed = true;
@@ -183,17 +251,22 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     {
                         formation.GlueTargetInstanceIds.RemoveAt(
                             formation.GlueTargetInstanceIds.Count - 1);
+
                         Reject(block.InstanceId, targetReason);
                     }
                 }
 
                 // Imported dangling IDs must remain removable in the editor.
                 var leftoverIds = new HashSet<uint>();
-                foreach (uint storedId in formation.GlueTargetInstanceIds.ToArray())
+
+                foreach (uint storedId in
+                         formation.GlueTargetInstanceIds.ToArray())
                 {
                     if (displayedIds.Contains(storedId) ||
                         !leftoverIds.Add(storedId))
+                    {
                         continue;
+                    }
 
                     if (NadaVfxEditorControls.Toggle(
                             $"{prefix}:stale:{storedId}",
@@ -204,6 +277,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     {
                         formation.GlueTargetInstanceIds.RemoveAll(
                             id => id == storedId);
+
                         ClearRejection(block.InstanceId);
                         changed = true;
                     }
@@ -238,10 +312,15 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     Effects = new List<VfxEffectBlock>(state.Effects)
                 };
 
-                for (int i = 0; i < candidateState.Effects.Count; i++)
+                for (int i = 0;
+                     i < candidateState.Effects.Count;
+                     i++)
                 {
-                    if (!ReferenceEquals(candidateState.Effects[i], block))
+                    if (!ReferenceEquals(
+                            candidateState.Effects[i], block))
+                    {
                         continue;
+                    }
 
                     candidateState.Effects[i] = new VfxEffectBlock
                     {
@@ -252,12 +331,14 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         Transform = block.Transform,
                         Settings = block.Settings
                     };
+
                     break;
                 }
             }
 
             bool accepted = OrbitalsFormationResolver.TryResolve(
-                candidateState, out OrbitalsFormationResolution resolution);
+                candidateState,
+                out OrbitalsFormationResolution resolution);
 
             reason = accepted && resolution?.IsValid == true
                 ? null
@@ -280,7 +361,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     continue;
                 }
 
-                OrbitalsFormationVfxSettings formation = GetFormation(candidate);
+                OrbitalsFormationVfxSettings formation =
+                    GetFormation(candidate);
+
                 if (formation?.GlueLeaderEnabled == true &&
                     formation.GlueTargetInstanceIds != null &&
                     formation.GlueTargetInstanceIds.Contains(targetId))
@@ -300,10 +383,22 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             return block.Settings switch
             {
-                OrbitalsOrbsVfxSettings orbs when block.TypeId == VfxEffectTypeIds.OrbitalsOrbs => orbs.Formation,
-                OrbitalsCoresVfxSettings cores when block.TypeId == VfxEffectTypeIds.OrbitalsCores => cores.Formation,
-                OrbitalsFlamesVfxSettings flames when block.TypeId == VfxEffectTypeIds.OrbitalsFlames => flames.Formation,
-                OrbitalsEmbersVfxSettings embers when block.TypeId == VfxEffectTypeIds.OrbitalsEmbers => embers.Formation,
+                OrbitalsOrbsVfxSettings orbs
+                    when block.TypeId == VfxEffectTypeIds.OrbitalsOrbs
+                    => orbs.Formation,
+
+                OrbitalsCoresVfxSettings cores
+                    when block.TypeId == VfxEffectTypeIds.OrbitalsCores
+                    => cores.Formation,
+
+                OrbitalsFlamesVfxSettings flames
+                    when block.TypeId == VfxEffectTypeIds.OrbitalsFlames
+                    => flames.Formation,
+
+                OrbitalsEmbersVfxSettings embers
+                    when block.TypeId == VfxEffectTypeIds.OrbitalsEmbers
+                    => embers.Formation,
+
                 _ => null
             };
         }
@@ -316,11 +411,15 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                    typeId == VfxEffectTypeIds.OrbitalsEmbers;
         }
 
-        private static void Reject(uint instanceId, string reason)
+        private static void Reject(
+            uint instanceId,
+            string reason)
         {
             RejectionByInstanceId[instanceId] = reason;
+
             Plugin.Log?.LogWarning(
-                $"{Plugin.ModName}: [EditorGlueRejected] id={instanceId} reason='{reason}'.");
+                $"{Plugin.ModName}: [EditorGlueRejected] " +
+                $"id={instanceId} reason='{reason}'.");
         }
 
         private static void ClearRejection(uint instanceId)
