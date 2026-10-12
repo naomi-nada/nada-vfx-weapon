@@ -490,6 +490,150 @@ namespace NADA.VFX.Weapon.Editor
             return true;
         }
 
+        // Switch the visual family while keeping the logical effect and its
+        // orbital formation. A changed TypeId deliberately makes the runtime
+        // reconciler replace the visual instance on its next apply.
+        internal static bool TrySwapOrbitalType(
+            uint instanceId,
+            string replacementTypeId)
+        {
+            if (!CanEdit() || !IsOrbitalType(replacementTypeId))
+                return false;
+
+            int index = FindBlockIndex(instanceId);
+            if (index < 0)
+                return false;
+
+            VfxEffectBlock current = _state.Effects[index];
+            if (current == null || !IsOrbitalType(current.TypeId))
+                return false;
+
+            if (current.TypeId == replacementTypeId)
+                return true;
+
+            OrbitalsFormationVfxSettings formation = GetFormation(current);
+            if (formation?.Path == null || formation.GlueTargetInstanceIds == null)
+                return false;
+
+            float scale;
+            float luminance;
+            float hue;
+            float? energy = null;
+            float? lifetime = null;
+            float? simulationSpeed = null;
+
+            switch (current.Settings)
+            {
+                case OrbitalsOrbsVfxSettings orbs:
+                    scale = orbs.Scale;
+                    luminance = orbs.Luminance;
+                    hue = orbs.Hue;
+                    break;
+
+                case OrbitalsCoresVfxSettings cores:
+                    scale = cores.Scale;
+                    luminance = cores.Luminance;
+                    hue = cores.Hue;
+                    break;
+
+                case OrbitalsFlamesVfxSettings flames:
+                    scale = flames.Scale;
+                    luminance = flames.Luminance;
+                    hue = flames.Hue;
+                    energy = flames.Energy;
+                    lifetime = flames.Lifetime;
+                    simulationSpeed = flames.SimulationSpeed;
+                    break;
+
+                case OrbitalsEmbersVfxSettings embers:
+                    scale = embers.Scale;
+                    luminance = embers.Luminance;
+                    hue = embers.Hue;
+                    energy = embers.Energy;
+                    lifetime = embers.Lifetime;
+                    simulationSpeed = embers.SimulationSpeed;
+                    break;
+
+                default:
+                    return false;
+            }
+
+            VfxEffectBlock replacement = WeaponVfxBlockDefaults.Create(
+                replacementTypeId,
+                instanceId);
+
+            if (replacement == null || replacement.Settings == null)
+                return false;
+
+            replacement.DisplayName = current.DisplayName;
+            replacement.Enabled = current.Enabled;
+            replacement.Transform = current.Transform;
+
+            switch (replacement.Settings)
+            {
+                case OrbitalsOrbsVfxSettings orbs:
+                    orbs.Scale = scale;
+                    orbs.Luminance = luminance;
+                    orbs.Hue = hue;
+                    orbs.Formation = formation;
+                    break;
+
+                case OrbitalsCoresVfxSettings cores:
+                    cores.Scale = scale;
+                    cores.Luminance = luminance;
+                    cores.Hue = hue;
+                    cores.Formation = formation;
+                    break;
+
+                case OrbitalsFlamesVfxSettings flames:
+                    flames.Scale = scale;
+                    flames.Luminance = luminance;
+                    flames.Hue = hue;
+                    flames.Energy = energy ?? flames.Energy;
+                    flames.Lifetime = lifetime ?? flames.Lifetime;
+                    flames.SimulationSpeed = simulationSpeed ?? flames.SimulationSpeed;
+                    flames.Formation = formation;
+                    break;
+
+                case OrbitalsEmbersVfxSettings embers:
+                    embers.Scale = scale;
+                    embers.Luminance = luminance;
+                    embers.Hue = hue;
+                    embers.Energy = energy ?? embers.Energy;
+                    embers.Lifetime = lifetime ?? embers.Lifetime;
+                    embers.SimulationSpeed = simulationSpeed ?? embers.SimulationSpeed;
+                    embers.Formation = formation;
+                    break;
+
+                default:
+                    return false;
+            }
+
+            // Do not publish an invalid formation to preview or persistence.
+            // Restore the exact prior block if the candidate is rejected.
+            _state.Effects[index] = replacement;
+            bool valid = OrbitalsFormationResolver.TryResolve(
+                _state, out OrbitalsFormationResolution resolution) &&
+                resolution != null && resolution.IsValid;
+
+            if (!valid)
+            {
+                _state.Effects[index] = current;
+                Plugin.Log?.LogWarning(
+                    $"{Plugin.ModName}: [EditorOrbitalSwapRejected] " +
+                    $"id={instanceId} to='{replacementTypeId}' " +
+                    $"reason='{resolution?.FailureReason ?? "formation-invalid"}'.");
+                return false;
+            }
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [EditorOrbitalSwap] " +
+                $"id={instanceId} from='{current.TypeId}' " +
+                $"to='{replacementTypeId}' " +
+                $"formationPreserved=True persisted=False.");
+            return true;
+        }
+
         internal static bool TryRenameEffect(
             uint instanceId,
             string displayName)

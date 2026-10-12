@@ -9,18 +9,21 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
         public Transform RootTransform { get; }
         public global::ItemDrop.ItemData ItemData { get; }
         public VfxState State { get; }
+        internal NadaWeaponLocalSourceSelection LocalSource { get; }
         public Transform WeaponVisualRoot { get; }
 
         public NadaWeaponRigContext(
             GameObject root,
             global::ItemDrop.ItemData itemData,
             VfxState state,
-            Transform weaponVisualRoot)
+            Transform weaponVisualRoot,
+            NadaWeaponLocalSourceSelection localSource = null)
         {
             Root = root;
             RootTransform = root != null ? root.transform : null;
             ItemData = itemData;
             State = state;
+            LocalSource = localSource;
             WeaponVisualRoot = weaponVisualRoot;
         }
 

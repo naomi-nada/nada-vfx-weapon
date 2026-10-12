@@ -35,6 +35,12 @@ namespace NADA.VFX.Weapon.Editor
                 return false;
             }
 
+            if (state?.Effects == null || state.Effects.Count == 0)
+            {
+                reason = "Add at least one effect before binding.";
+                return false;
+            }
+
             // TryWrite encodes and validates before touching ItemData.
             // A rejected state leaves the original weapon untouched.
             if (!WeaponVfxItemStore.TryWrite(

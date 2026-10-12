@@ -36,43 +36,44 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                     instancesRootTransform,
                     instanceId);
 
-            if (existing != null)
+            if (existing != null &&
+                !string.Equals(
+                    existing.TypeId,
+                    typeId,
+                    StringComparison.Ordinal))
             {
-                if (!string.Equals(
-                        existing.TypeId,
-                        typeId,
-                        StringComparison.Ordinal))
+                Plugin.Log.LogWarning(
+                    $"{Plugin.ModName}: [EffectInstanceTypeMismatch] " +
+                    $"owner='{ownerNameForLogs}' " +
+                    $"id={instanceId} " +
+                    $"existingType='{existing.TypeId}' " +
+                    $"requestedType='{typeId}'. " +
+                    $"Replacing stale instance.");
+
+                if (existing.RootObject != null)
                 {
-                    Plugin.Log.LogWarning(
-                        $"{Plugin.ModName}: [EffectInstanceTypeMismatch] " +
-                        $"owner='{ownerNameForLogs}' " +
-                        $"id={instanceId} " +
-                        $"existingType='{existing.TypeId}' " +
-                        $"requestedType='{typeId}'. " +
-                        $"Removing stale instance.");
+                    existing.RootObject.SetActive(false);
 
-                    if (existing.RootObject != null)
+                    if (existing.RootTransform != null)
                     {
-                        existing.RootObject.SetActive(false);
-
-                        if (existing.RootTransform != null)
-                        {
-                            // Destroy is deferred. Detach immediately so this
-                            // stale owner cannot be rediscovered this frame.
-                            existing.RootTransform.SetParent(
-                                null,
-                                false);
-                        }
-
-                        Object.Destroy(
-                            existing.RootObject);
+                        // Destroy is deferred. Detach immediately so the
+                        // replacement has sole ownership under Instances.
+                        existing.RootTransform.SetParent(
+                            null,
+                            false);
                     }
 
-                    // Fail closed for this pass instead of creating two
-                    // runtime owners for the same logical InstanceId.
-                    return null;
+                    Object.Destroy(
+                        existing.RootObject);
                 }
 
+                // The old root is now inactive and outside Instances, so a
+                // replacement can safely be created during this apply.
+                existing = null;
+            }
+
+            if (existing != null)
+            {
                 NormalizeInstanceRoot(
                     existing.RootTransform);
 

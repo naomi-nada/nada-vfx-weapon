@@ -44,7 +44,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             Transform weaponVisualRootTransform =
                 context.WeaponVisualRoot;
 
+            // Local controllers pass the source they already resolved.
+            // Keep the fallback for any direct orchestrator callers.
             NadaWeaponLocalSourceSelection localSource =
+                context.LocalSource ??
                 NadaWeaponLocalSourceResolver.Resolve(itemData);
 
             bool hasPersistentBinding =

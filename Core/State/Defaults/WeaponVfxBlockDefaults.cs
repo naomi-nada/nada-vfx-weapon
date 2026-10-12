@@ -147,7 +147,7 @@ namespace NADA.VFX.Weapon.Core.State.Defaults
             return new InnerFlamesVfxSettings
             {
                 WorldEnabled =
-                    true,
+                    false,
 
                 BlackEnabled =
                     false,
@@ -187,7 +187,7 @@ namespace NADA.VFX.Weapon.Core.State.Defaults
             return new OuterFlamesVfxSettings
             {
                 WorldEnabled =
-                    true,
+                    false,
 
                 BlackEnabled =
                     false,

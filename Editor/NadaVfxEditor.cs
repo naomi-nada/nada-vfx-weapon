@@ -83,8 +83,14 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _positionInitialized;
         private static bool _targetDetailsExpanded;
 
+        // True while this window owns editor interaction, not just a text field.
+        // Left-clicking outside releases gameplay hotkeys without closing NADA.
+        private static bool _editorSelected;
         private static bool _ownsKeyboardInput;
         private static bool _focusRenameOnNextDraw;
+        private static uint? _pendingRenameInstanceId;
+        private static string _pendingRenameDisplayName;
+        private static global::ItemDrop.ItemData _pendingRenameItemData;
 
         private static bool _cursorStateCaptured;
         private static bool _previousCursorVisible;
@@ -121,6 +127,13 @@ namespace NADA.VFX.Weapon.Editor
         private enum BindingAction { None, Bind, Unbind }
         private static BindingAction _pendingBindingAction;
         private static string _bindingError;
+        private static string _bindingFeedback;
+        private static float _bindingFeedbackUntil;
+        private static global::ItemDrop.ItemData _bindingFeedbackItemData;
+
+        private static uint? _pendingOrbitalSwapInstanceId;
+        private static string _pendingOrbitalSwapTypeId;
+        private static global::ItemDrop.ItemData _pendingOrbitalSwapItemData;
 
         private static NadaVfxEditorThemePreset
             _appliedThemePreset;
@@ -166,8 +179,13 @@ namespace NADA.VFX.Weapon.Editor
         internal static bool IsOpen =>
             _open;
 
+        // Editor selection is the authority for gameplay hotkeys. A stale
+        // IMGUI text control must not keep them blocked after click-away.
+        internal static bool BlocksGameplayHotkeys =>
+            _open && _editorSelected;
+
         internal static bool OwnsKeyboardInput =>
-            _open &&
+            _open && _editorSelected &&
             (_ownsKeyboardInput || _renameInstanceId.HasValue ||
              _shortcutCapture != ShortcutCapture.None);
 
@@ -175,7 +193,7 @@ namespace NADA.VFX.Weapon.Editor
         // PlayerController input, which would also enable combat actions.
         internal static bool AllowsMovementWhileEditing =>
             _open &&
-            !OwnsKeyboardInput &&
+            !BlocksGameplayHotkeys &&
             NadaVfxEditorConfig.AllowMovementWhileEditing?.Value == true;
 
         private static bool IsCompactLayout =>
@@ -212,12 +230,13 @@ namespace NADA.VFX.Weapon.Editor
 
             // Hotkeys share the button's deferred, target-validated action.
             // Never fire while entering text or capturing a new shortcut.
-            if (!OwnsKeyboardInput)
+            if (_editorSelected && !OwnsKeyboardInput)
             {
                 if (NadaVfxEditorConfig.BindHotkey != null &&
                     NadaVfxEditorConfig.BindHotkey.Value.MainKey != KeyCode.None &&
                     NadaVfxEditorConfig.BindHotkey.Value.IsDown() &&
-                    !NadaVfxEditorWorkingState.IsReadOnly)
+                    !NadaVfxEditorWorkingState.IsReadOnly &&
+                    NadaVfxEditorWorkingState.EffectCount > 0)
                 {
                     _pendingBindingAction = BindingAction.Bind;
                 }
@@ -256,6 +275,7 @@ namespace NADA.VFX.Weapon.Editor
             EnsureStyles();
             EnsureWindowPosition();
             ClampWindowToScreen();
+            UpdateWindowSelection();
 
             _windowRect =
                 GUI.Window(
@@ -266,7 +286,9 @@ namespace NADA.VFX.Weapon.Editor
                     _windowStyle);
 
             NadaVfxEditorStylesPanel.ProcessPendingDraftApply();
+            ProcessPendingRenameRequest();
             ProcessPendingBindingAction();
+            ProcessPendingOrbitalSwap();
             if (_pendingHandSwitch)
             {
                 _pendingHandSwitch = false;
@@ -274,6 +296,56 @@ namespace NADA.VFX.Weapon.Editor
                 // SynchronizeTarget/preview transition on the next GUI draw;
                 // changing the target inside GUI.Window risks IMGUI layout errors.
             }
+        }
+
+        private static void UpdateWindowSelection()
+        {
+            Event current = Event.current;
+            // Other IMGUI windows may consume MouseDown before our OnGUI.
+            // rawType preserves the real click for selection ownership.
+            if (current == null || current.rawType != EventType.MouseDown ||
+                current.button != 0)
+                return;
+
+            bool selected = _windowRect.Contains(current.mousePosition);
+            if (_editorSelected == selected)
+                return;
+
+            _editorSelected = selected;
+            if (!selected)
+            {
+                // Releasing the editor cancels unfinished transient entry,
+                // without discarding the draft or closing the preview.
+                if (_renameInstanceId.HasValue)
+                    ClearTransientBlockActions();
+                _shortcutCapture = ShortcutCapture.None;
+                _ownsKeyboardInput = false;
+                GUI.FocusControl(null);
+            }
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [EditorInputSelection] " +
+                $"selected={_editorSelected}");
+        }
+
+        // Styles text boxes belong to the editor's input surface. IMGUI may
+        // consume the click that focused them before window-level selection
+        // sees it, so explicitly claim the same selection state here.
+        // Only called on an actual click inside a Styles text control.
+        internal static void ClaimStylesTextInput()
+        {
+            if (!_open)
+                return;
+
+            if (!_editorSelected)
+            {
+                _editorSelected = true;
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [EditorInputSelection] " +
+                    "selected=true source=styles-text-click");
+            }
+
+            _ownsKeyboardInput = true;
         }
 
         internal static void EnforceCursorOwnership()
@@ -339,6 +411,7 @@ namespace NADA.VFX.Weapon.Editor
 
             _open =
                 false;
+            _editorSelected = false;
 
             _ownsKeyboardInput =
                 false;
@@ -353,6 +426,9 @@ namespace NADA.VFX.Weapon.Editor
             NadaVfxEditorStylesPanel.Close();
             _pendingBindingAction = BindingAction.None;
             _bindingError = null;
+            _bindingFeedback = null;
+            _bindingFeedbackItemData = null;
+            _bindingFeedbackUntil = 0f;
 
             if (_resizing &&
                 GUIUtility.hotControl != 0)
@@ -409,6 +485,10 @@ namespace NADA.VFX.Weapon.Editor
 
             _open =
                 true;
+            _editorSelected = true;
+            _bindingFeedback = null;
+            _bindingFeedbackItemData = null;
+            _bindingFeedbackUntil = 0f;
 
             _ownsKeyboardInput =
                 false;
@@ -542,12 +622,67 @@ namespace NADA.VFX.Weapon.Editor
             }
         }
 
+        private static void ProcessPendingRenameRequest()
+        {
+            uint? instanceId = _pendingRenameInstanceId;
+            string name = _pendingRenameDisplayName;
+            global::ItemDrop.ItemData clickedItem = _pendingRenameItemData;
+
+            _pendingRenameInstanceId = null;
+            _pendingRenameDisplayName = null;
+            _pendingRenameItemData = null;
+
+            if (!instanceId.HasValue || clickedItem == null ||
+                !object.ReferenceEquals(clickedItem,
+                    NadaVfxEditorTargetRegistry.Current?.ItemData) ||
+                NadaVfxEditorWorkingState.IsReadOnly ||
+                _selectedInstanceId != instanceId)
+                return;
+
+            // Wait until GUI.Window has finished the click event. Showing the
+            // new text field on that same event would change the layout after
+            // Unity already assigned control IDs for its Layout pass.
+            ClearTransientBlockActions();
+            _renameInstanceId = instanceId;
+            _renameBuffer = name ?? string.Empty;
+            _focusRenameOnNextDraw = true;
+            _ownsKeyboardInput = true;
+        }
+
+        private static void ProcessPendingOrbitalSwap()
+        {
+            uint? instanceId = _pendingOrbitalSwapInstanceId;
+            string typeId = _pendingOrbitalSwapTypeId;
+            global::ItemDrop.ItemData clickedItem = _pendingOrbitalSwapItemData;
+
+            _pendingOrbitalSwapInstanceId = null;
+            _pendingOrbitalSwapTypeId = null;
+            _pendingOrbitalSwapItemData = null;
+
+            if (!instanceId.HasValue || typeId == null || clickedItem == null ||
+                !object.ReferenceEquals(clickedItem,
+                    NadaVfxEditorTargetRegistry.Current?.ItemData) ||
+                NadaVfxEditorWorkingState.IsReadOnly ||
+                _selectedInstanceId != instanceId)
+                return;
+
+            if (!NadaVfxEditorWorkingState.TrySwapOrbitalType(
+                    instanceId.Value, typeId))
+                return;
+
+            ClearTransientBlockActions();
+            RefreshPreview();
+        }
+
         private static void ProcessPendingBindingAction()
         {
             BindingAction requested = _pendingBindingAction;
             _pendingBindingAction = BindingAction.None;
             if (requested == BindingAction.None)
                 return;
+
+            _bindingFeedback = null;
+            _bindingFeedbackItemData = null;
 
             // Re-resolve at the user's click. A one-second registry snapshot
             // may no longer describe the currently equipped weapon.
@@ -574,14 +709,6 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             _bindingError = null;
-            if (global::MessageHud.instance != null)
-            {
-                global::MessageHud.instance.ShowMessage(
-                    global::MessageHud.MessageType.Center,
-                    requested == BindingAction.Bind
-                        ? "Weapon VFX bound"
-                        : "Weapon VFX unbound");
-            }
             _addPickerOpen = false;
             _clearAllConfirm = false;
             NadaVfxEditorStylesPanel.OnTargetChanged();
@@ -601,6 +728,23 @@ namespace NADA.VFX.Weapon.Editor
                 ActivatePreview(refreshed);
 
             Plugin.Instance?.RefreshExistingEquippedRigsOnly();
+
+            // The vanilla center HUD can be obscured by other UI/messages.
+            // Keep a short, item-scoped confirmation beside the editor action.
+            _bindingFeedback = requested == BindingAction.Bind
+                ? "Weapon VFX bound"
+                : "Weapon VFX unbound";
+            _bindingFeedbackItemData = liveTarget.ItemData;
+            _bindingFeedbackUntil = Time.unscaledTime + 4f;
+
+            global::MessageHud hud = global::MessageHud.instance;
+            if (hud != null)
+                hud.ShowMessage(global::MessageHud.MessageType.Center, _bindingFeedback);
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [EditorBindingFeedback] " +
+                $"action={requested} hudAvailable={hud != null} " +
+                $"item='{liveTarget.PrefabName}'.");
         }
 
         private static void DrawTitleBar()
@@ -1289,7 +1433,8 @@ namespace NADA.VFX.Weapon.Editor
                 _clearAllConfirm = true;
 
             GUILayout.Space(3f);
-            GUI.enabled = previousEnabled && hasTarget && !invalidNative;
+            GUI.enabled = previousEnabled && hasTarget && !invalidNative &&
+                          (readOnly || NadaVfxEditorWorkingState.EffectCount > 0);
             if (GUILayout.Button(readOnly ? "Unbind Weapon" : "Bind to Weapon",
                     _addButtonStyle,
                     GUILayout.Width(106f), GUILayout.Height(EffectActionHeight)))
@@ -1322,6 +1467,11 @@ namespace NADA.VFX.Weapon.Editor
             }
             if (!string.IsNullOrEmpty(_bindingError))
                 GUILayout.Label(_bindingError, _warningStyle);
+            else if (_bindingFeedback != null &&
+                     Time.unscaledTime < _bindingFeedbackUntil &&
+                     object.ReferenceEquals(
+                         _bindingFeedbackItemData, target?.ItemData))
+                GUILayout.Label(_bindingFeedback, _mutedStyle);
 
             GUILayout.EndVertical();
         }
@@ -1935,6 +2085,8 @@ namespace NADA.VFX.Weapon.Editor
             if (!readOnly)
                 DrawTransientBlockControls(selectedBlock);
 
+            DrawOrbitalTypeSelector(selectedBlock, readOnly);
+
             GUILayout.Space(
                 4f);
 
@@ -1965,6 +2117,45 @@ namespace NADA.VFX.Weapon.Editor
             GUILayout.EndScrollView();
 
             GUILayout.EndVertical();
+        }
+
+        private static void DrawOrbitalTypeSelector(
+            VfxEffectBlock block,
+            bool readOnly)
+        {
+            NadaVfxEditorEffectDefinition selected =
+                NadaVfxEditorEffectCatalog.Find(block.TypeId);
+            if (selected?.IsOrbital != true)
+                return;
+
+            GUILayout.Label("ORBITAL VISUAL", _sectionHeaderStyle);
+            GUILayout.BeginHorizontal();
+
+            bool previousEnabled = GUI.enabled;
+            foreach (NadaVfxEditorEffectDefinition option in
+                     NadaVfxEditorEffectCatalog.All)
+            {
+                if (!option.IsOrbital)
+                    continue;
+
+                bool isCurrent = option.TypeId == block.TypeId;
+                GUI.enabled = previousEnabled && !readOnly && !isCurrent;
+                if (GUILayout.Button(option.PickerName, _themeOptionStyle,
+                        GUILayout.Width(67f), GUILayout.Height(22f)))
+                {
+                    // Apply outside GUI.Window so the inspector doesn't change
+                    // shape mid-event and invalidate IMGUI's layout pass.
+                    _pendingOrbitalSwapInstanceId = block.InstanceId;
+                    _pendingOrbitalSwapTypeId = option.TypeId;
+                    _pendingOrbitalSwapItemData =
+                        NadaVfxEditorTargetRegistry.Current?.ItemData;
+                }
+            }
+
+            GUI.enabled = previousEnabled;
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(4f);
         }
 
         private static void DrawSelectedEffectHeader(
@@ -2051,22 +2242,11 @@ namespace NADA.VFX.Weapon.Editor
                         GUILayout.Width(54f),
                         GUILayout.Height(23f)))
                 {
-                    _renameInstanceId =
-                        block.InstanceId;
-
-                    _focusRenameOnNextDraw = true;
-                    _ownsKeyboardInput = true;
-
-                    _renameBuffer =
-                        NadaVfxEditorWorkingState
-                            .GetDisplayName(
-                                block);
-
-                    _resetConfirmInstanceId =
-                        null;
-
-                    _deleteConfirmInstanceId =
-                        null;
+                    _pendingRenameInstanceId = block.InstanceId;
+                    _pendingRenameDisplayName =
+                        NadaVfxEditorWorkingState.GetDisplayName(block);
+                    _pendingRenameItemData =
+                        NadaVfxEditorTargetRegistry.Current?.ItemData;
                 }
 
                 if (GUILayout.Button(
@@ -2418,6 +2598,10 @@ namespace NADA.VFX.Weapon.Editor
 
         private static void ClearTransientBlockActions()
         {
+            _pendingRenameInstanceId = null;
+            _pendingRenameDisplayName = null;
+            _pendingRenameItemData = null;
+
             _renameInstanceId =
                 null;
 
@@ -2435,6 +2619,14 @@ namespace NADA.VFX.Weapon.Editor
 
         private static void UpdateKeyboardInputOwnership()
         {
+            if (!_editorSelected)
+            {
+                // IMGUI may retain a named control until a later repaint.
+                // It cannot reacquire input ownership while deselected.
+                _ownsKeyboardInput = false;
+                return;
+            }
+
             string focusedControl =
                 GUI.GetNameOfFocusedControl();
 

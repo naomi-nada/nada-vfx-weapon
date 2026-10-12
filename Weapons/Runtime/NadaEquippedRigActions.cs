@@ -152,8 +152,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             global::ItemDrop.ItemData leftItem =
                 NadaEquippedItemResolver.ResolveLeftHandItem();
 
+            // Legacy config refreshes only apply to genuinely unbound items.
+            // Native bindings, editor previews, and invalid native payloads
+            // must not be refreshed through this compatibility path.
             if (rightItem != null &&
-                !VfxStateIO.IsBound(rightItem))
+                NadaWeaponLocalSourceResolver.Resolve(rightItem).Kind ==
+                    NadaWeaponLocalSourceKind.Unbound)
             {
                 TryApplyToFirstAttachChild(
                     rightHandAttach,
@@ -164,7 +168,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             if (leftItem != null &&
                 leftItem != rightItem &&
-                !VfxStateIO.IsBound(leftItem))
+                NadaWeaponLocalSourceResolver.Resolve(leftItem).Kind ==
+                    NadaWeaponLocalSourceKind.Unbound)
             {
                 TryApplyToFirstAttachChild(
                     leftHandAttach,

@@ -44,17 +44,22 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 ResolveItemData(
                     root);
 
-            // Transitional context data. The orchestrator independently
-            // selects the native block state for native-bound weapons.
+            NadaWeaponLocalSourceSelection localSource =
+                NadaWeaponLocalSourceResolver.Resolve(itemData);
+
+            // Only unbound and legacy-bound sources need transitional state.
+            // Native and editor-preview blocks are already resolved above.
             VfxState state =
-                NadaWeaponStateResolver.Resolve(
-                    itemData);
+                NeedsLegacyContextState(localSource)
+                    ? NadaWeaponStateResolver.Resolve(itemData)
+                    : default(VfxState);
 
             return TryApplyInternal(
                 root,
                 itemData,
                 state,
-                attachTarget);
+                attachTarget,
+                localSource);
         }
 
         public bool TryApplyResolvedState(
@@ -217,15 +222,17 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return existingRoot.gameObject.activeSelf;
 
             VfxState state =
-                NadaWeaponStateResolver.Resolve(
-                    itemData);
+                NeedsLegacyContextState(source)
+                    ? NadaWeaponStateResolver.Resolve(itemData)
+                    : default(VfxState);
 
             var context =
                 new NadaWeaponRigContext(
                     root,
                     itemData,
                     state,
-                    attachTarget);
+                    attachTarget,
+                    source);
 
             if (!context.IsValid)
                 return false;
@@ -246,7 +253,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             GameObject root,
             global::ItemDrop.ItemData itemData,
             VfxState state,
-            Transform attachTarget)
+            Transform attachTarget,
+            NadaWeaponLocalSourceSelection localSource)
         {
             if (root == null ||
                 attachTarget == null)
@@ -280,7 +288,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     root,
                     itemData,
                     state,
-                    attachTarget);
+                    attachTarget,
+                    localSource);
 
             if (!context.IsValid)
                 return false;
@@ -306,6 +315,14 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             }
 
             return applied;
+        }
+
+        private static bool NeedsLegacyContextState(
+            NadaWeaponLocalSourceSelection source)
+        {
+            return source != null &&
+                   (source.Kind == NadaWeaponLocalSourceKind.Unbound ||
+                    source.Kind == NadaWeaponLocalSourceKind.LegacyBound);
         }
 
         private static global::ItemDrop.ItemData ResolveItemData(

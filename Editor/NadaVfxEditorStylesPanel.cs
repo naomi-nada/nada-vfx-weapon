@@ -73,6 +73,20 @@ namespace NADA.VFX.Weapon.Editor
             string.Equals(focusedControl, StyleNameControlName, StringComparison.Ordinal) ||
             string.Equals(focusedControl, ShareInputControlName, StringComparison.Ordinal);
 
+        private static void ClaimTextInputClick()
+        {
+            Event current = Event.current;
+            if (current == null || current.rawType != EventType.MouseDown ||
+                current.button != 0)
+                return;
+
+            // Called immediately after the field is drawn, so this rect is
+            // local to the editor window, not the screen. An outside click
+            // cannot reacquire editor selection via stale keyboard focus.
+            if (GUILayoutUtility.GetLastRect().Contains(current.mousePosition))
+                NadaVfxEditor.ClaimStylesTextInput();
+        }
+
         private static void ClearPendingImport()
         {
             _pendingImport = null;
@@ -327,6 +341,7 @@ namespace NADA.VFX.Weapon.Editor
             string editedName = GUILayout.TextField(_saveName, 64,
                 textField, GUILayout.Height(ControlHeight),
                 GUILayout.MinWidth(120f), GUILayout.ExpandWidth(true));
+            ClaimTextInputClick();
             if (!string.Equals(editedName, _saveName, StringComparison.Ordinal))
             {
                 _saveName = editedName;
@@ -421,6 +436,7 @@ namespace NADA.VFX.Weapon.Editor
                 MaxShareCodeCharacters, textArea,
                 GUILayout.MinHeight(46f), GUILayout.MaxHeight(46f),
                 GUILayout.ExpandWidth(true));
+            ClaimTextInputClick();
             if (!string.Equals(editedCode, _shareInput, StringComparison.Ordinal))
             {
                 _shareInput = editedCode;

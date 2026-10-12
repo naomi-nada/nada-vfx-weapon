@@ -269,6 +269,14 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         true;
                 }
 
+            }
+
+            NadaVfxEditorControls.SpaceAfterSection();
+
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:motion",
+                    "MOTION"))
+            {
                 if (NadaVfxEditorControls.Toggle(
                         $"{prefix}:world-space",
                         "World Space",
@@ -286,8 +294,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
-
-
 
             changed |=
                 NadaVfxCommonBlockInspector.DrawTransform(

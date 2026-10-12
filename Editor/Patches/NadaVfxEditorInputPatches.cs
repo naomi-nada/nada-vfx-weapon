@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib;
 using UnityEngine;
 
@@ -227,12 +229,8 @@ namespace NADA.VFX.Weapon.Editor.Patches
     }
 
     /// <summary>
-    /// Blocks Valheim action getters only while an editor text field owns the
-    /// keyboard.
-    ///
-    /// Keeping this focus-scoped is important: while the editor is open but
-    /// not typing, vanilla UI controls can still be used for things such as
-    /// opening inventory or changing equipment.
+    /// Blocks gameplay action getters while the editor is selected or typing.
+    /// Clicking outside the window releases these actions without closing it.
     /// </summary>
     [HarmonyPatch]
     internal static class NadaVfxEditorZInputPatches
@@ -300,8 +298,7 @@ namespace NADA.VFX.Weapon.Editor.Patches
         private static bool ShouldBlockEditorKeyboard()
         {
             return
-                NadaVfxEditor.IsOpen &&
-                NadaVfxEditor.OwnsKeyboardInput;
+                NadaVfxEditor.BlocksGameplayHotkeys;
         }
     }
 
@@ -355,9 +352,8 @@ namespace NADA.VFX.Weapon.Editor.Patches
     }
 
     /// <summary>
-    /// Inventory has its own UI update path, so freeze that path while a NADA
-    /// text field owns the keyboard. Outside text entry, inventory remains
-    /// available while the editor is open.
+    /// Inventory has its own input update. Block it only while the editor
+    /// is selected, not merely because the editor window remains open.
     /// </summary>
     [HarmonyPatch(
         typeof(global::InventoryGui),
@@ -368,15 +364,12 @@ namespace NADA.VFX.Weapon.Editor.Patches
         private static bool Prefix()
         {
             return
-                !NadaVfxEditor.IsOpen ||
-                !NadaVfxEditor.OwnsKeyboardInput;
+                !NadaVfxEditor.BlocksGameplayHotkeys;
         }
     }
 
     /// <summary>
-    /// The map also processes input independently of PlayerController.
-    /// Prevent map toggles/actions from stealing characters typed into NADA
-    /// text fields.
+    /// The map has an independent UI input path; protect editor selection.
     /// </summary>
     [HarmonyPatch(
         typeof(global::Minimap),
@@ -387,14 +380,12 @@ namespace NADA.VFX.Weapon.Editor.Patches
         private static bool Prefix()
         {
             return
-                !NadaVfxEditor.IsOpen ||
-                !NadaVfxEditor.OwnsKeyboardInput;
+                !NadaVfxEditor.BlocksGameplayHotkeys;
         }
     }
 
     /// <summary>
-    /// Prevents a key typed into NADA from sheathing or drawing the local
-    /// player's weapon, including callers that bypass the ZInput getters.
+    /// Prevent local sheath/draw actions while NADA owns editor input.
     /// </summary>
     [HarmonyPatch]
     internal static class NadaVfxEditorHandItemInputPatch
@@ -424,9 +415,188 @@ namespace NADA.VFX.Weapon.Editor.Patches
         private static bool AllowHandItemAction(
             global::Humanoid humanoid)
         {
-            return !NadaVfxEditor.OwnsKeyboardInput ||
+            return !NadaVfxEditor.BlocksGameplayHotkeys ||
                    humanoid == null ||
-                   humanoid != global::Player.m_localPlayer;
+                   humanoid != global::Player.m_localPlayer ||
+                   global::Player.m_localPlayer.IsDead();
+        }
+    }
+
+    /// <summary>
+    /// Selected editor input must not reach the player's gameplay action
+    /// consumers. These three methods own the tested keyboard paths in
+    /// Valheim 1.0.17: GP/AutoPickup, OpenRadial/OpenEmote, and Sit.
+    ///
+    /// Player.Update invokes the other two methods, but a transpiler on
+    /// Update does not rewrite the called methods' own ZInput calls.
+    /// Rewriting just these consumers avoids intercepting other mods or
+    /// globally changing ZInput for unrelated interfaces.
+    /// </summary>
+    [HarmonyPatch]
+    internal static class NadaVfxEditorGameplayButtonInputPatch
+    {
+        private static readonly string[] TargetMethodNames =
+        {
+            "Update",
+            "CheckKeyboardRadialPressed",
+            "HandleRadialInput"
+        };
+
+        private static readonly HashSet<string> ReportedInstallations =
+            new HashSet<string>(StringComparer.Ordinal);
+
+        private static readonly HashSet<string> ReportedBlockedQueries =
+            new HashSet<string>(StringComparer.Ordinal);
+
+        [HarmonyTargetMethods]
+        private static IEnumerable<MethodBase> TargetMethods()
+        {
+            foreach (string name in TargetMethodNames)
+            {
+                MethodInfo method = AccessTools.Method(typeof(global::Player), name);
+                if (method == null)
+                {
+                    Plugin.Log?.LogWarning(
+                        $"{Plugin.ModName}: [EditorGameActionGuardUnavailable] " +
+                        $"method='Player.{name}' not found.");
+                    continue;
+                }
+
+                yield return method;
+            }
+        }
+
+        [HarmonyTranspiler]
+        private static IEnumerable<CodeInstruction> Transpiler(
+            IEnumerable<CodeInstruction> instructions, MethodBase original)
+        {
+            MethodInfo getButtonDown = AccessTools.Method(
+                typeof(global::ZInput), "GetButtonDown",
+                new[] { typeof(string) });
+
+            MethodInfo guardedButtonDown = AccessTools.Method(
+                typeof(NadaVfxEditorGameplayButtonInputPatch),
+                nameof(GetButtonDownEditorAware));
+
+            int replacements = 0;
+            foreach (CodeInstruction instruction in instructions)
+            {
+                if (getButtonDown != null && guardedButtonDown != null &&
+                    instruction.Calls(getButtonDown))
+                {
+                    // Preserve Harmony labels and exception blocks.
+                    CodeInstruction guarded = new CodeInstruction(instruction);
+                    guarded.opcode = OpCodes.Call;
+                    guarded.operand = guardedButtonDown;
+                    replacements++;
+                    yield return guarded;
+                }
+                else
+                {
+                    yield return instruction;
+                }
+            }
+
+            string methodName = original?.Name ?? "<unknown>";
+            if (replacements == 0)
+            {
+                if (ReportedInstallations.Add(methodName + ":missing"))
+                    Plugin.Log?.LogWarning(
+                        $"{Plugin.ModName}: [EditorGameActionGuardUnavailable] " +
+                        $"method='Player.{methodName}' " +
+                        "contains no ZInput.GetButtonDown(string) calls.");
+            }
+            else if (ReportedInstallations.Add(methodName))
+            {
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [EditorGameActionGuardInstalled] " +
+                    $"method='Player.{methodName}' buttonDownCalls={replacements}.");
+            }
+        }
+
+        private static bool GetButtonDownEditorAware(string action)
+        {
+            if (!NadaVfxEditor.BlocksGameplayHotkeys)
+            {
+                ReportedBlockedQueries.Clear();
+                return global::ZInput.GetButtonDown(action);
+            }
+
+            // This indicates a guarded action *query*, not a keypress.
+            // Log once per action while selected; never log every frame.
+            if (IsTestedGameplayAction(action) &&
+                ReportedBlockedQueries.Add(action))
+            {
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [EditorGameActionQueryBlocked] " +
+                    $"action='{action}'.");
+            }
+
+            return false;
+        }
+
+        private static bool IsTestedGameplayAction(string action)
+        {
+            return string.Equals(action, "GP", StringComparison.Ordinal) ||
+                   string.Equals(action, "AutoPickup", StringComparison.Ordinal) ||
+                   string.Equals(action, "Sit", StringComparison.Ordinal) ||
+                   string.Equals(action, "OpenRadial", StringComparison.Ordinal) ||
+                   string.Equals(action, "OpenEmote", StringComparison.Ordinal);
+        }
+    }
+}
+
+// Player hotbar use has a separate path from PlayerController.TakeInput.
+// Guard only that player-initiated path; do not block Humanoid.EquipItem,
+// which other game systems can use for legitimate equipment/lifetime changes.
+namespace NADA.VFX.Weapon.Editor.Patches
+{
+    [HarmonyPatch]
+    internal static class NadaVfxEditorHotbarUsePatch
+    {
+        private static bool _reportedBlockedUse;
+
+        [HarmonyTargetMethods]
+        private static IEnumerable<MethodBase> TargetMethods()
+        {
+            bool found = false;
+            foreach (MethodInfo method in
+                     AccessTools.GetDeclaredMethods(typeof(global::Player)))
+            {
+                if (method.Name != "UseHotbarItem")
+                    continue;
+
+                found = true;
+                yield return method;
+            }
+
+            if (!found)
+                Plugin.Log?.LogWarning(
+                    $"{Plugin.ModName}: [EditorHotbarGuard] " +
+                    "Player.UseHotbarItem unavailable; hotbar fallback unverified.");
+        }
+
+        [HarmonyPrefix]
+        private static bool Prefix(global::Player __instance)
+        {
+            if (__instance != global::Player.m_localPlayer ||
+                __instance.IsDead())
+                return true;
+
+            if (!NadaVfxEditor.BlocksGameplayHotkeys)
+            {
+                _reportedBlockedUse = false;
+                return true;
+            }
+
+            if (!_reportedBlockedUse)
+            {
+                _reportedBlockedUse = true;
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [EditorHotbarUseBlocked] local hotbar input suppressed.");
+            }
+
+            return false;
         }
     }
 }
