@@ -45,6 +45,42 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             bool changed = false;
 
             if (NadaVfxEditorControls.Section(
+                    $"{prefix}:movement-mode",
+                    "MOVEMENT MODE"))
+            {
+                // Attached has no trajectory phase, so it cannot
+                // participate in declared Glue relationships.
+                // Path remains selectable in either state.
+                bool canAttach =
+                    attached ||
+                    !NadaOrbitalsGlueInspector.HasDeclaredGlueParticipation(
+                        block);
+
+                if (NadaVfxEditorControls.MovementModeSelector(
+                        $"{prefix}:movement",
+                        attached,
+                        out bool nextAttached,
+                        allowAttached: canAttach))
+                {
+                    orbs.Formation.MovementMode =
+                        nextAttached
+                            ? OrbitalsMovementMode.Attached
+                            : OrbitalsMovementMode.Path;
+
+                    attached = nextAttached;
+                    changed = true;
+                }
+
+                if (!canAttach)
+                {
+                    NadaVfxEditorControls.Placeholder(
+                        "Remove this orbital's Glue relationships before enabling Attached.");
+                }
+            }
+
+            NadaVfxEditorControls.SpaceAfterSection();
+
+            if (NadaVfxEditorControls.Section(
                     $"{prefix}:visual",
                     "VISUAL"))
             {
@@ -104,6 +140,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     $"{prefix}:formation",
                     "FORMATION"))
             {
+                // Count belongs to this effect regardless of movement mode.
+                // Path uses orbiting bodies; Attached extends a fixed line.
                 if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:count",
                         "Count",
@@ -111,8 +149,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         PluginConfig.MinCountNormalized,
                         PluginConfig.MaxCountNormalized,
                         out float count,
-                        enabled: !attached,
-                        description: "Controls the number of additional orbs beyond the leading orb.",
+                        description: attached
+                            ? "Adds bodies toward the hilt without moving existing ones."
+                            : "Controls the number of additional orbs beyond the leading orb.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCount))
                 {
                     path.Count = count;
@@ -140,7 +179,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 else
                 {
                     NadaVfxEditorControls.Placeholder(
-                        "Attached uses one orb. Saved Path settings are preserved.");
+                        "Attached bodies form a straight line. Snake and Glue are unavailable.");
                 }
             }
 
@@ -150,43 +189,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     $"{prefix}:motion",
                     "MOTION"))
             {
-                // Attached is only available when this block has no
-                // declared Glue ownership or membership, including
-                // dormant relationships on disabled leaders.
-                bool canAttach =
-                    attached ||
-                    !NadaOrbitalsGlueInspector.HasDeclaredGlueParticipation(
-                        block);
-
-                if (NadaVfxEditorControls.Toggle(
-                        $"{prefix}:attached",
-                        "Attached",
-                        attached,
-                        out bool nextAttached,
-                        enabled: canAttach,
-                        description: "Fixes one orb to the weapon instead of moving it along an orbital path."))
-                {
-                    orbs.Formation.MovementMode =
-                        nextAttached
-                            ? OrbitalsMovementMode.Attached
-                            : OrbitalsMovementMode.Path;
-
-                    attached = nextAttached;
-                    changed = true;
-                }
-
-                if (!canAttach)
-                {
-                    NadaVfxEditorControls.Placeholder(
-                        "Remove this orbital's Glue relationships before enabling Attached.");
-                }
-
                 bool wasEnabled = GUI.enabled;
                 Color previousTint = GUI.color;
 
-                // Followers inherit their leader's path.
-                // Attached ignores path movement entirely.
-                if (isFollower || attached)
+                if (isFollower)
                 {
                     GUI.enabled = false;
 
@@ -231,6 +237,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed = true;
                 }
 
+                // Both modes use Length, but interpret it differently:
+                // Path controls longitudinal travel distance.
+                // Attached controls the gap between neighboring bodies.
                 if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:length",
                         "Length",
@@ -238,8 +247,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                         PluginConfig.MinOrbitalsLength,
                         PluginConfig.MaxOrbitalsLength,
                         out float length,
-                        enabled: !isFollower && !attached,
-                        description: "Changes how far the orbit travels along the weapon.",
+                        enabled: !isFollower,
+                        description: attached
+                            ? "Changes the distance between neighboring attached orbs."
+                            : "Changes how far the orbit travels along the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsLength))
                 {
                     path.Length = length;
@@ -297,8 +308,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            // Attached still uses the block's normal position/rotation.
-            // An active Glue follower remains controlled by its leader.
             changed |= NadaVfxCommonBlockInspector.DrawTransform(
                 block,
                 editable: !isFollower);

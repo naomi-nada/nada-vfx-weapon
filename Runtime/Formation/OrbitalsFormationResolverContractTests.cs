@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.State.Blocks;
@@ -107,12 +108,67 @@ namespace NADA.VFX.Weapon.Runtime.Formation
                     "null-block-fails",
                     TestNullBlockFails);
 
+                Run(
+                    failures,
+                    "attached-all-types-independent",
+                    TestAttachedAllTypesIndependent);
+
+                Run(
+                    failures,
+                    "attached-coexists-with-path-glue",
+                    TestAttachedCoexistsWithPathGlue);
+
+                Run(
+                    failures,
+                    "attached-declared-leader-fails",
+                    TestAttachedDeclaredLeaderFails);
+
+                Run(
+                    failures,
+                    "disabled-attached-declared-leader-fails",
+                    TestDisabledAttachedDeclaredLeaderFails);
+
+                Run(
+                    failures,
+                    "attached-saved-targets-fail",
+                    TestAttachedSavedTargetsFail);
+
+                Run(
+                    failures,
+                    "disabled-attached-saved-targets-fail",
+                    TestDisabledAttachedSavedTargetsFail);
+
+                Run(
+                    failures,
+                    "attached-target-fails",
+                    TestAttachedTargetFails);
+
+                Run(
+                    failures,
+                    "disabled-attached-target-fails",
+                    TestDisabledAttachedTargetFails);
+
+                Run(
+                    failures,
+                    "disabled-leader-attached-target-fails",
+                    TestDisabledLeaderAttachedTargetFails);
+
+                Run(
+                    failures,
+                    "unknown-movement-mode-fails",
+                    TestUnknownMovementModeFails);
+
+                Run(
+                    failures,
+                    "disabled-unknown-movement-mode-fails",
+                    TestDisabledUnknownMovementModeFails);
+
                 if (failures.Count == 0)
                 {
                     Plugin.Log.LogInfo(
                         $"{Plugin.ModName}: " +
                         $"[OrbitalsFormationResolverContractTests OK] " +
-                        $"tests=15");
+                        $"tests=26");
 
                     return;
                 }
@@ -120,7 +176,7 @@ namespace NADA.VFX.Weapon.Runtime.Formation
                 Plugin.Log.LogError(
                     $"{Plugin.ModName}: " +
                     $"[OrbitalsFormationResolverContractTests FAIL] " +
-                    $"failed={failures.Count}/15 " +
+                    $"failed={failures.Count}/26 " +
                     $"details='{string.Join(" | ", failures)}'");
             }
             catch (Exception e)
@@ -678,6 +734,272 @@ namespace NADA.VFX.Weapon.Runtime.Formation
                 "null-effect-block");
         }
 
+        private static string TestAttachedAllTypesIndependent()
+        {
+            WeaponVfxState state =
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsOrbs,
+                        movementMode: OrbitalsMovementMode.Attached),
+
+                    CreateOrbital(
+                        8,
+                        VfxEffectTypeIds.OrbitalsCores,
+                        movementMode: OrbitalsMovementMode.Attached),
+
+                    CreateOrbital(
+                        9,
+                        VfxEffectTypeIds.OrbitalsFlames,
+                        movementMode: OrbitalsMovementMode.Attached),
+
+                    CreateOrbital(
+                        10,
+                        VfxEffectTypeIds.OrbitalsEmbers,
+                        movementMode: OrbitalsMovementMode.Attached));
+
+            if (!TryResolveValid(
+                    state,
+                    out OrbitalsFormationResolution resolution,
+                    out string failure))
+            {
+                return failure;
+            }
+
+            if (resolution.OrbitalsCount != 4 ||
+                resolution.LeaderCount != 0 ||
+                resolution.FollowerCount != 0)
+            {
+                return
+                    $"counts orbitals={resolution.OrbitalsCount} " +
+                    $"leaders={resolution.LeaderCount} " +
+                    $"followers={resolution.FollowerCount}";
+            }
+
+            foreach (uint instanceId in new uint[] { 7, 8, 9, 10 })
+            {
+                if (!resolution.TryGet(
+                        instanceId,
+                        out ResolvedOrbitalsFormation resolved))
+                {
+                    return $"missing:{instanceId}";
+                }
+
+                if (resolved.IsLeader ||
+                    resolved.IsFollower ||
+                    resolved.LeaderInstanceId.HasValue ||
+                    resolved.TrajectorySourceInstanceId != instanceId)
+                {
+                    return $"attached-not-independent:{instanceId}";
+                }
+
+                // Even without a trajectory, each block retains its
+                // own Count, Length and transform for Attached placement.
+                if (resolved.OwnCount != 1f ||
+                    resolved.EffectiveLength != 4f ||
+                    resolved.EffectiveYOffset != 12f)
+                {
+                    return $"attached-settings-lost:{instanceId}";
+                }
+            }
+
+            return null;
+        }
+
+        private static string TestAttachedCoexistsWithPathGlue()
+        {
+            WeaponVfxState state =
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsOrbs,
+                        glueLeaderEnabled: true,
+                        targets: new uint[] { 9 }),
+
+                    CreateOrbital(
+                        8,
+                        VfxEffectTypeIds.OrbitalsCores,
+                        movementMode: OrbitalsMovementMode.Attached),
+
+                    CreateOrbital(
+                        9,
+                        VfxEffectTypeIds.OrbitalsFlames));
+
+            if (!TryResolveValid(
+                    state,
+                    out OrbitalsFormationResolution resolution,
+                    out string failure))
+            {
+                return failure;
+            }
+
+            if (resolution.LeaderCount != 1 ||
+                resolution.FollowerCount != 1)
+            {
+                return
+                    $"counts leaders={resolution.LeaderCount} " +
+                    $"followers={resolution.FollowerCount}";
+            }
+
+            if (!resolution.TryGet(
+                    8,
+                    out ResolvedOrbitalsFormation attached) ||
+                attached.IsLeader ||
+                attached.IsFollower ||
+                attached.TrajectorySourceInstanceId != 8)
+            {
+                return "attached-was-bound";
+            }
+
+            if (!resolution.TryGet(
+                    9,
+                    out ResolvedOrbitalsFormation follower) ||
+                !follower.IsFollower ||
+                follower.LeaderInstanceId != 7 ||
+                follower.TrajectorySourceInstanceId != 7)
+            {
+                return "path-follower-broken";
+            }
+
+            return null;
+        }
+
+        private static string TestAttachedDeclaredLeaderFails()
+        {
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsOrbs,
+                        glueLeaderEnabled: true,
+                        movementMode: OrbitalsMovementMode.Attached)),
+                "attached-declares-glue:7");
+        }
+
+        private static string TestDisabledAttachedDeclaredLeaderFails()
+        {
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsCores,
+                        enabled: false,
+                        glueLeaderEnabled: true,
+                        movementMode: OrbitalsMovementMode.Attached)),
+                "attached-declares-glue:7");
+        }
+
+        private static string TestAttachedSavedTargetsFail()
+        {
+            // Glue is off, but its target list is still persisted.
+            // Attached cannot keep that dormant leader declaration.
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsFlames,
+                        targets: new uint[] { 9 },
+                        movementMode: OrbitalsMovementMode.Attached),
+
+                    CreateOrbital(
+                        9,
+                        VfxEffectTypeIds.OrbitalsOrbs)),
+                "attached-declares-glue:7");
+        }
+
+        private static string TestDisabledAttachedSavedTargetsFail()
+        {
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsEmbers,
+                        enabled: false,
+                        targets: new uint[] { 9 },
+                        movementMode: OrbitalsMovementMode.Attached),
+
+                    CreateOrbital(
+                        9,
+                        VfxEffectTypeIds.OrbitalsOrbs)),
+                "attached-declares-glue:7");
+        }
+
+        private static string TestAttachedTargetFails()
+        {
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsOrbs,
+                        glueLeaderEnabled: true,
+                        targets: new uint[] { 9 }),
+
+                    CreateOrbital(
+                        9,
+                        VfxEffectTypeIds.OrbitalsCores,
+                        movementMode: OrbitalsMovementMode.Attached)),
+                "attached-glue-target:leader=7:target=9");
+        }
+
+        private static string TestDisabledAttachedTargetFails()
+        {
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsOrbs,
+                        glueLeaderEnabled: true,
+                        targets: new uint[] { 9 }),
+
+                    CreateOrbital(
+                        9,
+                        VfxEffectTypeIds.OrbitalsFlames,
+                        enabled: false,
+                        movementMode: OrbitalsMovementMode.Attached)),
+                "attached-glue-target:leader=7:target=9");
+        }
+
+        private static string TestDisabledLeaderAttachedTargetFails()
+        {
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsOrbs,
+                        enabled: false,
+                        glueLeaderEnabled: true,
+                        targets: new uint[] { 9 }),
+
+                    CreateOrbital(
+                        9,
+                        VfxEffectTypeIds.OrbitalsEmbers,
+                        movementMode: OrbitalsMovementMode.Attached)),
+                "attached-glue-target:leader=7:target=9");
+        }
+
+        private static string TestUnknownMovementModeFails()
+        {
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsOrbs,
+                        movementMode: (OrbitalsMovementMode)255)),
+                "invalid-movement-mode:7");
+        }
+
+        private static string TestDisabledUnknownMovementModeFails()
+        {
+            return ExpectInvalid(
+                CreateState(
+                    CreateOrbital(
+                        7,
+                        VfxEffectTypeIds.OrbitalsCores,
+                        enabled: false,
+                        movementMode: (OrbitalsMovementMode)255)),
+                "invalid-movement-mode:7");
+        }
+
         private static string ExpectInvalid(
             WeaponVfxState state,
             string expectedReason)
@@ -772,11 +1094,14 @@ namespace NADA.VFX.Weapon.Runtime.Formation
             uint[] targets = null,
             float count = 1f,
             float radius = 1f,
-            float xOffset = 0f)
+            float xOffset = 0f,
+            OrbitalsMovementMode movementMode = OrbitalsMovementMode.Path)
         {
             var formation =
                 new OrbitalsFormationVfxSettings
                 {
+                    MovementMode = movementMode,
+
                     Path =
                         new OrbitalsPathVfxSettings
                         {

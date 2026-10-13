@@ -32,13 +32,55 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             OrbitalsPathVfxSettings path = flames.Formation.Path;
             string prefix = $"orbitals-flames:{block.InstanceId}";
             bool isFollower = NadaOrbitalsGlueInspector.IsActiveFollower(block);
+
+            bool attached =
+                flames.Formation.MovementMode ==
+                OrbitalsMovementMode.Attached;
+
             bool changed = false;
 
-            if (NadaVfxEditorControls.Section($"{prefix}:visual", "VISUAL"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:movement-mode",
+                    "MOVEMENT MODE"))
+            {
+                bool canAttach =
+                    attached ||
+                    !NadaOrbitalsGlueInspector.HasDeclaredGlueParticipation(
+                        block);
+
+                if (NadaVfxEditorControls.MovementModeSelector(
+                        $"{prefix}:movement",
+                        attached,
+                        out bool nextAttached,
+                        allowAttached: canAttach))
+                {
+                    flames.Formation.MovementMode =
+                        nextAttached
+                            ? OrbitalsMovementMode.Attached
+                            : OrbitalsMovementMode.Path;
+
+                    attached = nextAttached;
+                    changed = true;
+                }
+
+                if (!canAttach)
+                {
+                    NadaVfxEditorControls.Placeholder(
+                        "Remove this orbital's Glue relationships before enabling Attached.");
+                }
+            }
+
+            NadaVfxEditorControls.SpaceAfterSection();
+
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:visual",
+                    "VISUAL"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:luminance", "Luminance", flames.Luminance,
-                        PluginConfig.MinLuminance, PluginConfig.MaxLuminance,
+                        $"{prefix}:luminance", "Luminance",
+                        flames.Luminance,
+                        PluginConfig.MinLuminance,
+                        PluginConfig.MaxLuminance,
                         out float luminance,
                         description: "Changes how brightly the orbital flames glow.",
                         resetValue: WeaponVfxBlockDefaults.DefaultLuminance))
@@ -48,8 +90,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:hue", "Hue", flames.Hue,
-                        MinHue, MaxHue, out float hue,
+                        $"{prefix}:hue", "Hue",
+                        flames.Hue,
+                        MinHue, MaxHue,
+                        out float hue,
                         description: "Shifts the flame color while preserving its authored gradients.",
                         resetValue: WeaponVfxBlockDefaults.DefaultHue))
                 {
@@ -60,13 +104,17 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:shape", "SHAPE"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:shape",
+                    "SHAPE"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:scale", "Scale", flames.Scale,
-                        PluginConfig.MinScaleMult, PluginConfig.MaxScaleMult,
+                        $"{prefix}:scale", "Scale",
+                        flames.Scale,
+                        PluginConfig.MinScaleMult,
+                        PluginConfig.MaxScaleMult,
                         out float scale,
-                        description: "Changes the size of the orbiting flames.",
+                        description: "Changes the size of the flames.",
                         resetValue: WeaponVfxBlockDefaults.DefaultScale))
                 {
                     flames.Scale = scale;
@@ -76,11 +124,15 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:particles", "PARTICLES"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:particles",
+                    "PARTICLES"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:energy", "Energy", flames.Energy,
-                        PluginConfig.MinEnergy, PluginConfig.MaxEnergy,
+                        $"{prefix}:energy", "Energy",
+                        flames.Energy,
+                        PluginConfig.MinEnergy,
+                        PluginConfig.MaxEnergy,
                         out float energy,
                         description: "Changes the intensity of the flame particles.",
                         resetValue: WeaponVfxBlockDefaults.DefaultEnergy))
@@ -90,8 +142,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:lifetime", "Lifetime", flames.Lifetime,
-                        PluginConfig.MinLifetime, PluginConfig.MaxLifetime,
+                        $"{prefix}:lifetime", "Lifetime",
+                        flames.Lifetime,
+                        PluginConfig.MinLifetime,
+                        PluginConfig.MaxLifetime,
                         out float lifetime,
                         description: "Changes how long emitted flames remain visible.",
                         resetValue: WeaponVfxBlockDefaults.DefaultLifetime))
@@ -101,7 +155,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:simulation-speed", "Simulation Speed",
+                        $"{prefix}:simulation-speed",
+                        "Simulation Speed",
                         flames.SimulationSpeed,
                         PluginConfig.MinSimulationSpeed,
                         PluginConfig.MaxSimulationSpeed,
@@ -116,14 +171,21 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:formation", "FORMATION"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:formation",
+                    "FORMATION"))
             {
+                // Count works in both modes. Attached adds bodies
+                // without moving the ones already on the weapon.
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:count", "Count", path.Count,
+                        $"{prefix}:count", "Count",
+                        path.Count,
                         PluginConfig.MinCountNormalized,
                         PluginConfig.MaxCountNormalized,
                         out float count,
-                        description: "Controls the number of additional flames beyond the leading flame.",
+                        description: attached
+                            ? "Adds flames toward the hilt without moving existing ones."
+                            : "Controls the number of additional flames beyond the leading flame.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCount))
                 {
                     path.Count = count;
@@ -131,39 +193,58 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.Toggle(
-                        $"{prefix}:snake", "Snake", path.SnakeEnabled,
+                        $"{prefix}:snake", "Snake",
+                        path.SnakeEnabled,
                         out bool snakeEnabled,
-                        enabled: !isFollower,
+                        enabled: !isFollower && !attached,
                         description: "Keeps the flames in a tighter snake formation."))
                 {
                     path.SnakeEnabled = snakeEnabled;
                     changed = true;
                 }
 
-                changed |= NadaOrbitalsGlueInspector.Draw(block, flames.Formation);
+                if (!attached)
+                {
+                    changed |= NadaOrbitalsGlueInspector.Draw(
+                        block,
+                        flames.Formation);
+                }
+                else
+                {
+                    NadaVfxEditorControls.Placeholder(
+                        "Attached flames form a straight line. Snake and Glue are unavailable.");
+                }
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:motion", "MOTION"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:motion",
+                    "MOTION"))
             {
-                // A follower borrows its leader's path. Its own stored
-                // motion values remain untouched until Glue is removed.
+                // Glue followers inherit their leader's trajectory.
+                // Attached blocks do not use orbital travel controls.
                 bool previousEnabled = GUI.enabled;
                 Color previousTint = GUI.color;
 
                 if (isFollower)
                 {
                     GUI.enabled = false;
-                    GUI.color = new Color(previousTint.r, previousTint.g,
-                        previousTint.b, previousTint.a * 0.78f);
+                    GUI.color = new Color(
+                        previousTint.r,
+                        previousTint.g,
+                        previousTint.b,
+                        previousTint.a * 0.78f);
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:speed", "Speed", path.Speed,
-                        PluginConfig.MinOrbitalsSpeed, PluginConfig.MaxOrbitalsSpeed,
-                        out float speed, decimals: 3,
-                        enabled: !isFollower,
+                        $"{prefix}:speed", "Speed",
+                        path.Speed,
+                        PluginConfig.MinOrbitalsSpeed,
+                        PluginConfig.MaxOrbitalsSpeed,
+                        out float speed,
+                        decimals: 3,
+                        enabled: !isFollower && !attached,
                         description: "Controls how quickly the flames travel around the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpeed))
                 {
@@ -172,12 +253,15 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:spacing", "Spacing", path.Spacing,
+                        $"{prefix}:spacing", "Spacing",
+                        path.Spacing,
                         PluginConfig.MinOrbitalsSpacing,
                         PluginConfig.MaxOrbitalsSpacing,
                         out float spacing,
-                        enabled: !isFollower && !path.SnakeEnabled,
-                        disabledReason: "Spacing is locked while Snake or Glue is active.",
+                        enabled: !isFollower &&
+                                 !attached &&
+                                 !path.SnakeEnabled,
+                        disabledReason: "Spacing is locked while Snake, Glue, or Attached is active.",
                         description: "Adjusts the separation between orbiting flames.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpacing))
                 {
@@ -185,11 +269,18 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed = true;
                 }
 
+                // Path: longitudinal travel distance.
+                // Attached: gap between neighboring flame bodies.
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:length", "Length", path.Length,
-                        PluginConfig.MinOrbitalsLength, PluginConfig.MaxOrbitalsLength,
-                        out float length, enabled: !isFollower,
-                        description: "Changes how far the flames travel along the weapon.",
+                        $"{prefix}:length", "Length",
+                        path.Length,
+                        PluginConfig.MinOrbitalsLength,
+                        PluginConfig.MaxOrbitalsLength,
+                        out float length,
+                        enabled: !isFollower,
+                        description: attached
+                            ? "Changes the distance between neighboring attached flames."
+                            : "Changes how far the flames travel along the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsLength))
                 {
                     path.Length = length;
@@ -197,10 +288,12 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:radius", "Radius", path.Radius,
+                        $"{prefix}:radius", "Radius",
+                        path.Radius,
                         PluginConfig.MinOrbitalsRadiusMultiplier,
                         PluginConfig.MaxOrbitalsRadiusMultiplier,
-                        out float radius, enabled: !isFollower,
+                        out float radius,
+                        enabled: !isFollower && !attached,
                         description: "Changes how wide the orbit wraps around the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsRadius))
                 {
@@ -209,9 +302,12 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:cycles", "Cycles", path.Cycles,
-                        PluginConfig.MinOrbitalsCycles, PluginConfig.MaxOrbitalsCycles,
-                        out float cycles, enabled: !isFollower,
+                        $"{prefix}:cycles", "Cycles",
+                        path.Cycles,
+                        PluginConfig.MinOrbitalsCycles,
+                        PluginConfig.MaxOrbitalsCycles,
+                        out float cycles,
+                        enabled: !isFollower && !attached,
                         description: "Changes how many turns the flames make before reversing.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCycles))
                 {
@@ -220,9 +316,12 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:drift", "Drift", path.Drift,
-                        PluginConfig.MinDrift, PluginConfig.MaxDrift,
-                        out float drift, enabled: !isFollower,
+                        $"{prefix}:drift", "Drift",
+                        path.Drift,
+                        PluginConfig.MinDrift,
+                        PluginConfig.MaxDrift,
+                        out float drift,
+                        enabled: !isFollower && !attached,
                         description: "Changes how freely the flames drift off their orbit path.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsDrift))
                 {
@@ -235,8 +334,11 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
+
             changed |= NadaVfxCommonBlockInspector.DrawTransform(
-                block, editable: !isFollower);
+                block,
+                editable: !isFollower);
+
             return changed;
         }
     }

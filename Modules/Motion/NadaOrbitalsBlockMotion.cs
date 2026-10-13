@@ -30,7 +30,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
     /// Formation relationships are resolved outside this component.
     /// Independent/leader instances own cycle phase. Followers consume the
     /// resolved trajectory plus phase from an explicitly bound source.
-    /// Attached instances follow the weapon without a trajectory.
+    /// Attached instances position bodies along the weapon without a path.
     /// </summary>
     internal sealed class NadaOrbitalsBlockMotion :
         MonoBehaviour,
@@ -57,6 +57,10 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private const float SnakeSpacingMultiplier = 0.55f;
 
+        // Length scales the gap between Attached bodies, not the
+        // total formation span. Count extends the line toward the hilt.
+        private const float AttachedBaseSpacing = 0.10f;
+
         private static readonly Vector3 CoreSpinAxis =
             new Vector3(1f, 1f, 0f).normalized;
 
@@ -69,9 +73,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
         private struct RuntimeState
         {
             internal bool Enabled;
-
             internal OrbitalsMovementMode MovementMode;
-
             internal bool SnakeEnabled;
 
             internal float Count;
@@ -216,8 +218,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 (movementMode == OrbitalsMovementMode.Path ||
                  movementMode == OrbitalsMovementMode.Attached);
 
-            // Attached does not produce a trajectory phase.
-            // It cannot own or consume Glue relationships.
+            // Attached cannot own or consume Glue relationships.
             bool attachedIndependent =
                 movementMode != OrbitalsMovementMode.Attached ||
                 (block != null &&
@@ -320,8 +321,6 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
             _typeId = block?.TypeId;
 
-            // Drift uses historical parent poses. Those samples must not
-            // leak across a change between Path and Attached.
             if (movementModeChanged)
                 ResetOrbitStartPoint();
 
@@ -368,7 +367,6 @@ namespace NADA.VFX.Weapon.Modules.Motion
             }
 
             _trajectoryPhaseSource = source;
-
             return true;
         }
 
@@ -439,11 +437,8 @@ namespace NADA.VFX.Weapon.Modules.Motion
             spinEnabled = false;
             spinSpeed = 0f;
 
-            if (block == null ||
-                block.Transform == null)
-            {
+            if (block == null || block.Transform == null)
                 return false;
-            }
 
             if (block.TypeId == VfxEffectTypeIds.OrbitalsOrbs &&
                 block.Settings is OrbitalsOrbsVfxSettings orbs)
@@ -459,7 +454,6 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
                 spinEnabled = cores.SpinEnabled;
                 spinSpeed = cores.SpinSpeed;
-
                 return true;
             }
 
@@ -561,8 +555,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
                         state.SnakeEnabled));
 
             float orbitAdherence =
-                ResolveOrbitAdherenceFromDrift(
-                    state.Drift);
+                ResolveOrbitAdherenceFromDrift(state.Drift);
 
             AdvanceVisualSpin(state);
 
@@ -606,8 +599,6 @@ namespace NADA.VFX.Weapon.Modules.Motion
 
         private void ApplyAttachedMotion(RuntimeState state)
         {
-            // Attached is positioned relative to the weapon's motion
-            // parent. It does not evaluate the orbital path.
             _currentLocalOffset =
                 new Vector3(
                     ClampOffset(state.XOffset),
@@ -620,26 +611,72 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     ClampRotation(state.YRotation),
                     ClampRotation(state.ZRotation));
 
+            // Position anchors the first body. Increasing Count must
+            // leave existing bodies in place and extend toward the hilt.
             transform.localPosition =
                 _baseHeadLocalPosition + _currentLocalOffset;
+
+            int followerCount =
+                ResolveDesiredFollowerCount(state.Count);
+
+            // Fixed gap per neighboring pair. Length changes spacing;
+            // Count does not redistribute bodies across a fixed span.
+            float gap =
+                AttachedBaseSpacing *
+                ClampOrbitalsLength(state.Length);
 
             AdvanceVisualSpin(state);
 
             ApplyHeadVisualEnabledState(true);
+            ApplyFollowerVisualCount(followerCount);
 
-            // Retain the saved Count without displaying extra orbitals.
-            ApplyFollowerVisualCount(0);
-
-            if (_headVisualTransform == null)
-                return;
-
-            _headVisualTransform.position =
-                transform.position;
-
-            _headVisualTransform.rotation =
+            Quaternion visualRotation =
                 transform.rotation *
                 _currentLocalRotationOffset *
                 _currentVisualSpinRotation;
+
+            PositionAttachedVisual(
+                _headVisualTransform,
+                0,
+                gap,
+                visualRotation);
+
+            int availableFollowers =
+                Mathf.Min(
+                    followerCount,
+                    _followerVisualTransforms.Count);
+
+            for (int i = 0; i < availableFollowers; i++)
+            {
+                PositionAttachedVisual(
+                    _followerVisualTransforms[i],
+                    i + 1,
+                    gap,
+                    visualRotation);
+            }
+        }
+
+        private void PositionAttachedVisual(
+            Transform visual,
+            int index,
+            float gap,
+            Quaternion visualRotation)
+        {
+            if (visual == null)
+                return;
+
+            // Body zero stays at Position. Every additional body is
+            // one more identical step along the negative local Y axis.
+            // Block rotation rotates the line around the first body.
+            Vector3 localOffset =
+                _currentLocalRotationOffset *
+                (Vector3.down * (index * gap));
+
+            visual.position =
+                transform.TransformPoint(localOffset);
+
+            visual.rotation =
+                visualRotation;
         }
 
         private bool TryResolveCycleProgressForCurrentFrame(
@@ -657,7 +694,9 @@ namespace NADA.VFX.Weapon.Modules.Motion
                 if (!_hasCurrentCycleProgress01)
                     return false;
 
-                cycleProgress01 = _currentCycleProgress01;
+                cycleProgress01 =
+                    _currentCycleProgress01;
+
                 return true;
             }
 
@@ -740,8 +779,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
             _currentCycleProgress01 =
                 Mathf.Repeat(
                     _currentCycleProgress01 +
-                    cycleProgressPerSecond *
-                    Time.deltaTime,
+                    cycleProgressPerSecond * Time.deltaTime,
                     1f);
         }
 
@@ -761,8 +799,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
                      _followerPoolRootTransform)
             {
                 if (childTransform != null)
-                    _followerVisualTransforms.Add(
-                        childTransform);
+                    _followerVisualTransforms.Add(childTransform);
             }
 
             _initialized = true;
@@ -884,8 +921,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     targetHistoryStepPerFollower,
                     1f -
                     Mathf.Exp(
-                        -smoothingSpeed *
-                        Time.deltaTime));
+                        -smoothingSpeed * Time.deltaTime));
 
             return _currentHistoryStepPerFollower;
         }
@@ -1101,7 +1137,10 @@ namespace NADA.VFX.Weapon.Modules.Motion
                     historyStepPerFollower);
 
             float distancePerFollower =
-                Mathf.Lerp(0.06f, 0.32f, spacingT);
+                Mathf.Lerp(
+                    0.06f,
+                    0.32f,
+                    spacingT);
 
             if (snakeSpacingEnabled)
                 distancePerFollower *= SnakeSpacingMultiplier;
@@ -1442,7 +1481,7 @@ namespace NADA.VFX.Weapon.Modules.Motion
                         lowerIndex)
                     .Rotation,
                 GetParentWorldHistorySample(
-                    upperIndex)
+                        upperIndex)
                     .Rotation,
                 interpolationT);
         }

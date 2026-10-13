@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
@@ -59,6 +60,8 @@ namespace NADA.VFX.Weapon.Editor
         private static GUIStyle _toggleStyle;
         private static GUIStyle _segmentButtonStyle;
         private static GUIStyle _selectedSegmentButtonStyle;
+        private static GUIStyle _movementModeButtonStyle;
+        private static GUIStyle _selectedMovementModeButtonStyle;
         private static GUIStyle _resetButtonStyle;
 
         private static float ModifierLabelWidth =>
@@ -741,6 +744,88 @@ namespace NADA.VFX.Weapon.Editor
                 changed;
         }
 
+        // A prominent, reusable selector for orbital movement modes.
+        // The caller owns the actual block-state change and Glue checks.
+        // Only the Attached choice is disabled when Glue forbids it;
+        // returning to Path must remain possible.
+        internal static bool MovementModeSelector(
+            string key,
+            bool attached,
+            out bool nextAttached,
+            bool allowAttached = true)
+        {
+            EnsureStyles();
+
+            nextAttached = attached;
+
+            bool changed = false;
+            bool previousEnabled = GUI.enabled;
+
+            GUILayout.BeginHorizontal(
+                _modifierRowStyle);
+
+            try
+            {
+                GUIStyle pathStyle =
+                    attached
+                        ? _movementModeButtonStyle
+                        : _selectedMovementModeButtonStyle;
+
+                GUIStyle attachedStyle =
+                    attached
+                        ? _selectedMovementModeButtonStyle
+                        : _movementModeButtonStyle;
+
+                GUI.SetNextControlName(
+                    $"NadaVfxMovement_{key}_Path");
+
+                if (GUILayout.Button(
+                        "PATH\n(Motion On)",
+                        pathStyle,
+                        GUILayout.ExpandWidth(true),
+                        GUILayout.Height(
+                            _compactLayout ? 44f : 50f)))
+                {
+                    if (attached)
+                    {
+                        nextAttached = false;
+                        changed = true;
+                    }
+                }
+
+                GUILayout.Space(
+                    ComponentGap);
+
+                GUI.enabled =
+                    previousEnabled &&
+                    allowAttached;
+
+                GUI.SetNextControlName(
+                    $"NadaVfxMovement_{key}_Attached");
+
+                if (GUILayout.Button(
+                        "ATTACHED\n(Motion Off)",
+                        attachedStyle,
+                        GUILayout.ExpandWidth(true),
+                        GUILayout.Height(
+                            _compactLayout ? 44f : 50f)))
+                {
+                    if (!attached)
+                    {
+                        nextAttached = true;
+                        changed = true;
+                    }
+                }
+            }
+            finally
+            {
+                GUI.enabled = previousEnabled;
+                GUILayout.EndHorizontal();
+            }
+
+            return changed;
+        }
+
         internal static void ReadOnlyFloat(
             string label,
             float value)
@@ -1004,6 +1089,7 @@ namespace NADA.VFX.Weapon.Editor
 
             Color32 subtleStroke = new Color32(
                 theme.MutedText.r, theme.MutedText.g, theme.MutedText.b, 110);
+
             Color32 hoverStroke = new Color32(
                 theme.MutedText.r, theme.MutedText.g, theme.MutedText.b, 175);
 
@@ -1014,27 +1100,77 @@ namespace NADA.VFX.Weapon.Editor
                 theme.WindowBackground.g,
                 theme.WindowBackground.b,
                 255);
+
             Texture2D sectionBackground =
-                CreateRoundedTexture(theme.PanelBackground, sectionStroke);
+                CreateRoundedTexture(
+                    theme.PanelBackground,
+                    sectionStroke);
 
             Texture2D sectionHoverBackground =
-                CreateRoundedTexture(theme.ButtonHoverBackground, sectionStroke);
+                CreateRoundedTexture(
+                    theme.ButtonHoverBackground,
+                    sectionStroke);
 
             Texture2D segmentBackground =
-                CreateRoundedTexture(theme.SegmentBackground, subtleStroke);
+                CreateRoundedTexture(
+                    theme.SegmentBackground,
+                    subtleStroke);
 
             Texture2D segmentHoverBackground =
-                CreateRoundedTexture(theme.SegmentHoverBackground, hoverStroke);
+                CreateRoundedTexture(
+                    theme.SegmentHoverBackground,
+                    hoverStroke);
 
             Texture2D selectedSegmentBackground =
                 CreateRoundedTexture(
                     theme.SelectedSegmentBackground);
 
+            // Movement modes get their own stronger outlined surfaces.
+            // Keep these separate from the ordinary small segments.
+            Color32 movementIdleStroke = new Color32(
+                theme.AccentSecondary.r,
+                theme.AccentSecondary.g,
+                theme.AccentSecondary.b,
+                145);
+
+            Color32 movementHoverStroke = new Color32(
+                theme.AccentTertiary.r,
+                theme.AccentTertiary.g,
+                theme.AccentTertiary.b,
+                215);
+
+            Color32 movementSelectedStroke = new Color32(
+                theme.AccentPrimary.r,
+                theme.AccentPrimary.g,
+                theme.AccentPrimary.b,
+                255);
+
+            Texture2D movementBackground =
+                CreateRoundedTexture(
+                    theme.SegmentBackground,
+                    movementIdleStroke);
+
+            Texture2D movementHoverBackground =
+                CreateRoundedTexture(
+                    theme.SegmentHoverBackground,
+                    movementHoverStroke,
+                    2);
+
+            Texture2D movementSelectedBackground =
+                CreateRoundedTexture(
+                    theme.SelectedSegmentBackground,
+                    movementSelectedStroke,
+                    2);
+
             Texture2D resetBackground =
-                CreateRoundedTexture(theme.ResetBackground, subtleStroke);
+                CreateRoundedTexture(
+                    theme.ResetBackground,
+                    subtleStroke);
 
             Texture2D resetHoverBackground =
-                CreateRoundedTexture(theme.ResetHoverBackground, hoverStroke);
+                CreateRoundedTexture(
+                    theme.ResetHoverBackground,
+                    hoverStroke);
 
             _sectionButtonStyle =
                 new GUIStyle(
@@ -1055,7 +1191,9 @@ namespace NADA.VFX.Weapon.Editor
                             1)
                 };
 
-            _sectionButtonStyle.border = new RectOffset(7, 7, 7, 7);
+            _sectionButtonStyle.border =
+                new RectOffset(7, 7, 7, 7);
+
             _sectionButtonStyle.normal.background =
                 sectionBackground;
 
@@ -1145,11 +1283,19 @@ namespace NADA.VFX.Weapon.Editor
 
             // Numeric editor fields share the same rounded geometry as the
             // shell inputs without modifying Unity's global GUI.skin.
-            _valueFieldStyle.border = new RectOffset(7, 7, 7, 7);
+            _valueFieldStyle.border =
+                new RectOffset(7, 7, 7, 7);
+
             _valueFieldStyle.normal.background =
-                CreateRoundedTexture(theme.PickerBackground);
-            _valueFieldStyle.hover.background = _valueFieldStyle.normal.background;
-            _valueFieldStyle.focused.background = _valueFieldStyle.normal.background;
+                CreateRoundedTexture(
+                    theme.PickerBackground);
+
+            _valueFieldStyle.hover.background =
+                _valueFieldStyle.normal.background;
+
+            _valueFieldStyle.focused.background =
+                _valueFieldStyle.normal.background;
+
             _valueFieldStyle.normal.textColor =
                 theme.PrimaryText;
 
@@ -1225,7 +1371,9 @@ namespace NADA.VFX.Weapon.Editor
                             1)
                 };
 
-            _segmentButtonStyle.border = new RectOffset(7, 7, 7, 7);
+            _segmentButtonStyle.border =
+                new RectOffset(7, 7, 7, 7);
+
             _segmentButtonStyle.normal.background =
                 segmentBackground;
 
@@ -1237,7 +1385,10 @@ namespace NADA.VFX.Weapon.Editor
 
             // Unselected mode labels still need to be readable on dark themes.
             _segmentButtonStyle.normal.textColor =
-                Color.Lerp(theme.MutedText, theme.PrimaryText, 0.55f);
+                Color.Lerp(
+                    theme.MutedText,
+                    theme.PrimaryText,
+                    0.55f);
 
             _segmentButtonStyle.hover.textColor =
                 theme.PrimaryText;
@@ -1261,6 +1412,73 @@ namespace NADA.VFX.Weapon.Editor
             _selectedSegmentButtonStyle.hover.textColor =
                 theme.AccentTertiary;
 
+            // The large movement-mode buttons have their own geometry.
+            // Their selected state uses a 2px accent stroke.
+            _movementModeButtonStyle =
+                new GUIStyle(
+                    GUI.skin.button)
+                {
+                    fontSize = 11,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter,
+                    wordWrap = true,
+                    padding =
+                        new RectOffset(
+                            5,
+                            5,
+                            4,
+                            4),
+                    margin =
+                        new RectOffset(
+                            0,
+                            0,
+                            1,
+                            1)
+                };
+
+            _movementModeButtonStyle.border =
+                new RectOffset(7, 7, 7, 7);
+
+            _movementModeButtonStyle.normal.background =
+                movementBackground;
+
+            _movementModeButtonStyle.hover.background =
+                movementHoverBackground;
+
+            _movementModeButtonStyle.active.background =
+                movementHoverBackground;
+
+            _movementModeButtonStyle.normal.textColor =
+                theme.PrimaryText;
+
+            _movementModeButtonStyle.hover.textColor =
+                theme.AccentTertiary;
+
+            _movementModeButtonStyle.active.textColor =
+                theme.AccentTertiary;
+
+            _selectedMovementModeButtonStyle =
+                new GUIStyle(
+                    _movementModeButtonStyle);
+
+            _selectedMovementModeButtonStyle.normal.background =
+                movementSelectedBackground;
+
+            _selectedMovementModeButtonStyle.hover.background =
+                movementSelectedBackground;
+
+            _selectedMovementModeButtonStyle.active.background =
+                movementSelectedBackground;
+
+            _selectedMovementModeButtonStyle.normal.textColor =
+                theme.AccentTertiary;
+
+            _selectedMovementModeButtonStyle.hover.textColor =
+                theme.AccentTertiary;
+
+            _selectedMovementModeButtonStyle.active.textColor =
+                theme.AccentTertiary;
+
             _resetButtonStyle =
                 new GUIStyle(
                     GUI.skin.button)
@@ -1278,7 +1496,9 @@ namespace NADA.VFX.Weapon.Editor
                             1)
                 };
 
-            _resetButtonStyle.border = new RectOffset(7, 7, 7, 7);
+            _resetButtonStyle.border =
+                new RectOffset(7, 7, 7, 7);
+
             _resetButtonStyle.normal.background =
                 resetBackground;
 
@@ -1319,6 +1539,8 @@ namespace NADA.VFX.Weapon.Editor
             _toggleStyle = null;
             _segmentButtonStyle = null;
             _selectedSegmentButtonStyle = null;
+            _movementModeButtonStyle = null;
+            _selectedMovementModeButtonStyle = null;
             _resetButtonStyle = null;
 
             _hasAppliedTheme =
@@ -1326,82 +1548,145 @@ namespace NADA.VFX.Weapon.Editor
         }
 
         private static Texture2D CreateRoundedTexture(
-            Color32 color, Color32? outline = null)
+            Color32 color,
+            Color32? outline = null,
+            int strokeWidth = 1)
         {
             const int size = 20;
             const float radius = 6f;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
-            {
-                name = "NADA Editor Control Rounded UI",
-                hideFlags = HideFlags.HideAndDontSave,
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp
-            };
 
-            var pixels = new Color32[size * size];
+            strokeWidth =
+                Mathf.Clamp(strokeWidth, 1, 3);
+
+            var texture =
+                new Texture2D(
+                    size,
+                    size,
+                    TextureFormat.RGBA32,
+                    false)
+                {
+                    name = "NADA Editor Control Rounded UI",
+                    hideFlags = HideFlags.HideAndDontSave,
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp
+                };
+
+            var pixels =
+                new Color32[size * size];
+
             for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
             {
                 float px = x + .5f;
                 float py = y + .5f;
-                float outer = RoundedCoverage(px, py, size, radius);
+
+                float outer =
+                    RoundedCoverage(
+                        px,
+                        py,
+                        size,
+                        radius);
+
                 if (!outline.HasValue)
                 {
-                    pixels[y * size + x] = new Color32(color.r, color.g, color.b,
-                        (byte)(color.a * outer));
+                    pixels[y * size + x] =
+                        new Color32(
+                            color.r,
+                            color.g,
+                            color.b,
+                            (byte)(color.a * outer));
+
                     continue;
                 }
 
-                float inner = RoundedCoverage(px - 1f, py - 1f, size - 2f, radius - 1f);
-                float rim = Mathf.Clamp01(outer - inner);
-                Color32 stroke = outline.Value;
-                float alpha = inner * color.a + rim * stroke.a;
+                float inner =
+                    RoundedCoverage(
+                        px - strokeWidth,
+                        py - strokeWidth,
+                        size - 2f * strokeWidth,
+                        radius - strokeWidth);
+
+                float rim =
+                    Mathf.Clamp01(outer - inner);
+
+                Color32 stroke =
+                    outline.Value;
+
+                float alpha =
+                    inner * color.a +
+                    rim * stroke.a;
+
                 if (alpha <= 0f)
                     continue;
-                float r = (inner * color.r * color.a + rim * stroke.r * stroke.a) / alpha;
-                float g = (inner * color.g * color.a + rim * stroke.g * stroke.a) / alpha;
-                float b = (inner * color.b * color.a + rim * stroke.b * stroke.a) / alpha;
-                pixels[y * size + x] = new Color32(
-                    (byte)Mathf.Clamp(r, 0f, 255f),
-                    (byte)Mathf.Clamp(g, 0f, 255f),
-                    (byte)Mathf.Clamp(b, 0f, 255f),
-                    (byte)Mathf.Clamp(alpha, 0f, 255f));
+
+                float r =
+                    (inner * color.r * color.a +
+                     rim * stroke.r * stroke.a) / alpha;
+
+                float g =
+                    (inner * color.g * color.a +
+                     rim * stroke.g * stroke.a) / alpha;
+
+                float b =
+                    (inner * color.b * color.a +
+                     rim * stroke.b * stroke.a) / alpha;
+
+                pixels[y * size + x] =
+                    new Color32(
+                        (byte)Mathf.Clamp(r, 0f, 255f),
+                        (byte)Mathf.Clamp(g, 0f, 255f),
+                        (byte)Mathf.Clamp(b, 0f, 255f),
+                        (byte)Mathf.Clamp(alpha, 0f, 255f));
             }
 
             texture.SetPixels32(pixels);
             texture.Apply(false, true);
+
             OwnedTextures.Add(texture);
             return texture;
         }
 
-        private static float RoundedCoverage(float x, float y, float size, float radius)
+        private static float RoundedCoverage(
+            float x,
+            float y,
+            float size,
+            float radius)
         {
-            float dx = Mathf.Max(radius - x, 0f);
-            dx = Mathf.Max(dx, x - (size - radius));
-            float dy = Mathf.Max(radius - y, 0f);
-            dy = Mathf.Max(dy, y - (size - radius));
-            return Mathf.Clamp01(radius + .5f - Mathf.Sqrt(dx * dx + dy * dy));
+            float dx =
+                Mathf.Max(radius - x, 0f);
+
+            dx =
+                Mathf.Max(
+                    dx,
+                    x - (size - radius));
+
+            float dy =
+                Mathf.Max(radius - y, 0f);
+
+            dy =
+                Mathf.Max(
+                    dy,
+                    y - (size - radius));
+
+            return Mathf.Clamp01(
+                radius + .5f -
+                Mathf.Sqrt(dx * dx + dy * dy));
         }
 
         private static bool IsFinite(
             float value)
         {
             return
-                !float.IsNaN(
-                    value) &&
-                !float.IsInfinity(
-                    value);
+                !float.IsNaN(value) &&
+                !float.IsInfinity(value);
         }
 
         private static string FormatFloat(
             float value,
             int decimals)
         {
-            if (!IsFinite(
-                    value))
-            {
+            if (!IsFinite(value))
                 return "0";
-            }
 
             decimals =
                 Mathf.Clamp(

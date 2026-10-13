@@ -32,13 +32,55 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             OrbitalsPathVfxSettings path = embers.Formation.Path;
             string prefix = $"orbitals-embers:{block.InstanceId}";
             bool isFollower = NadaOrbitalsGlueInspector.IsActiveFollower(block);
+
+            bool attached =
+                embers.Formation.MovementMode ==
+                OrbitalsMovementMode.Attached;
+
             bool changed = false;
 
-            if (NadaVfxEditorControls.Section($"{prefix}:visual", "VISUAL"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:movement-mode",
+                    "MOVEMENT MODE"))
+            {
+                bool canAttach =
+                    attached ||
+                    !NadaOrbitalsGlueInspector.HasDeclaredGlueParticipation(
+                        block);
+
+                if (NadaVfxEditorControls.MovementModeSelector(
+                        $"{prefix}:movement",
+                        attached,
+                        out bool nextAttached,
+                        allowAttached: canAttach))
+                {
+                    embers.Formation.MovementMode =
+                        nextAttached
+                            ? OrbitalsMovementMode.Attached
+                            : OrbitalsMovementMode.Path;
+
+                    attached = nextAttached;
+                    changed = true;
+                }
+
+                if (!canAttach)
+                {
+                    NadaVfxEditorControls.Placeholder(
+                        "Remove this orbital's Glue relationships before enabling Attached.");
+                }
+            }
+
+            NadaVfxEditorControls.SpaceAfterSection();
+
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:visual",
+                    "VISUAL"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:luminance", "Luminance", embers.Luminance,
-                        PluginConfig.MinLuminance, PluginConfig.MaxLuminance,
+                        $"{prefix}:luminance", "Luminance",
+                        embers.Luminance,
+                        PluginConfig.MinLuminance,
+                        PluginConfig.MaxLuminance,
                         out float luminance,
                         description: "Changes how brightly the orbital embers glow.",
                         resetValue: WeaponVfxBlockDefaults.DefaultLuminance))
@@ -48,8 +90,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:hue", "Hue", embers.Hue,
-                        MinHue, MaxHue, out float hue,
+                        $"{prefix}:hue", "Hue",
+                        embers.Hue,
+                        MinHue, MaxHue,
+                        out float hue,
                         description: "Shifts the ember color while preserving its authored gradients.",
                         resetValue: WeaponVfxBlockDefaults.DefaultHue))
                 {
@@ -60,13 +104,17 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:shape", "SHAPE"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:shape",
+                    "SHAPE"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:scale", "Scale", embers.Scale,
-                        PluginConfig.MinScaleMult, PluginConfig.MaxScaleMult,
+                        $"{prefix}:scale", "Scale",
+                        embers.Scale,
+                        PluginConfig.MinScaleMult,
+                        PluginConfig.MaxScaleMult,
                         out float scale,
-                        description: "Changes the size of the orbiting embers.",
+                        description: "Changes the size of the embers.",
                         resetValue: WeaponVfxBlockDefaults.DefaultScale))
                 {
                     embers.Scale = scale;
@@ -76,11 +124,15 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:particles", "PARTICLES"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:particles",
+                    "PARTICLES"))
             {
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:energy", "Energy", embers.Energy,
-                        PluginConfig.MinEnergy, PluginConfig.MaxEnergy,
+                        $"{prefix}:energy", "Energy",
+                        embers.Energy,
+                        PluginConfig.MinEnergy,
+                        PluginConfig.MaxEnergy,
                         out float energy,
                         description: "Changes the intensity of the ember particles.",
                         resetValue: WeaponVfxBlockDefaults.DefaultEnergy))
@@ -90,8 +142,10 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:lifetime", "Lifetime", embers.Lifetime,
-                        PluginConfig.MinLifetime, PluginConfig.MaxLifetime,
+                        $"{prefix}:lifetime", "Lifetime",
+                        embers.Lifetime,
+                        PluginConfig.MinLifetime,
+                        PluginConfig.MaxLifetime,
                         out float lifetime,
                         description: "Changes how long emitted embers remain visible.",
                         resetValue: WeaponVfxBlockDefaults.DefaultLifetime))
@@ -101,7 +155,8 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:simulation-speed", "Simulation Speed",
+                        $"{prefix}:simulation-speed",
+                        "Simulation Speed",
                         embers.SimulationSpeed,
                         PluginConfig.MinSimulationSpeed,
                         PluginConfig.MaxSimulationSpeed,
@@ -116,14 +171,21 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:formation", "FORMATION"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:formation",
+                    "FORMATION"))
             {
+                // Count works in both modes. Attached adds bodies
+                // toward the hilt without moving existing ones.
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:count", "Count", path.Count,
+                        $"{prefix}:count", "Count",
+                        path.Count,
                         PluginConfig.MinCountNormalized,
                         PluginConfig.MaxCountNormalized,
                         out float count,
-                        description: "Controls the number of additional embers beyond the leading ember.",
+                        description: attached
+                            ? "Adds embers toward the hilt without moving existing ones."
+                            : "Controls the number of additional embers beyond the leading ember.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCount))
                 {
                     path.Count = count;
@@ -131,26 +193,37 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.Toggle(
-                        $"{prefix}:snake", "Snake", path.SnakeEnabled,
+                        $"{prefix}:snake", "Snake",
+                        path.SnakeEnabled,
                         out bool snakeEnabled,
-                        enabled: !isFollower,
+                        enabled: !isFollower && !attached,
                         description: "Keeps the embers in a tighter snake formation."))
                 {
                     path.SnakeEnabled = snakeEnabled;
                     changed = true;
                 }
 
-                changed |= NadaOrbitalsGlueInspector.Draw(
-                    block,
-                    embers.Formation);
+                if (!attached)
+                {
+                    changed |= NadaOrbitalsGlueInspector.Draw(
+                        block,
+                        embers.Formation);
+                }
+                else
+                {
+                    NadaVfxEditorControls.Placeholder(
+                        "Attached embers form a straight line. Snake and Glue are unavailable.");
+                }
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
 
-            if (NadaVfxEditorControls.Section($"{prefix}:motion", "MOTION"))
+            if (NadaVfxEditorControls.Section(
+                    $"{prefix}:motion",
+                    "MOTION"))
             {
-                // A follower borrows its leader's path. Its own stored
-                // motion values remain untouched until Glue is removed.
+                // Glue followers inherit their leader's trajectory.
+                // Attached blocks do not use orbital travel controls.
                 bool previousEnabled = GUI.enabled;
                 Color previousTint = GUI.color;
 
@@ -165,12 +238,13 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:speed", "Speed", path.Speed,
+                        $"{prefix}:speed", "Speed",
+                        path.Speed,
                         PluginConfig.MinOrbitalsSpeed,
                         PluginConfig.MaxOrbitalsSpeed,
                         out float speed,
                         decimals: 3,
-                        enabled: !isFollower,
+                        enabled: !isFollower && !attached,
                         description: "Controls how quickly the embers travel around the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpeed))
                 {
@@ -179,12 +253,15 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:spacing", "Spacing", path.Spacing,
+                        $"{prefix}:spacing", "Spacing",
+                        path.Spacing,
                         PluginConfig.MinOrbitalsSpacing,
                         PluginConfig.MaxOrbitalsSpacing,
                         out float spacing,
-                        enabled: !isFollower && !path.SnakeEnabled,
-                        disabledReason: "Spacing is locked while Snake or Glue is active.",
+                        enabled: !isFollower &&
+                                 !attached &&
+                                 !path.SnakeEnabled,
+                        disabledReason: "Spacing is locked while Snake, Glue, or Attached is active.",
                         description: "Adjusts the separation between orbiting embers.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpacing))
                 {
@@ -192,13 +269,18 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed = true;
                 }
 
+                // Path: longitudinal travel distance.
+                // Attached: gap between neighboring ember bodies.
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:length", "Length", path.Length,
+                        $"{prefix}:length", "Length",
+                        path.Length,
                         PluginConfig.MinOrbitalsLength,
                         PluginConfig.MaxOrbitalsLength,
                         out float length,
                         enabled: !isFollower,
-                        description: "Changes how far the embers travel along the weapon.",
+                        description: attached
+                            ? "Changes the distance between neighboring attached embers."
+                            : "Changes how far the embers travel along the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsLength))
                 {
                     path.Length = length;
@@ -206,11 +288,12 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:radius", "Radius", path.Radius,
+                        $"{prefix}:radius", "Radius",
+                        path.Radius,
                         PluginConfig.MinOrbitalsRadiusMultiplier,
                         PluginConfig.MaxOrbitalsRadiusMultiplier,
                         out float radius,
-                        enabled: !isFollower,
+                        enabled: !isFollower && !attached,
                         description: "Changes how wide the orbit wraps around the weapon.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsRadius))
                 {
@@ -219,11 +302,12 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:cycles", "Cycles", path.Cycles,
+                        $"{prefix}:cycles", "Cycles",
+                        path.Cycles,
                         PluginConfig.MinOrbitalsCycles,
                         PluginConfig.MaxOrbitalsCycles,
                         out float cycles,
-                        enabled: !isFollower,
+                        enabled: !isFollower && !attached,
                         description: "Changes how many turns the embers make before reversing.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCycles))
                 {
@@ -232,11 +316,12 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 }
 
                 if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:drift", "Drift", path.Drift,
+                        $"{prefix}:drift", "Drift",
+                        path.Drift,
                         PluginConfig.MinDrift,
                         PluginConfig.MaxDrift,
                         out float drift,
-                        enabled: !isFollower,
+                        enabled: !isFollower && !attached,
                         description: "Changes how freely the embers drift off their orbit path.",
                         resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsDrift))
                 {
