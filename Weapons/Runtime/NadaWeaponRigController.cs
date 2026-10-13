@@ -1,4 +1,3 @@
-
 using NADA.VFX.Weapon.Core.Debug;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.State.Blocks;

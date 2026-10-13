@@ -86,6 +86,9 @@ namespace NADA.VFX.Weapon.Editor
             _state?.Effects?.Count ??
             0;
 
+        internal static float WeaponOpacity =>
+            _state?.WeaponOpacity ?? 1f;
+
         /// <summary>
         /// Selects the temporary editor draft owned by the current ItemData.
         ///
@@ -428,6 +431,22 @@ namespace NADA.VFX.Weapon.Editor
                 $"effects={_state.Effects.Count} " +
                 $"previewPending=True persisted=False.");
 
+            return true;
+        }
+
+        // Appearance is whole-weapon draft state, not an effect instance.
+        // The live source guard prevents edits after an external Bind, while
+        // the UI drives preview refresh only after a successful change.
+        internal static bool TrySetWeaponOpacity(float opacity)
+        {
+            if (!CanEdit() || float.IsNaN(opacity) ||
+                float.IsInfinity(opacity) ||
+                opacity < 0f || opacity > 1f)
+            {
+                return false;
+            }
+
+            _state.WeaponOpacity = opacity;
             return true;
         }
 

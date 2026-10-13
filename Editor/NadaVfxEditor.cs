@@ -82,6 +82,7 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _addPickerOpen;
         private static bool _positionInitialized;
         private static bool _targetDetailsExpanded;
+        private static bool _weaponAppearanceExpanded = true;
 
         // True while this window owns editor interaction, not just a text field.
         // Left-clicking outside releases gameplay hotkeys without closing NADA.
@@ -236,7 +237,8 @@ namespace NADA.VFX.Weapon.Editor
                     NadaVfxEditorConfig.BindHotkey.Value.MainKey != KeyCode.None &&
                     NadaVfxEditorConfig.BindHotkey.Value.IsDown() &&
                     !NadaVfxEditorWorkingState.IsReadOnly &&
-                    NadaVfxEditorWorkingState.EffectCount > 0)
+                    NadaVfxEditorBindingController.HasBindableContent(
+                        NadaVfxEditorWorkingState.State))
                 {
                     _pendingBindingAction = BindingAction.Bind;
                 }
@@ -592,6 +594,10 @@ namespace NADA.VFX.Weapon.Editor
                 5f);
 
             EnsureSelection();
+
+            DrawWeaponAppearancePanel(target);
+
+            GUILayout.Space(5f);
 
             DrawEffectsStrip(
                 target);
@@ -1393,6 +1399,79 @@ namespace NADA.VFX.Weapon.Editor
             GUILayout.EndHorizontal();
         }
 
+        // Appearance belongs to the weapon draft, independently of effect
+        // blocks. Keep it above the effects list so opacity-only weapons can
+        // still be authored and bound.
+        private static void DrawWeaponAppearancePanel(
+            NadaVfxEditorTarget target)
+        {
+            GUILayout.BeginVertical(_panelStyle);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("WEAPON APPEARANCE", _sectionHeaderStyle);
+            GUILayout.FlexibleSpace();
+
+            float opacity = NadaVfxEditorWorkingState.WeaponOpacity;
+            int percent = Mathf.RoundToInt(opacity * 100f);
+
+            GUILayout.Label($"{percent}%", _bodyStyle,
+                GUILayout.Width(42f));
+
+            if (GUILayout.Button(_weaponAppearanceExpanded ? "Hide" : "Show",
+                    _addButtonStyle, GUILayout.Width(48f),
+                    GUILayout.Height(EffectActionHeight)))
+            {
+                _weaponAppearanceExpanded = !_weaponAppearanceExpanded;
+            }
+
+            GUILayout.EndHorizontal();
+
+            if (_weaponAppearanceExpanded)
+            {
+                GUILayout.Space(3f);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Visibility", _bodyStyle,
+                    GUILayout.Width(64f));
+
+                bool previousEnabled = GUI.enabled;
+                bool canEdit = target?.ItemData != null &&
+                               !NadaVfxEditorWorkingState.IsReadOnly &&
+                               target.SourceKind != NadaWeaponLocalSourceKind.InvalidNative;
+
+                GUI.enabled = previousEnabled && canEdit;
+
+                float requested = GUILayout.HorizontalSlider(
+                    percent, 0f, 100f, GUILayout.MinWidth(48f));
+                int requestedPercent = Mathf.RoundToInt(requested);
+
+                GUI.enabled = previousEnabled && canEdit && percent != 100;
+                if (GUILayout.Button("Reset", _addButtonStyle,
+                        GUILayout.Width(50f),
+                        GUILayout.Height(EffectActionHeight)))
+                {
+                    requestedPercent = 100;
+                }
+
+                GUI.enabled = previousEnabled;
+                GUILayout.EndHorizontal();
+
+                if (canEdit && requestedPercent != percent &&
+                    NadaVfxEditorWorkingState.TrySetWeaponOpacity(
+                        requestedPercent / 100f))
+                {
+                    RefreshPreview();
+                }
+
+                GUILayout.Label(
+                    NadaVfxEditorWorkingState.IsReadOnly
+                        ? "Saved on this weapon. Unbind to edit."
+                        : "Visibility is saved when you Bind to Weapon.",
+                    _mutedStyle);
+            }
+
+            GUILayout.EndVertical();
+        }
+
         private static void DrawEffectsStrip(
             NadaVfxEditorTarget target)
         {
@@ -1434,7 +1513,8 @@ namespace NADA.VFX.Weapon.Editor
 
             GUILayout.Space(3f);
             GUI.enabled = previousEnabled && hasTarget && !invalidNative &&
-                          (readOnly || NadaVfxEditorWorkingState.EffectCount > 0);
+                          (readOnly || NadaVfxEditorBindingController.HasBindableContent(
+                              NadaVfxEditorWorkingState.State));
             if (GUILayout.Button(readOnly ? "Unbind Weapon" : "Bind to Weapon",
                     _addButtonStyle,
                     GUILayout.Width(106f), GUILayout.Height(EffectActionHeight)))

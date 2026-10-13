@@ -1,4 +1,6 @@
+
 using NADA.VFX.Weapon.Core.Debug;
+using NADA.VFX.Weapon.Modules.WeaponOpacity;
 using NADA.VFX.Weapon.Weapons.Targets;
 using UnityEngine;
 
@@ -30,8 +32,7 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             int nadaRootInstanceId =
                 nadaRootTransform.GetInstanceID();
 
-            Object.Destroy(
-                nadaRootTransform.gameObject);
+            RetireRig(nadaRootTransform);
 
             NadaLogControl.Info(
                 $"rig-remove:{nadaRootInstanceId}",
@@ -58,8 +59,7 @@ namespace NADA.VFX.Weapon.Runtime.Structure
             int rigRootId =
                 rigRoot.GetInstanceID();
 
-            Object.Destroy(
-                rigRoot.gameObject);
+            RetireRig(rigRoot);
 
             NadaLogControl.Info(
                 $"rig-remove-tracked:{rigRootId}",
@@ -67,6 +67,22 @@ namespace NADA.VFX.Weapon.Runtime.Structure
                 $"nadaRootId={rigRootId}");
 
             return true;
+        }
+
+        private static void RetireRig(
+            Transform rigRoot)
+        {
+            // Restore the weapon's original materials before the owner
+            // disappears. Only NADA-owned opacity clones are released.
+            NadaWeaponOpacityRuntime.Restore(rigRoot);
+
+            // Destroy is deferred. Disable effects immediately, then
+            // detach the stale rig so another reconciliation pass cannot
+            // rediscover and reuse it before Unity destroys the object.
+            rigRoot.gameObject.SetActive(false);
+            rigRoot.SetParent(null, true);
+
+            Object.Destroy(rigRoot.gameObject);
         }
     }
 }

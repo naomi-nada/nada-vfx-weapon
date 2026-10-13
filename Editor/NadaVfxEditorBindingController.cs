@@ -1,3 +1,4 @@
+
 using NADA.VFX.Weapon.Core.Persistence;
 using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
@@ -10,6 +11,19 @@ namespace NADA.VFX.Weapon.Editor
     // encoding/keys, working state owns drafts, and runtime owns VFX objects.
     internal static class NadaVfxEditorBindingController
     {
+        // A weapon can be bound when it has effects or a nondefault
+        // appearance modifier. Visibility is whole-weapon state, not an
+        // effect block and does not need an InstanceId.
+        internal static bool HasBindableContent(WeaponVfxState state)
+        {
+            if (state?.Effects == null)
+                return false;
+
+            return state.Effects.Count > 0 ||
+                   (state.WeaponOpacity >= 0f &&
+                    state.WeaponOpacity < 1f);
+        }
+
         internal static bool TryBind(
             NadaVfxEditorTarget target,
             out string reason)
@@ -21,6 +35,7 @@ namespace NADA.VFX.Weapon.Editor
             global::ItemDrop.ItemData item = target.ItemData;
             NadaWeaponLocalSourceKind source =
                 NadaWeaponLocalSourceResolver.Resolve(item).Kind;
+
             if (source != NadaWeaponLocalSourceKind.Unbound &&
                 source != NadaWeaponLocalSourceKind.EditorPreview)
             {
@@ -35,17 +50,21 @@ namespace NADA.VFX.Weapon.Editor
                 return false;
             }
 
-            if (state?.Effects == null || state.Effects.Count == 0)
+            if (!HasBindableContent(state))
             {
-                reason = "Add at least one effect before binding.";
+                reason =
+                    "Add an effect or change Weapon Visibility before binding.";
                 return false;
             }
 
-            // TryWrite encodes and validates before touching ItemData.
+            // TryWrite encodes and validates the complete state before
+            // touching ItemData, including opacity and effect blocks.
             // A rejected state leaves the original weapon untouched.
             if (!WeaponVfxItemStore.TryWrite(
                     item, state, nextInstanceId, out reason))
+            {
                 return false;
+            }
 
             // Binding is permitted only from an unbound draft. Legacy saves
             // are retired during an explicit Unbind, after the codec has
@@ -55,7 +74,10 @@ namespace NADA.VFX.Weapon.Editor
             Plugin.Log?.LogInfo(
                 $"{Plugin.ModName}: [EditorNativeBind] " +
                 $"item='{target.PrefabName}' " +
-                $"effects={state.Effects.Count} cursor={nextInstanceId}.");
+                $"effects={state.Effects.Count} " +
+                $"weaponOpacity={state.WeaponOpacity:0.###} " +
+                $"cursor={nextInstanceId}.");
+
             return true;
         }
 
@@ -70,12 +92,14 @@ namespace NADA.VFX.Weapon.Editor
             global::ItemDrop.ItemData item = target.ItemData;
             NadaWeaponLocalSourceSelection source =
                 NadaWeaponLocalSourceResolver.Resolve(item);
+
             if (source.Kind == NadaWeaponLocalSourceKind.InvalidNative)
             {
                 reason = source.FailureReason ??
                          "Invalid native state. Unbind is disabled to protect data.";
                 return false;
             }
+
             if (source.Kind != NadaWeaponLocalSourceKind.NativeBound &&
                 source.Kind != NadaWeaponLocalSourceKind.LegacyBound)
             {
@@ -89,6 +113,7 @@ namespace NADA.VFX.Weapon.Editor
                 source.Kind == NadaWeaponLocalSourceKind.NativeBound
                     ? source.State
                     : target.BoundViewState;
+
             if (boundState == null || target.BoundViewError != null)
             {
                 reason = target.BoundViewError ??
@@ -99,6 +124,7 @@ namespace NADA.VFX.Weapon.Editor
             uint cursor = source.Kind == NadaWeaponLocalSourceKind.NativeBound
                 ? source.NextInstanceId
                 : GetNextLegacyId(boundState);
+
             if (cursor == 0)
             {
                 reason = "The next effect InstanceId is exhausted.";
@@ -106,14 +132,16 @@ namespace NADA.VFX.Weapon.Editor
             }
 
             // Use the tested codec as a deep-copy and validation boundary.
-            // Glue, transforms, order, names, and IDs must not share objects
-            // with a saved/read-only bound snapshot.
+            // Appearance, Glue, transforms, order, names, and IDs must not
+            // share objects with a saved/read-only bound snapshot.
             if (!WeaponVfxStateCodec.TryEncode(
                     boundState, cursor, out byte[] bytes, out reason) ||
                 !WeaponVfxStateCodec.TryDecode(
                     bytes, out WeaponVfxState draft,
                     out uint decodedCursor, out reason))
+            {
                 return false;
+            }
 
             // Only after the draft is fully validated may we retire keys.
             // Clear legacy too, or removing native would resurrect an older
@@ -124,7 +152,9 @@ namespace NADA.VFX.Weapon.Editor
                 reason = "Native binding disappeared before it could be removed.";
                 return false;
             }
+
             VfxStateIO.Clear(item);
+
             NadaVfxEditorWorkingState.InstallUnboundDraft(
                 item, draft, decodedCursor);
 
@@ -136,8 +166,11 @@ namespace NADA.VFX.Weapon.Editor
             Plugin.Log?.LogInfo(
                 $"{Plugin.ModName}: [EditorNativeUnbind] " +
                 $"item='{target.PrefabName}' " +
-                $"from={source.Kind} effects={draft.Effects.Count} " +
+                $"from={source.Kind} " +
+                $"effects={draft.Effects.Count} " +
+                $"weaponOpacity={draft.WeaponOpacity:0.###} " +
                 $"cursor={decodedCursor}.");
+
             return true;
         }
 
@@ -146,7 +179,9 @@ namespace NADA.VFX.Weapon.Editor
             out string reason)
         {
             reason = null;
-            if (target?.ItemData == null || target.SourceRoot == null ||
+
+            if (target?.ItemData == null ||
+                target.SourceRoot == null ||
                 target.VisualRoot == null)
             {
                 reason = "No equipped weapon target.";
@@ -167,12 +202,16 @@ namespace NADA.VFX.Weapon.Editor
         private static uint GetNextLegacyId(WeaponVfxState state)
         {
             uint highest = 0;
+
             foreach (VfxEffectBlock block in state.Effects)
             {
                 if (block != null && block.InstanceId > highest)
                     highest = block.InstanceId;
             }
-            return highest == uint.MaxValue ? 0 : highest + 1;
+
+            return highest == uint.MaxValue
+                ? 0
+                : highest + 1;
         }
     }
 }

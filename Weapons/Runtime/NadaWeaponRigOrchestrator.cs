@@ -9,6 +9,7 @@ using NADA.VFX.Weapon.Runtime.Formation;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
 using NADA.VFX.Weapon.Modules.Motion;
+using NADA.VFX.Weapon.Modules.WeaponOpacity;
 using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
@@ -535,6 +536,39 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             NadaRigMaintenance.ApplyPickupFix(
                 rootObject);
+
+// Use the same resolved state that drives the effect blocks.
+            if (hasNativeBlockSource && blockState != null)
+            {
+                float opacity = blockState.WeaponOpacity;
+
+                if (float.IsNaN(opacity) || float.IsInfinity(opacity) ||
+                    opacity < 0f || opacity > 1f)
+                {
+                    NadaWeaponOpacityRuntime.Restore(localWeaponRootTransform);
+
+                    NadaLogControl.Info(
+                        $"weapon-opacity-invalid:{rootObject.GetInstanceID()}",
+                        $"{Plugin.ModName}: [WeaponOpacityRejected] " +
+                        $"root='{rootObject.name}' reason='invalid-opacity'");
+                }
+                else if (opacity < 1f)
+                {
+                    NadaWeaponOpacityRuntime.TryApply(
+                        localWeaponRootTransform,
+                        weaponVisualRootTransform,
+                        opacity);
+                }
+                else
+                {
+                    NadaWeaponOpacityRuntime.Restore(localWeaponRootTransform);
+                }
+            }
+            else
+            {
+                // Legacy/unbound sources have no appearance override.
+                NadaWeaponOpacityRuntime.Restore(localWeaponRootTransform);
+            }   
         }
 
         internal static bool RunRemote(
