@@ -385,8 +385,13 @@ namespace NADA.VFX.Weapon.Editor
         private static void ProbeWeaponRenderersOnce(
             NadaVfxEditorTarget target)
         {
-            if (target?.VisualRoot == null)
+            // This is handy for weird weapon hierarchies, but it's too
+            // noisy to run whenever someone switches weapons in the editor.
+            if (Plugin.DebugLoggingEnabled?.Value != true ||
+                target?.VisualRoot == null)
+            {
                 return;
+            }
 
             int visualRootId = target.VisualRootInstanceId;
 

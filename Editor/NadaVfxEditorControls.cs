@@ -343,6 +343,8 @@ namespace NADA.VFX.Weapon.Editor
                         NumericFieldWidth),
                     GUILayout.Height(19f));
 
+            NadaVfxEditor.ClaimTextInputClick(GUILayoutUtility.GetLastRect());
+
             bool resetClicked =
                 false;
 
@@ -1006,6 +1008,8 @@ namespace NADA.VFX.Weapon.Editor
                     GUILayout.Width(
                         AxisFieldWidth),
                     GUILayout.Height(19f));
+
+            NadaVfxEditor.ClaimTextInputClick(GUILayoutUtility.GetLastRect());
 
             NumericBufferByKey[
                 key] =

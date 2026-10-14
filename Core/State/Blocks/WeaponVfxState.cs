@@ -18,9 +18,9 @@ namespace NADA.VFX.Weapon.Core.State.Blocks
         internal VfxTransformState RigTransform { get; set; } =
             new();
 
-        // Weapon geometry opacity, independent of all effect blocks.
-        // 1 = original appearance; 0 = invisible weapon mesh.
-        // Validate incoming values before applying or persisting state.
+        // Transitional v3 compatibility scalar. New editor authoring uses
+        // WeaponAppearance blocks, and editable-draft migration clears this.
+        // Keep for old item/style/network payloads until a format migration.
         internal float WeaponOpacity { get; set; } = 1f;
 
         // List position is the effect order.

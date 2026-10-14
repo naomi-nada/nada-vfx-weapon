@@ -427,6 +427,7 @@ namespace NADA.VFX.Weapon.Core.Persistence
                 case VfxEffectTypeIds.OrbitalsCores: return 8;
                 case VfxEffectTypeIds.OrbitalsFlames: return 9;
                 case VfxEffectTypeIds.OrbitalsEmbers: return 10;
+                case VfxEffectTypeIds.WeaponAppearance: return 11;
                 default: throw new InvalidDataException("Unknown effect type.");
             }
         }
@@ -445,6 +446,7 @@ namespace NADA.VFX.Weapon.Core.Persistence
                 case 8: return VfxEffectTypeIds.OrbitalsCores;
                 case 9: return VfxEffectTypeIds.OrbitalsFlames;
                 case 10: return VfxEffectTypeIds.OrbitalsEmbers;
+                case 11: return VfxEffectTypeIds.WeaponAppearance;
                 default: throw new InvalidDataException("Unknown effect wire ID.");
             }
         }
@@ -576,6 +578,12 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     WriteFormation(writer, s.Formation);
                     return;
                 }
+                case VfxEffectTypeIds.WeaponAppearance:
+                {
+                    var s = (WeaponAppearanceVfxSettings)block.Settings;
+                    WriteFinite(writer, s.Visibility);
+                    return;
+                }
                 default: throw new InvalidDataException("Unknown settings type.");
             }
         }
@@ -697,6 +705,11 @@ namespace NADA.VFX.Weapon.Core.Persistence
                         Lifetime = ReadFinite(reader),
                         SimulationSpeed = ReadFinite(reader),
                         Formation = ReadFormation(reader, payloadFormatVersion),
+                    };
+                case VfxEffectTypeIds.WeaponAppearance:
+                    return new WeaponAppearanceVfxSettings
+                    {
+                        Visibility = ReadFinite(reader)
                     };
                 default: throw new InvalidDataException("Unknown settings type.");
             }
@@ -828,6 +841,15 @@ namespace NADA.VFX.Weapon.Core.Persistence
                     RequireFinite(s.Lifetime);
                     RequireFinite(s.SimulationSpeed);
                     ValidateFormation(s.Formation);
+                    return;
+                }
+                case VfxEffectTypeIds.WeaponAppearance:
+                {
+                    if (!(block.Settings is WeaponAppearanceVfxSettings s))
+                        throw new InvalidDataException("Settings/type mismatch.");
+                    RequireFinite(s.Visibility);
+                    if (s.Visibility < 0f || s.Visibility > 1f)
+                        throw new InvalidDataException("Weapon visibility must be between 0 and 1.");
                     return;
                 }
                 default: throw new InvalidDataException("Unknown settings type.");

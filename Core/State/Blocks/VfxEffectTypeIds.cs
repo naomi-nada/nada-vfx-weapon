@@ -18,5 +18,6 @@ namespace NADA.VFX.Weapon.Core.State.Blocks
         internal const string OrbitalsCores = "orbitals_cores";
         internal const string OrbitalsFlames = "orbitals_flames";
         internal const string OrbitalsEmbers = "orbitals_embers";
+        internal const string WeaponAppearance = "weapon_appearance";
     }
 }

@@ -342,6 +342,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     blockState,
                     rootObject.name);
 
+                NadaWeaponAppearanceBlockAssembly.Reconcile(
+                    localEffectsRootTransform,
+                    blockState,
+                    rootObject.name);
+
                 Dictionary<uint, Transform> orbitalMotionRoots =
                     new Dictionary<uint, Transform>();
 
@@ -426,6 +431,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     localEffectsRootTransform,
                     null,
                     VfxEffectTypeIds.Aura,
+                    rootObject.name);
+
+                NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                    localEffectsRootTransform,
+                    null,
+                    VfxEffectTypeIds.WeaponAppearance,
                     rootObject.name);
 
                 NadaEffectInstanceAssembly.ReconcileInstancesOfType(
@@ -537,38 +548,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             NadaRigMaintenance.ApplyPickupFix(
                 rootObject);
 
-// Use the same resolved state that drives the effect blocks.
-            if (hasNativeBlockSource && blockState != null)
-            {
-                float opacity = blockState.WeaponOpacity;
-
-                if (float.IsNaN(opacity) || float.IsInfinity(opacity) ||
-                    opacity < 0f || opacity > 1f)
-                {
-                    NadaWeaponOpacityRuntime.Restore(localWeaponRootTransform);
-
-                    NadaLogControl.Info(
-                        $"weapon-opacity-invalid:{rootObject.GetInstanceID()}",
-                        $"{Plugin.ModName}: [WeaponOpacityRejected] " +
-                        $"root='{rootObject.name}' reason='invalid-opacity'");
-                }
-                else if (opacity < 1f)
-                {
-                    NadaWeaponOpacityRuntime.TryApply(
-                        localWeaponRootTransform,
-                        weaponVisualRootTransform,
-                        opacity);
-                }
-                else
-                {
-                    NadaWeaponOpacityRuntime.Restore(localWeaponRootTransform);
-                }
-            }
-            else
-            {
-                // Legacy/unbound sources have no appearance override.
-                NadaWeaponOpacityRuntime.Restore(localWeaponRootTransform);
-            }   
+            ApplyWeaponAppearance(
+                localWeaponRootTransform,
+                weaponVisualRootTransform,
+                hasNativeBlockSource ? blockState : null,
+                rootObject.name);
         }
 
         internal static bool RunRemote(
@@ -762,6 +746,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 localWeaponRootTransform,
                 context.State);
 
+            NadaEffectInstanceAssembly.ReconcileInstancesOfType(
+                remoteEffectsRootTransform, null,
+                VfxEffectTypeIds.WeaponAppearance, rootObject.name);
+            NadaWeaponOpacityRuntime.Restore(localWeaponRootTransform);
+
             NadaMotionBinder.BindOrbitalsRigFollow(
                 catalog.OrbitalsRigRootTransform,
                 localWeaponRootTransform,
@@ -792,6 +781,47 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             return true;
         }
         
+        private static void ApplyWeaponAppearance(
+            Transform rig,
+            Transform visual,
+            WeaponVfxState state,
+            string ownerName)
+        {
+            // A missing state is an unbound or transitional legacy source.
+            // No local config may supply appearance for a remote weapon.
+            if (state == null)
+            {
+                NadaWeaponOpacityRuntime.Restore(rig);
+                return;
+            }
+
+            if (!WeaponAppearanceResolver.TryResolveVisibility(
+                    state, out float visibility))
+            {
+                NadaWeaponOpacityRuntime.Restore(rig);
+                NadaLogControl.Info(
+                    $"weapon-appearance-rejected:{rig?.GetInstanceID()}",
+                    $"{Plugin.ModName}: [WeaponAppearanceRejected] " +
+                    $"owner='{ownerName}' reason='invalid-visibility-state'");
+                return;
+            }
+
+            if (visibility < 1f)
+            {
+                if (!NadaWeaponOpacityRuntime.TryApply(rig, visual, visibility))
+                {
+                    NadaLogControl.Info(
+                        $"weapon-appearance-apply-failed:{rig?.GetInstanceID()}",
+                        $"{Plugin.ModName}: [WeaponAppearanceRejected] " +
+                        $"owner='{ownerName}' reason='renderer-application-failed'");
+                }
+            }
+            else
+            {
+                NadaWeaponOpacityRuntime.Restore(rig);
+            }
+        }
+
         private static void BindAuraBlocks(
             Transform localEffectsRootTransform,
             Transform weaponVisualRootTransform,

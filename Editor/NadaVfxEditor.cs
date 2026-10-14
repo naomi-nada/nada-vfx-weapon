@@ -82,12 +82,12 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _addPickerOpen;
         private static bool _positionInitialized;
         private static bool _targetDetailsExpanded;
-        private static bool _weaponAppearanceExpanded = true;
 
         // True while this window owns editor interaction, not just a text field.
         // Left-clicking outside releases gameplay hotkeys without closing NADA.
         private static bool _editorSelected;
         private static bool _ownsKeyboardInput;
+        private static bool _textInputClaimedThisDraw;
         private static bool _focusRenameOnNextDraw;
         private static uint? _pendingRenameInstanceId;
         private static string _pendingRenameDisplayName;
@@ -330,13 +330,15 @@ namespace NADA.VFX.Weapon.Editor
                 $"selected={_editorSelected}");
         }
 
-        // Styles text boxes belong to the editor's input surface. IMGUI may
-        // consume the click that focused them before window-level selection
-        // sees it, so explicitly claim the same selection state here.
-        // Only called on an actual click inside a Styles text control.
-        internal static void ClaimStylesTextInput()
+        // All editor text inputs claim the same keyboard owner on MouseDown.
+        // This covers the click before IMGUI has committed its focused control.
+        // The rect is in GUI.Window coordinates; never claim an outside click.
+        internal static void ClaimTextInputClick(Rect fieldRect)
         {
-            if (!_open)
+            Event current = Event.current;
+            if (!_open || !GUI.enabled || current == null ||
+                current.rawType != EventType.MouseDown || current.button != 0 ||
+                !fieldRect.Contains(current.mousePosition))
                 return;
 
             if (!_editorSelected)
@@ -344,10 +346,11 @@ namespace NADA.VFX.Weapon.Editor
                 _editorSelected = true;
                 Plugin.Log?.LogInfo(
                     $"{Plugin.ModName}: [EditorInputSelection] " +
-                    "selected=true source=styles-text-click");
+                    "selected=true source=text-input-click");
             }
 
             _ownsKeyboardInput = true;
+            _textInputClaimedThisDraw = true;
         }
 
         internal static void EnforceCursorOwnership()
@@ -417,6 +420,7 @@ namespace NADA.VFX.Weapon.Editor
 
             _ownsKeyboardInput =
                 false;
+            _textInputClaimedThisDraw = false;
 
             _addPickerOpen =
                 false;
@@ -540,6 +544,8 @@ namespace NADA.VFX.Weapon.Editor
         private static void DrawWindow(
             int windowId)
         {
+            _textInputClaimedThisDraw = false;
+
             // Capture before any focused text field can consume KeyDown.
             CaptureEditorShortcut();
             DrawTitleBar();
@@ -594,10 +600,6 @@ namespace NADA.VFX.Weapon.Editor
                 5f);
 
             EnsureSelection();
-
-            DrawWeaponAppearancePanel(target);
-
-            GUILayout.Space(5f);
 
             DrawEffectsStrip(
                 target);
@@ -1399,79 +1401,6 @@ namespace NADA.VFX.Weapon.Editor
             GUILayout.EndHorizontal();
         }
 
-        // Appearance belongs to the weapon draft, independently of effect
-        // blocks. Keep it above the effects list so opacity-only weapons can
-        // still be authored and bound.
-        private static void DrawWeaponAppearancePanel(
-            NadaVfxEditorTarget target)
-        {
-            GUILayout.BeginVertical(_panelStyle);
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("WEAPON APPEARANCE", _sectionHeaderStyle);
-            GUILayout.FlexibleSpace();
-
-            float opacity = NadaVfxEditorWorkingState.WeaponOpacity;
-            int percent = Mathf.RoundToInt(opacity * 100f);
-
-            GUILayout.Label($"{percent}%", _bodyStyle,
-                GUILayout.Width(42f));
-
-            if (GUILayout.Button(_weaponAppearanceExpanded ? "Hide" : "Show",
-                    _addButtonStyle, GUILayout.Width(48f),
-                    GUILayout.Height(EffectActionHeight)))
-            {
-                _weaponAppearanceExpanded = !_weaponAppearanceExpanded;
-            }
-
-            GUILayout.EndHorizontal();
-
-            if (_weaponAppearanceExpanded)
-            {
-                GUILayout.Space(3f);
-                GUILayout.BeginHorizontal();
-                GUILayout.Label("Visibility", _bodyStyle,
-                    GUILayout.Width(64f));
-
-                bool previousEnabled = GUI.enabled;
-                bool canEdit = target?.ItemData != null &&
-                               !NadaVfxEditorWorkingState.IsReadOnly &&
-                               target.SourceKind != NadaWeaponLocalSourceKind.InvalidNative;
-
-                GUI.enabled = previousEnabled && canEdit;
-
-                float requested = GUILayout.HorizontalSlider(
-                    percent, 0f, 100f, GUILayout.MinWidth(48f));
-                int requestedPercent = Mathf.RoundToInt(requested);
-
-                GUI.enabled = previousEnabled && canEdit && percent != 100;
-                if (GUILayout.Button("Reset", _addButtonStyle,
-                        GUILayout.Width(50f),
-                        GUILayout.Height(EffectActionHeight)))
-                {
-                    requestedPercent = 100;
-                }
-
-                GUI.enabled = previousEnabled;
-                GUILayout.EndHorizontal();
-
-                if (canEdit && requestedPercent != percent &&
-                    NadaVfxEditorWorkingState.TrySetWeaponOpacity(
-                        requestedPercent / 100f))
-                {
-                    RefreshPreview();
-                }
-
-                GUILayout.Label(
-                    NadaVfxEditorWorkingState.IsReadOnly
-                        ? "Saved on this weapon. Unbind to edit."
-                        : "Visibility is saved when you Bind to Weapon.",
-                    _mutedStyle);
-            }
-
-            GUILayout.EndVertical();
-        }
-
         private static void DrawEffectsStrip(
             NadaVfxEditorTarget target)
         {
@@ -1898,8 +1827,13 @@ namespace NADA.VFX.Weapon.Editor
             if (definition == null)
                 return;
 
+            string pickerLabel = definition.TypeId ==
+                VfxEffectTypeIds.WeaponAppearance
+                    ? "+ Appearance"
+                    : $"+ {definition.PickerName}";
+
             if (!GUILayout.Button(
-                    $"+ {definition.PickerName}",
+                    pickerLabel,
                     _pickerButtonStyle,
                     GUILayout.Width(
                         PickerButtonWidth),
@@ -2441,6 +2375,7 @@ namespace NADA.VFX.Weapon.Editor
                         GUILayout.ExpandWidth(true),
                         GUILayout.Height(20f));
 
+                ClaimTextInputClick(GUILayoutUtility.GetLastRect());
                 FocusRenameFieldIfRequested();
 
                 GUILayout.Space(
@@ -2476,6 +2411,7 @@ namespace NADA.VFX.Weapon.Editor
                     GUILayout.ExpandWidth(true),
                     GUILayout.Height(20f));
 
+            ClaimTextInputClick(GUILayoutUtility.GetLastRect());
             FocusRenameFieldIfRequested();
 
             DrawRenameActionButtons(
@@ -2706,6 +2642,11 @@ namespace NADA.VFX.Weapon.Editor
                 _ownsKeyboardInput = false;
                 return;
             }
+
+            // Don't clear a fresh click claim during the same GUI event.
+            // On the next draw, focused-control detection takes over.
+            if (_textInputClaimedThisDraw)
+                return;
 
             string focusedControl =
                 GUI.GetNameOfFocusedControl();

@@ -3,6 +3,7 @@ using NADA.VFX.Weapon.Core.Persistence;
 using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Core.State.Blocks;
+using NADA.VFX.Weapon.Core.State.Migration;
 using NADA.VFX.Weapon.Weapons.Runtime;
 
 namespace NADA.VFX.Weapon.Editor
@@ -11,9 +12,8 @@ namespace NADA.VFX.Weapon.Editor
     // encoding/keys, working state owns drafts, and runtime owns VFX objects.
     internal static class NadaVfxEditorBindingController
     {
-        // A weapon can be bound when it has effects or a nondefault
-        // appearance modifier. Visibility is whole-weapon state, not an
-        // effect block and does not need an InstanceId.
+        // New Appearance settings are effect blocks. The scalar-only case
+        // remains for compatibility with an older editable draft.
         internal static bool HasBindableContent(WeaponVfxState state)
         {
             if (state?.Effects == null)
@@ -53,7 +53,7 @@ namespace NADA.VFX.Weapon.Editor
             if (!HasBindableContent(state))
             {
                 reason =
-                    "Add an effect or change Weapon Visibility before binding.";
+                    "Add an effect before binding.";
                 return false;
             }
 
@@ -142,6 +142,10 @@ namespace NADA.VFX.Weapon.Editor
             {
                 return false;
             }
+
+            if (!LegacyWeaponAppearanceMigration.TryPromote(
+                    draft, ref decodedCursor, out reason))
+                return false;
 
             // Only after the draft is fully validated may we retire keys.
             // Clear legacy too, or removing native would resurrect an older

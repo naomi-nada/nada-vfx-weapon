@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.State.Defaults;
+using NADA.VFX.Weapon.Core.State.Migration;
 
 namespace NADA.VFX.Weapon.Core.Persistence
 {
@@ -33,9 +34,13 @@ namespace NADA.VFX.Weapon.Core.Persistence
                 TestFormatTwoCompatibility();
                 TestInvalidOpacityRejection();
                 TestMalformedOpacityPayloadRejection();
+                TestWeaponAppearanceBlockRoundTrip();
+                TestInvalidWeaponAppearanceBlock();
+                TestWeaponAppearanceResolution();
+                TestLegacyAppearanceDraftMigration();
 
                 Plugin.Log?.LogInfo(
-                    $"{Plugin.ModName}: [WeaponVfxStateCodecTests OK] tests=10");
+                    $"{Plugin.ModName}: [WeaponVfxStateCodecTests OK] tests=14");
                 return true;
             }
             catch (Exception error)
@@ -359,6 +364,148 @@ namespace NADA.VFX.Weapon.Core.Persistence
                 RejectDecode(corrupt,
                     "Invalid opacity must fail decoding: " + invalid);
             }
+        }
+
+        private static void TestWeaponAppearanceBlockRoundTrip()
+        {
+            var state = new WeaponVfxState();
+            VfxEffectBlock first = WeaponVfxBlockDefaults.Create(
+                VfxEffectTypeIds.WeaponAppearance, 10);
+            VfxEffectBlock second = WeaponVfxBlockDefaults.Create(
+                VfxEffectTypeIds.WeaponAppearance, 11);
+
+            Require(first?.Settings is WeaponAppearanceVfxSettings &&
+                    ((WeaponAppearanceVfxSettings)first.Settings).Visibility == 1f,
+                "Weapon Appearance must default to original weapon visibility.");
+
+            first.DisplayName = "Transparent Blade";
+            ((WeaponAppearanceVfxSettings)first.Settings).Visibility = 0.375f;
+            second.Enabled = false;
+            ((WeaponAppearanceVfxSettings)second.Settings).Visibility = 0f;
+
+            // Block order and identity are preserved even for duplicate types.
+            state.Effects.Add(second);
+            state.Effects.Add(first);
+            byte[] encoded = Encode(state, 12);
+            Require(WeaponVfxStateCodec.TryDecode(
+                encoded, out WeaponVfxState decoded, out uint cursor,
+                out string reason), "Weapon Appearance decode: " + reason);
+            Require(cursor == 12 && decoded.Effects.Count == 2 &&
+                    decoded.Effects[0].InstanceId == 11 &&
+                    decoded.Effects[1].InstanceId == 10 &&
+                    !decoded.Effects[0].Enabled &&
+                    decoded.Effects[1].DisplayName == "Transparent Blade" &&
+                    ((WeaponAppearanceVfxSettings)decoded.Effects[0].Settings).Visibility == 0f &&
+                    ((WeaponAppearanceVfxSettings)decoded.Effects[1].Settings).Visibility == 0.375f,
+                "Weapon Appearance identity, order, settings or enabled status changed.");
+            Require(EqualBytes(encoded, Encode(decoded, cursor)),
+                "Weapon Appearance serialization is not deterministic.");
+
+            Require(VfxEffectBlockDuplicator.TryDuplicate(
+                first, 13, "Duplicate", out VfxEffectBlock duplicate) &&
+                    duplicate.InstanceId == 13 &&
+                    !object.ReferenceEquals(first.Settings, duplicate.Settings) &&
+                    ((WeaponAppearanceVfxSettings)duplicate.Settings).Visibility == 0.375f,
+                "Weapon Appearance duplicate failed to deep-copy its settings.");
+        }
+
+        private static void TestInvalidWeaponAppearanceBlock()
+        {
+            var state = new WeaponVfxState();
+            VfxEffectBlock block = WeaponVfxBlockDefaults.Create(
+                VfxEffectTypeIds.WeaponAppearance, 1);
+            state.Effects.Add(block);
+            var settings = (WeaponAppearanceVfxSettings)block.Settings;
+            foreach (float invalid in new[]
+                     {
+                         float.NaN, float.PositiveInfinity,
+                         float.NegativeInfinity, -0.001f, 1.001f
+                     })
+            {
+                settings.Visibility = invalid;
+                RejectEncode(state, 2,
+                    "Invalid Weapon Appearance visibility must be rejected: " + invalid);
+            }
+
+            settings.Visibility = 0.5f;
+            block.Settings = new SparksVfxSettings();
+            RejectEncode(state, 2, "Mismatched Weapon Appearance settings must fail.");
+        }
+
+        private static void TestWeaponAppearanceResolution()
+        {
+            var state = new WeaponVfxState { WeaponOpacity = 0.45f };
+            Require(WeaponAppearanceResolver.TryResolveVisibility(state, out float result) &&
+                    result == 0.45f,
+                "Legacy scalar without blocks should remain visible.");
+
+            VfxEffectBlock first = WeaponVfxBlockDefaults.Create(
+                VfxEffectTypeIds.WeaponAppearance, 1);
+            VfxEffectBlock second = WeaponVfxBlockDefaults.Create(
+                VfxEffectTypeIds.WeaponAppearance, 2);
+            ((WeaponAppearanceVfxSettings)first.Settings).Visibility = 0.75f;
+            ((WeaponAppearanceVfxSettings)second.Settings).Visibility = 0.25f;
+            state.Effects.Add(first);
+            state.Effects.Add(second);
+
+            Require(WeaponAppearanceResolver.TryResolveVisibility(state, out result) &&
+                    result == 0.25f,
+                "Last enabled appearance block must win over the scalar.");
+            second.Enabled = false;
+            Require(WeaponAppearanceResolver.TryResolveVisibility(state, out result) &&
+                    result == 0.75f,
+                "Disabled appearance must not override an enabled block.");
+            first.Enabled = false;
+            Require(WeaponAppearanceResolver.TryResolveVisibility(state, out result) &&
+                    result == 1f,
+                "All disabled appearance blocks must restore vanilla visibility.");
+            first.Enabled = true;
+            second.Enabled = true;
+            state.Effects.Reverse();
+            Require(WeaponAppearanceResolver.TryResolveVisibility(state, out result) &&
+                    result == 0.75f,
+                "Reordering appearance blocks must change priority without changing identity.");
+            ((WeaponAppearanceVfxSettings)first.Settings).Visibility = float.NaN;
+            Require(!WeaponAppearanceResolver.TryResolveVisibility(state, out result),
+                "Invalid appearance must fail closed rather than use the scalar.");
+        }
+
+        private static void TestLegacyAppearanceDraftMigration()
+        {
+            var draft = new WeaponVfxState { WeaponOpacity = 0.35f };
+            uint cursor = 9;
+            Require(LegacyWeaponAppearanceMigration.TryPromote(
+                    draft, ref cursor, out string reason),
+                "Legacy scalar migration failed: " + reason);
+            Require(draft.WeaponOpacity == 1f && cursor == 10 &&
+                    draft.Effects.Count == 1 &&
+                    draft.Effects[0].InstanceId == 9 &&
+                    draft.Effects[0].TypeId == VfxEffectTypeIds.WeaponAppearance &&
+                    ((WeaponAppearanceVfxSettings)draft.Effects[0].Settings).Visibility == 0.35f,
+                "Migration must create one block and advance the ID cursor.");
+            Require(LegacyWeaponAppearanceMigration.TryPromote(
+                    draft, ref cursor, out reason) &&
+                    cursor == 10 && draft.Effects.Count == 1,
+                "Migration must be idempotent.");
+            Require(WeaponAppearanceResolver.TryResolveVisibility(draft, out float result) &&
+                    result == 0.35f,
+                "Migrated draft must preserve the visual result.");
+            draft.Effects[0].Enabled = false;
+            Require(WeaponAppearanceResolver.TryResolveVisibility(draft, out result) &&
+                    result == 1f,
+                "Disabling migrated appearance must not revive old opacity.");
+            draft.Effects.Clear();
+            Require(WeaponAppearanceResolver.TryResolveVisibility(draft, out result) &&
+                    result == 1f,
+                "Deleting migrated appearance must restore full opacity.");
+
+            var exhausted = new WeaponVfxState { WeaponOpacity = 0.5f };
+            uint lastId = uint.MaxValue;
+            Require(!LegacyWeaponAppearanceMigration.TryPromote(
+                    exhausted, ref lastId, out reason) &&
+                    exhausted.WeaponOpacity == 0.5f &&
+                    exhausted.Effects.Count == 0,
+                "ID exhaustion must reject migration without modifying the draft.");
         }
 
         private static byte[] MakeLegacyPayload(

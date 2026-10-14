@@ -6,13 +6,8 @@ using UnityEngine.Rendering;
 
 namespace NADA.VFX.Weapon.Modules.WeaponOpacity
 {
-    /// <summary>
-    /// Owns temporary transparency materials for one weapon visual.
-    ///
-    /// Lives on the NADA Weapon root, outside Effects/Instances.
-    /// Original materials belong to Valheim or another mod; only
-    /// materials created here may be destroyed by this component.
-    /// </summary>
+    // We only own the transparency clones. Valheim (or another mod)
+    // still owns the original materials, so never destroy those.
     internal sealed class NadaWeaponOpacityRuntime : MonoBehaviour
     {
         private sealed class RendererBinding
@@ -38,9 +33,17 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
 
         private Transform _visualRoot;
         private float _appliedOpacity = 1f;
+        private string _lastUnsupportedKey;
+        private bool _lookedForLoadedStandardShader;
 
-        // This is an explicit runtime entry point. The editor and
-        // orchestrator can request opacity without owning materials.
+        // Shader.Find can miss Standard even when an item already uses it.
+        // Borrow the shader reference, never someone else's material.
+        private static Shader _loadedStandardShader;
+
+        private const string CreatureShaderName = "Custom/Creature";
+        private const string StandardShaderName = "Standard";
+
+        // Callers request visibility here; this component owns the materials.
         internal static bool TryApply(
             Transform rigRoot,
             Transform visualRoot,
@@ -91,8 +94,7 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
                 opacity);
         }
 
-        // Called explicitly when a rig is retired, before Unity's
-        // deferred Destroy completes.
+        // Destroy happens later, so put the original materials back now.
         internal static void Restore(
             Transform rigRoot)
         {
@@ -119,12 +121,6 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
 
                 _appliedOpacity = opacity;
 
-                Plugin.Log?.LogInfo(
-                    $"{Plugin.ModName}: [WeaponOpacityUpdate] " +
-                    $"visual='{visualRoot.name}' " +
-                    $"opacity={opacity:0.###} " +
-                    $"renderers={_bindings.Count}");
-
                 return true;
             }
 
@@ -132,13 +128,12 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
 
             var prepared =
                 new List<RendererBinding>();
+            bool requiresCreatureBridge = false;
 
             Renderer[] renderers =
                 visualRoot.GetComponentsInChildren<Renderer>(true);
 
-            // Validate every weapon mesh renderer before changing any
-            // material. Mixed unsupported shaders must not produce a
-            // partially transparent weapon.
+            // Don't fade half a weapon if one of its materials can't fade.
             foreach (Renderer renderer in renderers)
             {
                 if (!IsEligibleRenderer(renderer))
@@ -160,17 +155,23 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
 
                 foreach (Material material in originals)
                 {
-                    if (!SupportsStandardFade(material))
-                    {
-                        LogUnsupported(
-                            visualRoot,
-                            renderer,
-                            material?.shader != null
-                                ? material.shader.name
-                                : "<missing-shader>");
+                    if (SupportsStandardFade(material))
+                        continue;
 
-                        return false;
+                    if (SupportsCreatureBridge(material))
+                    {
+                        requiresCreatureBridge = true;
+                        continue;
                     }
+
+                    LogUnsupported(
+                        visualRoot,
+                        renderer,
+                        material?.shader != null
+                            ? material.shader.name
+                            : "<missing-shader>");
+
+                    return false;
                 }
 
                 prepared.Add(
@@ -189,10 +190,25 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
                 return false;
             }
 
+            // Creature can't use Standard's fade controls directly.
+            // Use our own Standard clone and copy what the source exposes.
+            Shader standardShader = null;
+            if (requiresCreatureBridge)
+            {
+                standardShader = ResolveStandardShader();
+                if (standardShader == null)
+                {
+                    LogUnsupported(
+                        visualRoot,
+                        null,
+                        "Standard (no usable loaded shader)");
+                    return false;
+                }
+            }
+
             try
             {
-                // Create all owned resources before assigning any of
-                // them to a live renderer.
+                // Prepare everything before touching a live renderer.
                 foreach (RendererBinding binding in prepared)
                 {
                     for (int slot = 0;
@@ -202,14 +218,19 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
                         Material original =
                             binding.Originals[slot];
 
-                        Material clone =
-                            new Material(original)
-                            {
-                                name =
-                                    $"NADA Opacity ({original.name})"
-                            };
+                        bool needsBridge =
+                            IsCreatureShader(original);
 
+                        Material clone = needsBridge
+                            ? new Material(standardShader)
+                            : new Material(original);
+
+                        // Track each clone right away in case mapping fails.
                         binding.Clones[slot] = clone;
+                        clone.name = $"NADA Opacity ({original.name})";
+
+                        if (needsBridge)
+                            CopyCreatureProperties(original, clone);
 
                         ConfigureStandardFade(
                             clone,
@@ -218,8 +239,7 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
                     }
                 }
 
-                // Track ownership before assignment, so even a failed
-                // assignment can safely restore and destroy our clones.
+                // Keep our originals before swapping anything on the weapon.
                 _bindings.AddRange(prepared);
                 _visualRoot = visualRoot;
 
@@ -235,6 +255,17 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
                 }
 
                 _appliedOpacity = opacity;
+                _lastUnsupportedKey = null;
+
+                if (requiresCreatureBridge)
+                {
+                    Plugin.Log?.LogInfo(
+                        $"{Plugin.ModName}: [WeaponOpacityCreatureBridge] " +
+                        $"visual='{visualRoot.name}' " +
+                        $"source='{CreatureShaderName}' " +
+                        $"replacement='{StandardShaderName}' " +
+                        "status='prototype'");
+                }
 
                 Plugin.Log?.LogInfo(
                     $"{Plugin.ModName}: [WeaponOpacityApplied] " +
@@ -262,6 +293,55 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
 
                 return false;
             }
+        }
+
+        private Shader ResolveStandardShader()
+        {
+            // Try the direct lookup first; it works on some installations.
+            Shader direct = Shader.Find(StandardShaderName);
+            if (direct != null && direct.isSupported)
+                return direct;
+
+            if (_loadedStandardShader != null &&
+                _loadedStandardShader.isSupported)
+            {
+                return _loadedStandardShader;
+            }
+
+            // Don't scan loaded materials again for every slider step.
+            if (_lookedForLoadedStandardShader)
+                return null;
+
+            _lookedForLoadedStandardShader = true;
+
+            Material[] loaded =
+                Resources.FindObjectsOfTypeAll<Material>();
+
+            foreach (Material candidate in loaded)
+            {
+                if (!SupportsStandardFade(candidate) ||
+                    !candidate.shader.isSupported)
+                {
+                    continue;
+                }
+
+                _loadedStandardShader = candidate.shader;
+
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [WeaponOpacityShaderResolved] " +
+                    "source='loaded-material' " +
+                    $"material='{candidate.name}' " +
+                    $"shader='{candidate.shader.name}'");
+
+                return _loadedStandardShader;
+            }
+
+            Plugin.Log?.LogInfo(
+                $"{Plugin.ModName}: [WeaponOpacityShaderMissing] " +
+                "shader='Standard' " +
+                "reason='no-loaded-compatible-material'");
+
+            return null;
         }
 
         private bool IsEligibleRenderer(Renderer renderer)
@@ -298,6 +378,95 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
                    material.HasProperty("_SrcBlend") &&
                    material.HasProperty("_DstBlend") &&
                    material.HasProperty("_ZWrite");
+        }
+
+        private static bool IsCreatureShader(Material material)
+        {
+            return material != null &&
+                   material.shader != null &&
+                   string.Equals(
+                       material.shader.name,
+                       CreatureShaderName,
+                       StringComparison.Ordinal);
+        }
+
+        private static bool SupportsCreatureBridge(Material material)
+        {
+            // Fail closed if we cannot preserve even the weapon's albedo.
+            // Other Creature shader features may still differ; validate the
+            // result visually before expanding this prototype's support.
+            return IsCreatureShader(material) &&
+                   material.HasProperty("_Color") &&
+                   material.HasProperty("_MainTex") &&
+                   material.GetTexture("_MainTex") != null;
+        }
+
+        private static void CopyCreatureProperties(
+            Material original,
+            Material clone)
+        {
+            // A new Standard material avoids carrying incompatible Creature
+            // shader keywords and render-state overrides into the clone.
+            CopyTexture(original, clone, "_MainTex", null);
+            clone.SetColor("_Color", original.GetColor("_Color"));
+
+            // Copy only shared, well-known property meanings. Valheim's
+            // Creature shader has additional lighting behavior that cannot
+            // automatically be reproduced by Standard.
+            CopyTexture(original, clone, "_BumpMap", "_NORMALMAP");
+            CopyTexture(original, clone, "_MetallicGlossMap", "_METALLICGLOSSMAP");
+            CopyTexture(original, clone, "_OcclusionMap", null);
+            CopyTexture(original, clone, "_EmissionMap", "_EMISSION");
+
+            CopyFloat(original, clone, "_BumpScale");
+            CopyFloat(original, clone, "_Metallic");
+            CopyFloat(original, clone, "_Glossiness");
+            CopyFloat(original, clone, "_OcclusionStrength");
+
+            if (original.HasProperty("_EmissionColor") &&
+                clone.HasProperty("_EmissionColor"))
+            {
+                Color emission = original.GetColor("_EmissionColor");
+                clone.SetColor("_EmissionColor", emission);
+                if (emission.maxColorComponent > 0f)
+                    clone.EnableKeyword("_EMISSION");
+            }
+        }
+
+        private static void CopyTexture(
+            Material original,
+            Material clone,
+            string property,
+            string keyword)
+        {
+            if (!original.HasProperty(property) ||
+                !clone.HasProperty(property))
+                return;
+
+            Texture texture = original.GetTexture(property);
+            if (texture == null)
+                return;
+
+            clone.SetTexture(property, texture);
+            clone.SetTextureScale(
+                property, original.GetTextureScale(property));
+            clone.SetTextureOffset(
+                property, original.GetTextureOffset(property));
+
+            if (keyword != null)
+                clone.EnableKeyword(keyword);
+        }
+
+        private static void CopyFloat(
+            Material original,
+            Material clone,
+            string property)
+        {
+            if (original.HasProperty(property) &&
+                clone.HasProperty(property))
+            {
+                clone.SetFloat(property, original.GetFloat(property));
+            }
         }
 
         private static void ConfigureStandardFade(
@@ -513,15 +682,26 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
             }
         }
 
-        private static void LogUnsupported(
+        private void LogUnsupported(
             Transform visualRoot,
             Renderer renderer,
             string shaderName)
         {
+            // Preview may retry every slider step. One rejection per
+            // visual/renderer/shader is enough until the binding changes.
+            string key =
+                $"{visualRoot.GetInstanceID()}:" +
+                $"{(renderer != null ? renderer.GetInstanceID() : 0)}:" +
+                shaderName;
+
+            if (_lastUnsupportedKey == key)
+                return;
+
+            _lastUnsupportedKey = key;
             Plugin.Log?.LogInfo(
                 $"{Plugin.ModName}: [WeaponOpacityUnsupported] " +
                 $"visual='{visualRoot.name}' " +
-                $"renderer='{renderer.name}' " +
+                $"renderer='{(renderer != null ? renderer.name : "<none>")}' " +
                 $"shader='{shaderName}' " +
                 $"reason='requires-validated-transparency-path'");
         }

@@ -73,6 +73,12 @@ namespace NADA.VFX.Weapon.Editor
                         false),
 
                     new NadaVfxEditorEffectDefinition(
+                        VfxEffectTypeIds.WeaponAppearance,
+                        "Weapon Appearance",
+                        "Appearance",
+                        false),
+
+                    new NadaVfxEditorEffectDefinition(
                         VfxEffectTypeIds.OrbitalsOrbs,
                         "Orbs",
                         "Orbs",

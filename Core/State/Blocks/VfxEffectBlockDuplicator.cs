@@ -226,6 +226,12 @@ namespace NADA.VFX.Weapon.Core.State.Blocks
                     };
                 }
 
+                case WeaponAppearanceVfxSettings appearance:
+                    return new WeaponAppearanceVfxSettings
+                    {
+                        Visibility = appearance.Visibility
+                    };
+
                 default:
                     return null;
             }

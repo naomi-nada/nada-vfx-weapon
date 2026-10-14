@@ -22,13 +22,14 @@ namespace NADA.VFX.Weapon.Core.Network
                 TestDuplicateIdentityAndOrder();
                 TestOrbitalsGlue();
                 TestDeterminism();
+                TestWeaponAppearanceWireRoundTrip();
                 TestInvalidSource();
                 TestMalformedHeaders();
                 TestMalformedState();
                 TestWireBudget();
 
                 Plugin.Log.LogInfo(
-                    $"{Plugin.ModName}: [NetworkNativeCodecTests OK] tests=9");
+                    $"{Plugin.ModName}: [NetworkNativeCodecTests OK] tests=10");
                 return true;
             }
             catch (Exception error)
@@ -110,6 +111,32 @@ namespace NADA.VFX.Weapon.Core.Network
                 packet.ItemHash, packet.Revision, packet.Bound,
                 packet.State, packet.NextInstanceId);
             Require(Equal(first, second), "Native network round-trip isn't deterministic.");
+        }
+
+        private static void TestWeaponAppearanceWireRoundTrip()
+        {
+            var state = new WeaponVfxState();
+            VfxEffectBlock block = WeaponVfxBlockDefaults.Create(
+                VfxEffectTypeIds.WeaponAppearance, 4);
+            block.DisplayName = "Blade Appearance";
+            ((WeaponAppearanceVfxSettings)block.Settings).Visibility = 0.25f;
+            state.Effects.Add(block);
+
+            byte[] first = Encode(4005, 6, true, state, 5);
+            WeaponVfxNetworkStatePacket packet = Decode(first);
+            Require(packet.Bound && packet.ItemHash == 4005 &&
+                    packet.Revision == 6 && packet.NextInstanceId == 5 &&
+                    packet.State.Effects.Count == 1 &&
+                    packet.State.Effects[0].InstanceId == 4 &&
+                    packet.State.Effects[0].TypeId == VfxEffectTypeIds.WeaponAppearance &&
+                    ((WeaponAppearanceVfxSettings)packet.State.Effects[0].Settings).Visibility == 0.25f,
+                "Weapon Appearance state did not survive native network serialization.");
+
+            byte[] second = Encode(
+                packet.ItemHash, packet.Revision, packet.Bound,
+                packet.State, packet.NextInstanceId);
+            Require(Equal(first, second),
+                "Weapon Appearance network envelope is not deterministic.");
         }
 
         private static void TestInvalidSource()

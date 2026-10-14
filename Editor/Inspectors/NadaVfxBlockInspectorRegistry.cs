@@ -32,6 +32,9 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                 case VfxEffectTypeIds.Aura:
                     return NadaAuraInspector.Draw(block);
 
+                case VfxEffectTypeIds.WeaponAppearance:
+                    return NadaWeaponAppearanceInspector.Draw(block);
+
                 case VfxEffectTypeIds.OrbitalsOrbs:
                     return NadaOrbitalsOrbsInspector.Draw(block);
 

@@ -37,6 +37,7 @@ namespace NADA.VFX.Weapon.Core.State.Defaults
         internal const float DefaultOrbitalsDrift = 0f;
 
         internal const float DefaultCoreSpinSpeed = 1f;
+        internal const float DefaultWeaponVisibility = 1f;
 
         internal const float DefaultEffectOffset = 0f;
         internal const float DefaultEffectRotation = 0f;
@@ -135,6 +136,12 @@ namespace NADA.VFX.Weapon.Core.State.Defaults
 
                 case VfxEffectTypeIds.OrbitalsEmbers:
                     return CreateOrbitalsEmbers();
+
+                case VfxEffectTypeIds.WeaponAppearance:
+                    return new WeaponAppearanceVfxSettings
+                    {
+                        Visibility = DefaultWeaponVisibility
+                    };
 
                 default:
                     return null;

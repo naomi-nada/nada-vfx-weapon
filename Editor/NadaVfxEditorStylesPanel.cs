@@ -75,16 +75,7 @@ namespace NADA.VFX.Weapon.Editor
 
         private static void ClaimTextInputClick()
         {
-            Event current = Event.current;
-            if (current == null || current.rawType != EventType.MouseDown ||
-                current.button != 0)
-                return;
-
-            // Called immediately after the field is drawn, so this rect is
-            // local to the editor window, not the screen. An outside click
-            // cannot reacquire editor selection via stale keyboard focus.
-            if (GUILayoutUtility.GetLastRect().Contains(current.mousePosition))
-                NadaVfxEditor.ClaimStylesTextInput();
+            NadaVfxEditor.ClaimTextInputClick(GUILayoutUtility.GetLastRect());
         }
 
         private static void ClearPendingImport()

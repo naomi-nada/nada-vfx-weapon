@@ -5,6 +5,7 @@ using NADA.VFX.Weapon.Core.State.Blocks;
 using NADA.VFX.Weapon.Core.State.Blocks.Effects;
 using NADA.VFX.Weapon.Core.State.Defaults;
 using NADA.VFX.Weapon.Core.Persistence;
+using NADA.VFX.Weapon.Core.State.Migration;
 using NADA.VFX.Weapon.Runtime.Formation;
 using NADA.VFX.Weapon.Weapons.Runtime;
 
@@ -85,9 +86,6 @@ namespace NADA.VFX.Weapon.Editor
         internal static int EffectCount =>
             _state?.Effects?.Count ??
             0;
-
-        internal static float WeaponOpacity =>
-            _state?.WeaponOpacity ?? 1f;
 
         /// <summary>
         /// Selects the temporary editor draft owned by the current ItemData.
@@ -303,6 +301,10 @@ namespace NADA.VFX.Weapon.Editor
                 return false;
             }
 
+            if (!LegacyWeaponAppearanceMigration.TryPromote(
+                    detached, ref detachedCursor, out reason))
+                return false;
+
             InstallUnboundDraft(itemData, detached, detachedCursor);
             _activeDraft = DraftByItemData[itemData];
             _state = _activeDraft.State;
@@ -431,22 +433,6 @@ namespace NADA.VFX.Weapon.Editor
                 $"effects={_state.Effects.Count} " +
                 $"previewPending=True persisted=False.");
 
-            return true;
-        }
-
-        // Appearance is whole-weapon draft state, not an effect instance.
-        // The live source guard prevents edits after an external Bind, while
-        // the UI drives preview refresh only after a successful change.
-        internal static bool TrySetWeaponOpacity(float opacity)
-        {
-            if (!CanEdit() || float.IsNaN(opacity) ||
-                float.IsInfinity(opacity) ||
-                opacity < 0f || opacity > 1f)
-            {
-                return false;
-            }
-
-            _state.WeaponOpacity = opacity;
             return true;
         }
 
