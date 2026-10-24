@@ -16,6 +16,7 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
             internal Material[] Originals;
             internal Material[] Clones;
             internal ShadowCastingMode OriginalShadowCasting;
+            internal bool ChangedShadowCasting;
 
             internal RendererBinding(
                 Renderer renderer,
@@ -248,8 +249,10 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
                     binding.Renderer.sharedMaterials =
                         binding.Clones;
 
-                    // A partially invisible weapon must not retain
-                    // its fully opaque vanilla shadow.
+                    // Remember if we actually changed the shadow setting.
+                    // A skin mod might replace our materials before cleanup.
+                    binding.ChangedShadowCasting =
+                        binding.OriginalShadowCasting != ShadowCastingMode.Off;
                     binding.Renderer.shadowCastingMode =
                         ShadowCastingMode.Off;
                 }
@@ -663,13 +666,15 @@ namespace NADA.VFX.Weapon.Modules.WeaponOpacity
                     {
                         renderer.sharedMaterials =
                             current;
+                    }
 
-                        if (renderer.shadowCastingMode ==
-                            ShadowCastingMode.Off)
-                        {
-                            renderer.shadowCastingMode =
-                                binding.OriginalShadowCasting;
-                        }
+                    // Skin swaps can remove all our material clones first.
+                    // Restore the shadow setting we changed either way.
+                    if (binding.ChangedShadowCasting &&
+                        renderer.shadowCastingMode == ShadowCastingMode.Off)
+                    {
+                        renderer.shadowCastingMode =
+                            binding.OriginalShadowCasting;
                     }
                 }
 

@@ -232,7 +232,8 @@ namespace NADA.VFX.Weapon.Editor
         internal static void Draw(NadaVfxEditorTarget target,
             GUIStyle card, GUIStyle heading, GUIStyle body,
             GUIStyle muted, GUIStyle warning, GUIStyle button,
-            GUIStyle dropdown, GUIStyle textField, GUIStyle textArea)
+            GUIStyle dropdown, GUIStyle textField, GUIStyle textArea,
+            float panelWidth)
         {
             bool hasTarget = target?.ItemData != null;
             bool editable = hasTarget && !NadaVfxEditorWorkingState.IsReadOnly &&
@@ -240,7 +241,9 @@ namespace NADA.VFX.Weapon.Editor
             bool canExport = hasTarget &&
                 target.SourceKind != NadaWeaponLocalSourceKind.InvalidNative;
 
-            GUILayout.BeginVertical(card);
+            GUILayout.BeginVertical(card,
+                GUILayout.Width(panelWidth), GUILayout.MaxWidth(panelWidth),
+                GUILayout.ExpandWidth(false));
             GUILayout.Label("STYLES", heading);
             GUILayout.Space(3f);
 

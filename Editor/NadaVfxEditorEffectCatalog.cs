@@ -74,7 +74,7 @@ namespace NADA.VFX.Weapon.Editor
 
                     new NadaVfxEditorEffectDefinition(
                         VfxEffectTypeIds.WeaponAppearance,
-                        "Weapon Appearance",
+                        "Target Appearance",
                         "Appearance",
                         false),
 

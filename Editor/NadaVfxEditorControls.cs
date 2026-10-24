@@ -51,6 +51,10 @@ namespace NADA.VFX.Weapon.Editor
         private static bool _readOnlyNavigation;
 
         private static GUIStyle _sectionButtonStyle;
+        private static GUIStyle _compactSectionButtonStyle;
+        private static float _sectionWidth;
+        private static float _sectionLeftOffset;
+
         private static GUIStyle _modifierRowStyle;
         private static GUIStyle _sliderLabelStyle;
         private static GUIStyle _axisLabelStyle;
@@ -63,6 +67,9 @@ namespace NADA.VFX.Weapon.Editor
         private static GUIStyle _movementModeButtonStyle;
         private static GUIStyle _selectedMovementModeButtonStyle;
         private static GUIStyle _resetButtonStyle;
+
+        // The open choice is UI-only; effect inspectors own the selected value.
+        private static string _openDropdownKey;
 
         private static float ModifierLabelWidth =>
             _compactLayout
@@ -104,6 +111,15 @@ namespace NADA.VFX.Weapon.Editor
         {
             _compactLayout =
                 compact;
+        }
+
+        // Retain compact foldout widths, but center them inside Edit's
+        // available content area rather than aligning with Target's column.
+        internal static void SetSectionLayout(float targetWidth, float editInnerWidth)
+        {
+            _sectionWidth = Mathf.Max(1f, targetWidth * 0.8f);
+            _sectionLeftOffset = Mathf.Max(0f,
+                (editInnerWidth - _sectionWidth) * 0.5f);
         }
 
         internal static void SetReadOnlyNavigation(bool enabled)
@@ -150,11 +166,24 @@ namespace NADA.VFX.Weapon.Editor
                 if (_readOnlyNavigation)
                     GUI.enabled = true;
 
-                clicked = GUILayout.Button(
-                    $"{marker}  {title}",
-                    _sectionButtonStyle,
-                    GUILayout.ExpandWidth(true),
-                    GUILayout.Height(19f));
+                string caption = $"{marker}  {title}";
+                if (_sectionWidth > 0f)
+                {
+                    GUIStyle style = _sectionWidth < 89f || title.Length > 10
+                        ? _compactSectionButtonStyle : _sectionButtonStyle;
+
+                    GUILayout.BeginHorizontal(GUIStyle.none);
+                    GUILayout.Space(_sectionLeftOffset);
+                    clicked = GUILayout.Button(caption, style,
+                        GUILayout.Width(_sectionWidth), GUILayout.Height(19f));
+                    GUILayout.FlexibleSpace();
+                    GUILayout.EndHorizontal();
+                }
+                else
+                {
+                    clicked = GUILayout.Button(caption, _sectionButtonStyle,
+                        GUILayout.ExpandWidth(true), GUILayout.Height(19f));
+                }
             }
             finally
             {
@@ -167,6 +196,10 @@ namespace NADA.VFX.Weapon.Editor
                 SectionExpandedByKey[key] = expanded;
             }
 
+            // All inspector sections get the same breathing room before
+            // the first control; changing sections never changes VFX state.
+            if (expanded)
+                GUILayout.Space(4f);
             return expanded;
         }
 
@@ -746,10 +779,73 @@ namespace NADA.VFX.Weapon.Editor
                 changed;
         }
 
-        // A prominent, reusable selector for orbital movement modes.
-        // The caller owns the actual block-state change and Glue checks.
-        // Only the Attached choice is disabled when Glue forbids it;
-        // returning to Path must remain possible.
+        // A compact, theme-aware single-choice menu for small fixed option sets.
+        // No effect state or separate scroll view lives inside this control.
+        internal static bool DropdownSelector(
+            string key,
+            string label,
+            int selectedIndex,
+            string[] options,
+            out int nextSelectedIndex,
+            int disabledOptionIndex = -1)
+        {
+            EnsureStyles();
+            nextSelectedIndex = selectedIndex;
+            if (options == null || options.Length == 0)
+                return false;
+
+            int safeIndex = Mathf.Clamp(selectedIndex, 0, options.Length - 1);
+            bool open = _openDropdownKey == key;
+            GUILayout.BeginHorizontal(_modifierRowStyle);
+            GUILayout.Label(label, _sliderLabelStyle,
+                GUILayout.Width(ModifierLabelWidth), GUILayout.Height(21f));
+            GUILayout.Space(ComponentGap);
+            if (GUILayout.Button((options[safeIndex] ?? string.Empty) +
+                    (open ? " ▲" : " ▼"), _segmentButtonStyle,
+                    GUILayout.Width(112f), GUILayout.Height(21f)))
+            {
+                open = !open;
+                _openDropdownKey = open ? key : null;
+            }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            if (!open)
+                return false;
+
+            GUILayout.BeginHorizontal(_modifierRowStyle);
+            GUILayout.Space(ModifierLabelWidth + ComponentGap);
+            GUILayout.BeginVertical(GUILayout.Width(112f));
+            bool changed = false;
+            bool originalEnabled = GUI.enabled;
+            for (int i = 0; i < options.Length; i++)
+            {
+                GUIStyle style = i == safeIndex
+                    ? _selectedSegmentButtonStyle : _segmentButtonStyle;
+                // Unsupported modes remain visible but cannot mutate state.
+                GUI.enabled = originalEnabled && i != disabledOptionIndex;
+                bool selected = GUILayout.Button(options[i] ?? string.Empty, style,
+                    GUILayout.Width(112f), GUILayout.Height(20f));
+                GUI.enabled = originalEnabled;
+                if (!selected)
+                    continue;
+
+                _openDropdownKey = null;
+                if (i != safeIndex)
+                {
+                    nextSelectedIndex = i;
+                    changed = true;
+                }
+            }
+            GUI.enabled = originalEnabled;
+            GUILayout.EndVertical();
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            return changed;
+        }
+
+        // Compact, theme-aware movement choice shared by every orbital inspector.
+        // The caller still owns the state change and Glue validation.
         internal static bool MovementModeSelector(
             string key,
             bool attached,
@@ -757,74 +853,41 @@ namespace NADA.VFX.Weapon.Editor
             bool allowAttached = true)
         {
             EnsureStyles();
-
             nextAttached = attached;
-
             bool changed = false;
             bool previousEnabled = GUI.enabled;
 
-            GUILayout.BeginHorizontal(
-                _modifierRowStyle);
-
+            GUILayout.Space(3f);
+            GUILayout.BeginHorizontal(_modifierRowStyle);
+            GUILayout.FlexibleSpace();
+            GUI.SetNextControlName($"NadaVfxMovement_{key}_Path");
+            if (GUILayout.Button("Path",
+                    attached ? _movementModeButtonStyle : _selectedMovementModeButtonStyle,
+                    GUILayout.Width(96f), GUILayout.Height(24f)) && attached)
+            {
+                nextAttached = false;
+                changed = true;
+            }
+            GUILayout.Space(10f);
             try
             {
-                GUIStyle pathStyle =
-                    attached
-                        ? _movementModeButtonStyle
-                        : _selectedMovementModeButtonStyle;
-
-                GUIStyle attachedStyle =
-                    attached
-                        ? _selectedMovementModeButtonStyle
-                        : _movementModeButtonStyle;
-
-                GUI.SetNextControlName(
-                    $"NadaVfxMovement_{key}_Path");
-
-                if (GUILayout.Button(
-                        "PATH\n(Motion On)",
-                        pathStyle,
-                        GUILayout.ExpandWidth(true),
-                        GUILayout.Height(
-                            _compactLayout ? 44f : 50f)))
+                GUI.enabled = previousEnabled && allowAttached;
+                GUI.SetNextControlName($"NadaVfxMovement_{key}_Attached");
+                if (GUILayout.Button("Attached",
+                        attached ? _selectedMovementModeButtonStyle : _movementModeButtonStyle,
+                        GUILayout.Width(96f), GUILayout.Height(24f)) && !attached)
                 {
-                    if (attached)
-                    {
-                        nextAttached = false;
-                        changed = true;
-                    }
-                }
-
-                GUILayout.Space(
-                    ComponentGap);
-
-                GUI.enabled =
-                    previousEnabled &&
-                    allowAttached;
-
-                GUI.SetNextControlName(
-                    $"NadaVfxMovement_{key}_Attached");
-
-                if (GUILayout.Button(
-                        "ATTACHED\n(Motion Off)",
-                        attachedStyle,
-                        GUILayout.ExpandWidth(true),
-                        GUILayout.Height(
-                            _compactLayout ? 44f : 50f)))
-                {
-                    if (!attached)
-                    {
-                        nextAttached = true;
-                        changed = true;
-                    }
+                    nextAttached = true;
+                    changed = true;
                 }
             }
             finally
             {
                 GUI.enabled = previousEnabled;
+                GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
             }
-
+            GUILayout.Space(3f);
             return changed;
         }
 
@@ -947,6 +1010,7 @@ namespace NADA.VFX.Weapon.Editor
         {
             SectionExpandedByKey.Clear();
             NumericBufferByKey.Clear();
+            _openDropdownKey = null;
 
             _compactLayout =
                 false;
@@ -1112,7 +1176,7 @@ namespace NADA.VFX.Weapon.Editor
 
             Texture2D sectionHoverBackground =
                 CreateRoundedTexture(
-                    theme.ButtonHoverBackground,
+                    theme.SegmentBackground,
                     sectionStroke);
 
             Texture2D segmentBackground =
@@ -1207,14 +1271,27 @@ namespace NADA.VFX.Weapon.Editor
             _sectionButtonStyle.active.background =
                 sectionHoverBackground;
 
+            // Desert's original orange-red caption was ~2:1 on sandstone.
+            // Choose each text state against its real tab background, without
+            // changing the theme's accent colors anywhere else.
             _sectionButtonStyle.normal.textColor =
-                theme.AccentSecondary;
+                NadaVfxEditorContrast.TextOn(theme.PanelBackground,
+                    theme.AccentSecondary, theme.AccentTertiary,
+                    theme.PrimaryText, 5f);
 
-            _sectionButtonStyle.hover.textColor =
-                theme.AccentTertiary;
+            Color32 sectionHoverText = NadaVfxEditorContrast.TextOn(
+                theme.SegmentBackground, theme.AccentTertiary,
+                theme.AccentSecondary, theme.PrimaryText, 5f);
+            _sectionButtonStyle.hover.textColor = sectionHoverText;
+            _sectionButtonStyle.active.textColor = sectionHoverText;
+            _sectionButtonStyle.alignment = TextAnchor.MiddleCenter;
+            _sectionButtonStyle.clipping = TextClipping.Clip;
 
-            _sectionButtonStyle.active.textColor =
-                theme.AccentTertiary;
+            _compactSectionButtonStyle = new GUIStyle(_sectionButtonStyle)
+            {
+                fontSize = 8,
+                padding = new RectOffset(3, 3, 1, 1)
+            };
 
             _modifierRowStyle =
                 new GUIStyle(
@@ -1422,16 +1499,16 @@ namespace NADA.VFX.Weapon.Editor
                 new GUIStyle(
                     GUI.skin.button)
                 {
-                    fontSize = 11,
+                    fontSize = 10,
                     fontStyle = FontStyle.Bold,
                     alignment = TextAnchor.MiddleCenter,
-                    wordWrap = true,
+                    wordWrap = false,
                     padding =
                         new RectOffset(
-                            5,
-                            5,
                             4,
-                            4),
+                            4,
+                            2,
+                            2),
                     margin =
                         new RectOffset(
                             0,
@@ -1534,6 +1611,7 @@ namespace NADA.VFX.Weapon.Editor
             OwnedTextures.Clear();
 
             _sectionButtonStyle = null;
+            _compactSectionButtonStyle = null;
             _modifierRowStyle = null;
             _sliderLabelStyle = null;
             _axisLabelStyle = null;

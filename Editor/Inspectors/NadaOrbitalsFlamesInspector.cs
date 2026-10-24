@@ -120,6 +120,96 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     flames.Scale = scale;
                     changed = true;
                 }
+
+                // Count works in both modes. Attached adds bodies
+                // without moving the ones already on the weapon.
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:count", "Count",
+                        path.Count,
+                        PluginConfig.MinCountNormalized,
+                        PluginConfig.MaxCountNormalized,
+                        out float count,
+                        description: attached
+                            ? "Adds flames toward the hilt without moving existing ones."
+                            : "Controls the number of additional flames beyond the leading flame.",
+                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCount))
+                {
+                    path.Count = count;
+                    changed = true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:spacing", "Spacing",
+                        path.Spacing,
+                        PluginConfig.MinOrbitalsSpacing,
+                        PluginConfig.MaxOrbitalsSpacing,
+                        out float spacing,
+                        enabled: !isFollower &&
+                                 !attached &&
+                                 !path.SnakeEnabled,
+                        disabledReason: "Spacing is locked while Snake, Glue, or Attached is active.",
+                        description: "Adjusts the separation between orbiting flames.",
+                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpacing))
+                {
+                    path.Spacing = spacing;
+                    changed = true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:length", "Length",
+                        path.Length,
+                        PluginConfig.MinOrbitalsLength,
+                        PluginConfig.MaxOrbitalsLength,
+                        out float length,
+                        enabled: !isFollower,
+                        description: attached
+                            ? "Changes the distance between neighboring attached flames."
+                            : "Changes how far the flames travel along the weapon.",
+                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsLength))
+                {
+                    path.Length = length;
+                    changed = true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:radius", "Radius",
+                        path.Radius,
+                        PluginConfig.MinOrbitalsRadiusMultiplier,
+                        PluginConfig.MaxOrbitalsRadiusMultiplier,
+                        out float radius,
+                        enabled: !isFollower && !attached,
+                        description: "Changes how wide the orbit wraps around the weapon.",
+                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsRadius))
+                {
+                    path.Radius = radius;
+                    changed = true;
+                }
+                if (NadaVfxEditorControls.Toggle(
+                        $"{prefix}:snake", "Snake",
+                        path.SnakeEnabled,
+                        out bool snakeEnabled,
+                        enabled: !isFollower && !attached,
+                        description: "Keeps the flames in a tighter snake formation."))
+                {
+                    path.SnakeEnabled = snakeEnabled;
+                    changed = true;
+                }
+
+                if (attached)
+                {
+                    // Attached cannot create Glue relationships. Show the
+                    // current flag read-only instead of hiding the control.
+                    NadaVfxEditorControls.Toggle(
+                        $"glue:{block.InstanceId}:leader", "Glue",
+                        flames.Formation.GlueLeaderEnabled,
+                        out bool _, enabled: false);
+                }
+                else
+                {
+                    changed |= NadaOrbitalsGlueInspector.Draw(
+                        block, flames.Formation);
+                }
+
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
@@ -172,53 +262,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             NadaVfxEditorControls.SpaceAfterSection();
 
             if (NadaVfxEditorControls.Section(
-                    $"{prefix}:formation",
-                    "FORMATION"))
-            {
-                // Count works in both modes. Attached adds bodies
-                // without moving the ones already on the weapon.
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:count", "Count",
-                        path.Count,
-                        PluginConfig.MinCountNormalized,
-                        PluginConfig.MaxCountNormalized,
-                        out float count,
-                        description: attached
-                            ? "Adds flames toward the hilt without moving existing ones."
-                            : "Controls the number of additional flames beyond the leading flame.",
-                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsCount))
-                {
-                    path.Count = count;
-                    changed = true;
-                }
-
-                if (NadaVfxEditorControls.Toggle(
-                        $"{prefix}:snake", "Snake",
-                        path.SnakeEnabled,
-                        out bool snakeEnabled,
-                        enabled: !isFollower && !attached,
-                        description: "Keeps the flames in a tighter snake formation."))
-                {
-                    path.SnakeEnabled = snakeEnabled;
-                    changed = true;
-                }
-
-                if (!attached)
-                {
-                    changed |= NadaOrbitalsGlueInspector.Draw(
-                        block,
-                        flames.Formation);
-                }
-                else
-                {
-                    NadaVfxEditorControls.Placeholder(
-                        "Attached flames form a straight line. Snake and Glue are unavailable.");
-                }
-            }
-
-            NadaVfxEditorControls.SpaceAfterSection();
-
-            if (NadaVfxEditorControls.Section(
                     $"{prefix}:motion",
                     "MOTION"))
             {
@@ -252,54 +295,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed = true;
                 }
 
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:spacing", "Spacing",
-                        path.Spacing,
-                        PluginConfig.MinOrbitalsSpacing,
-                        PluginConfig.MaxOrbitalsSpacing,
-                        out float spacing,
-                        enabled: !isFollower &&
-                                 !attached &&
-                                 !path.SnakeEnabled,
-                        disabledReason: "Spacing is locked while Snake, Glue, or Attached is active.",
-                        description: "Adjusts the separation between orbiting flames.",
-                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpacing))
-                {
-                    path.Spacing = spacing;
-                    changed = true;
-                }
-
-                // Path: longitudinal travel distance.
-                // Attached: gap between neighboring flame bodies.
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:length", "Length",
-                        path.Length,
-                        PluginConfig.MinOrbitalsLength,
-                        PluginConfig.MaxOrbitalsLength,
-                        out float length,
-                        enabled: !isFollower,
-                        description: attached
-                            ? "Changes the distance between neighboring attached flames."
-                            : "Changes how far the flames travel along the weapon.",
-                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsLength))
-                {
-                    path.Length = length;
-                    changed = true;
-                }
-
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:radius", "Radius",
-                        path.Radius,
-                        PluginConfig.MinOrbitalsRadiusMultiplier,
-                        PluginConfig.MaxOrbitalsRadiusMultiplier,
-                        out float radius,
-                        enabled: !isFollower && !attached,
-                        description: "Changes how wide the orbit wraps around the weapon.",
-                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsRadius))
-                {
-                    path.Radius = radius;
-                    changed = true;
-                }
 
                 if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:cycles", "Cycles",

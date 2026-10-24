@@ -141,31 +141,27 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 NadaWeaponLocalSourceResolver.Resolve(
                     itemData);
 
-            // Only persisted bindings belong on dropped weapons.
-            // An invalid native payload cannot fall through to legacy.
+            // A drop only keeps a rig while its ItemData is bound. If the
+            // binding went away or became invalid, retire the old rig now.
+            // Unity destroys it later, so removal must detach it first.
             if (source.Kind != NadaWeaponLocalSourceKind.NativeBound &&
                 source.Kind != NadaWeaponLocalSourceKind.LegacyBound)
             {
+                Transform oldVisual =
+                    NadaWeaponTargets.FindDroppedWeaponVisualRoot(
+                        root.transform);
+
+                Transform staleRig = oldVisual != null
+                    ? NadaRigPaths.FindDirectChild(
+                        oldVisual,
+                        Plugin.LocalWeaponRootName)
+                    : null;
+
+                if (staleRig != null)
+                    NadaWeaponRigRemoval.RemoveTrackedRig(staleRig);
+
                 if (source.Kind == NadaWeaponLocalSourceKind.InvalidNative)
                 {
-                    Transform invalidVisual =
-                        NadaWeaponTargets.FindDroppedWeaponVisualRoot(
-                            root.transform);
-
-                    if (invalidVisual != null)
-                    {
-                        Transform staleRig =
-                            NadaRigPaths.FindDirectChild(
-                                invalidVisual,
-                                Plugin.LocalWeaponRootName);
-
-                        if (staleRig != null)
-                        {
-                            staleRig.gameObject.SetActive(false);
-                            NadaWeaponRigRemoval.RemoveTrackedRig(staleRig);
-                        }
-                    }
-
                     NadaLogControl.Info(
                         $"drop-native-invalid:{root.GetInstanceID()}:{source.FailureReason}",
                         $"{Plugin.ModName}: [DropNativeStateRejected] " +
@@ -204,9 +200,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     attachTarget,
                     Plugin.LocalWeaponRootName);
 
-            // Preserve the existing drop probe behavior for this pass.
+            // The item state may have changed since the drop rig was made.
+            // Reconcile it in place instead of treating "rig exists" as done.
             if (existingRoot != null)
-                return existingRoot.gameObject.activeSelf;
+            {
+                NadaLogControl.Info(
+                    $"drop-rig-refresh:{existingRoot.GetInstanceID()}",
+                    $"{Plugin.ModName}: [DropRigRefresh] " +
+                    $"root='{root.name}' source={source.Kind} " +
+                    $"rigId={existingRoot.GetInstanceID()}");
+            }
 
             VfxState state =
                 NadaWeaponStateResolver.Resolve(

@@ -58,36 +58,25 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     flames);
 
             if (NadaVfxEditorControls.Section(
-                    $"{prefix}:color-mode",
-                    "COLOR MODE"))
-            {
-                if (NadaVfxEditorControls.SegmentedSelector(
-                        $"{prefix}:color-mode-selector",
-                        "Mode",
-                        (int)colorMode,
-                        ColorModeOptions,
-                        out int nextColorModeIndex,
-                        description:
-                            "Normal uses Hue. White and Black replace hue coloring without erasing the stored Hue value."))
-                {
-                    ApplyColorMode(
-                        flames,
-                        (ColorMode)nextColorModeIndex);
-
-                    colorMode =
-                        (ColorMode)nextColorModeIndex;
-
-                    changed =
-                        true;
-                }
-            }
-
-            NadaVfxEditorControls.SpaceAfterSection();
-
-            if (NadaVfxEditorControls.Section(
                     $"{prefix}:visual",
                     "VISUAL"))
             {
+                if (NadaVfxEditorControls.DropdownSelector(
+                        $"{prefix}:color-mode-selector",
+                        "Color Mode",
+                        (int)colorMode,
+                        ColorModeOptions,
+                        out int nextColorModeIndex,
+                        disabledOptionIndex: (int)ColorMode.Black))
+                {
+                    // Keep Hue intact when switching between Normal and White.
+                    ApplyColorMode(flames, (ColorMode)nextColorModeIndex);
+                    colorMode = (ColorMode)nextColorModeIndex;
+                    changed = true;
+                }
+
+                NadaVfxEditorControls.SpaceAfterSection();
+
                 if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:luminance",
                         "Luminance",

@@ -17,7 +17,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
             if (block.Settings is not WeaponAppearanceVfxSettings appearance)
             {
                 NadaVfxEditorControls.Placeholder(
-                    "Invalid Weapon Appearance block: expected typed settings.");
+                    "Invalid Target Appearance block: expected typed settings.");
                 return false;
             }
 

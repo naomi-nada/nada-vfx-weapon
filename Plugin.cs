@@ -138,6 +138,9 @@ namespace NADA.VFX.Weapon
             Log.LogInfo(
                 $"{ModName}: Applied Harmony patches.");
 
+            // Temporary direct caller for 94L. Remove after the API test.
+            NadaWeaponStateTransitionProbe.Register();
+
             StartCoroutine(
                 NadaRigCache.CacheReferenceAssetsWhenReady());
         }

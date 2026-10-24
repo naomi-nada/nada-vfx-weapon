@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Reflection;
+using BepInEx.Bootstrap;
 using NADA.VFX.Weapon.Runtime.Formation;
 using NADA.VFX.Weapon.Weapons.Runtime;
 using NADA.VFX.Weapon.Core.State.Migration;
@@ -31,6 +33,22 @@ namespace NADA.VFX.Weapon.Editor
         internal string VisualDisplayName { get; }
         internal int VisualRootInstanceId { get; }
         internal string VisualRootPath { get; }
+
+        // Presentation only: effective appearance, not the hierarchy root.
+        internal NadaVfxEditorAppearance Appearance =>
+            NadaVfxEditorVisualIdentity.Resolve(ItemData, PrefabName);
+
+        internal static Sprite GetOriginalInventoryIcon(global::ItemDrop.ItemData item)
+        {
+            // AzuEPI patches ItemData.GetIcon. Read the original icon array
+            // directly so vanity cannot replace the actual weapon's icon.
+            Sprite[] icons = item?.m_shared?.m_icons;
+            if (icons == null || icons.Length == 0)
+                return null;
+
+            int variant = Mathf.Clamp(item.m_variant, 0, icons.Length - 1);
+            return icons[variant];
+        }
 
         internal bool HasRuntimeRig { get; }
         internal int RuntimeRigInstanceId { get; }
@@ -268,6 +286,26 @@ namespace NADA.VFX.Weapon.Editor
         internal static void Clear()
         {
             Current = null;
+        }
+
+        // Hidden equipment may have no instantiated weapon visual. This is
+        // display-only: never substitute it for an actual editable target.
+        internal static global::ItemDrop.ItemData DisplayOnlyHiddenItem()
+        {
+            global::ItemDrop.ItemData item =
+                (_selectedHand ?? _resolvedHand) ==
+                    NadaEquippedWeaponTargetResolver.Hand.Right
+                    ? NadaEquippedItemResolver.ResolveRightHandItem()
+                    : NadaEquippedItemResolver.ResolveLeftHandItem();
+
+            if (item == null || item.m_dropPrefab == null)
+                return null;
+
+            return NadaVfxEditorVisualIdentity.Resolve(
+                    item, item.m_dropPrefab.name).Kind ==
+                NadaVfxEditorAppearanceKind.Hidden
+                    ? item
+                    : null;
         }
 
         private static void Capture(
@@ -689,6 +727,152 @@ namespace NADA.VFX.Weapon.Editor
                 return prefabName;
 
             return "Unknown Weapon";
+        }
+    }
+
+    // Editor-only appearance reporting. Never affects VFX targeting or item identity.
+    internal enum NadaVfxEditorAppearanceKind
+    {
+        Default,
+        Override,
+        Hidden,
+        Unresolved
+    }
+
+    internal readonly struct NadaVfxEditorAppearance
+    {
+        internal NadaVfxEditorAppearanceKind Kind { get; }
+        internal string Label { get; }
+
+        internal NadaVfxEditorAppearance(
+            NadaVfxEditorAppearanceKind kind, string label)
+        {
+            Kind = kind;
+            Label = label;
+        }
+    }
+
+    internal static class NadaVfxEditorVisualIdentity
+    {
+        private const string AzuPluginGuid = "Azumatt.AzuExtendedPlayerInventory";
+        private const string AzuWeaponVanityType =
+            "AzuEPI.Game.Panels.Vanity.WeaponVanity";
+
+        private static MethodInfo _azuResolve;
+        private static bool _integrationChecked;
+        private static bool _integrationUnavailableLogged;
+        private static int _cachedItemHash;
+        private static float _nextReadTime;
+        private static NadaVfxEditorAppearance _cachedAppearance;
+        private static bool _hasCachedAppearance;
+
+        internal static NadaVfxEditorAppearance Resolve(
+            global::ItemDrop.ItemData item,
+            string prefabName)
+        {
+            if (item == null || string.IsNullOrEmpty(prefabName))
+                return new NadaVfxEditorAppearance(
+                    NadaVfxEditorAppearanceKind.Unresolved, "Unresolved");
+
+            int originalHash = StringExtensionMethods.GetStableHashCode(prefabName);
+            if (_hasCachedAppearance && originalHash == _cachedItemHash &&
+                Time.unscaledTime < _nextReadTime)
+            {
+                return _cachedAppearance;
+            }
+
+            NadaVfxEditorAppearance result = ReadAppearance(
+                originalHash, prefabName, item.m_variant);
+            _cachedItemHash = originalHash;
+            _cachedAppearance = result;
+            _hasCachedAppearance = true;
+            _nextReadTime = Time.unscaledTime + 0.5f;
+            return result;
+        }
+
+        private static NadaVfxEditorAppearance ReadAppearance(
+            int originalHash, string prefabName, int itemVariant)
+        {
+            // Without AzuEPI, the item prefab is the visual identity.
+            if (!Chainloader.PluginInfos.ContainsKey(AzuPluginGuid))
+            {
+                return new NadaVfxEditorAppearance(
+                    NadaVfxEditorAppearanceKind.Default,
+                    prefabName + " (Default)");
+            }
+
+            if (!_integrationChecked)
+            {
+                _integrationChecked = true;
+                Type type = Chainloader.PluginInfos[AzuPluginGuid]
+                    .Instance.GetType().Assembly.GetType(AzuWeaponVanityType, false);
+                _azuResolve = type?.GetMethod(
+                    "Resolve",
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                    null,
+                    new[] { typeof(global::VisEquipment), typeof(int), typeof(int).MakeByRefType() },
+                    null);
+            }
+
+            global::VisEquipment visuals = Player.m_localPlayer != null
+                ? Player.m_localPlayer.GetComponent<global::VisEquipment>()
+                : null;
+
+            if (_azuResolve == null || visuals == null)
+            {
+                LogIntegrationFailureOnce("weapon resolver or VisEquipment unavailable");
+                return Unresolved();
+            }
+
+            try
+            {
+                // This is the same read-only resolution AzuEPI uses when it
+                // chooses the visible weapon for VisEquipment. It may update the
+                // local variant argument, but never mutates NADA weapon state.
+                object[] args = { visuals, originalHash, itemVariant };
+                int visualHash = (int)_azuResolve.Invoke(null, args);
+
+                if (visualHash == 0 || visualHash == int.MinValue)
+                    return new NadaVfxEditorAppearance(
+                        NadaVfxEditorAppearanceKind.Hidden, "Hidden");
+
+                if (visualHash == originalHash)
+                    return new NadaVfxEditorAppearance(
+                        NadaVfxEditorAppearanceKind.Default,
+                        prefabName + " (Default)");
+
+                GameObject visualPrefab = ZNetScene.instance != null
+                    ? ZNetScene.instance.GetPrefab(visualHash)
+                    : null;
+
+                if (visualPrefab == null)
+                    return Unresolved();
+
+                return new NadaVfxEditorAppearance(
+                    NadaVfxEditorAppearanceKind.Override,
+                    visualPrefab.name);
+            }
+            catch (Exception exception)
+            {
+                LogIntegrationFailureOnce(
+                    "weapon resolver failed: " + exception.GetBaseException().Message);
+                return Unresolved();
+            }
+        }
+
+        private static NadaVfxEditorAppearance Unresolved() =>
+            new NadaVfxEditorAppearance(
+                NadaVfxEditorAppearanceKind.Unresolved, "Unresolved");
+
+        private static void LogIntegrationFailureOnce(string reason)
+        {
+            if (_integrationUnavailableLogged)
+                return;
+
+            _integrationUnavailableLogged = true;
+            Plugin.Log?.LogWarning(
+                $"{Plugin.ModName}: [EditorVisualId] AzuEPI: {reason}. " +
+                "Visual ID will remain unresolved; VFX targeting is unaffected.");
         }
     }
 }

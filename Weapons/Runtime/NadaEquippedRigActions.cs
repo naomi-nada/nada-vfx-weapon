@@ -1,3 +1,5 @@
+using System.Reflection;
+using HarmonyLib;
 using NADA.VFX.Weapon.Core.State;
 using NADA.VFX.Weapon.Runtime.Structure;
 using NADA.VFX.Weapon.Weapons.Targets;
@@ -5,8 +7,88 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
 {
+    internal enum NadaExactEquippedRefresh
+    {
+        NotEquipped,
+        Refreshed,
+        Deferred
+    }
+
     internal static class NadaEquippedRigActions
     {
+        private static readonly FieldInfo RightInstanceField =
+            AccessTools.Field(typeof(global::VisEquipment), "m_rightItemInstance");
+
+        private static readonly FieldInfo LeftInstanceField =
+            AccessTools.Field(typeof(global::VisEquipment), "m_leftItemInstance");
+
+        // Only an exact equipped ItemData match may affect a live visual.
+        // A missing or swapped weapon instance can wait for Valheim's normal
+        // equipment refresh. Never grab the first child that looks like one.
+        internal static NadaExactEquippedRefresh RefreshExactItem(
+            global::ItemDrop.ItemData item,
+            bool isBound)
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null || item == null)
+                return NadaExactEquippedRefresh.NotEquipped;
+
+            bool right = object.ReferenceEquals(
+                item, NadaEquippedItemResolver.ResolveRightHandItem());
+            bool left = object.ReferenceEquals(
+                item, NadaEquippedItemResolver.ResolveLeftHandItem());
+
+            if (!right && !left)
+                return NadaExactEquippedRefresh.NotEquipped;
+
+            if (right && left)
+                return NadaExactEquippedRefresh.Deferred;
+
+            global::VisEquipment visualOwner =
+                player.GetComponentInChildren<global::VisEquipment>(true);
+            FieldInfo instanceField = right ? RightInstanceField : LeftInstanceField;
+            GameObject instance = visualOwner != null
+                ? instanceField?.GetValue(visualOwner) as GameObject
+                : null;
+
+            string handName = right ? "RightHand_Attach" : "LeftHand_Attach";
+            if (instance == null ||
+                !instance.activeInHierarchy ||
+                !instance.transform.IsChildOf(player.transform) ||
+                !IsUnderHand(instance.transform, player.transform, handName) ||
+                !NadaWeaponTargets.IsTargetOrAttachClone(instance))
+            {
+                return NadaExactEquippedRefresh.Deferred;
+            }
+
+            if (!isBound)
+            {
+                NadaWeaponRigRemoval.RemoveFromEquippedRoot(instance);
+                return NadaExactEquippedRefresh.Refreshed;
+            }
+
+            var controller = new NadaWeaponRigController();
+            return controller.TryApply(instance, item)
+                ? NadaExactEquippedRefresh.Refreshed
+                : NadaExactEquippedRefresh.Deferred;
+        }
+
+        private static bool IsUnderHand(
+            Transform visual,
+            Transform player,
+            string handName)
+        {
+            for (Transform node = visual.parent;
+                 node != null && node != player;
+                 node = node.parent)
+            {
+                if (node.name == handName)
+                    return true;
+            }
+
+            return false;
+        }
+
         internal static void RefreshExistingEquippedRigsOnly()
         {
             Player player =

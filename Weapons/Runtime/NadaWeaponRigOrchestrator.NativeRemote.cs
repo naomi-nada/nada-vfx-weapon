@@ -91,6 +91,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             BindSparksBlocks(effects, blockState, root.name);
             BindFlareBlocks(effects, blockState, root.name);
             BindAuraBlocks(effects, visual, blockState, root.name);
+            NadaWeaponAppearanceBlockAssembly.Reconcile(
+                effects, blockState, root.name);
 
             var motionRoots = new Dictionary<uint, Transform>();
 
@@ -116,6 +118,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 effects, blockState, root.name);
 
             NadaRigTransformApplier.Apply(rig, blockState.RigTransform);
+            ApplyWeaponAppearance(rig, visual, blockState, root.name);
+
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: [RemoteNativeRigApplied] " +
                 $"root='{root.name}' visual='{visual.name}' " +

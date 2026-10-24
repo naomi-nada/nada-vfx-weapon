@@ -129,14 +129,7 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     cores.Scale = scale;
                     changed = true;
                 }
-            }
 
-            NadaVfxEditorControls.SpaceAfterSection();
-
-            if (NadaVfxEditorControls.Section(
-                    $"{prefix}:formation",
-                    "FORMATION"))
-            {
                 // Count belongs to the effect regardless of movement mode.
                 // Attached adds bodies toward the hilt at fixed intervals.
                 if (NadaVfxEditorControls.FloatSlider(
@@ -155,6 +148,55 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed = true;
                 }
 
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:spacing",
+                        "Spacing",
+                        path.Spacing,
+                        PluginConfig.MinOrbitalsSpacing,
+                        PluginConfig.MaxOrbitalsSpacing,
+                        out float spacing,
+                        enabled: !isFollower &&
+                                 !attached &&
+                                 !path.SnakeEnabled,
+                        disabledReason: "Spacing is locked while Snake, Glue, or Attached is active.",
+                        description: "Adjusts the separation between orbiting cores.",
+                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpacing))
+                {
+                    path.Spacing = spacing;
+                    changed = true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:length",
+                        "Length",
+                        path.Length,
+                        PluginConfig.MinOrbitalsLength,
+                        PluginConfig.MaxOrbitalsLength,
+                        out float length,
+                        enabled: !isFollower,
+                        description: attached
+                            ? "Changes the distance between neighboring attached cores."
+                            : "Changes how far the orbit travels along the weapon.",
+                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsLength))
+                {
+                    path.Length = length;
+                    changed = true;
+                }
+
+                if (NadaVfxEditorControls.FloatSlider(
+                        $"{prefix}:radius",
+                        "Radius",
+                        path.Radius,
+                        PluginConfig.MinOrbitalsRadiusMultiplier,
+                        PluginConfig.MaxOrbitalsRadiusMultiplier,
+                        out float radius,
+                        enabled: !isFollower && !attached,
+                        description: "Changes how wide the orbit wraps around the weapon.",
+                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsRadius))
+                {
+                    path.Radius = radius;
+                    changed = true;
+                }
                 if (NadaVfxEditorControls.Toggle(
                         $"{prefix}:snake",
                         "Snake",
@@ -167,17 +209,21 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed = true;
                 }
 
-                if (!attached)
+                if (attached)
                 {
-                    changed |= NadaOrbitalsGlueInspector.Draw(
-                        block,
-                        cores.Formation);
+                    // Attached cannot create Glue relationships. Show the
+                    // current flag read-only instead of hiding the control.
+                    NadaVfxEditorControls.Toggle(
+                        $"glue:{block.InstanceId}:leader", "Glue",
+                        cores.Formation.GlueLeaderEnabled,
+                        out bool _, enabled: false);
                 }
                 else
                 {
-                    NadaVfxEditorControls.Placeholder(
-                        "Attached cores form a straight line. Snake and Glue are unavailable.");
+                    changed |= NadaOrbitalsGlueInspector.Draw(
+                        block, cores.Formation);
                 }
+
             }
 
             NadaVfxEditorControls.SpaceAfterSection();
@@ -216,57 +262,6 @@ namespace NADA.VFX.Weapon.Editor.Inspectors
                     changed = true;
                 }
 
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:spacing",
-                        "Spacing",
-                        path.Spacing,
-                        PluginConfig.MinOrbitalsSpacing,
-                        PluginConfig.MaxOrbitalsSpacing,
-                        out float spacing,
-                        enabled: !isFollower &&
-                                 !attached &&
-                                 !path.SnakeEnabled,
-                        disabledReason: "Spacing is locked while Snake, Glue, or Attached is active.",
-                        description: "Adjusts the separation between orbiting cores.",
-                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsSpacing))
-                {
-                    path.Spacing = spacing;
-                    changed = true;
-                }
-
-                // Path: length of the orbital travel path.
-                // Attached: spacing between neighboring cores.
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:length",
-                        "Length",
-                        path.Length,
-                        PluginConfig.MinOrbitalsLength,
-                        PluginConfig.MaxOrbitalsLength,
-                        out float length,
-                        enabled: !isFollower,
-                        description: attached
-                            ? "Changes the distance between neighboring attached cores."
-                            : "Changes how far the orbit travels along the weapon.",
-                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsLength))
-                {
-                    path.Length = length;
-                    changed = true;
-                }
-
-                if (NadaVfxEditorControls.FloatSlider(
-                        $"{prefix}:radius",
-                        "Radius",
-                        path.Radius,
-                        PluginConfig.MinOrbitalsRadiusMultiplier,
-                        PluginConfig.MaxOrbitalsRadiusMultiplier,
-                        out float radius,
-                        enabled: !isFollower && !attached,
-                        description: "Changes how wide the orbit wraps around the weapon.",
-                        resetValue: WeaponVfxBlockDefaults.DefaultOrbitalsRadius))
-                {
-                    path.Radius = radius;
-                    changed = true;
-                }
 
                 if (NadaVfxEditorControls.FloatSlider(
                         $"{prefix}:cycles",
