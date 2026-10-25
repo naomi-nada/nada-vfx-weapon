@@ -1,3 +1,5 @@
+
+using System.Collections.Generic;
 using NADA.VFX.Weapon.Core.Config;
 using NADA.VFX.Weapon.Core.Persistence;
 using NADA.VFX.Weapon.Core.State.Blocks;
@@ -148,6 +150,78 @@ namespace NADA.VFX.Weapon.API
             return TryApplyState(item, snapshot, out reason);
         }
 
+        // A live dropped item is a networked world object, not just ItemData.
+        // Check ownership before touching it, then persist through Valheim.
+        public static bool TryApplyState(
+            global::ItemDrop dropped,
+            WeaponVfxSnapshot snapshot,
+            out string reason)
+        {
+            if (snapshot?.State == null)
+            {
+                reason = "No weapon VFX snapshot.";
+                return false;
+            }
+
+            if (!NadaDroppedItemPersistence.TryResolveOwned(
+                    dropped, out var item, out var zdo, out reason))
+                return false;
+
+            // The native action validates before writing, but a failed world
+            // save must not leave the owning client's ItemData half-committed.
+            var originalDictionary = item.m_customData;
+            Dictionary<string, string> originalEntries =
+                originalDictionary == null
+                    ? null
+                    : new Dictionary<string, string>(originalDictionary);
+
+            if (!NadaWeaponNativeStateActions.TryApplyState(
+                    item, snapshot.State, snapshot.NextInstanceId, out reason))
+                return false;
+
+            if (!NadaDroppedItemPersistence.TrySave(
+                    dropped, item, zdo, out reason))
+            {
+                if (originalDictionary == null)
+                {
+                    item.m_customData = null;
+                }
+                else
+                {
+                    originalDictionary.Clear();
+                    foreach (var entry in originalEntries)
+                        originalDictionary.Add(entry.Key, entry.Value);
+                    item.m_customData = originalDictionary;
+                }
+
+                return false;
+            }
+
+            // Saving the world item is authoritative. A missing visual isn't
+            // a save failure and shouldn't provoke a second network write.
+            if (!TryRefreshDroppedVisual(dropped, out string visualReason))
+            {
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [DroppedStateVisualDeferred] " +
+                    $"object={dropped.GetInstanceID()} reason={visualReason}");
+            }
+
+            reason = null;
+            return true;
+        }
+
+        public static bool TryApplyStyle(
+            global::ItemDrop dropped,
+            string styleName,
+            out string reason)
+        {
+            if (!TryLoadStyle(styleName, out WeaponVfxSnapshot snapshot,
+                    out reason))
+                return false;
+
+            return TryApplyState(dropped, snapshot, out reason);
+        }
+
         // ItemData doesn't tell us which dropped object is showing it.
         // The caller supplies that exact world instance; no scene scan.
         // This refreshes the local visual only. It doesn't save the drop's
@@ -217,6 +291,58 @@ namespace NADA.VFX.Weapon.API
                 return false;
             }
 
+            return true;
+        }
+
+        // Dropped Remove must commit the unbound item to its world ZDO.
+        // ItemData-only Remove stays inventory/equipment scoped.
+        public static bool TryRemove(
+            global::ItemDrop dropped,
+            out string reason)
+        {
+            if (!NadaDroppedItemPersistence.TryResolveOwned(
+                    dropped, out var item, out var zdo, out reason))
+                return false;
+
+            var originalDictionary = item.m_customData;
+            Dictionary<string, string> originalEntries =
+                originalDictionary == null
+                    ? null
+                    : new Dictionary<string, string>(originalDictionary);
+
+            if (!NadaWeaponNativeStateActions.TryRemove(item, out reason))
+                return false;
+
+            if (!NadaDroppedItemPersistence.TrySave(
+                    dropped, item, zdo, out reason))
+            {
+                // A rejected save must not leave this client's item unbound
+                // while the authoritative ZDO still has its previous state.
+                if (originalDictionary == null)
+                {
+                    item.m_customData = null;
+                }
+                else
+                {
+                    originalDictionary.Clear();
+                    foreach (var entry in originalEntries)
+                        originalDictionary.Add(entry.Key, entry.Value);
+                    item.m_customData = originalDictionary;
+                }
+
+                return false;
+            }
+
+            // The world commit succeeded even if the visual isn't ready.
+            // The existing controller restores owned materials on removal.
+            if (!TryRefreshDroppedVisual(dropped, out string visualReason))
+            {
+                Plugin.Log?.LogInfo(
+                    $"{Plugin.ModName}: [DroppedStateVisualDeferred] " +
+                    $"object={dropped.GetInstanceID()} reason={visualReason}");
+            }
+
+            reason = null;
             return true;
         }
 
