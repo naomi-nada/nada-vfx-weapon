@@ -5,43 +5,49 @@ using HarmonyLib;
 
 namespace NADA.VFX.Weapon.Core.Network
 {
-    // Slot identity is carried by dedicated RPC names. This is intentional:
-    // the existing native v1 envelope contains an item hash but no slot, and
-    // two equipped items can have the same prefab hash.
+    // Left-hand RPCs are separate from the right-hand protocol. The
+    // native state codec still contains no Unity or equipment objects.
     internal static class NadaVfxLeftHandNetworkTransport
     {
         private const string RequestRpc =
-            "naomi.nada.vfx.weapon.left_request_native_v1";
+            "naomi.nada.vfx.weapon.left_request_native_v2";
+
         private const string ResponseRpc =
-            "naomi.nada.vfx.weapon.left_response_native_v1";
+            "naomi.nada.vfx.weapon.left_response_native_v2";
+
         private const string ChangedRpc =
-            "naomi.nada.vfx.weapon.left_changed_native_v1";
-        private const int Version = 1;
+            "naomi.nada.vfx.weapon.left_changed_native_v2";
+
+        private const int Version = 2;
         private const int MaxControlBytes = 128;
+
         private const int MaxResponseBytes =
             WeaponVfxNetworkCodec.MaxPacketBytes + 128;
 
         private static global::ZRoutedRpc _registered;
 
-        // Retain early requests so a later publication can notify them.
-        // Account identity is learned from Valheim's server-synced roster.
         private sealed class Subscription
         {
             internal int ItemHash;
             internal string PlatformId;
         }
 
-        private static readonly Dictionary<long, Subscription> InterestedPeers = new();
+        // Keep early requests subscribed so late publication can notify them.
+        private static readonly Dictionary<long, Subscription>
+            InterestedPeers = new();
 
-        internal static event Action<long, WeaponVfxNetworkStatePacket>
+        internal static event Action<long, uint, WeaponVfxNetworkStatePacket>
             StateReceived;
-        internal static event Action<long, int, uint, bool>
+
+        internal static event Action<long, int, uint, uint, bool>
             StateChanged;
+
         internal static event Action SessionReset;
 
         internal static void TryRegister()
         {
             global::ZRoutedRpc rpc = global::ZRoutedRpc.instance;
+
             if (rpc == null || ReferenceEquals(rpc, _registered))
                 return;
 
@@ -51,31 +57,42 @@ namespace NADA.VFX.Weapon.Core.Network
 
             rpc.Register(RequestRpc,
                 new Action<long, global::ZPackage>(OnRequest));
+
             rpc.Register(ResponseRpc,
                 new Action<long, global::ZPackage>(OnResponse));
+
             rpc.Register(ChangedRpc,
                 new Action<long, global::ZPackage>(OnChanged));
+
             SessionReset?.Invoke();
 
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: [LeftNativeTransportRegistered]");
         }
 
-        internal static bool Request(long peer, int hash, uint knownRevision)
+        internal static bool Request(
+            long peer,
+            int hash,
+            uint generation,
+            uint knownRevision)
         {
-            if (peer == 0 || hash == 0)
+            if (peer == 0 || hash == 0 || generation == 0)
                 return false;
 
             global::ZRoutedRpc rpc = global::ZRoutedRpc.instance;
+
             if (rpc == null || !ReferenceEquals(rpc, _registered))
                 return false;
 
             try
             {
                 var package = new global::ZPackage();
+
                 package.Write(Version);
                 package.Write(hash);
+                package.Write(unchecked((int)generation));
                 package.Write(unchecked((int)knownRevision));
+
                 rpc.InvokeRoutedRPC(peer, RequestRpc, package);
                 return true;
             }
@@ -84,6 +101,7 @@ namespace NADA.VFX.Weapon.Core.Network
                 Plugin.Log.LogWarning(
                     $"{Plugin.ModName}: [LeftNativeRequestFailed] " +
                     $"peer={peer} hash={hash} reason={error.Message}");
+
                 return false;
             }
         }
@@ -92,20 +110,24 @@ namespace NADA.VFX.Weapon.Core.Network
             NadaVfxLeftHandStatePublisher.PublishedState state)
         {
             global::ZRoutedRpc rpc = global::ZRoutedRpc.instance;
+
             if (state == null || rpc == null ||
                 !ReferenceEquals(rpc, _registered) ||
                 InterestedPeers.Count == 0)
                 return;
 
-            // Snapshot matching observers before invoking any RPC. A peer can
-            // be interested in a different shield while our item is changing.
+            // Notify observers of this prefab even when the owner's item
+            // generation changes. They must invalidate their previous state.
             var recipients = new List<long>();
 
-            foreach (KeyValuePair<long, Subscription> subscription in InterestedPeers)
+            foreach (KeyValuePair<long, Subscription> subscription
+                     in InterestedPeers)
             {
                 if (subscription.Key != 0 &&
                     subscription.Value.ItemHash == state.ItemHash)
+                {
                     recipients.Add(subscription.Key);
+                }
             }
 
             foreach (long peer in recipients)
@@ -113,8 +135,10 @@ namespace NADA.VFX.Weapon.Core.Network
                 try
                 {
                     var package = new global::ZPackage();
+
                     package.Write(Version);
                     package.Write(state.ItemHash);
+                    package.Write(unchecked((int)state.EquipmentGeneration));
                     package.Write(unchecked((int)state.Revision));
                     package.Write(state.Bound ? 1 : 0);
 
@@ -123,6 +147,7 @@ namespace NADA.VFX.Weapon.Core.Network
                     Plugin.Log.LogInfo(
                         $"{Plugin.ModName}: [LeftNativeChangedSent] " +
                         $"peer={peer} hash={state.ItemHash} " +
+                        $"generation={state.EquipmentGeneration} " +
                         $"revision={state.Revision} bound={state.Bound}");
                 }
                 catch (Exception error)
@@ -139,19 +164,22 @@ namespace NADA.VFX.Weapon.Core.Network
             try
             {
                 if (sender == 0 || package == null ||
-                    package.Size() <= 0 || package.Size() > MaxControlBytes)
+                    package.Size() <= 0 ||
+                    package.Size() > MaxControlBytes)
                     return;
 
                 int version = package.ReadInt();
                 int hash = package.ReadInt();
+                uint generation = unchecked((uint)package.ReadInt());
                 uint known = unchecked((uint)package.ReadInt());
 
-                if (version != Version || hash == 0)
+                if (version != Version || hash == 0 || generation == 0)
                     return;
 
-                // Record interest before checking publication. An early
-                // request must still receive the later change notification.
-                if (!InterestedPeers.TryGetValue(sender, out Subscription interest))
+                // Record interest even when the matching state hasn't
+                // been published. This preserves the late-publication path.
+                if (!InterestedPeers.TryGetValue(
+                        sender, out Subscription interest))
                 {
                     interest = new Subscription();
                     InterestedPeers.Add(sender, interest);
@@ -163,15 +191,19 @@ namespace NADA.VFX.Weapon.Core.Network
                     TryLinkSubscriber(sender, interest);
 
                 if (!NadaVfxLeftHandStatePublisher.TryGetCurrent(
-                        out var published) || published.ItemHash != hash)
+                        out var published) ||
+                    published.ItemHash != hash ||
+                    published.EquipmentGeneration != generation)
+                {
                     return;
+                }
 
                 SendResponse(sender, published);
 
                 Plugin.Log.LogInfo(
                     $"{Plugin.ModName}: [LeftNativeRequestHandled] " +
-                    $"peer={sender} hash={hash} known={known} " +
-                    $"revision={published.Revision}");
+                    $"peer={sender} hash={hash} generation={generation} " +
+                    $"known={known} revision={published.Revision}");
             }
             catch (Exception error)
             {
@@ -181,16 +213,19 @@ namespace NADA.VFX.Weapon.Core.Network
             }
         }
 
-        // A routed RPC sender may be another client behind a dedicated server.
-        // ZNet.GetPeers() only exposes direct sockets, so it cannot be used to
-        // decide whether a remote observer is still in the session.
-        private static void TryLinkSubscriber(long sender, Subscription interest)
+        // Routed RPC senders are not necessarily direct sockets on a
+        // dedicated server. Use Valheim's synchronized player roster.
+        private static void TryLinkSubscriber(
+            long sender,
+            Subscription interest)
         {
             global::ZNet net = global::ZNet.instance;
+
             if (net == null)
                 return;
 
             var players = net.GetPlayerList();
+
             if (players == null)
                 return;
 
@@ -221,6 +256,7 @@ namespace NADA.VFX.Weapon.Core.Network
                 return;
 
             var players = net.GetPlayerList();
+
             if (players == null || players.Count == 0)
                 return;
 
@@ -270,22 +306,24 @@ namespace NADA.VFX.Weapon.Core.Network
                 }
             }
 
-            // An incomplete roster during joining/loading/death must never
-            // revoke a legitimate subscription. Our own character in the
-            // roster is evidence that this is a populated session snapshot.
-            if (!localPlayerPresent || connectedAccounts.Count == 0 ||
+            // An incomplete player list during joining or death must never
+            // revoke a legitimate observer's subscription.
+            if (!localPlayerPresent ||
+                connectedAccounts.Count == 0 ||
                 incompleteIdentities)
                 return;
 
             var departed = new List<long>();
 
-            foreach (KeyValuePair<long, Subscription> pair in InterestedPeers)
+            foreach (KeyValuePair<long, Subscription> pair
+                     in InterestedPeers)
             {
                 Subscription interest = pair.Value;
 
                 if (string.IsNullOrEmpty(interest.PlatformId))
                 {
-                    if (peerAccounts.TryGetValue(pair.Key, out string identity))
+                    if (peerAccounts.TryGetValue(
+                            pair.Key, out string identity))
                     {
                         interest.PlatformId = identity;
 
@@ -297,16 +335,12 @@ namespace NADA.VFX.Weapon.Core.Network
                     continue;
                 }
 
-                // Accounts remain in the roster across character death.
-                // If the same account reconnects with a new session ID,
-                // the earlier routed endpoint must still be retired.
                 bool accountLeft =
                     !connectedAccounts.Contains(interest.PlatformId);
 
                 bool sessionReplaced =
                     accountPeers.TryGetValue(
-                        interest.PlatformId,
-                        out long currentSession) &&
+                        interest.PlatformId, out long currentSession) &&
                     currentSession != pair.Key;
 
                 if (accountLeft || sessionReplaced)
@@ -348,12 +382,17 @@ namespace NADA.VFX.Weapon.Core.Network
             global::ZRoutedRpc rpc = global::ZRoutedRpc.instance;
 
             if (rpc == null || !ReferenceEquals(rpc, _registered) ||
-                state.Bytes == null || state.Bytes.Length == 0 ||
+                state.Bytes == null ||
+                state.Bytes.Length == 0 ||
                 state.Bytes.Length > WeaponVfxNetworkCodec.MaxPacketBytes)
+            {
                 return;
+            }
 
             var package = new global::ZPackage();
+
             package.Write(Version);
+            package.Write(unchecked((int)state.EquipmentGeneration));
             package.Write(state.Bytes.Length);
             package.Write(state.Bytes);
 
@@ -361,9 +400,10 @@ namespace NADA.VFX.Weapon.Core.Network
 
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: [LeftNativeResponseSent] " +
-                $"peer={peer} hash={state.ItemHash} revision={state.Revision} " +
-                $"bound={state.Bound} blocks={state.BlockCount} " +
-                $"bytes={state.Bytes.Length}");
+                $"peer={peer} hash={state.ItemHash} " +
+                $"generation={state.EquipmentGeneration} " +
+                $"revision={state.Revision} bound={state.Bound} " +
+                $"blocks={state.BlockCount} bytes={state.Bytes.Length}");
         }
 
         private static void OnResponse(long sender, global::ZPackage package)
@@ -371,15 +411,20 @@ namespace NADA.VFX.Weapon.Core.Network
             try
             {
                 if (sender == 0 || package == null ||
-                    package.Size() <= 0 || package.Size() > MaxResponseBytes)
+                    package.Size() <= 0 ||
+                    package.Size() > MaxResponseBytes)
                     return;
 
                 int version = package.ReadInt();
+                uint generation = unchecked((uint)package.ReadInt());
                 int length = package.ReadInt();
 
-                if (version != Version || length <= 0 ||
+                if (version != Version || generation == 0 ||
+                    length <= 0 ||
                     length > WeaponVfxNetworkCodec.MaxPacketBytes)
+                {
                     return;
+                }
 
                 byte[] bytes = package.ReadByteArray();
 
@@ -400,10 +445,10 @@ namespace NADA.VFX.Weapon.Core.Network
                 Plugin.Log.LogInfo(
                     $"{Plugin.ModName}: [LeftNativeResponseReceived] " +
                     $"peer={sender} hash={state.ItemHash} " +
-                    $"revision={state.Revision} bound={state.Bound} " +
-                    $"bytes={length}");
+                    $"generation={generation} revision={state.Revision} " +
+                    $"bound={state.Bound} bytes={length}");
 
-                StateReceived?.Invoke(sender, state);
+                StateReceived?.Invoke(sender, generation, state);
             }
             catch (Exception error)
             {
@@ -418,23 +463,26 @@ namespace NADA.VFX.Weapon.Core.Network
             try
             {
                 if (sender == 0 || package == null ||
-                    package.Size() <= 0 || package.Size() > MaxControlBytes)
+                    package.Size() <= 0 ||
+                    package.Size() > MaxControlBytes)
                     return;
 
                 int version = package.ReadInt();
                 int hash = package.ReadInt();
+                uint generation = unchecked((uint)package.ReadInt());
                 uint revision = unchecked((uint)package.ReadInt());
                 int bound = package.ReadInt();
 
-                if (version != Version || hash == 0 || revision == 0 ||
+                if (version != Version ||
+                    hash == 0 || generation == 0 ||
+                    revision == 0 ||
                     (bound != 0 && bound != 1))
+                {
                     return;
+                }
 
                 StateChanged?.Invoke(
-                    sender,
-                    hash,
-                    revision,
-                    bound == 1);
+                    sender, hash, generation, revision, bound == 1);
             }
             catch (Exception error)
             {
