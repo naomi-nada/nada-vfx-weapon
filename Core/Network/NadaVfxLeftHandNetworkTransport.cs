@@ -22,7 +22,10 @@ namespace NADA.VFX.Weapon.Core.Network
             WeaponVfxNetworkCodec.MaxPacketBytes + 128;
 
         private static global::ZRoutedRpc _registered;
-        private static readonly HashSet<long> InterestedPeers = new();
+
+        // Keep the requested hash even if the owner has not published it yet.
+        // This preserves the late-publication notification path.
+        private static readonly Dictionary<long, int> InterestedPeers = new();
 
         internal static event Action<long, WeaponVfxNetworkStatePacket>
             StateReceived;
@@ -86,10 +89,18 @@ namespace NADA.VFX.Weapon.Core.Network
                 InterestedPeers.Count == 0)
                 return;
 
-            foreach (long peer in InterestedPeers)
+            // Snapshot matching observers before invoking any RPC. A peer can
+            // be interested in a different shield while our item is changing.
+            var recipients = new List<long>();
+            foreach (KeyValuePair<long, int> subscription in InterestedPeers)
             {
-                if (peer == 0)
-                    continue;
+                if (subscription.Key != 0 &&
+                    subscription.Value == state.ItemHash)
+                    recipients.Add(subscription.Key);
+            }
+
+            foreach (long peer in recipients)
+            {
                 try
                 {
                     var package = new global::ZPackage();
@@ -126,7 +137,9 @@ namespace NADA.VFX.Weapon.Core.Network
                 if (version != Version || hash == 0)
                     return;
 
-                InterestedPeers.Add(sender);
+                // Record interest before checking publication. An early
+                // request must still receive the later change notification.
+                InterestedPeers[sender] = hash;
                 if (!NadaVfxLeftHandStatePublisher.TryGetCurrent(
                         out var published) || published.ItemHash != hash)
                     return;
