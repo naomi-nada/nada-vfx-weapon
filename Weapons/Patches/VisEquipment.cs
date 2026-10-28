@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
@@ -13,9 +14,7 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Patches
 {
-    [HarmonyPatch(
-        typeof(global::VisEquipment),
-        "UpdateEquipmentVisuals")]
+    [HarmonyPatch(typeof(global::VisEquipment), "UpdateEquipmentVisuals")]
     internal static class VisEquipment
     {
         private static readonly System.Reflection.FieldInfo RightInstField =
@@ -40,8 +39,7 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             new();
 
         private static readonly HashSet<int>
-            LegacyPayloadCheckedVisEquipment =
-                new();
+            LegacyPayloadCheckedVisEquipment = new();
 
         private const float LocalVisualRecheckSeconds = 1f;
 
@@ -62,8 +60,6 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             internal bool NativePayloadPresent;
             internal string NativePayload;
 
-            // Retry invalid native data only when the item, visual or payload
-            // changes. Otherwise a bad payload can be decoded every tick.
             internal global::VisEquipment LastInvalidNativeOwner;
             internal global::ItemDrop.ItemData LastInvalidNativeItem;
             internal GameObject LastInvalidNativeInstance;
@@ -87,30 +83,23 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 LastInvalidNativeItem = null;
                 LastInvalidNativeInstance = null;
                 LastInvalidNativePayload = null;
-
                 LastUnboundOwner = null;
                 LastUnboundInstance = null;
                 LastUnboundItemData = null;
             }
         }
 
-        private static void Postfix(
-            global::VisEquipment __instance)
+        private static void Postfix(global::VisEquipment __instance)
         {
             try
             {
                 if (__instance == null)
                     return;
 
-                if (!IsAllowedRigOwner(
-                        __instance))
+                if (!IsAllowedRigOwner(__instance))
                 {
-                    if (IsRemotePlayer(
-                            __instance))
-                    {
-                        HandleRemoteEquipment(
-                            __instance);
-                    }
+                    if (IsRemotePlayer(__instance))
+                        HandleRemoteEquipment(__instance);
 
                     return;
                 }
@@ -129,36 +118,41 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 }
 
                 GameObject rightInstance =
-                    SafeGetGameObject(
-                        RightInstField,
-                        __instance);
+                    SafeGetGameObject(RightInstField, __instance);
 
                 GameObject leftInstance =
-                    SafeGetGameObject(
-                        LeftInstField,
-                        __instance);
+                    SafeGetGameObject(LeftInstField, __instance);
 
                 global::ItemDrop.ItemData rightItem =
-                    NadaEquippedItemResolver
-                        .ResolveRightHandItem();
+                    NadaEquippedItemResolver.ResolveRightHandItem();
 
                 global::ItemDrop.ItemData leftItem =
-                    NadaEquippedItemResolver
-                        .ResolveLeftHandItem();
+                    NadaEquippedItemResolver.ResolveLeftHandItem();
 
                 if (isLocalPlayer)
                 {
-                    ClearLegacyLocalRightPayloadOnce(
-                        __instance);
+                    ClearLegacyLocalRightPayloadOnce(__instance);
 
                     int rightItemHash =
-                        ReadRightItemHash(
-                            __instance);
+                        ReadRightItemHash(__instance);
 
-                    NadaVfxLocalStatePublisher
-                        .ObserveRight(
+                    ZNetView nview =
+                        SafeGetZNetView(__instance);
+
+                    // Only the equipment owner publishes its generation.
+                    // A missing or non-owned ZDO is transitional, not a
+                    // reason to fabricate equipment identity.
+                    if (nview != null &&
+                        nview.IsValid() &&
+                        nview.IsOwner())
+                    {
+                        ZDO zdo = nview.GetZDO();
+
+                        NadaVfxRightHandStatePublisher.ObserveRight(
                             rightItem,
-                            rightItemHash);
+                            rightItemHash,
+                            zdo);
+                    }
                 }
 
                 TryApplyIfBound(
@@ -173,42 +167,34 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     leftItem,
                     isLocalPlayer ? LeftLocalApplyCache : null);
             }
-            catch (Exception e)
+            catch (Exception error)
             {
                 Plugin.Log.LogWarning(
                     $"{Plugin.ModName}: " +
-                    $"VisEquipment.UpdateEquipmentVisuals postfix error: {e}");
+                    $"VisEquipment.UpdateEquipmentVisuals postfix error: {error}");
             }
         }
 
         private static void HandleRemoteEquipment(
             global::VisEquipment visEquipment)
         {
-            if (!IsRemotePlayer(
-                    visEquipment))
-            {
+            if (!IsRemotePlayer(visEquipment))
                 return;
-            }
 
             GameObject rightInstance =
-                SafeGetGameObject(
-                    RightInstField,
-                    visEquipment);
+                SafeGetGameObject(RightInstField, visEquipment);
 
             long peerId =
-                ReadPeerId(
-                    visEquipment);
+                ReadPeerId(visEquipment);
 
             int rightItemHash =
-                ReadRightItemHash(
-                    visEquipment);
+                ReadRightItemHash(visEquipment);
 
-            NadaVfxRemoteStateTracker
-                .ObserveRight(
-                    peerId,
-                    visEquipment,
-                    rightInstance,
-                    rightItemHash);
+            NadaVfxRightHandRemoteStateTracker.ObserveRight(
+                peerId,
+                visEquipment,
+                rightInstance,
+                rightItemHash);
         }
 
         private static void ClearLegacyLocalRightPayloadOnce(
@@ -216,38 +202,28 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         {
             if (visEquipment == null ||
                 Player.m_localPlayer == null)
-            {
                 return;
-            }
 
             if (!visEquipment.transform.IsChildOf(
                     Player.m_localPlayer.transform))
-            {
                 return;
-            }
 
             int visEquipmentId =
                 visEquipment.GetInstanceID();
 
             if (LegacyPayloadCheckedVisEquipment.Contains(
-                    visEquipmentId))
-            {
+                visEquipmentId))
                 return;
-            }
 
             ZNetView nview =
-                SafeGetZNetView(
-                    visEquipment);
+                SafeGetZNetView(visEquipment);
 
             if (nview == null ||
                 !nview.IsValid() ||
                 !nview.IsOwner())
-            {
                 return;
-            }
 
-            ZDO zdo =
-                nview.GetZDO();
+            ZDO zdo = nview.GetZDO();
 
             if (zdo == null)
                 return;
@@ -255,25 +231,18 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             LegacyPayloadCheckedVisEquipment.Add(
                 visEquipmentId);
 
-            string legacyPayload =
-                zdo.GetString(
-                    LegacyRemoteRightPayloadKey,
-                    string.Empty);
-
-            if (string.IsNullOrEmpty(
-                    legacyPayload))
-            {
-                return;
-            }
-
-            zdo.Set(
+            string legacyPayload = zdo.GetString(
                 LegacyRemoteRightPayloadKey,
                 string.Empty);
 
+            if (string.IsNullOrEmpty(legacyPayload))
+                return;
+
+            zdo.Set(LegacyRemoteRightPayloadKey, string.Empty);
+
             Plugin.Log.LogInfo(
                 $"{Plugin.ModName}: [LegacyNetworkPayloadCleared] " +
-                $"vis={visEquipmentId} " +
-                $"chars={legacyPayload.Length}");
+                $"vis={visEquipmentId} chars={legacyPayload.Length}");
         }
 
         private static void TryApplyIfBound(
@@ -282,14 +251,14 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             global::ItemDrop.ItemData itemData,
             LocalApplyCache applyCache)
         {
-            if (itemInstance == null ||
-                itemData == null)
+            if (itemInstance == null || itemData == null)
             {
                 applyCache?.Clear();
                 return;
             }
 
             string nativePayload = null;
+
             bool hasNativePayload =
                 itemData.m_customData != null &&
                 itemData.m_customData.TryGetValue(
@@ -301,12 +270,9 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 VfxStateIO.IsBound(itemData);
 
             bool hasEditorPreview =
-                NadaWeaponEditorPreviewState.TryGet(
-                    itemData,
-                    out _);
+                NadaWeaponEditorPreviewState.TryGet(itemData, out _);
 
-            if (!isBound &&
-                !hasEditorPreview)
+            if (!isBound && !hasEditorPreview)
             {
                 if (applyCache == null)
                     return;
@@ -333,14 +299,9 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
                 applyCache.Clear();
 
-                applyCache.LastUnboundOwner =
-                    visEquipment;
-
-                applyCache.LastUnboundInstance =
-                    itemInstance;
-
-                applyCache.LastUnboundItemData =
-                    itemData;
+                applyCache.LastUnboundOwner = visEquipment;
+                applyCache.LastUnboundInstance = itemInstance;
+                applyCache.LastUnboundItemData = itemData;
 
                 return;
             }
@@ -380,7 +341,8 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
             if (!applied)
             {
-                if (applyCache != null && hasNativePayload &&
+                if (applyCache != null &&
+                    hasNativePayload &&
                     NadaWeaponLocalSourceResolver.Resolve(itemData).Kind ==
                         NadaWeaponLocalSourceKind.InvalidNative)
                 {
@@ -411,23 +373,13 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             if (rigRoot == null)
                 return;
 
-            applyCache.Owner =
-                visEquipment;
-
-            applyCache.ItemInstance =
-                itemInstance;
-
-            applyCache.ItemData =
-                itemData;
-
+            applyCache.Owner = visEquipment;
+            applyCache.ItemInstance = itemInstance;
+            applyCache.ItemData = itemData;
             applyCache.NativePayloadPresent = hasNativePayload;
             applyCache.NativePayload = nativePayload;
-
-            applyCache.VisualRoot =
-                visualRoot;
-
-            applyCache.RigRoot =
-                rigRoot;
+            applyCache.VisualRoot = visualRoot;
+            applyCache.RigRoot = rigRoot;
 
             applyCache.NextVisualRecheckTime =
                 Time.realtimeSinceStartup +
@@ -447,27 +399,17 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
             if (applyCache.Owner != visEquipment ||
                 applyCache.ItemInstance != itemInstance ||
-                !ReferenceEquals(
-                    applyCache.ItemData,
-                    itemData))
+                !ReferenceEquals(applyCache.ItemData, itemData))
             {
                 return false;
             }
 
-            Transform visualRoot =
-                applyCache.VisualRoot;
+            Transform visualRoot = applyCache.VisualRoot;
+            Transform rigRoot = applyCache.RigRoot;
 
-            Transform rigRoot =
-                applyCache.RigRoot;
-
-            if (visualRoot == null ||
-                rigRoot == null)
-            {
+            if (visualRoot == null || rigRoot == null)
                 return false;
-            }
 
-            // An in-place rebind keeps the same ItemData reference, so the
-            // payload must also participate in cache identity.
             if (applyCache.NativePayloadPresent != hasNativePayload ||
                 !string.Equals(
                     applyCache.NativePayload,
@@ -477,35 +419,27 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 return false;
             }
 
-            if (visualRoot.parent !=
-                    itemInstance.transform ||
+            if (visualRoot.parent != itemInstance.transform ||
                 !visualRoot.gameObject.activeInHierarchy ||
-                rigRoot.parent !=
-                    visualRoot ||
+                rigRoot.parent != visualRoot ||
                 !rigRoot.gameObject.activeInHierarchy)
             {
                 return false;
             }
 
-            float now =
-                Time.realtimeSinceStartup;
+            float now = Time.realtimeSinceStartup;
 
-            if (now >=
-                applyCache.NextVisualRecheckTime)
+            if (now >= applyCache.NextVisualRecheckTime)
             {
                 Transform currentVisualRoot =
                     NadaWeaponTargets.FindEquippedWeaponVisualRoot(
                         itemInstance.transform);
 
-                if (currentVisualRoot !=
-                    visualRoot)
-                {
+                if (currentVisualRoot != visualRoot)
                     return false;
-                }
 
                 applyCache.NextVisualRecheckTime =
-                    now +
-                    LocalVisualRecheckSeconds;
+                    now + LocalVisualRecheckSeconds;
             }
 
             return true;
@@ -517,14 +451,10 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         {
             try
             {
-                if (field == null ||
-                    visEquipment == null)
-                {
+                if (field == null || visEquipment == null)
                     return null;
-                }
 
-                return field.GetValue(
-                    visEquipment) as GameObject;
+                return field.GetValue(visEquipment) as GameObject;
             }
             catch
             {
@@ -537,14 +467,10 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         {
             try
             {
-                if (NViewField == null ||
-                    visEquipment == null)
-                {
+                if (NViewField == null || visEquipment == null)
                     return null;
-                }
 
-                return NViewField.GetValue(
-                    visEquipment) as ZNetView;
+                return NViewField.GetValue(visEquipment) as ZNetView;
             }
             catch
             {
@@ -556,45 +482,31 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             global::VisEquipment visEquipment)
         {
             ZNetView nview =
-                SafeGetZNetView(
-                    visEquipment);
+                SafeGetZNetView(visEquipment);
 
-            if (nview == null ||
-                !nview.IsValid())
-            {
+            if (nview == null || !nview.IsValid())
                 return 0;
-            }
 
-            ZDO zdo =
-                nview.GetZDO();
+            ZDO zdo = nview.GetZDO();
 
             if (zdo == null)
                 return 0;
 
-            return zdo.GetInt(
-                ZDOVars.s_rightItem);
+            return zdo.GetInt(ZDOVars.s_rightItem);
         }
 
         private static long ReadPeerId(
             global::VisEquipment visEquipment)
         {
             ZNetView nview =
-                SafeGetZNetView(
-                    visEquipment);
+                SafeGetZNetView(visEquipment);
 
-            if (nview == null ||
-                !nview.IsValid())
-            {
-                return 0L;
-            }
-
-            ZDO zdo =
-                nview.GetZDO();
-
-            if (zdo == null)
+            if (nview == null || !nview.IsValid())
                 return 0L;
 
-            return zdo.GetOwner();
+            ZDO zdo = nview.GetZDO();
+
+            return zdo != null ? zdo.GetOwner() : 0L;
         }
 
         private static bool IsRemotePlayer(
@@ -602,20 +514,15 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         {
             if (visEquipment == null ||
                 Player.m_localPlayer == null)
-            {
                 return false;
-            }
 
             global::Player player =
-                visEquipment
-                    .GetComponentInParent<global::Player>();
+                visEquipment.GetComponentInParent<global::Player>();
 
             if (player == null)
                 return false;
 
-            return
-                player !=
-                    Player.m_localPlayer &&
+            return player != Player.m_localPlayer &&
                 !visEquipment.transform.IsChildOf(
                     Player.m_localPlayer.transform);
         }
@@ -628,27 +535,20 @@ namespace NADA.VFX.Weapon.Weapons.Patches
 
             if (Player.m_localPlayer != null)
             {
-                return
-                    visEquipment.transform.IsChildOf(
-                        Player.m_localPlayer.transform);
+                return visEquipment.transform.IsChildOf(
+                    Player.m_localPlayer.transform);
             }
 
-            if (UnityEngine.SceneManagement
-                    .SceneManager
-                    .GetActiveScene()
-                    .name != "start")
+            if (UnityEngine.SceneManagement.SceneManager
+                    .GetActiveScene().name != "start")
             {
                 return false;
             }
 
-            Transform root =
-                visEquipment.transform;
+            Transform root = visEquipment.transform;
 
             while (root.parent != null)
-            {
-                root =
-                    root.parent;
-            }
+                root = root.parent;
 
             return root.name.StartsWith(
                 "Player",

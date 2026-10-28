@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace NADA.VFX.Weapon.Weapons.Runtime
 {
-    internal static class NadaVfxRemoteStateTracker
+    internal static partial class NadaVfxRightHandRemoteStateTracker
     {
         private const float FailedApplyRetrySeconds = 1f;
 
@@ -117,7 +117,14 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     state.AppliedInstance == state.RightInstance &&
                     state.AppliedItemHash != 0 &&
                     state.AppliedItemHash == state.ObservedItemHash &&
-                    !HasNewerAdvertisedState(state, state.ObservedItemHash) &&
+                    (state.ObservedGeneration == 0 ||
+                     state.ObservedVanillaHash == state.ObservedItemHash) &&
+                    (state.NativeV2Authority ||
+                     !HasNewerAdvertisedState(state, state.ObservedItemHash)) &&
+                    !HasNewerNativeV2Advertisement(state) &&
+                    (!state.NativeV2Authority ||
+                     (state.AppliedNativeV2 &&
+                      state.AppliedGeneration == state.ObservedGeneration)) &&
                     state.AppliedRigRoot != null &&
                     state.AppliedVisualRoot != null &&
                     state.RightInstance != null &&
@@ -131,7 +138,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
         }
 
 
-        private sealed class RemoteRightState
+        private sealed partial class RemoteRightState
         {
             internal long PeerId;
 
@@ -256,10 +263,15 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (remoteState.VisEquipmentId !=
                 visEquipmentId)
             {
+                ForgetObservedPlayer(remoteState.ObservedPlayer);
                 remoteState.ObservedPlayer =
                     visEquipment
                         .GetComponentInParent<global::Player>();
             }
+
+            RegisterObservedEquipment(remoteState, visEquipment);
+            if (remoteState.VisEquipmentId != visEquipmentId)
+                remoteState.NextGenerationCheck = 0f;
 
             int rightInstanceId =
                 rightInstance != null
@@ -301,6 +313,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
                 ClearFailedApply(
                     remoteState);
+
+                if (visualOwnerChanged)
+                    ResetNativeV2ForOwnerReplacement(remoteState);
             }
 
             remoteState.VisEquipmentId =
@@ -314,6 +329,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             if (!hasUsableItemHash)
             {
+                CheckObservedGeneration(remoteState, false);
                 return;
             }
 
@@ -322,6 +338,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             {
                 remoteState.ObservedItemHash =
                     itemHash;
+                remoteState.NextGenerationCheck = 0f;
 
                 remoteState.RequestPending =
                     false;
@@ -351,6 +368,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     ClearReceivedNativeState(remoteState);
             }
 
+            CheckObservedGeneration(remoteState, false);
+
             if (!MayShowRig(remoteState))
             {
                 HideTrackedRig(remoteState);
@@ -359,6 +378,16 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             if (rightInstance == null)
                 return;
+
+            if (remoteState.ObservedGeneration != 0 &&
+                !remoteState.LegacyFallback)
+            {
+                if (HasCurrentNativeV2State(remoteState))
+                    ApplyNativeV2State(remoteState);
+                else
+                    RequestStateIfNeeded(remoteState, force: false);
+                return;
+            }
 
             // We may already have a usable cached state for this item, but if
             // the owner has advertised a newer revision we know that cache is
@@ -444,6 +473,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
                 // Remove the record even if its old rig was already
                 // destroyed along with the player's hierarchy.
+                ForgetObservedPlayer(player);
                 RemoteRightStates.Remove(
                     peerId);
                 HiddenPeers.Remove(peerId);
@@ -468,19 +498,26 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             _initialized =
                 true;
 
-            NadaVfxNetworkTransport.StateReceived +=
+            NadaVfxRightHandNetworkTransport.StateReceived +=
                 OnStateReceived;
 
-            NadaVfxNetworkTransport.StateChangedReceived +=
+            NadaVfxRightHandNetworkTransport.StateChangedReceived +=
                 OnStateChangedReceived;
 
-            NadaVfxNetworkTransport.NativeStateReceived +=
+            NadaVfxRightHandNetworkTransport.NativeStateReceived +=
                 OnNativeStateReceived;
 
-            NadaVfxNetworkTransport.NativeStateChangedReceived +=
+            NadaVfxRightHandNetworkTransport.NativeStateChangedReceived +=
                 OnNativeStateChangedReceived;
 
-            NadaVfxNetworkTransport.SessionReset +=
+            NadaVfxRightHandNetworkTransport.SessionReset +=
+                OnSessionReset;
+
+            NadaVfxRightHandNativeV2Transport.StateReceived +=
+                OnNativeV2StateReceived;
+            NadaVfxRightHandNativeV2Transport.StateChanged +=
+                OnNativeV2StateChanged;
+            NadaVfxRightHandNativeV2Transport.SessionReset +=
                 OnSessionReset;
         }
 
@@ -488,6 +525,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
         {
             RemoteRightStates.Clear();
             HiddenPeers.Clear();
+            ResetNativeV2Session();
         }
 
         private static void OnStateReceived(
@@ -509,6 +547,12 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 // actually observed remote player.
                 return;
             }
+
+            CheckObservedGeneration(remoteState, true);
+            if (TryAcceptNativeV2LegacyResponse(remoteState, packet, state))
+                return;
+            if (IgnoreLegacy(remoteState))
+                return;
 
             // A decoded NADA packet proves this peer can answer us, even
             // if Valheim switched its visible weapon before it arrived.
@@ -654,6 +698,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (!RemoteRightStates.TryGetValue(sender, out RemoteRightState remote))
                 return;
 
+            CheckObservedGeneration(remote, true);
+            if (IgnoreLegacy(remote))
+                return;
+
             remote.RequestAttempts = 0;
 
             if (remote.ObservedItemHash == 0 ||
@@ -709,6 +757,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 !RemoteRightStates.TryGetValue(sender, out RemoteRightState remote))
                 return;
 
+            CheckObservedGeneration(remote, true);
+            if (IgnoreLegacy(remote))
+                return;
+
             if (!RememberAdvertisedState(remote, itemHash, revision, bound))
                 return;
 
@@ -722,7 +774,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
 
             // The owner has a newer snapshot. Stop displaying the old one
             // while waiting for the packet, regardless of the old source.
-            if (remote.AppliedBound && remote.AppliedItemHash == itemHash &&
+            if (!bound &&
+                !(remote.HasReceivedState &&
+                  remote.ReceivedItemHash == itemHash &&
+                  remote.ReceivedBound) &&
+                remote.AppliedBound && remote.AppliedItemHash == itemHash &&
                 IsRevisionNewer(revision, remote.AppliedRevision))
             {
                 if (RemoveTrackedAppliedRig(remote))
@@ -754,6 +810,10 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             {
                 return;
             }
+
+            CheckObservedGeneration(remoteState, true);
+            if (IgnoreLegacy(remoteState))
+                return;
 
             // Remember the notification even when the remote weapon visual is
             // temporarily absent or Valheim hasn't replicated the new item hash
@@ -870,6 +930,9 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 return;
             }
 
+            if (RequestNativeV2OrFallback(remoteState, force))
+                return;
+
             float now =
                 Time.unscaledTime;
 
@@ -897,7 +960,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                     : 0u;
 
             bool sent =
-                NadaVfxNetworkTransport.RequestState(
+                NadaVfxRightHandNetworkTransport.RequestState(
                     remoteState.PeerId,
                     remoteState.ObservedItemHash,
                     knownRevision);
@@ -965,11 +1028,24 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             if (remoteState == null ||
                 remoteState.RightInstance == null ||
                 remoteState.ObservedItemHash == 0 ||
-                (remoteState.ReceivedItemHash != remoteState.ObservedItemHash &&
-                 remoteState.NativeItemHash != remoteState.ObservedItemHash))
-            {
+                (remoteState.ObservedGeneration != 0 &&
+                 remoteState.ObservedVanillaHash != remoteState.ObservedItemHash))
                 return;
+
+            if (remoteState.ObservedGeneration != 0)
+            {
+                if (remoteState.NativeV2Authority)
+                {
+                    ApplyNativeV2State(remoteState);
+                    return;
+                }
+                if (!remoteState.LegacyFallback)
+                    return;
             }
+
+            if (remoteState.ReceivedItemHash != remoteState.ObservedItemHash &&
+                remoteState.NativeItemHash != remoteState.ObservedItemHash)
+                return;
 
             if (!MayShowRig(remoteState))
             {
@@ -1508,6 +1584,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 remoteState.ReceivedBound;
 
             remoteState.AppliedNative = false;
+            remoteState.AppliedNativeV2 = false;
+            remoteState.AppliedGeneration = 0;
 
             remoteState.AppliedVisualRoot =
                 appliedVisualRoot;
@@ -1613,6 +1691,8 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
                 false;
 
             remoteState.AppliedNative = false;
+            remoteState.AppliedNativeV2 = false;
+            remoteState.AppliedGeneration = 0;
 
             remoteState.AppliedVisualRoot =
                 null;

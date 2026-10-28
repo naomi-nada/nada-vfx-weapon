@@ -1,4 +1,5 @@
-// Made by Naomi Nada B.F.
+
+﻿// Made by Naomi Nada B.F.
 // ^-^
 using System.Reflection;
 using BepInEx;
@@ -120,7 +121,7 @@ namespace NADA.VFX.Weapon
             // Test the transitional legacy VfxState network codec.
             NadaVfxNetworkCodecV2.RunSelfTest();
             NadaVfxNetworkCodecV2CompatibilityTests.Run();
-            
+
             NADA.VFX.Weapon.Core.Persistence
                 .WeaponVfxItemStoreContractTests.Run();
 
@@ -128,7 +129,7 @@ namespace NADA.VFX.Weapon
                 .WeaponVfxStyleCodecContractTests.Run();
             NADA.VFX.Weapon.Core.Persistence
                 .WeaponVfxShareCodeContractTests.Run();
-            
+
             NADA.VFX.Weapon.Weapons.Runtime
                 .NadaWeaponLocalSourceResolverContractTests.Run();
 
@@ -137,9 +138,6 @@ namespace NADA.VFX.Weapon
 
             Log.LogInfo(
                 $"{ModName}: Applied Harmony patches.");
-
-            // Temporary direct caller for 94L. Remove after the API test.
-            NadaWeaponStateTransitionProbe.Register();
 
             StartCoroutine(
                 NadaRigCache.CacheReferenceAssetsWhenReady());
@@ -194,6 +192,5 @@ namespace NADA.VFX.Weapon
         {
             NadaRigVisibility.RefreshDroppedItemVisibility();
         }
-
     }
 }

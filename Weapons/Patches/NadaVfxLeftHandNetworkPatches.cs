@@ -80,7 +80,7 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         }
     }
 
-    [HarmonyPatch(typeof(NadaVfxLocalStatePublisher), "MarkDirty")]
+    [HarmonyPatch(typeof(NadaVfxRightHandStatePublisher), "MarkDirty")]
     internal static class NadaVfxLeftHandNetworkDirtyPatch
     {
         private static void Postfix(global::ItemDrop.ItemData itemData)
@@ -98,7 +98,7 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         }
     }
 
-    [HarmonyPatch(typeof(NadaVfxRemoteStateTracker),
+    [HarmonyPatch(typeof(NadaVfxRightHandRemoteStateTracker),
         "RefreshPresentationVisibility")]
     internal static class NadaVfxLeftHandNetworkVisibilityPatch
     {

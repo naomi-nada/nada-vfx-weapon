@@ -5,7 +5,7 @@ using NADA.VFX.Weapon.Core.State;
 
 namespace NADA.VFX.Weapon.Core.Network
 {
-    internal static class NadaVfxNetworkTransport
+    internal static class NadaVfxRightHandNetworkTransport
     {
         private const string StateRequestRpcName =
             "naomi.nada.vfx.weapon.state_request_v2";
@@ -94,7 +94,7 @@ namespace NADA.VFX.Weapon.Core.Network
             InterestedPeers.Clear();
             NativeInterestedPeers.Clear();
 
-            NadaVfxLocalStatePublisher
+            NadaVfxRightHandStatePublisher
                 .ResetSession();
 
             rpc.Register(
@@ -217,7 +217,7 @@ namespace NADA.VFX.Weapon.Core.Network
         }
 
         internal static void NotifyLocalStateChanged(
-            NadaVfxLocalPublishedState publishedState)
+            NadaVfxRightHandPublishedState publishedState)
         {
             if (publishedState == null)
                 return;
@@ -330,9 +330,9 @@ namespace NADA.VFX.Weapon.Core.Network
                 InterestedPeers.Add(
                     sender);
 
-                if (!NadaVfxLocalStatePublisher
+                if (!NadaVfxRightHandStatePublisher
                         .TryGetCurrent(
-                            out NadaVfxLocalPublishedState
+                            out NadaVfxRightHandPublishedState
                                 publishedState))
                 {
                     Plugin.Log.LogInfo(
@@ -380,7 +380,7 @@ namespace NADA.VFX.Weapon.Core.Network
 
         private static void SendStateResponse(
             long targetPeerId,
-            NadaVfxLocalPublishedState publishedState)
+            NadaVfxRightHandPublishedState publishedState)
         {
             if (targetPeerId == 0L ||
                 publishedState == null)
@@ -554,7 +554,7 @@ namespace NADA.VFX.Weapon.Core.Network
         private static void SendStateChanged(
             global::ZRoutedRpc rpc,
             long targetPeerId,
-            NadaVfxLocalPublishedState publishedState)
+            NadaVfxRightHandPublishedState publishedState)
         {
             var package =
                 new global::ZPackage();
@@ -674,8 +674,8 @@ namespace NADA.VFX.Weapon.Core.Network
 
                 NativeInterestedPeers.Add(sender);
 
-                if (!NadaVfxLocalStatePublisher.TryGetCurrent(
-                        out NadaVfxLocalPublishedState published) ||
+                if (!NadaVfxRightHandStatePublisher.TryGetCurrent(
+                        out NadaVfxRightHandPublishedState published) ||
                     published.ItemHash != itemHash)
                 {
                     Plugin.Log.LogInfo(
@@ -701,7 +701,7 @@ namespace NADA.VFX.Weapon.Core.Network
 
         private static void SendNativeStateResponse(
             long peerId,
-            NadaVfxLocalPublishedState published)
+            NadaVfxRightHandPublishedState published)
         {
             if (peerId == 0L || published == null)
                 return;
@@ -798,7 +798,7 @@ namespace NADA.VFX.Weapon.Core.Network
         private static void SendNativeStateChanged(
             global::ZRoutedRpc rpc,
             long peerId,
-            NadaVfxLocalPublishedState published)
+            NadaVfxRightHandPublishedState published)
         {
             if (rpc == null || published == null)
                 return;

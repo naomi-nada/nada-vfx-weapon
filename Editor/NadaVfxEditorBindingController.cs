@@ -69,7 +69,7 @@ namespace NADA.VFX.Weapon.Editor
             // Binding is permitted only from an unbound draft. Legacy saves
             // are retired during an explicit Unbind, after the codec has
             // validated a separate copy of the weapon's old state.
-            NadaVfxLocalStatePublisher.MarkDirty(item);
+            NadaVfxRightHandStatePublisher.MarkDirty(item);
 
             Plugin.Log?.LogInfo(
                 $"{Plugin.ModName}: [EditorNativeBind] " +
@@ -165,7 +165,7 @@ namespace NADA.VFX.Weapon.Editor
             // This rig may have existed before the editor was opened.
             // Adopt it so Close() can clean it up like any other preview.
             NadaVfxEditorPreviewRigSession.AdoptUnboundRig(target);
-            NadaVfxLocalStatePublisher.MarkDirty(item);
+            NadaVfxRightHandStatePublisher.MarkDirty(item);
 
             Plugin.Log?.LogInfo(
                 $"{Plugin.ModName}: [EditorNativeUnbind] " +

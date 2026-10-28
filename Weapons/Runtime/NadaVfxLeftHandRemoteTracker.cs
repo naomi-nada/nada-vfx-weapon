@@ -93,7 +93,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             HiddenPeers.Clear();
 
             foreach (var choice in
-                     NadaVfxRemoteStateTracker.GetVisiblePlayerChoices())
+                     NadaVfxRightHandRemoteStateTracker.GetVisiblePlayerChoices())
             {
                 if (choice.Hidden)
                     HiddenPeers.Add(choice.PeerId);

@@ -2093,7 +2093,7 @@ namespace NADA.VFX.Weapon.Editor
             GUILayout.Label("↳ Players", _mutedStyle,
                 GUILayout.Width(100f), GUILayout.Height(20f));
             GUILayout.Space(6f);
-            int hidden = NadaVfxRemoteStateTracker.HiddenPlayerCount;
+            int hidden = NadaVfxRightHandRemoteStateTracker.HiddenPlayerCount;
             string caption = _remotePlayerListExpanded
                 ? "Hide List"
                 : hidden > 0 ? $"Hide Selected ({hidden})" : "All";
@@ -2106,13 +2106,13 @@ namespace NADA.VFX.Weapon.Editor
             if (!_remotePlayerListExpanded)
                 return;
 
-            List<NadaVfxRemoteStateTracker.RemotePlayerChoice> players =
-                NadaVfxRemoteStateTracker.GetVisiblePlayerChoices();
+            List<NadaVfxRightHandRemoteStateTracker.RemotePlayerChoice> players =
+                NadaVfxRightHandRemoteStateTracker.GetVisiblePlayerChoices();
             GUILayout.BeginHorizontal();
             GUILayout.Space(142f);
             if (GUILayout.Button("Show All", _themeOptionStyle,
                     GUILayout.Width(92f), GUILayout.Height(20f)))
-                NadaVfxRemoteStateTracker.ShowAllPlayers();
+                NadaVfxRightHandRemoteStateTracker.ShowAllPlayers();
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
@@ -2130,7 +2130,7 @@ namespace NADA.VFX.Weapon.Editor
                     GUILayout.Width(114f), GUILayout.Height(20f));
                 if (GUILayout.Button(player.Hidden ? "Hidden" : "Visible",
                         _themeOptionStyle, GUILayout.Width(70f), GUILayout.Height(20f)))
-                    NadaVfxRemoteStateTracker.SetPlayerHidden(player.PeerId, !player.Hidden);
+                    NadaVfxRightHandRemoteStateTracker.SetPlayerHidden(player.PeerId, !player.Hidden);
                 GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
             }

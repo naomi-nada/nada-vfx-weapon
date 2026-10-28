@@ -103,7 +103,7 @@ namespace NADA.VFX.Weapon.Editor
             MultiplayerVisibility.SettingChanged += (_, __) =>
             {
                 config.Save();
-                NadaVfxRemoteStateTracker.RefreshPresentationVisibility();
+                NadaVfxRightHandRemoteStateTracker.RefreshPresentationVisibility();
             };
 
             ToggleHotkey.SettingChanged += (_, __) => config.Save();

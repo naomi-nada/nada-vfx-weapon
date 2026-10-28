@@ -14,7 +14,7 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         {
             try
             {
-                NadaVfxRemoteStateTracker
+                NadaVfxRightHandRemoteStateTracker
                     .ReleasePlayerInstance(
                         __instance);
             }

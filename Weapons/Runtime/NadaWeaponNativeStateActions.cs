@@ -1,3 +1,4 @@
+
 using NADA.VFX.Weapon.Core.Network;
 using NADA.VFX.Weapon.Core.Persistence;
 using NADA.VFX.Weapon.Core.State;
@@ -54,6 +55,7 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             out string reason)
         {
             reason = null;
+
             if (item == null)
             {
                 reason = "No target ItemData.";
@@ -74,7 +76,11 @@ namespace NADA.VFX.Weapon.Weapons.Runtime
             bool isBound,
             string action)
         {
-            NadaVfxLocalStatePublisher.MarkDirty(item);
+            // Each publisher accepts only the exact ItemData it currently
+            // observes. A change to an unequipped or dropped item won't
+            // generate player-equipment network traffic.
+            NadaVfxRightHandStatePublisher.MarkDirty(item);
+            NadaVfxLeftHandStatePublisher.MarkDirty(item);
 
             NadaExactEquippedRefresh refreshed =
                 NadaEquippedRigActions.RefreshExactItem(item, isBound);
