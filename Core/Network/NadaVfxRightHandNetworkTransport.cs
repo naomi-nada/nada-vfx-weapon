@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
@@ -49,6 +50,12 @@ namespace NADA.VFX.Weapon.Core.Network
         private static readonly HashSet<long>
             NativeInterestedPeers = new();
 
+        // Routed RPC sender IDs represent sessions, not necessarily
+        // direct network sockets. Keep platform identities so a
+        // disconnected or replaced session can be retired safely.
+        private static readonly Dictionary<long, string>
+            SubscriberPlatformIds = new();
+
         internal static event Action<
             long,
             NadaVfxNetworkPacket,
@@ -62,8 +69,7 @@ namespace NADA.VFX.Weapon.Core.Network
             bool>
             StateChangedReceived;
 
-        // Stage 8b validates/decodes these but deliberately has no runtime
-        // subscriber. Stage 8c will add authoritative remote reconciliation.
+        // Legacy native V1 transport remains available for older clients.
         internal static event Action<long, WeaponVfxNetworkStatePacket>
             NativeStateReceived;
 
@@ -93,6 +99,7 @@ namespace NADA.VFX.Weapon.Core.Network
 
             InterestedPeers.Clear();
             NativeInterestedPeers.Clear();
+            SubscriberPlatformIds.Clear();
 
             NadaVfxRightHandStatePublisher
                 .ResetSession();
@@ -327,8 +334,8 @@ namespace NADA.VFX.Weapon.Core.Network
                     return;
                 }
 
-                InterestedPeers.Add(
-                    sender);
+                InterestedPeers.Add(sender);
+                TryLinkSubscriber(sender);
 
                 if (!NadaVfxRightHandStatePublisher
                         .TryGetCurrent(
@@ -673,6 +680,7 @@ namespace NADA.VFX.Weapon.Core.Network
                     return;
 
                 NativeInterestedPeers.Add(sender);
+                TryLinkSubscriber(sender);
 
                 if (!NadaVfxRightHandStatePublisher.TryGetCurrent(
                         out NadaVfxRightHandPublishedState published) ||
@@ -858,6 +866,190 @@ namespace NADA.VFX.Weapon.Core.Network
             Plugin.Log.LogWarning(
                 $"{Plugin.ModName}: [NetworkNativeStateReceiveReject] " +
                 $"sender={sender} reason={reason} bytes={size}");
+        }
+
+        private static void TryLinkSubscriber(long sender)
+        {
+            if (SubscriberPlatformIds.ContainsKey(sender))
+                return;
+
+            global::ZNet net = global::ZNet.instance;
+            if (net == null)
+                return;
+
+            var players = net.GetPlayerList();
+            if (players == null)
+                return;
+
+            foreach (var player in players)
+            {
+                if (player.m_characterID.UserID != sender ||
+                    !player.m_userInfo.m_id.IsValid)
+                {
+                    continue;
+                }
+
+                string platformId =
+                    player.m_userInfo.m_id.ToString();
+
+                if (string.IsNullOrEmpty(platformId))
+                    return;
+
+                SubscriberPlatformIds[sender] = platformId;
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [RightLegacySubscriberLinked] " +
+                    $"peer={sender}");
+
+                return;
+            }
+        }
+
+        private static void OnPlayerRosterUpdated(global::ZNet net)
+        {
+            if (net == null ||
+                !ReferenceEquals(
+                    global::ZRoutedRpc.instance,
+                    _registeredRpc) ||
+                (InterestedPeers.Count == 0 &&
+                 NativeInterestedPeers.Count == 0))
+            {
+                return;
+            }
+
+            var players = net.GetPlayerList();
+            if (players == null || players.Count == 0)
+                return;
+
+            var connectedAccounts =
+                new HashSet<string>(StringComparer.Ordinal);
+
+            var peerAccounts =
+                new Dictionary<long, string>();
+
+            var accountPeers =
+                new Dictionary<string, long>(StringComparer.Ordinal);
+
+            bool localPlayerPresent = false;
+            bool incompleteIdentities = false;
+
+            long localId = global::ZNet.GetUID();
+
+            foreach (var player in players)
+            {
+                long session =
+                    player.m_characterID.UserID;
+
+                if (session != 0 && session == localId)
+                    localPlayerPresent = true;
+
+                if (!player.m_userInfo.m_id.IsValid)
+                {
+                    if (session != 0)
+                        incompleteIdentities = true;
+
+                    continue;
+                }
+
+                string platformId =
+                    player.m_userInfo.m_id.ToString();
+
+                if (string.IsNullOrEmpty(platformId))
+                {
+                    if (session != 0)
+                        incompleteIdentities = true;
+
+                    continue;
+                }
+
+                connectedAccounts.Add(platformId);
+
+                if (session != 0)
+                {
+                    peerAccounts[session] = platformId;
+                    accountPeers[platformId] = session;
+                }
+            }
+
+            // Joining/death transitions can temporarily produce an
+            // incomplete roster. Don't interpret that as a departure.
+            if (!localPlayerPresent ||
+                connectedAccounts.Count == 0 ||
+                incompleteIdentities)
+            {
+                return;
+            }
+
+            // One player may subscribe through both legacy RPC paths.
+            // Process each session once and remove it from both sets.
+            var subscribedPeers = new HashSet<long>(InterestedPeers);
+            subscribedPeers.UnionWith(NativeInterestedPeers);
+
+            var departedPeers = new List<long>();
+
+            foreach (long peer in subscribedPeers)
+            {
+                if (!SubscriberPlatformIds.TryGetValue(
+                        peer,
+                        out string platformId))
+                {
+                    if (peerAccounts.TryGetValue(
+                            peer,
+                            out platformId))
+                    {
+                        SubscriberPlatformIds[peer] = platformId;
+
+                        Plugin.Log.LogInfo(
+                            $"{Plugin.ModName}: [RightLegacySubscriberLinked] " +
+                            $"peer={peer}");
+                    }
+
+                    continue;
+                }
+
+                bool accountLeft =
+                    !connectedAccounts.Contains(platformId);
+
+                bool sessionReplaced =
+                    accountPeers.TryGetValue(
+                        platformId,
+                        out long currentSession) &&
+                    currentSession != peer;
+
+                if (accountLeft || sessionReplaced)
+                    departedPeers.Add(peer);
+            }
+
+            foreach (long peer in departedPeers)
+            {
+                bool legacyRemoved = InterestedPeers.Remove(peer);
+                bool nativeRemoved = NativeInterestedPeers.Remove(peer);
+
+                SubscriberPlatformIds.Remove(peer);
+
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: [RightLegacySubscriberRemoved] " +
+                    $"peer={peer} reason=RosterDeparture " +
+                    $"legacy={legacyRemoved} native={nativeRemoved}");
+            }
+        }
+
+        [HarmonyPatch(typeof(global::ZNet), "RPC_PlayerList")]
+        private static class PlayerRosterPatch
+        {
+            private static void Postfix(global::ZNet __instance)
+            {
+                try
+                {
+                    OnPlayerRosterUpdated(__instance);
+                }
+                catch (Exception error)
+                {
+                    Plugin.Log.LogWarning(
+                        $"{Plugin.ModName}: [RightLegacyRosterUpdateFailed] " +
+                        error.Message);
+                }
+            }
         }
 
         [HarmonyPatch(
