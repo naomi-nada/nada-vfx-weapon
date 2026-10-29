@@ -30,28 +30,37 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 Plugin.Instance.StartCoroutine(
                     CheckDroppedItemWhenReady(__instance));
             }
-            catch (Exception e)
+            catch (Exception error)
             {
                 Plugin.Log.LogWarning(
-                    $"{Plugin.ModName}: ItemDrop.Awake postfix error: {e}");
+                    $"{Plugin.ModName}: ItemDrop.Awake postfix error: {error}");
             }
         }
 
         private static IEnumerator CheckDroppedItemWhenReady(
             global::ItemDrop itemDrop)
         {
-            // Record the initial ZDO bytes before yielding. A remote update
-            // received during initial setup still needs a live reload.
-            ZDO observedZdo = null;
-            global::ItemDrop.ItemData observedItem = itemDrop.m_itemData;
+            if (itemDrop == null || itemDrop.gameObject == null)
+                yield break;
+
+            // Snapshot before yielding so changes during initialization
+            // are still detected by the watcher.
             ZNetView initialView = itemDrop.GetComponent<ZNetView>();
+            ZDO observedZdo = null;
+
+            global::ItemDrop.ItemData observedItem = itemDrop.m_itemData;
+
             bool observedOwner = initialView != null &&
-                                 initialView.IsValid() && initialView.IsOwner();
+                                 initialView.IsValid() &&
+                                 initialView.IsOwner();
+
             if (initialView != null && initialView.IsValid())
                 observedZdo = initialView.GetZDO();
 
-            ReadSignature(observedZdo,
-                out int observedLength, out ulong observedFingerprint);
+            ReadSignature(
+                observedZdo,
+                out int observedLength,
+                out ulong observedFingerprint);
 
             yield return null;
             yield return null;
@@ -62,9 +71,9 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             if (PluginConfig.DroppedItemVisibility?.Value == true)
                 ApplyInitialDroppedItem(itemDrop);
 
-            // ItemDrop.Load() runs when a drop is created, not when an
-            // already-live remote ZDO receives a new packed item record.
-            // Only read a changed record, never write or claim ownership.
+            // Remote ZDO updates don't necessarily refresh the live
+            // ItemData. Observe the packed record without writing to it
+            // or claiming ownership.
             while (itemDrop != null && itemDrop.gameObject != null)
             {
                 yield return ReloadInterval;
@@ -76,24 +85,42 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     continue;
 
                 ZNetView view = itemDrop.GetComponent<ZNetView>();
+
                 if (view == null || !view.IsValid())
                     continue;
 
                 ZDO zdo = view.GetZDO();
+
                 if (zdo == null)
                     continue;
 
-                ReadSignature(zdo,
-                    out int currentLength, out ulong currentFingerprint);
+                ReadSignature(
+                    zdo,
+                    out int currentLength,
+                    out ulong currentFingerprint);
 
-                global::ItemDrop.ItemData currentItem = itemDrop.m_itemData;
+                global::ItemDrop.ItemData currentItem =
+                    itemDrop.m_itemData;
+
                 bool isOwner = view.IsOwner();
-                bool ownershipChanged = isOwner != observedOwner;
+
+                bool ownershipChanged =
+                    isOwner != observedOwner;
+
+                bool packedChanged =
+                    currentLength != observedLength ||
+                    currentFingerprint != observedFingerprint;
+
+                bool zdoChanged =
+                    !ReferenceEquals(zdo, observedZdo);
+
+                bool itemChanged =
+                    !ReferenceEquals(currentItem, observedItem);
+
                 if (!ownershipChanged &&
-                    ReferenceEquals(zdo, observedZdo) &&
-                    ReferenceEquals(currentItem, observedItem) &&
-                    currentLength == observedLength &&
-                    currentFingerprint == observedFingerprint)
+                    !packedChanged &&
+                    !zdoChanged &&
+                    !itemChanged)
                 {
                     continue;
                 }
@@ -104,52 +131,111 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                 observedLength = currentLength;
                 observedFingerprint = currentFingerprint;
 
-                // Never overwrite an owner's pending local change. When
-                // ownership just transferred, first reload the authoritative
-                // item record instead of inheriting another peer's cache.
+                // Preserve an existing owner's local ItemData. It may
+                // contain changes that haven't been saved to the ZDO yet.
                 if (isOwner && !ownershipChanged)
                     continue;
 
                 if (currentItem == null || currentLength == 0)
                 {
                     RetireDroppedRig(itemDrop);
+
                     Plugin.Log.LogWarning(
                         $"{Plugin.ModName}: [DropLiveReloadRejected] " +
                         $"object={itemDrop.GetInstanceID()} " +
                         "reason='missing-item-or-packed-data'.");
+
                     continue;
                 }
 
                 try
                 {
-                    // Vanilla owns the ItemData format. Reload its actual
-                    // live instance, then reuse NADA's block reconciler.
+                    // Keep the authoritative refresh on ownership changes.
+                    // The cached ItemData alone cannot establish whether
+                    // the packed record contains a newer binding.
                     itemDrop.Load();
                     observedItem = itemDrop.m_itemData;
+
                     if (observedItem == null)
                     {
                         RetireDroppedRig(itemDrop);
+
                         Plugin.Log.LogWarning(
                             $"{Plugin.ModName}: [DropLiveReloadRejected] " +
                             $"object={itemDrop.GetInstanceID()} " +
                             "reason='loaded-item-is-null'.");
+
+                        continue;
+                    }
+
+                    NadaWeaponLocalSourceSelection selection =
+                        NadaWeaponLocalSourceResolver.Resolve(
+                            observedItem);
+
+                    if (selection.Kind ==
+                        NadaWeaponLocalSourceKind.InvalidNative)
+                    {
+                        // A malformed native state must never leave the
+                        // previous visual attached to this world drop.
+                        RetireDroppedRig(itemDrop);
+
+                        Plugin.Log.LogWarning(
+                            $"{Plugin.ModName}: [DropLiveReloadRejected] " +
+                            $"object={itemDrop.GetInstanceID()} " +
+                            $"reason='invalid-native-state: " +
+                            $"{selection.FailureReason}'.");
+
+                        continue;
+                    }
+
+                    if (selection.Kind !=
+                            NadaWeaponLocalSourceKind.NativeBound &&
+                        selection.Kind !=
+                            NadaWeaponLocalSourceKind.LegacyBound)
+                    {
+                        // Ordinary drops still refresh their ItemData,
+                        // but don't need the NADA runtime or success logs.
+                        // This also removes an old rig after unbinding.
+                        RetireDroppedRig(itemDrop);
                         continue;
                     }
 
                     var controller = new NadaWeaponRigController();
+
                     bool applied = controller.TryApplyDroppedItem(
-                        itemDrop.gameObject, itemDrop.m_itemData);
+                        itemDrop.gameObject,
+                        observedItem);
+
+                    if (!applied)
+                    {
+                        RetireDroppedRig(itemDrop);
+
+                        Plugin.Log.LogWarning(
+                            $"{Plugin.ModName}: [DropLiveReloadRejected] " +
+                            $"object={itemDrop.GetInstanceID()} " +
+                            $"reason='bound-rig-apply-failed' " +
+                            $"source={selection.Kind}.");
+
+                        continue;
+                    }
 
                     Plugin.Log.LogInfo(
                         $"{Plugin.ModName}: [DropLiveReload] " +
                         $"object={itemDrop.GetInstanceID()} " +
-                        $"bytes={currentLength} rigApplied={applied}.");
+                        $"bytes={currentLength} " +
+                        $"rigApplied=True " +
+                        $"source={selection.Kind} " +
+                        $"packedChanged={packedChanged} " +
+                        $"ownershipChanged={ownershipChanged} " +
+                        $"itemRefChanged={itemChanged} " +
+                        $"zdoRefChanged={zdoChanged} " +
+                        $"owner={isOwner}.");
                 }
                 catch (Exception error)
                 {
-                    // A malformed replicated record must not leave an old
-                    // transparent/material-modified rig on the dropped item.
+                    // Failed reloads must not preserve stale VFX.
                     RetireDroppedRig(itemDrop);
+
                     Plugin.Log.LogWarning(
                         $"{Plugin.ModName}: [DropLiveReloadRejected] " +
                         $"object={itemDrop.GetInstanceID()} " +
@@ -159,16 +245,22 @@ namespace NADA.VFX.Weapon.Weapons.Patches
         }
 
         private static void ReadSignature(
-            ZDO zdo, out int length, out ulong fingerprint)
+            ZDO zdo,
+            out int length,
+            out ulong fingerprint)
         {
-            byte[] bytes = zdo?.GetByteArray(ZDOVars.s_itemData, null);
+            byte[] bytes = zdo?.GetByteArray(
+                ZDOVars.s_itemData, null);
+
             length = bytes?.Length ?? 0;
 
-            // Keep a compact signature rather than cloning the entire
-            // packed item record for every live drop.
+            // Hash the packed record without keeping a second copy
+            // of every dropped item's serialized data.
             const ulong offset = 14695981039346656037UL;
             const ulong prime = 1099511628211UL;
+
             ulong hash = offset;
+
             if (bytes != null)
             {
                 for (int i = 0; i < bytes.Length; i++)
@@ -178,13 +270,16 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             fingerprint = hash;
         }
 
-        private static void RetireDroppedRig(global::ItemDrop itemDrop)
+        private static void RetireDroppedRig(
+            global::ItemDrop itemDrop)
         {
             if (itemDrop == null)
                 return;
 
-            Transform visual = NadaWeaponTargets.FindDroppedWeaponVisualRoot(
-                itemDrop.transform);
+            Transform visual =
+                NadaWeaponTargets.FindDroppedWeaponVisualRoot(
+                    itemDrop.transform);
+
             Transform rig = visual != null
                 ? NadaRigPaths.FindDirectChild(
                     visual, Plugin.LocalWeaponRootName)
@@ -198,28 +293,37 @@ namespace NADA.VFX.Weapon.Weapons.Patches
             global::ItemDrop itemDrop)
         {
             global::ItemDrop.ItemData itemData = itemDrop.m_itemData;
+
             if (itemData == null)
                 return;
 
             NadaWeaponLocalSourceSelection selection =
                 NadaWeaponLocalSourceResolver.Resolve(itemData);
 
-            if (selection.Kind == NadaWeaponLocalSourceKind.InvalidNative)
+            if (selection.Kind ==
+                NadaWeaponLocalSourceKind.InvalidNative)
             {
                 Plugin.Log.LogWarning(
                     $"{Plugin.ModName}: [DropStateInvalid] " +
                     $"object='{itemDrop.gameObject.name}' " +
                     $"reason='{selection.FailureReason}'.");
+
                 return;
             }
 
-            if (selection.Kind != NadaWeaponLocalSourceKind.NativeBound &&
-                selection.Kind != NadaWeaponLocalSourceKind.LegacyBound)
+            if (selection.Kind !=
+                    NadaWeaponLocalSourceKind.NativeBound &&
+                selection.Kind !=
+                    NadaWeaponLocalSourceKind.LegacyBound)
+            {
                 return;
+            }
 
             var controller = new NadaWeaponRigController();
+
             bool applied = controller.TryApplyDroppedItem(
-                itemDrop.gameObject, itemData);
+                itemDrop.gameObject,
+                itemData);
 
             if (!applied)
             {
@@ -229,6 +333,7 @@ namespace NADA.VFX.Weapon.Weapons.Patches
                     $"item='{itemData.m_shared?.m_name}' " +
                     $"source={selection.Kind} " +
                     $"path='{NadaWeaponTargets.FullPath(itemDrop.transform)}'");
+
                 return;
             }
 
