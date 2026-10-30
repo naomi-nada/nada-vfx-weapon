@@ -21,6 +21,10 @@ namespace NADA.VFX.Weapon.Core.Network
         private const int Version = 2;
         private const int MaxControlBytes = 128;
 
+        // The left-hand publisher cycles through 1..int.MaxValue.
+        // Zero means there is no equipped item.
+        private const uint MaxEquipmentGeneration = int.MaxValue;
+
         private const int MaxResponseBytes =
             WeaponVfxNetworkCodec.MaxPacketBytes + 128;
 
@@ -29,6 +33,7 @@ namespace NADA.VFX.Weapon.Core.Network
         private sealed class Subscription
         {
             internal int ItemHash;
+            internal uint Generation;
             internal string PlatformId;
         }
 
@@ -64,6 +69,19 @@ namespace NADA.VFX.Weapon.Core.Network
             rpc.Register(ChangedRpc,
                 new Action<long, global::ZPackage>(OnChanged));
 
+            if (SubscriptionOrderingContractPasses())
+            {
+                Plugin.Log.LogInfo(
+                    $"{Plugin.ModName}: " +
+                    "[LeftNativeSubscriptionTests OK] tests=9");
+            }
+            else
+            {
+                Plugin.Log.LogError(
+                    $"{Plugin.ModName}: " +
+                    "[LeftNativeSubscriptionTests FAIL]");
+            }
+
             SessionReset?.Invoke();
 
             Plugin.Log.LogInfo(
@@ -76,7 +94,8 @@ namespace NADA.VFX.Weapon.Core.Network
             uint generation,
             uint knownRevision)
         {
-            if (peer == 0 || hash == 0 || generation == 0)
+            if (peer == 0 || hash == 0 || generation == 0 ||
+                generation > MaxEquipmentGeneration)
                 return false;
 
             global::ZRoutedRpc rpc = global::ZRoutedRpc.instance;
@@ -173,30 +192,53 @@ namespace NADA.VFX.Weapon.Core.Network
                 uint generation = unchecked((uint)package.ReadInt());
                 uint known = unchecked((uint)package.ReadInt());
 
-                if (version != Version || hash == 0 || generation == 0)
+                if (version != Version || hash == 0 || generation == 0 ||
+                    generation > MaxEquipmentGeneration)
                     return;
 
-                // Record interest even when the matching state hasn't
-                // been published. This preserves the late-publication path.
+                // Check the owner's current publication before replacing
+                // an existing subscription with the requested identity.
+                NadaVfxLeftHandStatePublisher.TryGetCurrent(
+                    out var published);
+
+                bool matchesPublished =
+                    published != null &&
+                    published.ItemHash == hash &&
+                    published.EquipmentGeneration == generation;
+
                 if (!InterestedPeers.TryGetValue(
                         sender, out Subscription interest))
                 {
                     interest = new Subscription();
                     InterestedPeers.Add(sender, interest);
                 }
+                else if (!CanReplaceSubscription(
+                             interest, hash, generation, matchesPublished))
+                {
+                    string reason = generation == interest.Generation
+                        ? "same-generation-item-mismatch"
+                        : "older-generation";
+
+                    Plugin.Log.LogInfo(
+                        $"{Plugin.ModName}: [LeftNativeSubscriptionRequestIgnored] " +
+                        $"peer={sender} requestedHash={hash} " +
+                        $"requestedGeneration={generation} " +
+                        $"subscribedHash={interest.ItemHash} " +
+                        $"subscribedGeneration={interest.Generation} " +
+                        $"reason={reason}");
+                    return;
+                }
 
                 interest.ItemHash = hash;
+                interest.Generation = generation;
 
                 if (string.IsNullOrEmpty(interest.PlatformId))
                     TryLinkSubscriber(sender, interest);
 
-                if (!NadaVfxLeftHandStatePublisher.TryGetCurrent(
-                        out var published) ||
-                    published.ItemHash != hash ||
-                    published.EquipmentGeneration != generation)
-                {
+                // The observer may request a new generation before the
+                // publisher catches up. Keep its pending subscription.
+                if (!matchesPublished)
                     return;
-                }
 
                 SendResponse(sender, published);
 
@@ -211,6 +253,60 @@ namespace NADA.VFX.Weapon.Core.Network
                     $"{Plugin.ModName}: [LeftNativeRequestReceiveFailed] " +
                     error.Message);
             }
+        }
+
+        // A delayed request for an older equipped item must not steal
+        // the notification subscription from the current generation.
+        private static bool CanReplaceSubscription(
+            Subscription current,
+            int requestedHash,
+            uint requestedGeneration,
+            bool matchesPublished)
+        {
+            if (current == null || current.Generation == 0)
+                return true;
+
+            if (requestedGeneration == current.Generation)
+                return requestedHash == current.ItemHash || matchesPublished;
+
+            return IsNewerEquipmentGeneration(
+                requestedGeneration, current.Generation);
+        }
+
+        private static bool IsNewerEquipmentGeneration(
+            uint incoming,
+            uint current)
+        {
+            if (incoming == 0 || current == 0 ||
+                incoming > MaxEquipmentGeneration ||
+                current > MaxEquipmentGeneration ||
+                incoming == current)
+                return false;
+
+            // Handle wraparound at int.MaxValue rather than uint.MaxValue.
+            // Distant stale generations must never appear newer.
+            uint forwardDistance = incoming > current
+                ? incoming - current
+                : MaxEquipmentGeneration - current + incoming;
+
+            return forwardDistance <= MaxEquipmentGeneration / 2;
+        }
+
+        private static bool SubscriptionOrderingContractPasses()
+        {
+            var first = new Subscription { ItemHash = 10, Generation = 1 };
+            var second = new Subscription { ItemHash = 20, Generation = 2 };
+
+            return
+                CanReplaceSubscription(null, 10, 1, false) &&
+                CanReplaceSubscription(first, 10, 1, false) &&
+                CanReplaceSubscription(first, 20, 2, false) &&
+                !CanReplaceSubscription(first, 20, 1, false) &&
+                CanReplaceSubscription(first, 20, 1, true) &&
+                !CanReplaceSubscription(second, 10, 1, false) &&
+                CanReplaceSubscription(second, 20, 2, false) &&
+                IsNewerEquipmentGeneration(1, MaxEquipmentGeneration) &&
+                !IsNewerEquipmentGeneration(MaxEquipmentGeneration, 1);
         }
 
         // Routed RPC senders are not necessarily direct sockets on a
